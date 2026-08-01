@@ -1,0 +1,1 @@
+ALTER TABLE public.recommenders ADD COLUMN IF NOT EXISTS requested_at TIMESTAMPTZ;

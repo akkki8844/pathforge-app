@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1230"/><stop offset="100%" stop-color="#161f4a"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#t)"/>
+  <!-- node graph: 4 nodes connected -->
+  <g stroke="url(#g)" stroke-width="6" fill="none">
+    <line x1="64" y1="192" x2="128" y2="128"/>
+    <line x1="128" y1="128" x2="192" y2="64"/>
+    <line x1="128" y1="128" x2="192" y2="192"/>
+    <line x1="64" y1="192" x2="192" y2="192"/>
+  </g>
+  <g fill="url(#g)">
+    <circle cx="64" cy="192" r="12"/>
+    <circle cx="192" cy="192" r="10"/>
+    <circle cx="128" cy="128" r="14"/>
+    <circle cx="192" cy="64" r="16"/>
+  </g>
+</svg>

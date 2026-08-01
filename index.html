@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- Plus Jakarta Sans is self-hosted via @fontsource in src/main.tsx —
+         no Google Fonts round-trip needed. -->
+    <link rel="dns-prefetch" href="https://aupymiiwhfnaoduvxyzt.supabase.co">
+    <link rel="preconnect" href="https://aupymiiwhfnaoduvxyzt.supabase.co" crossorigin>
+    <link rel="dns-prefetch" href="https://translate.google.com">
+
+    <!-- Preload the landing hero so it decodes in parallel with JS/CSS -->
+    <link rel="preload" as="image" href="/assets/hero-campus-cinematic-v1.webp" fetchpriority="high">
+    
+    <!-- Primary Meta Tags (sitewide fallback; per-route via react-helmet-async) -->
+    <title>Pathforge — AI College Application Guide</title>
+    <meta name="title" content="Pathforge — AI College Application Guide">
+    <meta name="description" content="Plan your path to top colleges with AI activity picks, essay refinement, admissions probability, and an application tracker for high schoolers.">
+
+    <meta name="keywords" content="college application, college admissions, high school, extracurricular activities, college essays, SAT, ACT, university admissions, college counseling, AI college advisor, college readiness, application tracker">
+    <meta name="author" content="Pathforge">
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+    <meta name="google-site-verification" content="x8Be3Xy57tmuLLcJfllbMYOxLYWd19CcmgIPqoMLhDs" />
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://pathforge.co.in/">
+    
+    
+    <meta property="og:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/CswkUhC78OgkSYDPS7UkrpFjZvW2/social-images/social-1778983109778-Screenshot_2026-05-17_071556.webp">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:site_name" content="Pathforge">
+    <meta property="og:locale" content="en_US">
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://pathforge.co.in/">
+    <meta name="twitter:site" content="@Pathforge">
+    <meta name="twitter:creator" content="@Pathforge">
+    
+    
+    <meta name="twitter:image" content="https://storage.googleapis.com/gpt-engineer-file-uploads/CswkUhC78OgkSYDPS7UkrpFjZvW2/social-images/social-1778983109778-Screenshot_2026-05-17_071556.webp">
+
+    <!-- Blank favicon to prevent platform default -->
+    
+    <!-- Additional SEO -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="application-name" content="Pathforge">
+    <meta name="apple-mobile-web-app-title" content="Pathforge">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    
+    <!-- Structured Data (JSON-LD) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Pathforge",
+      "url": "https://pathforge.co.in",
+      "description": "AI-powered college application guide helping high school students plan their path to top colleges with personalized activity recommendations, essay refinement, and application tracking.",
+      "applicationCategory": "EducationalApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "Pathforge",
+        "url": "https://pathforge.co.in"
+      }
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "Pathforge",
+      "url": "https://pathforge.co.in",
+      "logo": "https://pathforge.co.in/logo.png",
+      "sameAs": [
+        "https://twitter.com/Pathforge"
+      ],
+      "contactPoint": {
+        "@type": "ContactPoint",
+        "contactType": "customer support",
+        "url": "https://pathforge.co.in/contact"
+      }
+    }
+    </script>
+    <!-- WebSite schema (helps Google generate sitelinks + brand panel) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Pathforge",
+      "alternateName": ["Pathforge AI", "Pathforge College Guide", "pathforge.co.in"],
+      "url": "https://pathforge.co.in/",
+      "description": "Pathforge is the AI college application platform for high school students — activity recommendations, essay refinement, LinkedIn building, admissions probability, and a voice AI advisor."
+    }
+    </script>
+    <!-- SiteNavigationElement (signals primary nav to crawlers; powers sitelinks) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        { "@type": "SiteNavigationElement", "name": "Start Your Journey", "url": "https://pathforge.co.in/journey" },
+        { "@type": "SiteNavigationElement", "name": "AI Advisor", "url": "https://pathforge.co.in/advisor" },
+        { "@type": "SiteNavigationElement", "name": "Activities", "url": "https://pathforge.co.in/activities" },
+        { "@type": "SiteNavigationElement", "name": "Essays", "url": "https://pathforge.co.in/essays" },
+        { "@type": "SiteNavigationElement", "name": "Application Builder", "url": "https://pathforge.co.in/application-builder" },
+        { "@type": "SiteNavigationElement", "name": "Profile Builder", "url": "https://pathforge.co.in/profile-builder" },
+        { "@type": "SiteNavigationElement", "name": "College Readiness", "url": "https://pathforge.co.in/college-readiness" },
+        { "@type": "SiteNavigationElement", "name": "Admissions Probability", "url": "https://pathforge.co.in/admissions-probability" },
+        { "@type": "SiteNavigationElement", "name": "Scholarships", "url": "https://pathforge.co.in/scholarships" },
+        { "@type": "SiteNavigationElement", "name": "Pricing", "url": "https://pathforge.co.in/pricing" },
+        { "@type": "SiteNavigationElement", "name": "About", "url": "https://pathforge.co.in/about" },
+        { "@type": "SiteNavigationElement", "name": "Contact", "url": "https://pathforge.co.in/contact" }
+      ]
+    }
+    </script>
+
+    
+    <!-- Google Ads -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-8878271762940031" crossorigin="anonymous"></script>
+    
+  
+  
+  
+  
+  
+  
+  
+  <!-- Per-route og:title/og:description/og:url are emitted by react-helmet-async via <Seo /> -->
+
+  
+  
+  
+  
+  <meta property="og:title" content="Pathforge — AI College Application Guide">
+  <meta name="twitter:title" content="Pathforge — AI College Application Guide">
+  <meta property="og:description" content="Plan your path to top colleges with AI activity picks, essay refinement, admissions probability, and an application tracker for high schoolers.">
+  <meta name="twitter:description" content="Plan your path to top colleges with AI activity picks, essay refinement, admissions probability, and an application tracker for high schoolers.">
+
+  <link rel="icon" type="image/x-icon" href="/favicon.ico">
+</head>
+
+  <body>
+    <script>
+      // Redirect www subdomain to root domain (once SSL is provisioned for www)
+      (function () {
+        try {
+          if (location.hostname === 'www.pathforge.co.in') {
+            location.replace('https://pathforge.co.in' + location.pathname + location.search + location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <div id="root"></div>
+    <!-- Google Translate widget host (hidden); used by useLanguage to translate the entire site at runtime -->
+    <div id="google_translate_element" style="position:fixed;left:-9999px;top:-9999px;width:1px;height:1px;overflow:hidden;" aria-hidden="true"></div>
+    <style>
+      .goog-te-banner-frame.skiptranslate, .goog-te-gadget, .goog-logo-link, .goog-te-gadget-icon { display: none !important; }
+      body { top: 0 !important; }
+      .skiptranslate > iframe { display: none !important; }
+      font[style*="background-color"] { background: transparent !important; box-shadow: none !important; }
+    </style>
+    <script>
+      window.googleTranslateElementInit = function () {
+        try {
+          new window.google.translate.TranslateElement(
+            { pageLanguage: 'en', autoDisplay: false },
+            'google_translate_element'
+          );
+        } catch (e) {}
+      };
+    </script>
+    <script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit" async></script>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

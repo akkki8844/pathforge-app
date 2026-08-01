@@ -1,0 +1,2 @@
+ALTER TABLE public.advisor_artifacts DROP CONSTRAINT advisor_artifacts_kind_check;
+ALTER TABLE public.advisor_artifacts ADD CONSTRAINT advisor_artifacts_kind_check CHECK (kind = ANY (ARRAY['plan'::text,'document'::text,'pdf'::text,'slides'::text,'image'::text]));

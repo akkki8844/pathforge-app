@@ -1,0 +1,5 @@
+ALTER TABLE public.recommenders
+  ADD COLUMN IF NOT EXISTS due_date DATE,
+  ADD COLUMN IF NOT EXISTS submitted_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS last_reminder_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS reminder_stage TEXT;

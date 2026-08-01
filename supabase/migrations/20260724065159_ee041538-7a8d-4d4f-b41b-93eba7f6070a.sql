@@ -1,0 +1,1 @@
+ALTER TABLE public.voice_advisor_sessions ADD COLUMN IF NOT EXISTS archived boolean NOT NULL DEFAULT false; CREATE INDEX IF NOT EXISTS idx_voice_advisor_sessions_archived ON public.voice_advisor_sessions(user_id, archived);

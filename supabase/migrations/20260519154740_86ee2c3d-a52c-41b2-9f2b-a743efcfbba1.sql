@@ -1,0 +1,2 @@
+ALTER TABLE public.email_verification_tokens ADD COLUMN IF NOT EXISTS code_hash text;
+CREATE INDEX IF NOT EXISTS idx_email_verification_tokens_user_active ON public.email_verification_tokens(user_id, used_at, expires_at);

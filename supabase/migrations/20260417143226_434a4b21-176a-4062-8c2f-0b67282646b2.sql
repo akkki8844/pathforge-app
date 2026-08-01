@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_data ADD COLUMN IF NOT EXISTS study_destinations text[] DEFAULT '{}'::text[];

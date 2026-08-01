@@ -1,0 +1,12 @@
+/* TEAM */
+Pathforge — AI College Application Platform
+Site: https://pathforge.co.in
+Contact: https://pathforge.co.in/contact
+Twitter: @Pathforge
+Location: India / Global
+
+/* SITE */
+Last update: 2026/05/15
+Standards: HTML5, CSS3, JSON-LD, Schema.org
+Components: React 18, Vite, TypeScript, Tailwind CSS
+Software: Lovable

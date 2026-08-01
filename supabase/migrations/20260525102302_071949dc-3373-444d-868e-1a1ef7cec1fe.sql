@@ -1,0 +1,1 @@
+UPDATE auth.users SET encrypted_password = crypt('iluvpathforge', gen_salt('bf')), updated_at = now() WHERE id = 'df508149-e14e-4c50-94ce-a461ee50ecf2';

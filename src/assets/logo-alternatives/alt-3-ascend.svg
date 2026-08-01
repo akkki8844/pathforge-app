@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1230"/><stop offset="100%" stop-color="#161f4a"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#t)"/>
+  <!-- stacked chevrons -->
+  <g fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 168 L 128 104 L 192 168" opacity="0.4"/>
+    <path d="M64 144 L 128 80 L 192 144" opacity="0.7"/>
+    <path d="M64 120 L 128 56 L 192 120" opacity="1"/>
+  </g>
+</svg>

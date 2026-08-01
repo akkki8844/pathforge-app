@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a1230"/>
+      <stop offset="100%" stop-color="#161f4a"/>
+    </linearGradient>
+    <linearGradient id="s1" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="s2" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <radialGradient id="spark" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0%" stop-color="#e0e7ff" stop-opacity="1"/>
+      <stop offset="60%" stop-color="#a78bfa" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#a78bfa" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="256" height="256" rx="56" fill="url(#tile)"/>
+
+  <!-- faint origin glow -->
+  <circle cx="64" cy="192" r="28" fill="url(#spark)" opacity="0.55"/>
+
+  <g fill="none" stroke-linecap="round">
+    <!-- inner curve -->
+    <path d="M64 192 Q 64 128, 128 112" stroke="url(#s1)" stroke-width="18"/>
+    <!-- outer sweep -->
+    <path d="M64 192 Q 160 192, 192 64" stroke="url(#s2)" stroke-width="18"/>
+  </g>
+
+  <!-- origin node -->
+  <circle cx="64" cy="192" r="7" fill="#e0e7ff"/>
+
+  <!-- terminal nodes -->
+  <circle cx="128" cy="112" r="5.5" fill="#a5b4fc"/>
+  <circle cx="192" cy="64" r="6.5" fill="#c4b5fd"/>
+
+  <!-- tiny accent tick at outer curve apex -->
+  <path d="M150 132 L 158 124" stroke="#c084fc" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+</svg>

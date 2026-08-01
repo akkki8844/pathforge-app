@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Senders view own broadcasts" ON public.notification_broadcasts;

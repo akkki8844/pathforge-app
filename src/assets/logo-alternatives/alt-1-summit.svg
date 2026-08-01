@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none">
+  <defs>
+    <linearGradient id="t" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1230"/><stop offset="100%" stop-color="#161f4a"/></linearGradient>
+    <linearGradient id="g" x1="0" y1="1" x2="1" y2="0"><stop offset="0%" stop-color="#22d3ee"/><stop offset="100%" stop-color="#c084fc"/></linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="url(#t)"/>
+  <!-- compass / forge: triangle with arc -->
+  <g fill="none" stroke="url(#g)" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M64 200 L 128 64 L 192 200"/>
+    <path d="M88 152 Q 128 128, 168 152"/>
+  </g>
+  <circle cx="128" cy="64" r="8" fill="#e0e7ff"/>
+</svg>
