@@ -6,6 +6,9 @@
 type Importer = () => Promise<unknown>;
 
 const importers: Record<string, Importer> = {
+  // `/` renders the dashboard for signed-in students, so its chunk is on the
+  // critical path for them even though the route itself is eagerly imported.
+  "/dashboard": () => import("@/pages/Dashboard"),
   "/journey": () => import("@/pages/Journey"),
   "/advisor": () => import("@/pages/Advisor"),
   "/activities": () => import("@/pages/Activities"),

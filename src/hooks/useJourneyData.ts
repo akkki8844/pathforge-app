@@ -265,8 +265,14 @@ export function useJourneyData() {
       };
       const weightedRoles = roles.reduce((acc, r) => acc + scopeMult(r.scope || "Local"), 0);
       const roleComponent = dimReturn(weightedRoles, 4, 70);
-      // Duration bonus: total months across all roles
-      const monthsTotal = roles.reduce((acc, r) => acc + (parseInt(r.duration_months) || 6), 0);
+      // Duration bonus: only months the student actually recorded. This used to
+      // default a missing duration to 6 months, which invented up to 30 points
+      // of tenure out of blank fields — two undated roles scored the same as two
+      // year-long ones.
+      const monthsTotal = roles.reduce((acc, r) => {
+        const m = parseInt(r.duration_months, 10);
+        return acc + (Number.isFinite(m) && m > 0 ? m : 0);
+      }, 0);
       const durationBonus = Math.min(30, monthsTotal * 1.2);
       leadership = Math.min(100, roleComponent + durationBonus);
     }
@@ -288,10 +294,15 @@ export function useJourneyData() {
         if (v.includes("honorable") || v.includes("semifinalist")) return 0.45;
         return 0.3; // Participant
       };
-      const sum = (o.competitions as any[]).reduce(
-        (acc, c) => acc + tierWeight(c.tier || c.scope || "Local") * resultMult(c.result || "Participant"),
-        0
-      );
+      // Take the strongest results first, then let additional entries decay.
+      // A flat sum let breadth substitute for quality — twelve local
+      // participations (12 × 8 × 0.3) outscored a national win (22 × 1.0),
+      // which inverts how competitions are actually read. Every other pillar
+      // already uses diminishing returns; this one now matches.
+      const contributions = (o.competitions as any[])
+        .map((c) => tierWeight(c.tier || c.scope || "Local") * resultMult(c.result || "Participant"))
+        .sort((a, b) => b - a);
+      const sum = contributions.reduce((acc, v, i) => acc + v * Math.pow(0.75, i), 0);
       competitionsScore = Math.min(100, sum);
     }
 

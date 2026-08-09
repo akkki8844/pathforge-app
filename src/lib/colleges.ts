@@ -692,14 +692,66 @@ const collegesRaw: College[] = [
   { id: "queens-ca", name: "Queen's University", country: "Canada", region: "Ontario", level: "national", strongMajors: ["Business/Finance", "Engineering", "Medicine", "Law/Pre-Law"], website: "https://www.queensu.ca" },
 ];
 
-// Deduplicate by id (later entries are skipped to preserve earlier definitions)
+const LEVEL_RANK: Record<College["level"], number> = { global: 0, national: 1, regional: 2 };
+
+/**
+ * Deduplicate by id *and* by name.
+ *
+ * Deduplicating on id alone left 43 schools listed twice under different ids —
+ * "University of Texas at Austin" appeared as both `ut-austin` (regional) and
+ * `utaustin` (national), and 20 such pairs disagreed about the tier. That
+ * mattered because consumers look schools up by name and disagree about which
+ * duplicate they get: `Array.find` returns the first (regional, 30–75% admit
+ * band) while a name-keyed Map ends up with the last. UT Austin was being
+ * scored as a regional school.
+ *
+ * Collisions now resolve to the most selective tier claimed for that name. The
+ * conservative direction is the correct one to err in: it sets a higher bar and
+ * a lower admit probability, so a student plans for the harder case.
+ */
 export const colleges: College[] = (() => {
-  const seen = new Set<string>();
-  const out: College[] = [];
+  const byName = new Map<string, College>();
+  const order: string[] = [];
+
+  // Name is the merge key, not id. Merging on id first would discard entries
+  // before their tier could be considered: all three Purdue rows share the id
+  // `purdue`, so the two that call it national were dropped and the lone
+  // `regional` row won by position alone.
   for (const c of collegesRaw) {
-    if (seen.has(c.id)) continue;
-    seen.add(c.id);
-    out.push(c);
+    const key = c.name.trim().toLowerCase();
+    const existing = byName.get(key);
+    if (!existing) {
+      byName.set(key, c);
+      order.push(key);
+      continue;
+    }
+    // Keep the earlier entry's identity, but adopt the most selective level and
+    // the union of strong majors so nothing a duplicate contributed is lost.
+    const merged: College = {
+      ...existing,
+      level: LEVEL_RANK[c.level] < LEVEL_RANK[existing.level] ? c.level : existing.level,
+      strongMajors: Array.from(new Set([...existing.strongMajors, ...c.strongMajors])),
+    };
+    byName.set(key, merged);
   }
-  return out;
+
+  // Name-merging can leave two *different* schools holding the same id — either
+  // because the source data reuses one (`smu` was both Singapore Management and
+  // Southern Methodist) or because a school is listed under two spellings
+  // ("ETH Zurich" / "ETH Zürich"). Ids are used as React keys and are stored on
+  // saved analyses, so they must stay unique; suffix any collision rather than
+  // merging two genuinely distinct schools together.
+  const usedIds = new Set<string>();
+  return order.map((k) => {
+    const c = byName.get(k)!;
+    if (!usedIds.has(c.id)) {
+      usedIds.add(c.id);
+      return c;
+    }
+    let n = 2;
+    while (usedIds.has(`${c.id}-${n}`)) n += 1;
+    const id = `${c.id}-${n}`;
+    usedIds.add(id);
+    return { ...c, id };
+  });
 })();

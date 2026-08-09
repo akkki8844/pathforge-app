@@ -45,6 +45,8 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
 }
 
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
+const DashboardPreview = lazyWithRetry(() => import("./pages/__DashboardPreview"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Activities = lazyWithRetry(() => import("./pages/Activities"));
 const Journey = lazyWithRetry(() => import("./pages/Journey"));
@@ -230,8 +232,14 @@ function LandingRoute({ children }: { children: ReactNode }) {
       </Suspense>
     );
   }
-  // Otherwise render the landing (preview for guests, full for onboarded users)
-  return <>{children}</>;
+  // An onboarded student has no use for the sales page — `/` is their dashboard.
+  // Rendered in place rather than redirected so the URL stays clean and a
+  // shared "pathforge.tech" link resolves correctly for both audiences.
+  return (
+    <Layout>
+      <Dashboard />
+    </Layout>
+  );
 }
 
 function AuthRoute({ children }: { children: ReactNode }) {
@@ -257,9 +265,10 @@ function AuthRoute({ children }: { children: ReactNode }) {
   if (user && isAdmin) return <Navigate to="/admin" replace />;
   if (user && isTeacher) return <Navigate to="/teacher" replace />;
 
-  // If user is logged in and onboarding is complete, honor ?redirect= deep link
+  // If user is logged in and onboarding is complete, honor ?redirect= deep link.
+  // Otherwise land on `/`, which is the dashboard for onboarded students.
   if (user && onboardingCompleted) {
-    return <Navigate to={safeRedirect || "/journey"} replace />;
+    return <Navigate to={safeRedirect || "/"} replace />;
   }
 
   // If user is logged in but onboarding is not complete, show onboarding
@@ -309,8 +318,13 @@ function PublicGuestRoute({ children }: { children: ReactNode }) {
 
 function AppRoutes() {
   const { showUpgradeModal, setShowUpgradeModal } = useCredits();
+  const { user, onboardingCompleted } = useAuth();
   const location = useLocation();
-  const isLandingPage = location.pathname === "/";
+  // `/` is the marketing landing for guests but the dashboard for onboarded
+  // students. Only the former should be stripped of app chrome — signed-in
+  // users still need the credit meter, support chat and upgrade prompts there.
+  const isLandingPage =
+    location.pathname === "/" && !(user && onboardingCompleted);
   return (
     <>
       <TopLoadingBar />
@@ -405,9 +419,18 @@ function AppRoutes() {
         <Route path="/counsellor/*" element={<Navigate to="/teacher" replace />} />
         <Route path="/counselor" element={<Navigate to="/teacher" replace />} />
         <Route path="/counselor/*" element={<Navigate to="/teacher" replace />} />
+        {/* `/dashboard` is a permanent alias for `/`, which already renders the
+            dashboard for signed-in students. Kept as its own route so existing
+            links and bookmarks don't 404. */}
         <Route
           path="/dashboard"
-          element={<Navigate to="/journey" replace />}
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Dashboard />
+              </Layout>
+            </ProtectedRoute>
+          }
         />
 
         <Route
@@ -624,6 +647,11 @@ function AppRoutes() {
           }
         />
         {/* Public legal pages */}
+        {/* Dev-only fixture for eyeballing the dashboard with a populated
+            profile, without needing a seeded account. Stripped from prod builds. */}
+        {import.meta.env.DEV && (
+          <Route path="/__dashboard-preview" element={<Layout><DashboardPreview /></Layout>} />
+        )}
         <Route path="/terms" element={<Terms />} />
         <Route path="/privacy" element={<Privacy />} />
         <Route path="/refund-policy" element={<RefundPolicy />} />

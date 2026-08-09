@@ -17,6 +17,9 @@ export type ApplicationPlatform =
   | "Ivy Supplements"
   | "UCAS (UK)"
   | "Cambridge / Oxford"
+  | "QuestBridge"
+  | "ApplyTexas"
+  | "Canada"
   | "Universal";
 
 export interface ApplicationSection {
@@ -425,6 +428,96 @@ export const applicationSections: ApplicationSection[] = [
     limit: 300,
     limitKind: "chars",
   },
+  {
+    id: "internship",
+    title: "Internship",
+    platform: "Universal",
+    category: "Other",
+    description:
+      "A formal internship. Organization, role, dates, and one concrete thing you built or shipped.",
+    placeholder:
+      'e.g. "Software intern, local biotech startup, 6 weeks — built an internal data-cleaning script used by the lab team."',
+    limit: 250,
+    limitKind: "chars",
+  },
+  {
+    id: "self-study",
+    title: "Independent / Self-Directed Study",
+    platform: "Universal",
+    category: "Other",
+    description:
+      "Study you pursued outside class — MOOCs, textbooks, self-taught skills. Course/topic, duration, what you can now do.",
+    placeholder:
+      'e.g. "Worked through MIT 18.06 lectures independently over a summer; can now implement PCA from scratch."',
+    limit: 250,
+    limitKind: "chars",
+  },
+  {
+    id: "language-proficiency",
+    title: "Language Proficiency",
+    platform: "Universal",
+    category: "Other",
+    description:
+      "A language you speak beyond your native one. Level (conversational/fluent/native) and how you use it — do not overstate the level.",
+    placeholder:
+      'e.g. "Fluent in Spanish (heritage speaker); conversational in Mandarin after 3 years of school study."',
+    limit: 150,
+    limitKind: "chars",
+  },
+
+  // ── QuestBridge ───────────────────────────────────────────────
+  {
+    id: "essay-questbridge-extraordinary",
+    title: "QuestBridge — Extraordinary Circumstances",
+    platform: "QuestBridge",
+    category: "Essay",
+    description:
+      "Describe a challenge or circumstance that has affected your education. Up to 800 words. Factual, specific, no self-pity framing.",
+    placeholder:
+      "The circumstance, how it shaped your schooling or opportunities, how you responded.",
+    limit: 800,
+    limitKind: "words",
+  },
+  {
+    id: "essay-questbridge-community",
+    title: "QuestBridge — Community Essay",
+    platform: "QuestBridge",
+    category: "Essay",
+    description:
+      "A community you belong to and your role in it. Up to 600 words.",
+    placeholder:
+      "The community, what you actually do in it, one concrete moment that shows your role.",
+    limit: 600,
+    limitKind: "words",
+  },
+
+  // ── ApplyTexas ────────────────────────────────────────────────
+  {
+    id: "essay-applytexas",
+    title: "ApplyTexas Essay",
+    platform: "ApplyTexas",
+    category: "Essay",
+    description:
+      "ApplyTexas Topic A/B/C essay. ~500–700 words depending on the prompt chosen.",
+    placeholder:
+      "Which topic you're answering, and the concrete story or reasoning behind it.",
+    limit: 700,
+    limitKind: "words",
+  },
+
+  // ── Canada (McGill / U of T / common supplementary apps) ──────
+  {
+    id: "essay-canada-personal",
+    title: "Canadian Supplementary Application",
+    platform: "Canada",
+    category: "Essay",
+    description:
+      "McGill / University of Toronto style supplementary profile: activities, interests, and short-answer academic-fit questions. ~250 words per answer.",
+    placeholder:
+      "Program you're applying to, why it fits, and the activities/interests you want them to know about.",
+    limit: 250,
+    limitKind: "words",
+  },
 ];
 
 export const applicationPlatforms: ApplicationPlatform[] = [
@@ -436,6 +529,9 @@ export const applicationPlatforms: ApplicationPlatform[] = [
   "Ivy Supplements",
   "UCAS (UK)",
   "Cambridge / Oxford",
+  "QuestBridge",
+  "ApplyTexas",
+  "Canada",
   "Universal",
 ];
 

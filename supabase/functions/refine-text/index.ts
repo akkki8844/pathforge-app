@@ -81,7 +81,7 @@ serve(async (req) => {
     }
     let parsed: any = {};
     try { parsed = JSON.parse(rawBody); } catch {}
-    let { section, input, context, language } = parsed;
+    let { section, input, context, language, instruction } = parsed;
 
     if (!input || typeof input !== "string" || !input.trim()) {
       return new Response(
@@ -92,6 +92,7 @@ serve(async (req) => {
     section = typeof section === "string" ? section.slice(0, 64) : "";
     input = input.slice(0, 15_000);
     if (typeof context === "string") context = context.slice(0, 2_000);
+    instruction = typeof instruction === "string" ? instruction.trim().slice(0, 600) : "";
 
     // Fire-and-forget auto-moderation
     try {
@@ -121,12 +122,24 @@ serve(async (req) => {
     creditConsumed = true;
 
     // Determine the type of refinement needed
-    const isLinkedIn = ['headline', 'about', 'experience', 'education', 'skills', 'posts'].includes(section);
+    const isLinkedIn = [
+      'headline', 'about', 'experience', 'internships', 'projects', 'education',
+      'honors', 'certifications', 'skills', 'posts', 'volunteer', 'publications',
+      'languages', 'recommendations', 'featured', 'test-scores',
+    ].includes(section);
     const isEssay = section.startsWith('essay-');
-    
+    const isAgentEdit = !!instruction;
+
     // Get the appropriate system prompt
     let systemPrompt: string;
-    if (isEssay) {
+    if (isAgentEdit) {
+      // The agent-edit path takes an already-written draft plus a free-form
+      // instruction. It is deliberately a different prompt from the "refine
+      // from rough notes" path above: it must change ONLY what was asked and
+      // must refuse to invent the specifics it doesn't have, rather than
+      // guessing — that's the whole point of calling it "precise".
+      systemPrompt = getAgentEditPrompt();
+    } else if (isEssay) {
       systemPrompt = getEssayRefinementPrompt(section.replace('essay-', ''));
     } else if (isLinkedIn) {
       systemPrompt = getLinkedInRefinementPrompt(section);
@@ -137,14 +150,18 @@ serve(async (req) => {
       systemPrompt += `\n\nOUTPUT LANGUAGE: Write the refined text in language code "${language}" (proper grammar and native script). Preserve proper nouns. Do not add an English version.`;
     }
 
-    console.log(`Refining ${section} for user ${userId}, isLinkedIn: ${isLinkedIn}`);
+    console.log(`Refining ${section} for user ${userId}, isLinkedIn: ${isLinkedIn}, isAgentEdit: ${isAgentEdit}`);
     console.log(`Input length: ${input.trim().length} characters`);
 
-    // Higher-quality model for high-stakes essays + Common App entries.
-    // LinkedIn copy stays on the fast model since outputs are short.
-    const accuracyModel = isEssay || (!isLinkedIn)
+    // Higher-quality model for high-stakes essays + Common App entries, and
+    // for agent edits — precision matters more there than speed.
+    const accuracyModel = isEssay || isAgentEdit || (!isLinkedIn)
       ? "google/gemini-3.1-pro-preview"
       : "google/gemini-3-flash-preview";
+
+    const userContent = isAgentEdit
+      ? `CURRENT TEXT:\n\n${input.trim()}\n\nUSER INSTRUCTION:\n\n${instruction}\n\nApply the instruction to the text above. Output only the revised text.`
+      : `REFINE THIS TEXT (do not add any new information):\n\n${input.trim()}`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -161,11 +178,11 @@ serve(async (req) => {
           },
           {
             role: "user",
-            content: `REFINE THIS TEXT (do not add any new information):\n\n${input.trim()}`
+            content: userContent
           }
         ],
         max_tokens: 8000, // High limit for full essays
-        temperature: isEssay ? 0.15 : 0.2, // Lower for essays — preserve voice
+        temperature: isAgentEdit ? 0.1 : isEssay ? 0.15 : 0.2, // Lowest for agent edits — precision over flair
       }),
     });
 
@@ -242,15 +259,47 @@ function cleanAIResponse(text: string): string {
   return cleaned;
 }
 
+// Agent-edit prompt - the "tell it what you want changed" path.
+// Distinct from every prompt below: those refine rough notes into something
+// new, this one edits an existing, already-polished draft against a specific
+// instruction. Precision here means two things — touch only what was asked,
+// and never fill a gap with an invented fact.
+function getAgentEditPrompt(): string {
+  return `You are a precise editing agent for a student's college-application and LinkedIn writing tool. You are given a CURRENT TEXT that has already been written, and a USER INSTRUCTION describing a specific change they want.
+
+## ABSOLUTE RULES:
+1. Apply ONLY what the instruction asks for. Do not rewrite, rephrase, or "improve" anything the instruction didn't mention.
+2. NEVER invent facts, numbers, dates, names, organizations, metrics, or outcomes that are not already present in the CURRENT TEXT or explicitly given in the USER INSTRUCTION itself.
+3. If satisfying the instruction requires a concrete detail that isn't in the current text or the instruction (a number, a name, a specific outcome), do NOT guess or invent it. Insert a bracketed placeholder instead, e.g. "[ADD: specific metric]", so the student fills it in — then proceed with the rest of the edit.
+4. If the instruction is ambiguous or cannot be safely applied without fabricating information, make the smallest safe interpretation and flag what's missing with a bracketed note, rather than inventing content to fill the gap.
+5. Preserve every fact, name, number, and claim from the current text that the instruction does not ask you to change.
+6. Keep the same format the current text uses (prose vs. bullets, character/word length in the same range) unless the instruction explicitly asks you to change it.
+7. If the instruction asks for something that would misrepresent the student (upgrading their role, adding credentials they don't have, inflating impact), decline that specific part and say so via a bracketed note — do not silently comply.
+
+## OUTPUT:
+- Return ONLY the revised text. No preamble, no explanation of what you changed, no quotes, no markdown headers.
+- If you inserted any bracketed placeholder or note, it must appear inline in the text itself (that is the only place the student will see it) — nowhere else.`;
+}
+
 // LinkedIn refinement prompts - STRICT NO HALLUCINATION
 function getLinkedInRefinementPrompt(section: string): string {
   const sectionGuides: Record<string, string> = {
     headline: "Create a compelling LinkedIn headline (max 220 characters). Keep the user's actual role and status. Format naturally: Role | Focus | Strength. Do NOT upgrade their position.",
     about: "Write a professional About section (150-250 words). Use first person, confident tone. Keep ALL facts exactly as provided. Add no new achievements.",
     experience: "Format as professional bullet points with varied action verbs. Use • prefix. Include ONLY numbers/metrics the user mentioned. Never add budgets or team sizes.",
+    internships: "Format as professional bullet points, one internship per entry: role, organization, dates if given, then 1-2 lines on what was actually done. Include ONLY metrics the user mentioned.",
+    projects: "Format each project as a short bold-free entry: project name — what it does/did, in one or two lines. Only include outcomes (users, results) explicitly stated.",
     education: "Polish into professional education entry (2-3 sentences). Keep exact school name, dates, and achievements mentioned. Add nothing new.",
+    honors: "List honors and awards professionally, one per line: award name, level (school/state/national/international) if given, year if given. No embellishment.",
+    certifications: "List certifications professionally, one per line: certification name — issuing organization, date if given. Do not invent issuers or dates not provided.",
     skills: "Organize skills professionally. Use format: Category: Skill • Skill • Skill. Only include skills they explicitly listed.",
     posts: "Create an engaging LinkedIn post. Maintain their story and message. Add 3-5 relevant hashtags at the end. Never add achievements they didn't mention.",
+    volunteer: "Format volunteer experience as professional entries: organization, role, frequency/duration if given, and the actual work done. Only include impact figures the user stated.",
+    publications: "List publications/patents professionally: title, venue or status (published/preprint/filed/granted), authorship position if given, one-line summary using only what's stated.",
+    languages: "Organize languages with the proficiency level the user actually gave (e.g. native, fluent, conversational). Do not upgrade a stated level or invent a language.",
+    recommendations: "Turn this into a short, professional note describing who this person is asking for a recommendation and why, using only the relationship and context the user described.",
+    featured: "List featured links/media professionally: title and one-line description of each, using only what the user described. Do not invent view counts or engagement numbers.",
+    "test-scores": "Present test scores exactly as given (test name, score, date if provided) in a clean professional format. Never adjust, round up, or estimate a score.",
   };
 
   return `You are a professional text refiner. Your ONLY job is to improve the WORDING of what users write.

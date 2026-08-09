@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   FileSignature, Sparkles, Loader2, Check, Copy, ChevronRight, Eye, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,18 @@ import linkedinLogo from "@/assets/linkedin-logo.png";
 import { Seo } from "@/components/Seo";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
+import { AgentEdit } from "@/components/AgentEdit";
+import { EASE_OUT_EXPO } from "@/lib/motion";
+import { Eyebrow, Panel, Reveal } from "@/components/dashboard/primitives";
+
+/**
+ * The visual language matches the dashboard and the landing page: bordered
+ * cards, editorial-blue eyebrows, a lift on hover, reveal-on-scroll motion.
+ * The one addition beyond "polish this text" is the agent-edit box under
+ * every generated draft — a precise, single-instruction editor rather than
+ * an open-ended chat, because open-ended chat is exactly where an assistant
+ * starts inventing specifics the student never gave it.
+ */
 
 interface EntryRow {
   section_id: string;
@@ -34,6 +45,7 @@ interface EntryRow {
 export default function ApplicationBuilder() {
   const { user } = useAuth();
   const { linkedinImport } = useLinkedInImport();
+  const reduced = useReducedMotion();
   const [activeId, setActiveId] = useState<string>(applicationSections[0].id);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [outputs, setOutputs] = useState<Record<string, string>>({});
@@ -93,6 +105,12 @@ export default function ApplicationBuilder() {
     persist(sectionId, { input_text: value });
   };
 
+  const applyOutput = (sectionId: string, revised: string) => {
+    setOutputs((p) => ({ ...p, [sectionId]: revised }));
+    persist(sectionId, { refined_text: revised });
+    toast.success("Applied.");
+  };
+
   const handleGenerate = async (section: ApplicationSection) => {
     const input = (inputs[section.id] || "").trim();
     if (!input) { toast.error("Add a few sentences first."); return; }
@@ -136,17 +154,21 @@ export default function ApplicationBuilder() {
   return (
     <div className="py-8 sm:py-12">
       <Seo title='Application builder — write standout statements | Pathforge' description='Turn your achievements into professional Common App and supplemental statements with AI guidance.' path='/application-builder' />
-      <div className="section-container max-w-6xl">
-        <ScrollReveal>
-        <header className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
+        <motion.header
+          initial={reduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
+          className="mb-6 flex items-start justify-between gap-4 flex-wrap"
+        >
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <FileSignature className="h-7 w-7 text-accent" />
-              Application Builder
+            <Eyebrow>Application Builder</Eyebrow>
+            <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+              Every platform, one polished draft
             </h1>
-            <p className="mt-2 text-muted-foreground max-w-2xl">
-              Drop rough notes, get a polished, application-ready paragraph you can paste into the
-              Common App, UC App, or any supplemental. Drafts auto-save.
+            <p className="mt-2 max-w-2xl text-[13px] leading-relaxed text-muted-foreground">
+              Drop rough notes, get an application-ready statement for the Common App, UC App, or any
+              supplemental. Drafts auto-save; the agent below can adjust any draft on request.
             </p>
           </div>
           {linkedinImport && (
@@ -155,35 +177,36 @@ export default function ApplicationBuilder() {
               LinkedIn data imported
             </Badge>
           )}
-        </header>
-        </ScrollReveal>
+        </motion.header>
 
-        <div className="space-y-6">
-          <ScrollReveal delay={0.06} className="card-elevated p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-foreground">Application progress</h3>
-              <span className="text-sm text-muted-foreground">
-                {completedCount} of {applicationSections.length} sections
-              </span>
-            </div>
-            <Progress value={progressPct} className="h-2" />
-            {!linkedinImport && (
-              <p className="text-xs text-muted-foreground mt-3">
-                Tip:{" "}
-                <Link to="/profile-builder?import=1" className="text-accent underline-offset-2 hover:underline">
-                  import your LinkedIn
-                </Link>{" "}
-                to pre-fill activities, honors, and research from your profile.
-              </p>
-            )}
-          </ScrollReveal>
+        <div className="space-y-4 pb-24">
+          <Reveal delay={0.04}>
+            <Panel lift={false}>
+              <div className="mb-3 flex items-center justify-between">
+                <Eyebrow>Progress</Eyebrow>
+                <span className="font-serif text-[13px] tabular-nums text-muted-foreground">
+                  {completedCount} of {applicationSections.length}
+                </span>
+              </div>
+              <Progress value={progressPct} className="h-2" />
+              {!linkedinImport && (
+                <p className="mt-3 text-[11px] text-muted-foreground">
+                  Tip:{" "}
+                  <Link to="/profile-builder?import=1" className="text-primary underline-offset-2 hover:underline">
+                    import your LinkedIn
+                  </Link>{" "}
+                  to pre-fill activities, honors, and research from your profile.
+                </p>
+              )}
+            </Panel>
+          </Reveal>
           <AiGenerationNotice active={!!generatingId} />
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid gap-4 lg:grid-cols-3">
             <aside className="lg:col-span-1">
-              <div className="card-elevated p-4 sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto">
-                <h3 className="font-medium text-foreground mb-3">Sections</h3>
-                <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
+              <div className="card-motion sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4">
+                <Eyebrow>Sections</Eyebrow>
+                <p className="mb-4 mt-2 text-[11px] leading-relaxed text-muted-foreground">
                   Pick the platform you're applying through. Each section auto-saves.
                 </p>
                 <nav className="space-y-4">
@@ -204,11 +227,11 @@ export default function ApplicationBuilder() {
                                 key={s.id}
                                 onClick={() => { setActiveId(s.id); setShowPreview(false); }}
                                 className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-left text-sm transition-colors ${
-                                  isActive ? "bg-accent/10 text-accent" : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                                  isActive ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"
                                 }`}
                               >
                                 <span className="flex items-center gap-2 min-w-0">
-                                  {isComplete && <Check className="h-3.5 w-3.5 text-green-500 flex-shrink-0" />}
+                                  {isComplete && <Check className="h-3.5 w-3.5 text-emerald-500 flex-shrink-0" />}
                                   <span className="truncate">{s.title}</span>
                                 </span>
                                 <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 transition-transform ${isActive ? "rotate-90" : ""}`} />
@@ -235,15 +258,13 @@ export default function ApplicationBuilder() {
 
             <main className="lg:col-span-2">
               {loading ? (
-                <div className="card-elevated p-12 flex items-center justify-center">
+                <Panel lift={false} className="flex items-center justify-center p-12">
                   <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                </div>
+                </Panel>
               ) : showPreview ? (
-                <div className="card-elevated p-6">
-                  <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2">
-                    <Eye className="h-5 w-5 text-accent" /> Full preview
-                  </h2>
-                  <div className="space-y-8">
+                <Panel lift={false}>
+                  <Eyebrow>Full preview</Eyebrow>
+                  <div className="mt-4 space-y-8">
                     {applicationSections.map((s) => (
                       <div key={s.id} className="border-b border-border pb-6 last:border-0">
                         <h3 className="font-medium text-foreground mb-2">{s.title}</h3>
@@ -271,7 +292,7 @@ export default function ApplicationBuilder() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </Panel>
               ) : (
                 <SectionEditor
                   section={active}
@@ -280,6 +301,7 @@ export default function ApplicationBuilder() {
                   onInputChange={(v) => onInputChange(active.id, v)}
                   onGenerate={() => handleGenerate(active)}
                   onCopy={() => handleCopy(outputs[active.id] || "", active.id)}
+                  onAgentApplied={(revised) => applyOutput(active.id, revised)}
                   generating={generatingId === active.id}
                   copied={copiedId === active.id}
                 />
@@ -299,12 +321,13 @@ interface EditorProps {
   onInputChange: (v: string) => void;
   onGenerate: () => void;
   onCopy: () => void;
+  onAgentApplied: (revised: string) => void;
   generating: boolean;
   copied: boolean;
 }
 
 function SectionEditor({
-  section, input, output, onInputChange, onGenerate, onCopy, generating, copied,
+  section, input, output, onInputChange, onGenerate, onCopy, onAgentApplied, generating, copied,
 }: EditorProps) {
   const count = countFor(input, section.limitKind);
   const limitLabel = section.limitKind === "words" ? "words" : "chars";
@@ -317,9 +340,9 @@ function SectionEditor({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="card-elevated p-6">
+      <Panel lift={false}>
         <div className="flex items-start justify-between gap-3 mb-2">
-          <h2 className="text-xl font-semibold text-foreground">{section.title}</h2>
+          <h2 className="font-display text-xl font-semibold tracking-tight text-foreground">{section.title}</h2>
           <Badge variant="outline" className="text-[10px]">{section.category}</Badge>
         </div>
         <p className="text-muted-foreground mb-6 text-sm leading-relaxed">{section.description}</p>
@@ -356,21 +379,25 @@ function SectionEditor({
         {generating && <AiGenerationNotice active className="mb-6" />}
 
         {output && (
-          <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4 text-accent" /> Application-ready output
-              </h4>
-              <Button variant="outline" size="sm" onClick={onCopy}>
-                {copied ? (<><Check className="h-4 w-4 mr-1" /> Copied</>) : (<><Copy className="h-4 w-4 mr-1" /> Copy</>)}
-              </Button>
+          <div className="space-y-3">
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-medium text-foreground flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" /> Application-ready output
+                </h4>
+                <Button variant="outline" size="sm" onClick={onCopy}>
+                  {copied ? (<><Check className="h-4 w-4 mr-1" /> Copied</>) : (<><Copy className="h-4 w-4 mr-1" /> Copy</>)}
+                </Button>
+              </div>
+              <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
+                {output}
+              </div>
             </div>
-            <div className="prose prose-sm max-w-none text-foreground whitespace-pre-wrap">
-              {output}
-            </div>
+
+            <AgentEdit section={section.id} currentText={output} onApplied={onAgentApplied} />
           </div>
         )}
-      </div>
+      </Panel>
     </motion.div>
   );
 }

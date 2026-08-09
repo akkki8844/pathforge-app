@@ -103,6 +103,42 @@ export const linkedinSections = [
     placeholder: "e.g., Python, JavaScript, public speaking, team leadership..."
   },
   {
+    id: "volunteer",
+    title: "Volunteer Experience",
+    description: "Organizations you've volunteered with and what you did",
+    placeholder: "e.g., Volunteered at the local animal shelter every weekend, walked dogs and helped with adoption events..."
+  },
+  {
+    id: "publications",
+    title: "Publications & Patents",
+    description: "Papers, preprints, articles, or patents you've authored or filed",
+    placeholder: "e.g., Co-authored a paper on machine learning for crop disease detection, presented at a regional science fair..."
+  },
+  {
+    id: "languages",
+    title: "Languages",
+    description: "Languages you speak and your actual proficiency level",
+    placeholder: "e.g., Native in English, conversational in Spanish after 4 years of school study..."
+  },
+  {
+    id: "recommendations",
+    title: "Recommendations",
+    description: "A short note for someone you're asking to write you a recommendation",
+    placeholder: "e.g., Asking my robotics coach to write about my leadership on the team over 2 years..."
+  },
+  {
+    id: "featured",
+    title: "Featured Links & Media",
+    description: "Portfolio links, articles, or media you want to showcase",
+    placeholder: "e.g., Link to my personal project website, a video of my science fair presentation..."
+  },
+  {
+    id: "test-scores",
+    title: "Test Scores",
+    description: "Standardized test scores, presented exactly as earned",
+    placeholder: "e.g., SAT 1520, AP Calculus BC 5, AP Computer Science A 5..."
+  },
+  {
     id: "posts",
     title: "LinkedIn Post",
     description: "Turn your casual thoughts into a professional post",

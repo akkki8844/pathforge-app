@@ -1,8 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { notifyCreditConsumed } from "@/hooks/useCredits";
-import { motion } from "framer-motion";
-import { ScrollReveal } from "@/components/animations/ScrollReveal";
+import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Check, Copy, Sparkles, ChevronRight, Eye, Upload, X, Image as ImageIcon, BarChart3, Loader2, Lock, TrendingUp, UserRound } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -22,6 +21,16 @@ import linkedinLogo from "@/assets/linkedin-logo.png";
 import { Seo } from "@/components/Seo";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
+import { AgentEdit } from "@/components/AgentEdit";
+import { EASE_OUT_EXPO } from "@/lib/motion";
+import { Eyebrow, Panel, Reveal } from "@/components/dashboard/primitives";
+
+/**
+ * The LinkedIn builder — routed at /profile-builder. Visual language matches
+ * the dashboard and landing page. Each section's generated draft gets an
+ * AgentEdit box beneath it: one precise instruction in, one edited draft
+ * out, never an invented fact filling a gap.
+ */
 
 const MAX_CAPTION_LENGTH = 3000;
 
@@ -29,6 +38,7 @@ export default function ProfileBuilder() {
   const profile = getProfile();
   const { linkedinImport } = useLinkedInImport();
   const [searchParams, setSearchParams] = useSearchParams();
+  const reduced = useReducedMotion();
 
   const [liActiveSection, setLiActiveSection] = useState(linkedinSections[0].id);
   const [liInputs, setLiInputs] = useState<Record<string, string>>({});
@@ -96,6 +106,11 @@ export default function ProfileBuilder() {
     }
   };
 
+  const applyAgentEdit = (sectionId: string, revised: string) => {
+    setLiOutputs((p) => ({ ...p, [sectionId]: revised }));
+    toast.success("Applied.");
+  };
+
   const handleCopy = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
     setLiCopied(id);
@@ -118,20 +133,26 @@ export default function ProfileBuilder() {
   return (
     <div className="py-8 sm:py-12">
       <Seo title='Profile builder — LinkedIn & application | Pathforge' description='Build a polished student LinkedIn and application profile from your real activities and accomplishments.' path='/profile-builder' />
-      <div className="section-container max-w-6xl">
-        <ScrollReveal>
-        <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
+      <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
+        <motion.header
+          initial={reduced ? false : { opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
+          className="mb-6 flex items-start justify-between gap-4 flex-wrap"
+        >
           <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-              <img src={linkedinLogo} alt="LinkedIn" className="h-8 w-8 rounded-sm" />
-              LinkedIn Builder
+            <Eyebrow>LinkedIn Builder</Eyebrow>
+            <h1 className="mt-1.5 flex items-center gap-2.5 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
+              <img src={linkedinLogo} alt="LinkedIn" className="h-7 w-7 rounded-sm" />
+              A profile that reads like the résumé behind it
             </h1>
-            <p className="mt-2 text-muted-foreground">
-              Build a polished, professional LinkedIn profile section by section.
+            <p className="mt-2 text-[13px] leading-relaxed text-muted-foreground">
+              Build a polished, professional LinkedIn profile section by section. The agent below can
+              adjust any draft on request.
             </p>
             {profile && (
-              <p className="mt-1 text-sm">
-                Targeting <span className="font-medium text-accent">{profile.targetCollege}</span>
+              <p className="mt-1.5 text-[12px] text-muted-foreground">
+                Targeting <span className="font-medium text-primary">{profile.targetCollege}</span>
               </p>
             )}
           </div>
@@ -143,27 +164,30 @@ export default function ProfileBuilder() {
               </a>
             </Button>
           )}
-        </div>
-        </ScrollReveal>
+        </motion.header>
 
-        <div className="space-y-6">
-          <ScrollReveal delay={0.06} className="card-elevated p-6">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-medium text-foreground">LinkedIn Progress</h3>
-              <span className="text-sm text-muted-foreground">{liCompleted} of {linkedinSections.length} sections</span>
-            </div>
-            <Progress value={liProgress} className="h-2" />
-          </ScrollReveal>
+        <div className="space-y-4 pb-24">
+          <Reveal delay={0.04}>
+            <Panel lift={false}>
+              <div className="mb-3 flex items-center justify-between">
+                <Eyebrow>Progress</Eyebrow>
+                <span className="font-serif text-[13px] tabular-nums text-muted-foreground">
+                  {liCompleted} of {linkedinSections.length}
+                </span>
+              </div>
+              <Progress value={liProgress} className="h-2" />
+            </Panel>
+          </Reveal>
           <AiGenerationNotice active={liGenerating} />
 
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid gap-4 lg:grid-cols-3">
             <div className="lg:col-span-1">
-              <div className="card-elevated p-4 sticky top-24">
-                <h3 className="font-medium text-foreground mb-4">Sections</h3>
+              <div className="card-motion sticky top-24 rounded-2xl border border-border bg-card p-4">
+                <Eyebrow className="mb-3">Sections</Eyebrow>
                 <nav className="space-y-1">
                   <button
                     onClick={() => { setShowAnalysis(true); setShowPreview(false); setShowGrow(false); }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${showAnalysis ? "bg-accent/10 text-accent" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${showAnalysis ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
                   >
                     <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />Analyze Profile</span>
                     <ChevronRight className={`h-4 w-4 transition-transform ${showAnalysis ? "rotate-90" : ""}`} />
@@ -173,7 +197,7 @@ export default function ProfileBuilder() {
                       if (!linkedinImport) { window.location.href = "/profile?section=connectors"; return; }
                       setShowGrow(true); setShowAnalysis(false); setShowPreview(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${showGrow ? "bg-accent/10 text-accent" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${showGrow ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
                   >
                     <span className="flex items-center gap-2">
                       {linkedinImport ? <TrendingUp className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
@@ -188,8 +212,8 @@ export default function ProfileBuilder() {
                     const isComplete = !!liOutputs[section.id];
                     return (
                       <button key={section.id} onClick={() => { setLiActiveSection(section.id); setShowAnalysis(false); setShowPreview(false); setShowGrow(false); }}
-                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? "bg-accent/10 text-accent" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}>
-                        <span className="flex items-center gap-2">{isComplete && <Check className="h-4 w-4 text-green-500" />}{section.title}</span>
+                        className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${isActive ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}>
+                        <span className="flex items-center gap-2">{isComplete && <Check className="h-4 w-4 text-emerald-500" />}{section.title}</span>
                         <ChevronRight className={`h-4 w-4 transition-transform ${isActive ? "rotate-90" : ""}`} />
                       </button>
                     );
@@ -210,9 +234,9 @@ export default function ProfileBuilder() {
               {!showAnalysis && !showPreview && !showGrow && (
                 <>
                   {liActiveSection === "posts" && (
-                    <div className="card-elevated p-6">
-                      <h2 className="text-xl font-semibold text-foreground mb-2">{linkedinSections.find(s => s.id === "posts")!.title}</h2>
-                      <p className="text-muted-foreground mb-6">{linkedinSections.find(s => s.id === "posts")!.description}</p>
+                    <Panel lift={false}>
+                      <h2 className="font-display text-xl font-semibold tracking-tight text-foreground mb-2">{linkedinSections.find(s => s.id === "posts")!.title}</h2>
+                      <p className="text-muted-foreground mb-6 text-sm leading-relaxed">{linkedinSections.find(s => s.id === "posts")!.description}</p>
                       <div className="mb-6">
                         <label className="block text-sm font-medium text-foreground mb-2">Upload Image (Optional)</label>
                         {postImage ? (
@@ -221,7 +245,7 @@ export default function ProfileBuilder() {
                             <button onClick={removeImage} className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1"><X className="h-4 w-4" /></button>
                           </div>
                         ) : (
-                          <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-accent/50 transition-all">
+                          <div onClick={() => fileInputRef.current?.click()} className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:border-primary/50 transition-all">
                             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                             <p className="text-muted-foreground text-sm">Click to upload</p>
                           </div>
@@ -239,26 +263,41 @@ export default function ProfileBuilder() {
                         {liGenerating ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Refining...</> : <><Sparkles className="mr-2 h-4 w-4" />Generate Post</>}
                       </Button>
                       {liGenerating && <AiGenerationNotice active className="mb-6" />}
-                      {liOutputs["posts"] && (
-                        <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-                          <div className="flex items-center justify-between mb-3">
-                            <h4 className="font-medium text-foreground flex items-center gap-2"><UserRound className="h-4 w-4 text-accent" />Professional Post</h4>
-                            <Button variant="outline" size="sm" onClick={() => handleCopy(liOutputs["posts"], "posts")}>
-                              {liCopied === "posts" ? <><Check className="h-4 w-4 mr-1" />Copied</> : <><Copy className="h-4 w-4 mr-1" />Copy</>}
-                            </Button>
-                          </div>
-                          {postImage && <div className="mb-4 p-3 bg-muted/50 rounded-lg flex items-center gap-3"><ImageIcon className="h-5 w-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">Image: {postImageFile?.name}</span></div>}
-                          <div className="prose prose-sm text-foreground whitespace-pre-wrap">{liOutputs["posts"]}</div>
-                        </div>
-                      )}
-                    </div>
+                      <AnimatePresence>
+                        {liOutputs["posts"] && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 12 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -8 }}
+                            transition={{ duration: 0.3, ease: EASE_OUT_EXPO }}
+                            className="space-y-3"
+                          >
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium text-foreground flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" />Professional Post</h4>
+                                <Button variant="outline" size="sm" onClick={() => handleCopy(liOutputs["posts"], "posts")}>
+                                  {liCopied === "posts" ? <><Check className="h-4 w-4 mr-1" />Copied</> : <><Copy className="h-4 w-4 mr-1" />Copy</>}
+                                </Button>
+                              </div>
+                              {postImage && <div className="mb-4 p-3 bg-muted/50 rounded-lg flex items-center gap-3"><ImageIcon className="h-5 w-5 text-muted-foreground" /><span className="text-sm text-muted-foreground">Image: {postImageFile?.name}</span></div>}
+                              <div className="prose prose-sm text-foreground whitespace-pre-wrap">{liOutputs["posts"]}</div>
+                            </div>
+                            <AgentEdit
+                              section="posts"
+                              currentText={liOutputs["posts"] || ""}
+                              onApplied={(revised) => applyAgentEdit("posts", revised)}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </Panel>
                   )}
 
                   {linkedinSections.filter(s => s.id !== "posts").map((section) => (
                     <motion.div key={section.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: liActiveSection === section.id ? 1 : 0, x: liActiveSection === section.id ? 0 : 20, display: liActiveSection === section.id ? "block" : "none" }} transition={{ duration: 0.2 }}>
-                      <div className="card-elevated p-6">
-                        <h2 className="text-xl font-semibold text-foreground mb-2">{section.title}</h2>
-                        <p className="text-muted-foreground mb-6">{section.description}</p>
+                      <Panel lift={false}>
+                        <h2 className="font-display text-xl font-semibold tracking-tight text-foreground mb-2">{section.title}</h2>
+                        <p className="text-muted-foreground mb-6 text-sm leading-relaxed">{section.description}</p>
                         <div className="mb-6">
                           <label className="block text-sm font-medium text-foreground mb-2">Your informal input</label>
                           <Textarea placeholder={section.placeholder} value={liInputs[section.id] || ""} onChange={(e) => setLiInputs(p => ({ ...p, [section.id]: e.target.value }))} className="min-h-[120px] resize-y" />
@@ -268,26 +307,33 @@ export default function ProfileBuilder() {
                         </Button>
                         {liGenerating && <AiGenerationNotice active className="mb-6" />}
                         {liOutputs[section.id] && (
-                          <div className="p-4 rounded-lg bg-accent/5 border border-accent/20">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-foreground flex items-center gap-2"><UserRound className="h-4 w-4 text-accent" />Professional Output</h4>
-                              <Button variant="outline" size="sm" onClick={() => handleCopy(liOutputs[section.id], section.id)}>
-                                {liCopied === section.id ? <><Check className="h-4 w-4 mr-1" />Copied</> : <><Copy className="h-4 w-4 mr-1" />Copy</>}
-                              </Button>
+                          <div className="space-y-3">
+                            <div className="p-4 rounded-xl bg-primary/5 border border-primary/20">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium text-foreground flex items-center gap-2"><UserRound className="h-4 w-4 text-primary" />Professional Output</h4>
+                                <Button variant="outline" size="sm" onClick={() => handleCopy(liOutputs[section.id], section.id)}>
+                                  {liCopied === section.id ? <><Check className="h-4 w-4 mr-1" />Copied</> : <><Copy className="h-4 w-4 mr-1" />Copy</>}
+                                </Button>
+                              </div>
+                              <div className="prose prose-sm text-foreground whitespace-pre-wrap">{liOutputs[section.id]}</div>
                             </div>
-                            <div className="prose prose-sm text-foreground whitespace-pre-wrap">{liOutputs[section.id]}</div>
+                            <AgentEdit
+                              section={section.id}
+                              currentText={liOutputs[section.id] || ""}
+                              onApplied={(revised) => applyAgentEdit(section.id, revised)}
+                            />
                           </div>
                         )}
-                      </div>
+                      </Panel>
                     </motion.div>
                   ))}
                 </>
               )}
 
               {showPreview && !showAnalysis && (
-                <div className="card-elevated p-6">
-                  <h2 className="text-xl font-semibold text-foreground mb-6 flex items-center gap-2"><Eye className="h-5 w-5 text-accent" />Full Profile Preview</h2>
-                  <div className="space-y-8">
+                <Panel lift={false}>
+                  <Eyebrow>Full Profile Preview</Eyebrow>
+                  <div className="mt-4 space-y-8">
                     {linkedinSections.map((section) => (
                       <div key={section.id} className="border-b border-border pb-6 last:border-0">
                         <h3 className="font-medium text-foreground mb-2">{section.title}</h3>
@@ -303,7 +349,7 @@ export default function ProfileBuilder() {
                       </div>
                     ))}
                   </div>
-                </div>
+                </Panel>
               )}
             </div>
           </div>
