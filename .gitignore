@@ -12,6 +12,21 @@ dist
 dist-ssr
 *.local
 
+# Environment files.
+#
+# .env, .env.development and .env.production are tracked deliberately: they hold
+# only VITE_* values, which Vite inlines into the renderer bundle, so they are
+# public by construction and the app cannot build without them.
+#
+# Everything else is ignored. This is the guard that matters: a service-role key
+# or a Paddle/Resend secret dropped into .env.local is a full database bypass,
+# and without this rule `git add -A` would commit it silently. Server-side
+# secrets belong in Supabase edge-function secrets, never in this repo.
+.env*
+!.env
+!.env.development
+!.env.production
+
 # electron-builder installer + unpacked output
 release
 

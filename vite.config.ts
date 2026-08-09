@@ -35,6 +35,23 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          // Vite's dynamic-import helper (`__vitePreload`) is a virtual module
+          // that every lazy route needs, so the entry chunk always imports it.
+          // Left unassigned, Rollup parks it in whichever chunk it likes, and
+          // that chunk then gets pulled into the entry's critical path.
+          if (id.includes("vite/preload-helper") || id.includes("vite/modulepreload-polyfill"))
+            return "react-core";
+
+          // Rollup's CommonJS interop helpers (`getDefaultExportFromCjs`,
+          // `commonjsGlobal`) are a synthetic module emitted once and imported
+          // from everywhere else. Left unassigned it lands in whichever chunk
+          // Rollup likes — on the web build it picked `pdf`, which forced
+          // react-core to import the helper back out of a 1MB chunk it has
+          // nothing else to do with. Pinning the helpers to react-core, which
+          // every chunk already depends on, makes it a true leaf.
+          if (id.includes("commonjsHelpers") || id.includes("commonjs-dynamic-modules"))
+            return "react-core";
+
           if (!id.includes("node_modules")) return;
 
           const pkg = id
@@ -65,7 +82,37 @@ export default defineConfig(({ mode }) => ({
           if (pkg === "recharts" || pkg.startsWith("d3-") || pkg === "victory-vendor")
             return "charts";
           if (pkg === "jspdf" || pkg === "html2canvas" || pkg.startsWith("pdfjs")) return "pdf";
-          if (pkg.startsWith("@radix-ui")) return "radix";
+          // Radix plus its own runtime dependencies, so `radix` imports nothing
+          // but react-core. Left in `vendor` these made radix depend on vendor
+          // while vendor already depended on radix (cmdk and vaul both pull
+          // @radix-ui packages) — a mutual import that Rollup reported as
+          // "Circular chunk: radix -> vendor -> radix". A cycle here means the
+          // browser can evaluate Radix before React has initialised, and Radix
+          // calls `React.forwardRef` at module scope, so the app renders a
+          // blank page. That has blanked the web build twice.
+          //
+          // It is worse in the desktop build: this ships inside an installed
+          // executable, so a blank first paint cannot be fixed by redeploying
+          // — it needs a new installer pushed to every user.
+          //
+          // The list below is the full closure: none of these packages depends
+          // on anything outside it.
+          if (
+            pkg.startsWith("@radix-ui") ||
+            pkg.startsWith("@floating-ui") ||
+            [
+              "aria-hidden",
+              "react-remove-scroll",
+              "react-remove-scroll-bar",
+              "react-style-singleton",
+              "use-callback-ref",
+              "use-sidecar",
+              "get-nonce",
+              "detect-node-es",
+              "tslib",
+            ].includes(pkg)
+          )
+            return "radix";
           if (pkg.startsWith("@supabase")) return "supabase";
           if (pkg === "lucide-react") return "icons";
           if (pkg.startsWith("@tanstack")) return "tanstack";
