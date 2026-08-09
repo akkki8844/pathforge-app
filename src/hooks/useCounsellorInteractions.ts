@@ -15,23 +15,36 @@ export interface CounsellorInteraction {
 }
 
 /**
- * Contact log timeline for a single student. Powers "last contacted" indicators
- * and the CRM-style interaction history view.
+ * Contact log timeline. Powers "last contacted" indicators and the CRM-style
+ * interaction history view.
+ *
+ * Pass a `studentId` for one student's timeline. Omit it to get every
+ * interaction this counsellor has logged across their whole roster, which is
+ * what the Meetings calendar needs — it plots meetings for all students at
+ * once, not one at a time.
  */
-export function useCounsellorInteractions(studentId: string | undefined) {
+export function useCounsellorInteractions(studentId?: string | undefined) {
   const { user } = useAuth();
   const [items, setItems] = useState<CounsellorInteraction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!user || !studentId) return;
+    // Signed out is a settled state, not a pending one. Returning without
+    // clearing the flag left every consumer spinning forever.
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase.from as any)("counsellor_interactions")
+    let query = (supabase.from as any)("counsellor_interactions")
       .select("*")
-      .eq("counsellor_id", user.id)
-      .eq("student_id", studentId)
-      .order("occurred_at", { ascending: false });
+      .eq("counsellor_id", user.id);
+    // No student filter means roster-wide. The counsellor_id filter above (and
+    // the table's RLS) still scopes it to this counsellor's own records.
+    if (studentId) query = query.eq("student_id", studentId);
+    const { data } = await query.order("occurred_at", { ascending: false });
     setItems((data as CounsellorInteraction[] | null) ?? []);
     setLoading(false);
   }, [user, studentId]);
