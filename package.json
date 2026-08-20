@@ -33,6 +33,11 @@
       "electron/**/*",
       "package.json"
     ],
+    "publish": {
+      "provider": "github",
+      "owner": "akkki8844",
+      "repo": "pathforge-app"
+    },
     "win": {
       "icon": "build/icon.ico",
       "target": [
@@ -57,10 +62,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "PathForge",
-      "artifactName": "PathForge-Setup-${version}.${ext}"
+      "artifactName": "PathForge-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "PathForge-${version}-portable.${ext}"
+      "artifactName": "PathForge-Portable.${ext}"
     }
   },
   "dependencies": {
