@@ -38,6 +38,14 @@
       "owner": "akkki8844",
       "repo": "pathforge-app"
     },
+    "protocols": [
+      {
+        "name": "PathForge",
+        "schemes": [
+          "pathforge"
+        ]
+      }
+    ],
     "win": {
       "icon": "build/icon.ico",
       "target": [

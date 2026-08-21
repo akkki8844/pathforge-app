@@ -19,6 +19,7 @@ import { IMessageCursor } from "@/components/animations/iMessageCursor";
 import { MotionConfig } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
+import { isDesktop } from "@/lib/desktop";
 
 // Resilient lazy: retry once, then hard-reload so a stale chunk after a deploy
 // (or extension blocking a chunk) never leaves users on an infinite spinner.
@@ -45,6 +46,7 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
 }
 
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const DashboardPreview = lazyWithRetry(() => import("./pages/__DashboardPreview"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
@@ -219,6 +221,18 @@ function TeacherRoute({ children }: { children: ReactNode }) {
 /** Landing route: render the public landing immediately so auth/backend boot can never blank `/`. */
 function LandingRoute({ children }: { children: ReactNode }) {
   const { user, onboardingCompleted, isTeacher, isAdmin, roleLoading } = useAuth();
+
+  // The desktop build has no landing page. Someone who installed a native app
+  // has already been sold; the sales copy at `/` is for search traffic. They
+  // get the welcome screen and its one Continue button instead.
+  if (!user && isDesktop()) {
+    return (
+      <Suspense fallback={<RouteFallback />}>
+        <DesktopWelcome />
+      </Suspense>
+    );
+  }
+
   if (!user || roleLoading) return <>{children}</>;
   // Admins go straight to admin panel
   if (user && isAdmin) return <Navigate to="/admin" replace />;
