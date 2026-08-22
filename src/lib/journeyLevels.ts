@@ -1,7 +1,10 @@
 // Duolingo-style level system + hyper-specific, major-aware task library.
 // Each task is a concrete, real-world action — never generic.
 
-export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10;
+export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
+
+/** Highest level in the system. The one place code should read "15" from. */
+export const MAX_LEVEL: LevelId = 15;
 
 export interface LevelDef {
   id: LevelId;
@@ -19,15 +22,20 @@ export interface LevelDef {
 // LevelPath carries the matching hex ramp for the 3D nodes.
 export const LEVELS: LevelDef[] = [
   { id: 1,  name: "Foundation",      tagline: "Set the academic & test base",     unlockScore: 0,  color: "from-[#3f9e93] to-[#2f7d74]" },
-  { id: 2,  name: "Exploration",     tagline: "Discover what excites you",        unlockScore: 12, color: "from-[#3d8fc4] to-[#2f6f9c]" },
-  { id: 3,  name: "Building",        tagline: "Ship real projects & roles",       unlockScore: 26, color: "from-[#4465d8] to-[#29439c]" },
-  { id: 4,  name: "Differentiation", tagline: "Own a measurable spike",           unlockScore: 42, color: "from-[#5a55cf] to-[#3b3796]" },
-  { id: 5,  name: "Elite",           tagline: "Top-tier signal & narrative",      unlockScore: 58, color: "from-[#7150c4] to-[#4d348c]" },
-  { id: 6,  name: "Mastery",         tagline: "Become the local expert",          unlockScore: 70, color: "from-[#8a4cb8] to-[#5f3283]" },
-  { id: 7,  name: "Pioneer",         tagline: "Create something new",             unlockScore: 80, color: "from-[#a04aa4] to-[#6f3172]" },
-  { id: 8,  name: "Authority",       tagline: "Build institutional credibility",  unlockScore: 88, color: "from-[#b24d84] to-[#7c3359]" },
-  { id: 9,  name: "Legacy",          tagline: "Build systems that outlast you",   unlockScore: 94, color: "from-[#b85f5a] to-[#823f3b]" },
-  { id: 10, name: "Apex",            tagline: "Operate like a college sophomore", unlockScore: 98, color: "from-[#b07d3e] to-[#7d552a]" },
+  { id: 2,  name: "Exploration",     tagline: "Discover what excites you",        unlockScore: 9,  color: "from-[#3d8fc4] to-[#2f6f9c]" },
+  { id: 3,  name: "Building",        tagline: "Ship real projects & roles",       unlockScore: 18, color: "from-[#4465d8] to-[#29439c]" },
+  { id: 4,  name: "Differentiation", tagline: "Own a measurable spike",           unlockScore: 28, color: "from-[#5a55cf] to-[#3b3796]" },
+  { id: 5,  name: "Elite",           tagline: "Top-tier signal & narrative",      unlockScore: 38, color: "from-[#7150c4] to-[#4d348c]" },
+  { id: 6,  name: "Mastery",         tagline: "Become the local expert",          unlockScore: 48, color: "from-[#8a4cb8] to-[#5f3283]" },
+  { id: 7,  name: "Pioneer",         tagline: "Create something new",             unlockScore: 57, color: "from-[#a04aa4] to-[#6f3172]" },
+  { id: 8,  name: "Authority",       tagline: "Build institutional credibility",  unlockScore: 65, color: "from-[#b24d84] to-[#7c3359]" },
+  { id: 9,  name: "Legacy",          tagline: "Build systems that outlast you",   unlockScore: 72, color: "from-[#b85f5a] to-[#823f3b]" },
+  { id: 10, name: "Apex",            tagline: "Operate like a college sophomore", unlockScore: 78, color: "from-[#b07d3e] to-[#7d552a]" },
+  { id: 11, name: "Interview & Decision", tagline: "Own the room, then the wait",       unlockScore: 83, color: "from-[#c17d7d] to-[#8a5555]" },
+  { id: 12, name: "Commit",               tagline: "Choose, and mean it",                unlockScore: 87, color: "from-[#7d7dc1] to-[#55558a]" },
+  { id: 13, name: "Bridge",               tagline: "Close every loop before you leave",  unlockScore: 90, color: "from-[#6f9e97] to-[#4a726c]" },
+  { id: 14, name: "Launch Prep",          tagline: "Get campus-ready",                   unlockScore: 93, color: "from-[#c9a227] to-[#96791c]" },
+  { id: 15, name: "Matriculation",        tagline: "Arrive. The next chapter starts.",   unlockScore: 96, color: "from-[#d9c27a] to-[#a98f4a]" },
 ];
 
 export interface MicroStep {
@@ -525,7 +533,9 @@ const TASKS: Record<MajorKey, Partial<Record<LevelId, (ctx: Ctx) => LevelTask[]>
 export function getLevelTasksForUser(ctx: Ctx): LevelTask[] {
   const key = detectMajor(ctx.major);
   const lib = TASKS[key] || TASKS.generic;
-  // Levels 6–10 reuse Level 5 task library (top-tier signal continues to apply).
+  // Level 6+ reuses the Level 5 task library — major-specific hand-written
+  // tasks stop at 5, and levels 11-15's stage content (interviews, decision,
+  // commit, bridge, matriculation) is deliberately major-agnostic anyway.
   const fn = lib[ctx.level] ?? lib[5] ?? TASKS.generic[5]!;
   return fn(ctx);
 }
@@ -667,8 +677,8 @@ export function placeUserAtLevel(a: PlacementAnswers, gradeStr: string, overallS
 
   // Soft grade cap — earlier grades shouldn't be placed too high.
   const cap: Record<number, LevelId> =
-    { 8: 3, 9: 5, 10: 7, 11: 9, 12: 10 } as any;
-  const gradeCap = cap[gradeNum(gradeStr)] ?? 10;
+    { 8: 4, 9: 6, 10: 8, 11: 11, 12: MAX_LEVEL } as any;
+  const gradeCap = cap[gradeNum(gradeStr)] ?? MAX_LEVEL;
 
   let level: LevelId = 1;
   for (const L of LEVELS) if (blended >= L.unlockScore) level = L.id;
@@ -930,6 +940,115 @@ const STAGE_TEMPLATES: Array<{
   { level: 10, sub: 18, name: "Send Materials",     description: "Send supplemental materials (research, code, art) where admissions allows.", outcome: "Submissions tracked per school." },
   { level: 10, sub: 19, name: "Yield Strategy",     description: "Lock financial fit and apply for every major scholarship you qualify for.", outcome: "Scholarship applications submitted + decisions tracked." },
   { level: 10, sub: 20, name: "Apex Review",        description: "Final audit. You're operating like a college sophomore in your field. Pick your seat.", outcome: "Final decision logged + commitment made." },
+
+  { level: 11, sub: 1,  name: "Interview Rehearsal",   description: "Run three full mock interviews against real questions your target schools actually ask.", outcome: "3 mock interviews completed with written feedback after each." },
+  { level: 11, sub: 2,  name: "Story Bank",             description: "Curate 8–10 concrete stories from your file, each mapped to a strength an interviewer might probe.", outcome: "Story bank document with a 2-3 sentence version of each story." },
+  { level: 11, sub: 3,  name: "School Deep-Dive",       description: "For every school still live, know two specific programs, professors, or traditions you'd actually use.", outcome: "One-page brief per school with specifics, not brochure language." },
+  { level: 11, sub: 4,  name: "Mock Panel",             description: "Sit a longer, harder mock panel — ideally with someone who doesn't already know your file.", outcome: "Recorded or witnessed mock panel + one concrete change made after it." },
+  { level: 11, sub: 5,  name: "Thank-You Notes",        description: "Send a specific, non-generic thank-you to every interviewer within 48 hours.", outcome: "Thank-you sent for every completed interview." },
+  { level: 11, sub: 6,  name: "Portal Tracking",        description: "Log into every applicant portal and note exactly what's outstanding on each.", outcome: "Single tracker with status + next action per school." },
+  { level: 11, sub: 7,  name: "Waitlist Letter",        description: "For any waitlist, draft a specific letter of continued interest — new grades, a new award, a real reason.", outcome: "Letter sent within the school's stated window, if applicable." },
+  { level: 11, sub: 8,  name: "Aid Paperwork",          description: "Complete every financial aid form your list requires — FAFSA, CSS Profile, school-specific forms.", outcome: "All required aid forms submitted before their deadlines." },
+  { level: 11, sub: 9,  name: "Offer Comparison",       description: "Build one spreadsheet comparing every offer on cost, fit, and outcomes — not just prestige.", outcome: "Comparison sheet covering every school with a decision pending." },
+  { level: 11, sub: 10, name: "Admitted Student Day",   description: "Attend an admitted-students event, in person or virtual, for your top 2 choices.", outcome: "Attended + one specific question asked and answered." },
+  { level: 11, sub: 11, name: "Current Student Calls",  description: "Talk to three current students at your top choice about what they'd change.", outcome: "3 conversations logged with one honest takeaway each." },
+  { level: 11, sub: 12, name: "Merit Appeal",           description: "Where eligible, request a merit or aid reconsideration with a specific, documented reason.", outcome: "Appeal submitted or explicitly decided against, with reasoning noted." },
+  { level: 11, sub: 13, name: "Family Council",         description: "Run one structured conversation with family on cost, distance, and fit — not just excitement.", outcome: "Shared notes on what matters most to each person in the decision." },
+  { level: 11, sub: 14, name: "Gap Year Check",         description: "If a deferral is even a possibility, evaluate it seriously rather than dismissing it by default.", outcome: "Written yes/no on gap year, with the reasoning behind it." },
+  { level: 11, sub: 15, name: "Senioritis Guard",       description: "Confirm your current grades still meet every admitted school's final-transcript condition.", outcome: "Current grade check against each offer's stated requirement." },
+  { level: 11, sub: 16, name: "Mentor Thanks",          description: "Update your recommenders and counsellor on where things stand — they invested in this too.", outcome: "Personal update sent to every recommender." },
+  { level: 11, sub: 17, name: "Decision Debrief",       description: "After each decision arrives, write one paragraph on what it does and doesn't change.", outcome: "Debrief note for every decision received so far." },
+  { level: 11, sub: 18, name: "Deadline Tracker",       description: "Put every remaining reply-by-date on a calendar with reminders, not memory.", outcome: "All decision deadlines calendared with a 1-week-out alert." },
+  { level: 11, sub: 19, name: "Decision Memo",          description: "Write the actual decision rationale down before you announce it — this is what you'll want to remember.", outcome: "1-page memo: the choice, and the three reasons behind it." },
+  { level: 11, sub: 20, name: "Interview & Decision Review", description: "Audit this level. Every interview debriefed, every offer compared, every deadline covered.", outcome: "Written gap review + actions to close each open item." },
+
+  // ── Level 12 — Commit (Stages 12.1–12.20) ────────────────────────────
+  { level: 12, sub: 1,  name: "Deposit",                description: "Submit your enrollment deposit at the school you're actually attending.", outcome: "Deposit paid + confirmation saved." },
+  { level: 12, sub: 2,  name: "Formal Withdrawal",       description: "Notify every other admitted school, in writing, that you won't be attending.", outcome: "Withdrawal sent to each other admit." },
+  { level: 12, sub: 3,  name: "Housing Application",     description: "Complete your on-campus housing application before its priority deadline.", outcome: "Housing form submitted + confirmation received." },
+  { level: 12, sub: 4,  name: "Health Forms",            description: "Submit immunization records and health history to the school's health service.", outcome: "Health forms cleared, no outstanding holds." },
+  { level: 12, sub: 5,  name: "Credit Exams Sent",       description: "Send official AP/IB/dual-enrollment scores so college credit is evaluated before you arrive.", outcome: "Scores sent + credit policy for your school checked." },
+  { level: 12, sub: 6,  name: "Financial Plan",          description: "Finalize exactly how tuition, housing, and living costs will be paid across the year.", outcome: "Written payment plan covering the full first year." },
+  { level: 12, sub: 7,  name: "Roommate Match",          description: "Complete the roommate questionnaire honestly, not aspirationally.", outcome: "Roommate form submitted; match or preferences confirmed." },
+  { level: 12, sub: 8,  name: "Orientation Signup",      description: "Register for an orientation session before the good slots fill up.", outcome: "Orientation date booked and calendared." },
+  { level: 12, sub: 9,  name: "Meal Plan",               description: "Pick a meal plan that actually matches how you eat, not the default option.", outcome: "Meal plan selected with a reason for the tier chosen." },
+  { level: 12, sub: 10, name: "Tech Readiness",          description: "Confirm your laptop and software meet your program's actual requirements.", outcome: "Device checked against program specs; gaps fixed or budgeted." },
+  { level: 12, sub: 11, name: "Major Declaration",       description: "Confirm your intended major, or note explicitly that you're going in undeclared and why.", outcome: "Major/undeclared status confirmed with reasoning." },
+  { level: 12, sub: 12, name: "Advisor Contact",         description: "Reach out to your assigned academic advisor before you arrive on campus.", outcome: "First contact made; one real question asked." },
+  { level: 12, sub: 13, name: "Course Research",         description: "Research your first-semester course options so registration isn't a blind guess.", outcome: "Shortlist of courses with one backup per slot." },
+  { level: 12, sub: 14, name: "Aid Finalized",           description: "Confirm your awarded aid in writing and sign whatever the school requires to accept it.", outcome: "Aid package accepted and documented." },
+  { level: 12, sub: 15, name: "Recommender Update",      description: "Tell your recommenders where you're headed — a real update, not a mass text.", outcome: "Personal update sent to every recommender." },
+  { level: 12, sub: 16, name: "Alumni Tap",              description: "Connect with two alumni from your school for honest, practical advice.", outcome: "2 conversations logged with one concrete tip each." },
+  { level: 12, sub: 17, name: "Club Shortlist",          description: "Shortlist five student organizations you'll actually go check out in week one.", outcome: "5 clubs listed with meeting times noted." },
+  { level: 12, sub: 18, name: "Summer Assignments",      description: "Complete any required pre-arrival reading, placement test, or summer assignment.", outcome: "All required summer work submitted before term starts." },
+  { level: 12, sub: 19, name: "Family Logistics",        description: "Agree on the move-in plan, budget, and expectations with whoever's helping you get there.", outcome: "Shared move-in plan with dates and a budget attached." },
+  { level: 12, sub: 20, name: "Commit Review",           description: "Audit this level. Deposit paid, other offers closed, logistics locked before summer.", outcome: "Written gap review + actions to close each open item." },
+
+  // ── Level 13 — Bridge (Stages 13.1–13.20) ────────────────────────────
+  { level: 13, sub: 1,  name: "Exam Sprint",             description: "Build a real final study plan for every AP/IB exam still ahead of you.", outcome: "Per-exam study plan with practice tests scheduled." },
+  { level: 13, sub: 2,  name: "Sit the Exams",           description: "Take every AP/IB/board exam you're registered for.", outcome: "All registered exams sat." },
+  { level: 13, sub: 3,  name: "Final Transcript",        description: "Arrange for your official final transcript to be sent to your enrolling school.", outcome: "Transcript request submitted and confirmed received." },
+  { level: 13, sub: 4,  name: "Graduation Check",        description: "Confirm with your school that every graduation requirement is actually met.", outcome: "Written confirmation from your school that you're on track to graduate." },
+  { level: 13, sub: 5,  name: "Credit Transfer Map",     description: "Know exactly which exam scores transfer for college credit at your school, and what score each needs.", outcome: "Credit-transfer table for every exam you sat." },
+  { level: 13, sub: 6,  name: "Capstone Finish",         description: "Complete any required senior project, capstone, or final portfolio.", outcome: "Capstone submitted and graded." },
+  { level: 13, sub: 7,  name: "Community Close-Out",     description: "Intentionally close out your role in every school club, team, or group you're leaving behind.", outcome: "Handoff done for every leadership role you held." },
+  { level: 13, sub: 8,  name: "Recommender Gift",        description: "Send a real, specific thank-you — not a form note — to everyone who wrote you a recommendation.", outcome: "Personal thank-you delivered to every recommender." },
+  { level: 13, sub: 9,  name: "Return Property",         description: "Return every school-owned book, device, and ID before you leave.", outcome: "All school property returned, receipt kept." },
+  { level: 13, sub: 10, name: "Budget Basics",           description: "Build a real personal budget for your first semester of college costs.", outcome: "Monthly budget covering food, supplies, and discretionary spend." },
+  { level: 13, sub: 11, name: "Life Skills Audit",       description: "Honestly check your laundry, cooking, and basic self-sufficiency skills before you're on your own.", outcome: "Gap list + one skill actually practiced before move-in." },
+  { level: 13, sub: 12, name: "Transit Plan",            description: "Know exactly how you'll get around at school — walk, bike, bus, or car — and what it costs.", outcome: "Transit plan written with a monthly cost estimate." },
+  { level: 13, sub: 13, name: "Insurance Confirmed",     description: "Confirm your health insurance actually covers you at your school's location.", outcome: "Coverage confirmed in writing, waiver filed if applicable." },
+  { level: 13, sub: 14, name: "Travel Documents",        description: "For international students: passport, visa, and entry documents fully in order.", outcome: "All required travel documents valid and in hand." },
+  { level: 13, sub: 15, name: "Packing Draft",           description: "Write a first real draft of what's coming with you, room by room.", outcome: "Draft packing list, reviewed against your school's move-in guide." },
+  { level: 13, sub: 16, name: "Emergency Contacts",      description: "Share a clear emergency plan and contact list with family before you leave.", outcome: "Emergency contact sheet shared and acknowledged." },
+  { level: 13, sub: 17, name: "Digital Setup",           description: "Set up your college email, calendar, and cloud storage before term starts.", outcome: "College accounts active and checked daily." },
+  { level: 13, sub: 18, name: "GPA Lock-In",             description: "Confirm your final high school GPA and transcript are accurate before they're sent.", outcome: "Final transcript reviewed line by line for errors." },
+  { level: 13, sub: 19, name: "Graduation Day",          description: "Attend your graduation ceremony and actually close this chapter.", outcome: "Attended; one thing said out loud to someone who helped you get here." },
+  { level: 13, sub: 20, name: "Bridge Review",           description: "Audit this level. Every high-school loose end — academic, logistical, emotional — closed.", outcome: "Written gap review + actions to close each open item." },
+
+  // ── Level 14 — Launch Prep (Stages 14.1–14.20) ───────────────────────
+  { level: 14, sub: 1,  name: "Course Registration",     description: "Register for your first semester of classes.", outcome: "Full course schedule confirmed for term one." },
+  { level: 14, sub: 2,  name: "Academic Calendar",       description: "Learn your school's academic calendar — add/drop dates, breaks, exam period.", outcome: "Key dates added to your personal calendar." },
+  { level: 14, sub: 3,  name: "Campus Map",              description: "Learn where your classes, dorm, and dining hall actually are before day one.", outcome: "Walked or mapped your daily route in advance." },
+  { level: 14, sub: 4,  name: "Packing Finalized",       description: "Turn the packing draft into a final list and actually pack it.", outcome: "Final packing list, bags packed." },
+  { level: 14, sub: 5,  name: "Move-In Logistics",       description: "Confirm exactly how and when you're getting to campus, and who's helping.", outcome: "Travel/move-in plan confirmed with dates and helpers." },
+  { level: 14, sub: 6,  name: "First-Week Budget",       description: "Set aside a specific cash and card plan for your first two weeks on campus.", outcome: "First-week budget set with a payment method ready." },
+  { level: 14, sub: 7,  name: "Support Network Map",     description: "Know who to call for what — RA, advisor, health center, financial aid office.", outcome: "One-page contact sheet for campus support resources." },
+  { level: 14, sub: 8,  name: "Study Habits Reset",      description: "Plan concretely for a harder academic pace than high school gave you.", outcome: "Written study plan for a typical college week." },
+  { level: 14, sub: 9,  name: "Time System Ready",       description: "Set up the calendar and task system you'll actually use at college pace.", outcome: "System chosen and populated with term-one deadlines." },
+  { level: 14, sub: 10, name: "Syllabus Research",       description: "Look up your registered professors and courses before the first class.", outcome: "Notes on each course's format and expectations." },
+  { level: 14, sub: 11, name: "Classmate Outreach",      description: "Connect with two incoming classmates online before you arrive.", outcome: "2 conversations started with future classmates." },
+  { level: 14, sub: 12, name: "Family Goodbye",          description: "Plan an intentional send-off rather than letting it happen by accident.", outcome: "Goodbye plan agreed with family." },
+  { level: 14, sub: 13, name: "Safety Basics",           description: "Know your campus's safety resources and emergency numbers before you need them.", outcome: "Campus safety app/number saved; one resource located in person." },
+  { level: 14, sub: 14, name: "Aid Disbursement Check",  description: "Confirm your financial aid has actually posted to your student account.", outcome: "Aid disbursement confirmed against your bill." },
+  { level: 14, sub: 15, name: "Textbook Sourcing",       description: "Source your first-semester textbooks and materials as affordably as possible.", outcome: "Textbooks secured, cost checked against a rental/used option." },
+  { level: 14, sub: 16, name: "Wellness Plan",           description: "Write a real plan for sleep, exercise, and mental health through the transition.", outcome: "Written wellness plan for your first month." },
+  { level: 14, sub: 17, name: "Essentials Ready",        description: "Confirm your student ID, bank account, and other day-one essentials are set up.", outcome: "All essential accounts/IDs active before move-in." },
+  { level: 14, sub: 18, name: "Mentor Send-Off",         description: "Have one last real conversation with a mentor or counsellor before you leave.", outcome: "Final check-in completed." },
+  { level: 14, sub: 19, name: "Freshman Goals",          description: "Write three concrete goals for freshman year — not vague hopes.", outcome: "3 goals written, each with a way to know if you hit it." },
+  { level: 14, sub: 20, name: "Launch Prep Review",      description: "Audit this level. Nothing about arrival is left to chance.", outcome: "Written gap review + actions to close each open item." },
+
+  // ── Level 15 — Matriculation (Stages 15.1–15.20) ─────────────────────
+  { level: 15, sub: 1,  name: "Move-In Day",             description: "Arrive, unpack, and actually settle into your space.", outcome: "Move-in complete; room set up to live in, not just store boxes." },
+  { level: 15, sub: 2,  name: "Orientation",             description: "Attend every session of orientation rather than skipping the ones that look boring.", outcome: "Full orientation schedule attended." },
+  { level: 15, sub: 3,  name: "Roommate Meeting",        description: "Have a real first conversation with your roommate about expectations.", outcome: "Shared expectations discussed and, ideally, written down." },
+  { level: 15, sub: 4,  name: "Advisor Meeting",         description: "Have your first academic advising meeting and leave with an actual plan.", outcome: "First advising meeting completed; course plan confirmed." },
+  { level: 15, sub: 5,  name: "First Classes",           description: "Attend every first-week class and read every syllabus.", outcome: "All first classes attended; syllabi reviewed." },
+  { level: 15, sub: 6,  name: "Resource Tour",           description: "Visit the library, health center, and career office in person, not just online.", outcome: "All three resources physically visited once." },
+  { level: 15, sub: 7,  name: "Join a Club",             description: "Attend the first meeting of one student organization you actually chose.", outcome: "First meeting attended for one club." },
+  { level: 15, sub: 8,  name: "Study Group",             description: "Find two or three classmates to form a study group for your hardest class.", outcome: "Study group formed with a first session scheduled." },
+  { level: 15, sub: 9,  name: "First Office Hours",      description: "Visit one professor's office hours in the first two weeks.", outcome: "Office hours visited; one real question asked." },
+  { level: 15, sub: 10, name: "Routine Established",     description: "Settle into a sleep, study, and social rhythm that you can actually sustain.", outcome: "Weekly routine written and followed for one full week." },
+  { level: 15, sub: 11, name: "First Paycheck Check",    description: "If you're working on or off campus, confirm payroll setup is actually correct.", outcome: "First pay confirmed correct, or setup verified if not yet paid." },
+  { level: 15, sub: 12, name: "First Assignment",        description: "Complete and submit your first real graded assignment.", outcome: "First assignment submitted on time." },
+  { level: 15, sub: 13, name: "Home Check-In Rhythm",    description: "Set a regular, sustainable call schedule with family rather than sporadic guilt-calls.", outcome: "Recurring check-in time agreed and kept once." },
+  { level: 15, sub: 14, name: "Involvement Fair",        description: "Explore the wider activities fair for opportunities beyond your initial club shortlist.", outcome: "Fair attended; at least one new opportunity noted." },
+  { level: 15, sub: 15, name: "Month-One Reflection",    description: "Write honestly about what's working and what isn't, one month in.", outcome: "Written reflection with one concrete change to make." },
+  { level: 15, sub: 16, name: "Major Track Confirmed",   description: "Confirm or adjust your major-track courses based on what first classes actually felt like.", outcome: "Course plan for next term confirmed or revised." },
+  { level: 15, sub: 17, name: "Support System Active",   description: "Make sure your RA, advisor, and health center each have real, working contact with you.", outcome: "All three contacted at least once, not just saved as numbers." },
+  { level: 15, sub: 18, name: "Community Found",         description: "Name one group on campus where you genuinely feel like you belong.", outcome: "One community named, with evidence of real involvement." },
+  { level: 15, sub: 19, name: "Fall Goals Set",          description: "Set concrete academic and personal goals for the rest of the term.", outcome: "Goals written with a way to check them at term's end." },
+  { level: 15, sub: 20, name: "Matriculation Review",    description: "Audit this level. The four-year journey begins here — Pathforge's job through admissions is done.", outcome: "Written gap review closing out the admissions journey." },
 ];
 
 // Score thresholds: Level base + (sub-1) × (range / STAGES_PER_LEVEL)
@@ -958,6 +1077,11 @@ const EASE_ORDER: Record<LevelId, string[]> = {
   8: ["Authority Audit","Documented Influence","Standards Body","Speaker Bureau","Advisor Council","University Lab","Co-Author","Cross-Institution","Peer Review","Conference Submission","Talk Tour","Press Tour","Real Funding","Industry Bridge","Journal Submission","Citation","Publication v2","Awards Stack","Audience 5k","Authority Review"],
   9: ["Successor Plan","Brand Identity","Press Kit","Playbook","Documentation v2","Permanent Asset","Board Seat","Foundation","Multiple Programs","Annual Event","Hire Help","Geographic Reach","Long-Form Book","Sustainability Audit","Funding Round","Recognition Stack","Citation Stack","Audience 10k","Permanent Press","Legacy Review"],
   10:["Pre-Registration","Annual Report","Speaking Fee","Mentor 5","Interview Prep","Send Materials","Original Research","Patent or IP","Industry Contract","Conference Acceptance","Yield Strategy","Final Apps","University Endorsement","Replicable System","Funding Round 2","Journal Acceptance","Real Press","Awards Sweep","Audience 25k","Apex Review"],
+  11:["Interview Rehearsal","Story Bank","School Deep-Dive","Mock Panel","Thank-You Notes","Portal Tracking","Waitlist Letter","Aid Paperwork","Offer Comparison","Admitted Student Day","Current Student Calls","Merit Appeal","Family Council","Gap Year Check","Senioritis Guard","Mentor Thanks","Decision Debrief","Deadline Tracker","Decision Memo","Interview & Decision Review"],
+  12:["Deposit","Formal Withdrawal","Housing Application","Health Forms","Credit Exams Sent","Financial Plan","Roommate Match","Orientation Signup","Meal Plan","Tech Readiness","Major Declaration","Advisor Contact","Course Research","Aid Finalized","Recommender Update","Alumni Tap","Club Shortlist","Summer Assignments","Family Logistics","Commit Review"],
+  13:["Exam Sprint","Sit the Exams","Final Transcript","Graduation Check","Credit Transfer Map","Capstone Finish","Community Close-Out","Recommender Gift","Return Property","Budget Basics","Life Skills Audit","Transit Plan","Insurance Confirmed","Travel Documents","Packing Draft","Emergency Contacts","Digital Setup","GPA Lock-In","Graduation Day","Bridge Review"],
+  14:["Course Registration","Academic Calendar","Campus Map","Packing Finalized","Move-In Logistics","First-Week Budget","Support Network Map","Study Habits Reset","Time System Ready","Syllabus Research","Classmate Outreach","Family Goodbye","Safety Basics","Aid Disbursement Check","Textbook Sourcing","Wellness Plan","Essentials Ready","Mentor Send-Off","Freshman Goals","Launch Prep Review"],
+  15:["Move-In Day","Orientation","Roommate Meeting","Advisor Meeting","First Classes","Resource Tour","Join a Club","Study Group","First Office Hours","Routine Established","First Paycheck Check","First Assignment","Home Check-In Rhythm","Involvement Fair","Month-One Reflection","Major Track Confirmed","Support System Active","Community Found","Fall Goals Set","Matriculation Review"],
 };
 
 export const STAGES: StageDef[] = (() => {

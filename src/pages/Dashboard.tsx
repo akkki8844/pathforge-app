@@ -84,7 +84,7 @@ export default function Dashboard() {
     if (!journeyStarted) {
       return {
         title: "Start your journey",
-        body: "Ten levels, each proof-gated. It sets the plan everything on this page measures against.",
+        body: "Fifteen levels, each proof-gated. It sets the plan everything on this page measures against.",
         href: "/journey",
         cta: "Begin",
       };

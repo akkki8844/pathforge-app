@@ -40,12 +40,12 @@ export function JourneyGuidebookModal({ open, onOpenChange }: Props) {
           <div className="p-6 space-y-7 text-sm leading-relaxed">
 
             <Section icon={Target} title="What the Journey is">
-              The Journey is your full college-prep roadmap — split into <b>10 Levels</b> with <b>20 Stages each</b>
-              (200 total). Each stage is a real, concrete action tailored to your major, country, grade and curriculum.
+              The Journey is your full college-prep roadmap — split into <b>15 Levels</b> with <b>20 Stages each</b>
+              (300 total). Each stage is a real, concrete action tailored to your major, country, grade and curriculum.
               You move forward by finishing stages, not by reading.
             </Section>
 
-            <Section icon={Map} title="The 10 Levels — at a glance">
+            <Section icon={Map} title="The 15 Levels — at a glance">
               <ol className="list-decimal pl-5 space-y-1">
                 <li><b>Foundation</b> — set the academic and identity baseline.</li>
                 <li><b>Exploration</b> — sample your major through podcasts, courses and projects.</li>
@@ -57,6 +57,11 @@ export function JourneyGuidebookModal({ open, onOpenChange }: Props) {
                 <li><b>Authority</b> — outside recognition: press, citations, awards.</li>
                 <li><b>Legacy</b> — build systems that outlast you.</li>
                 <li><b>Apex</b> — operate like a college sophomore: final apps, originals, send.</li>
+                <li><b>Interview & Decision</b> — own the room, then the wait.</li>
+                <li><b>Commit</b> — choose, and mean it.</li>
+                <li><b>Bridge</b> — close every loop before you leave.</li>
+                <li><b>Launch Prep</b> — get campus-ready.</li>
+                <li><b>Matriculation</b> — arrive. The next chapter starts.</li>
               </ol>
             </Section>
 

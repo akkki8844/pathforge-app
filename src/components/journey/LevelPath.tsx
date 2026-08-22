@@ -42,6 +42,11 @@ const LEVEL_CLAY: Record<LevelId, Clay> = {
   8:  { top: "#c26494", bottom: "#b24d84", lip: "#7c3359", text: "#ffffff" },
   9:  { top: "#c8756f", bottom: "#b85f5a", lip: "#823f3b", text: "#ffffff" },
   10: { top: "#c49255", bottom: "#b07d3e", lip: "#7d552a", text: "#ffffff" },
+  11: { top: "#cf9191", bottom: "#c17d7d", lip: "#8a5555", text: "#ffffff" },
+  12: { top: "#9191cf", bottom: "#7d7dc1", lip: "#55558a", text: "#ffffff" },
+  13: { top: "#82ada6", bottom: "#6f9e97", lip: "#4a726c", text: "#ffffff" },
+  14: { top: "#d9b23f", bottom: "#c9a227", lip: "#96791c", text: "#ffffff" },
+  15: { top: "#e2ce93", bottom: "#d9c27a", lip: "#a98f4a", text: "#ffffff" },
 };
 
 // Completed stages settle into a calm brand slate-blue rather than shouting

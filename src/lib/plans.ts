@@ -87,7 +87,7 @@ export const PLANS: PlanConfig[] = [
     advisorModel: "Pathforge Core",
     advisorModelBlurb: "Fast answers for everyday planning questions.",
     features: [
-      "The full 200-quest Journey",
+      "The full 300-quest Journey",
       "Pathforge Core advisor model",
       "Activities, essays & resume builders",
       "3 credits / day",

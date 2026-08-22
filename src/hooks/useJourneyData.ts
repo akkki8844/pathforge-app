@@ -5,6 +5,7 @@ import { activities, calculatePriority, isActivityAvailableInCountry } from "@/l
 import { competitionCalendar, getCompetitionStatus } from "@/lib/competitionCalendar";
 import {
   LevelId,
+  MAX_LEVEL,
   getCurrentLevel,
   getLevelTasksForUser,
   LevelTask,
@@ -696,7 +697,7 @@ export function useJourneyData() {
   const placementOverride = useMemo<LevelId | undefined>(() => {
     const r = (dbRecord?.roadmap as any) || {};
     const p = r?.placement_level;
-    return p && p >= 1 && p <= 10 ? (p as LevelId) : undefined;
+    return p && p >= 1 && p <= MAX_LEVEL ? (p as LevelId) : undefined;
   }, [dbRecord]);
 
   const currentLevel: LevelId = useMemo(

@@ -60,7 +60,7 @@ function StartScreen({
           </span>
         </h1>
         <p className="text-muted-foreground">
-          A 200-quest journey across 10 levels, with hyper-specific, proof-verified tasks tailored to your major,
+          A 300-quest journey across 15 levels, with hyper-specific, proof-verified tasks tailored to your major,
           country, curriculum, and grade. Choose how to start:
         </p>
         <div className="grid sm:grid-cols-2 gap-3 pt-2">
