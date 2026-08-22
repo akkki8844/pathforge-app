@@ -1,3 +1,9 @@
+// This screen is set in Inter rather than the app's Sora. It is the only
+// screen a user sees before signing in, and it is deliberately typeset to
+// match the reference the product owner specified — Inter is the metric
+// match for SF Pro, which is what that reference is set in. Scoped to this
+// route's chunk; the rest of the app is untouched.
+import "@fontsource-variable/inter";
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -13,6 +19,8 @@ import {
 import pathforgeLogo from "@/assets/pathforge-logo.png";
 
 const EASE = [0.16, 1, 0.3, 1] as const;
+
+const INTER = '"Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 /**
  * The desktop app's first screen — the one thing it shows before sign-in.
@@ -81,28 +89,46 @@ export default function Welcome() {
   };
 
   return (
-    <div className="grid min-h-screen grid-cols-1 font-display lg:grid-cols-2">
+    <div
+      className="grid min-h-screen grid-cols-1 lg:grid-cols-2"
+      style={{ fontFamily: INTER }}
+    >
       {/* ── Left: the only decision on the screen ───────────────────── */}
-      <div className="relative flex flex-col items-center justify-center bg-background px-8">
+      <div className="relative flex min-h-screen flex-col items-center bg-background px-8 py-10">
+        <div className="flex w-full flex-1 flex-col items-center justify-center">
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, ease: EASE }}
-          className="flex w-full max-w-[28rem] flex-col items-center text-center"
+          className="flex w-full max-w-[30rem] flex-col items-center text-center"
         >
           {/* Mark and wordmark on one line, the way the app's own title bar
               carries it — not a floating logo with the name three lines down. */}
-          <div className="mb-6 flex items-center gap-2.5">
-            <img src={pathforgeLogo} alt="" aria-hidden="true" className="h-8 w-auto" />
-            <span className="text-[1.75rem] font-bold tracking-[-0.03em] text-foreground">
+          <div className="mb-10 flex items-center gap-3">
+            <img src={pathforgeLogo} alt="" aria-hidden="true" className="h-9 w-auto" />
+            <span
+              className="text-[2rem] font-semibold tracking-[-0.025em] text-foreground"
+              style={{ fontFamily: INTER }}
+            >
               PathForge
             </span>
           </div>
 
-          <h1 className="text-[3rem] font-bold leading-[1.05] tracking-[-0.035em] text-foreground">
-            Welcome to PathForge
+          {/* Two-tone, the way the reference sets it: the greeting recedes and
+              the product name is what the eye lands on.
+              `fontFamily` is set inline because index.css applies `font-display`
+              (Sora) to every h1 globally, which a class on this element loses to. */}
+          <h1
+            className="font-medium leading-[1.06] tracking-[-0.032em] text-foreground"
+            style={{ fontFamily: INTER, fontSize: "clamp(2.5rem, 4.6vw, 3.75rem)" }}
+          >
+            Welcome to{" "}
+            <span className="text-muted-foreground/70">PathForge</span>
           </h1>
-          <p className="mt-4 text-[1.3rem] font-normal leading-snug text-muted-foreground">
+          <p
+            className="mt-5 font-normal leading-snug tracking-[-0.011em] text-muted-foreground"
+            style={{ fontSize: "clamp(1.15rem, 1.7vw, 1.5rem)" }}
+          >
             Your college application, planned
           </p>
 
@@ -110,7 +136,8 @@ export default function Welcome() {
             type="button"
             onClick={handleContinue}
             disabled={signingIn}
-            className="group mt-14 inline-flex h-[3.85rem] w-full items-center justify-center gap-1.5 rounded-[0.9rem] bg-[linear-gradient(100deg,hsl(226_80%_72%),hsl(226_65%_56%))] text-[1.2rem] font-medium tracking-[-0.01em] text-white shadow-[0_10px_30px_-12px_hsl(226_65%_46%_/_0.65)] transition-all hover:brightness-[1.06] hover:shadow-[0_14px_34px_-12px_hsl(226_65%_46%_/_0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-70"
+            style={{ marginTop: "clamp(2.75rem, 9vh, 6.5rem)" }}
+            className="group inline-flex h-[3.9rem] w-full items-center justify-center gap-1.5 rounded-[1rem] bg-[linear-gradient(100deg,hsl(226_80%_72%),hsl(226_65%_56%))] text-[1.3rem] font-medium tracking-[-0.014em] text-white shadow-[0_10px_30px_-12px_hsl(226_65%_46%_/_0.65)] transition-all hover:brightness-[1.06] hover:shadow-[0_14px_34px_-12px_hsl(226_65%_46%_/_0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-70"
           >
             {signingIn ? (
               <>
@@ -147,50 +174,158 @@ export default function Welcome() {
             </button>
           )}
         </motion.div>
+        </div>
 
-        <p className="absolute bottom-12 left-0 right-0 px-8 text-center text-[0.9rem] font-normal text-muted-foreground/80">
-          By signing up, you agree to our{" "}
-          <a
-            href="https://pathforge.co.in/terms"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-foreground/75 underline-offset-2 hover:underline"
-          >
-            Terms of Service
-          </a>{" "}
-          and{" "}
-          <a
-            href="https://pathforge.co.in/privacy"
-            target="_blank"
-            rel="noreferrer"
-            className="font-medium text-foreground/75 underline-offset-2 hover:underline"
-          >
-            Privacy Policy
-          </a>
-          .
-        </p>
+        <div className="w-full shrink-0">
+          <p className="px-8 text-center text-[0.9rem] font-normal text-muted-foreground/80">
+            By signing up, you agree to our{" "}
+            <a
+              href="https://pathforge.co.in/terms"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground/75 underline-offset-2 hover:underline"
+            >
+              Terms of Service
+            </a>{" "}
+            and{" "}
+            <a
+              href="https://pathforge.co.in/privacy"
+              target="_blank"
+              rel="noreferrer"
+              className="font-medium text-foreground/75 underline-offset-2 hover:underline"
+            >
+              Privacy Policy
+            </a>
+            .
+          </p>
+
+          {/* The reference puts press logos here. Press logos are a claim
+              PathForge has not earned yet; the universities its users are
+              actually applying to are the honest version of the same beat. */}
+          <div className="mt-7">
+            <CollegeMarquee />
+          </div>
+        </div>
       </div>
 
       {/* ── Right: what the app is, shown rather than claimed ────────── */}
-      <div className="relative hidden flex-col items-center justify-center overflow-hidden bg-muted/50 px-12 lg:flex">
+      <div className="relative hidden flex-col items-center justify-center overflow-hidden bg-muted px-12 lg:flex">
+        {/* Faint engineering grid, as in the reference — it reads as a
+            workspace rather than a marketing panel, and keeps the product
+            shot from floating on dead space. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 opacity-[0.5]"
+          style={{
+            backgroundImage:
+              "linear-gradient(hsl(var(--border)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)",
+            backgroundSize: "56px 56px",
+            maskImage: "radial-gradient(ellipse 75% 65% at 50% 42%, #000 55%, transparent 100%)",
+            WebkitMaskImage:
+              "radial-gradient(ellipse 75% 65% at 50% 42%, #000 55%, transparent 100%)",
+          }}
+        />
+
         <motion.div
           initial={{ opacity: 0, y: 22 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.75, delay: 0.12, ease: EASE }}
-          className="w-full max-w-[30rem]"
+          className="relative w-full max-w-[34rem]"
         >
-          <PreviewCard />
+          <ProductShot />
         </motion.div>
 
         <motion.p
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.7, delay: 0.35 }}
-          className="mt-14 max-w-[19ch] text-center text-[2rem] font-medium leading-[1.2] tracking-[-0.03em] text-foreground"
+          className="relative mt-14 max-w-[19ch] text-center font-medium leading-[1.2] tracking-[-0.03em] text-foreground"
+          style={{ fontFamily: INTER, fontSize: "clamp(1.5rem, 2.3vw, 2rem)" }}
         >
           Every deadline, essay and activity in one plan
         </motion.p>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The same "forged for these universities" strip as the marketing site's
+ * landing page (`CollegeLogosMarquee`), rebuilt here rather than shared —
+ * this app and pathforge-tech are separate codebases with no shared
+ * component package, and this screen's font-display context (Sora, poster
+ * scale) calls for its own sizing anyway.
+ */
+const MARQUEE_COLLEGES = [
+  { name: "Harvard", domain: "harvard.edu" },
+  { name: "Stanford", domain: "stanford.edu" },
+  { name: "MIT", domain: "mit.edu" },
+  { name: "Princeton", domain: "princeton.edu" },
+  { name: "Yale", domain: "yale.edu" },
+  { name: "Columbia", domain: "columbia.edu" },
+  { name: "Caltech", domain: "caltech.edu" },
+  { name: "UChicago", domain: "uchicago.edu" },
+  { name: "UPenn", domain: "upenn.edu" },
+  { name: "Cornell", domain: "cornell.edu" },
+  { name: "Brown", domain: "brown.edu" },
+  { name: "Dartmouth", domain: "dartmouth.edu" },
+  { name: "Duke", domain: "duke.edu" },
+  { name: "Oxford", domain: "ox.ac.uk" },
+  { name: "Cambridge", domain: "cam.ac.uk" },
+];
+
+function CollegeMarquee() {
+  const loop = [...MARQUEE_COLLEGES, ...MARQUEE_COLLEGES];
+  return (
+    <section className="relative" aria-label="Top universities worldwide">
+      <div className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-background to-transparent" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-background to-transparent" />
+        <div className="flex w-max animate-marquee items-center gap-10 px-6">
+          {loop.map((c, i) => (
+            <div
+              key={`${c.domain}-${i}`}
+              className="flex h-7 shrink-0 items-center gap-2 opacity-40 grayscale transition-all hover:opacity-80 hover:grayscale-0"
+              title={c.name}
+            >
+              <img
+                src={`https://www.google.com/s2/favicons?domain=${c.domain}&sz=32`}
+                alt=""
+                aria-hidden="true"
+                loading="lazy"
+                width={18}
+                height={18}
+                className="h-[1.125rem] w-[1.125rem] rounded-sm object-contain"
+              />
+              <span className="whitespace-nowrap text-[0.9rem] font-semibold tracking-[-0.01em] text-foreground/80">
+                {c.name}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/**
+ * The product shot, framed as the real desktop window it is.
+ *
+ * To swap in a real captured screenshot, drop the file in `src/assets/` and
+ * replace `<PreviewCard />` below with an `<img>` of it — the chrome, shadow
+ * and grid backdrop around it stay exactly as they are.
+ */
+function ProductShot() {
+  return (
+    <div className="overflow-hidden rounded-[0.9rem] border border-border/70 bg-card shadow-[0_40px_80px_-30px_hsl(222_38%_15%_/_0.45)]">
+      {/* Window chrome — the same title bar the installed app actually has. */}
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/60 px-4 py-3">
+        <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+        <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+        <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+        <span className="ml-3 text-[0.8rem] font-medium text-muted-foreground">PathForge</span>
+      </div>
+      <PreviewCard />
     </div>
   );
 }
@@ -204,14 +339,8 @@ export default function Welcome() {
  */
 function PreviewCard() {
   return (
-    <div className="rounded-[1.25rem] border border-border/70 bg-card p-7 font-sans shadow-[0_30px_60px_-25px_hsl(222_38%_15%_/_0.35)]">
-      <div className="flex items-center gap-2">
-        <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-        <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-        <span className="h-2.5 w-2.5 rounded-full bg-muted-foreground/25" />
-      </div>
-
-      <p className="mt-6 font-display text-[0.7rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+    <div className="bg-card p-7">
+      <p className="text-[0.7rem] font-bold uppercase tracking-[0.16em] text-muted-foreground">
         This week
       </p>
 
