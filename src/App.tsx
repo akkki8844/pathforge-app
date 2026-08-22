@@ -16,6 +16,7 @@ import { RouteActivityLogger } from "@/components/RouteActivityLogger";
 import ScrollToTop from "@/components/ScrollToTop";
 import { KeepAliveProvider } from "@/components/KeepAliveProvider";
 import { IMessageCursor } from "@/components/animations/iMessageCursor";
+import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
 import { MotionConfig } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
@@ -734,6 +735,7 @@ const App = () => {
           <TooltipProvider>
             <Toaster />
             <Sonner />
+            {isDesktop() && <UpdateNotifier />}
             <BrowserRouter>
               <ScrollToTop />
               <IMessageCursor />

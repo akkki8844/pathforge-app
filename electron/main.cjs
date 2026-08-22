@@ -1,4 +1,5 @@
 const { app, BrowserWindow, shell, Menu, ipcMain } = require("electron");
+const { autoUpdater } = require("electron-updater");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
@@ -277,6 +278,43 @@ if (!app.requestSingleInstanceLock()) {
     return null;
   });
 
+  // Silent background auto-update, so an installed copy updates itself
+  // without the user ever redownloading. Only meaningful for the packaged
+  // NSIS build published to GitHub Releases by .github/workflows/release.yml
+  // (electron-builder's `publish always` there is what writes latest.yml) —
+  // a dev run has no update feed to hit, and would just log a 404 for it.
+  // The portable build has no update mechanism of its own; NSIS installs are
+  // the ones this keeps current.
+  function forwardUpdateStatus(status, extra) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send("pathforge:update-status", { status, ...extra });
+    }
+  }
+
+  function setupAutoUpdater() {
+    autoUpdater.autoDownload = true;
+    // Fallback safety net: if the user never clicks "Restart to update", the
+    // already-downloaded installer is applied on the next normal quit instead
+    // of silently doing nothing forever.
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on("update-available", (info) => forwardUpdateStatus("available", { version: info.version }));
+    autoUpdater.on("update-not-available", () => forwardUpdateStatus("not-available"));
+    autoUpdater.on("download-progress", (p) => forwardUpdateStatus("downloading", { percent: p.percent }));
+    autoUpdater.on("update-downloaded", (info) => forwardUpdateStatus("downloaded", { version: info.version }));
+    autoUpdater.on("error", (err) => forwardUpdateStatus("error", { message: err?.message || String(err) }));
+
+    const check = () => autoUpdater.checkForUpdates().catch((err) => forwardUpdateStatus("error", { message: err?.message || String(err) }));
+    check();
+    // Installed copies can run for days; check periodically rather than only
+    // once at launch so a long-lived session still picks up new releases.
+    setInterval(check, 60 * 60 * 1000);
+  }
+
+  ipcMain.handle("pathforge:install-update", () => {
+    autoUpdater.quitAndInstall();
+  });
+
   app.whenReady().then(async () => {
     Menu.setApplicationMenu(menu);
 
@@ -300,6 +338,8 @@ if (!app.requestSingleInstanceLock()) {
     }
 
     mainWindow = createWindow(startUrl);
+
+    if (app.isPackaged) setupAutoUpdater();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(startUrl);

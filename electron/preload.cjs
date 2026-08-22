@@ -32,4 +32,18 @@ contextBridge.exposeInMainWorld("pathforgeDesktop", {
     ipcRenderer.invoke("pathforge:drain-auth-callback");
     return () => ipcRenderer.removeListener("pathforge:auth-callback", listener);
   },
+
+  /**
+   * Fires as the silent background updater progresses: 'available',
+   * 'not-available', 'downloading' (with `percent`), 'downloaded', or
+   * 'error'. Returns an unsubscribe function.
+   */
+  onUpdateStatus: (handler) => {
+    const listener = (_event, payload) => handler(payload);
+    ipcRenderer.on("pathforge:update-status", listener);
+    return () => ipcRenderer.removeListener("pathforge:update-status", listener);
+  },
+
+  /** Quits and installs an already-downloaded update. */
+  installUpdate: () => ipcRenderer.invoke("pathforge:install-update"),
 });

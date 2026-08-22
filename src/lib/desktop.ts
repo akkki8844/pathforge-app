@@ -12,6 +12,13 @@ export interface DesktopAuthPayload {
   state: string | null;
 }
 
+export interface DesktopUpdateStatus {
+  status: "available" | "not-available" | "downloading" | "downloaded" | "error";
+  version?: string;
+  percent?: number;
+  message?: string;
+}
+
 interface DesktopBridge {
   isDesktop: true;
   platform: string;
@@ -19,6 +26,8 @@ interface DesktopBridge {
   openSignIn: (state: string) => Promise<void>;
   openDownloads: () => Promise<void>;
   onAuthCallback: (handler: (payload: DesktopAuthPayload) => void) => () => void;
+  onUpdateStatus: (handler: (payload: DesktopUpdateStatus) => void) => () => void;
+  installUpdate: () => Promise<void>;
 }
 
 declare global {
