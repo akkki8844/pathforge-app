@@ -38,7 +38,23 @@ jobs:
       - run: npm run build:web
 
       - name: Build and publish installers
-        run: npx electron-builder ${{ matrix.platform }} --publish always
+        shell: bash
+        run: |
+          # GitHub Actions substitutes a missing secret as an empty string, and
+          # it still *defines* the variable. electron-builder reads a defined
+          # CSC_LINK as a path to a certificate, resolves "" against the
+          # workspace, and dies with "<workspace> not a file" — which is what
+          # broke the first macOS build. Drop anything blank so an unsigned
+          # build takes the unsigned path instead of a half-configured one.
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          if [ -z "${CSC_LINK:-}" ]; then
+            # Without this, electron-builder hunts the runner keychain for a
+            # Developer ID and fails differently when it finds nothing.
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+          fi
+          npx electron-builder ${{ matrix.platform }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Apple signing + notarization. All five are optional: with none of
