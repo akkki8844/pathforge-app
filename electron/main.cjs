@@ -299,17 +299,21 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   // Silent background auto-update, so an installed copy updates itself
-  // without the user ever redownloading. Only meaningful for the packaged
-  // NSIS build published to GitHub Releases by .github/workflows/release.yml
-  // (electron-builder's `publish always` there is what writes latest.yml) —
-  // a dev run has no update feed to hit, and would just log a 404 for it.
-  // The portable build has no update mechanism of its own; NSIS installs are
-  // the ones this keeps current.
+  // without the user ever redownloading. Meaningful for the packaged NSIS
+  // install on Windows and the packaged .app on macOS, both published to
+  // GitHub Releases by .github/workflows/release.yml — electron-builder's
+  // `publish always` there is what writes latest.yml and latest-mac.yml. A dev
+  // run has no update feed to hit and would just log a 404 for it.
   function forwardUpdateStatus(status, extra) {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send("pathforge:update-status", { status, ...extra });
     }
   }
+
+  // electron-builder sets this only in the portable Windows build. A portable
+  // .exe has nothing to update in place — there is no install to replace — so
+  // it must not be handed a downloaded NSIS installer.
+  const IS_PORTABLE = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
   function setupAutoUpdater() {
     autoUpdater.autoDownload = true;
@@ -318,17 +322,38 @@ if (!app.requestSingleInstanceLock()) {
     // of silently doing nothing forever.
     autoUpdater.autoInstallOnAppQuit = true;
 
+    let timer = null;
+    const stop = (why) => {
+      if (timer) clearInterval(timer);
+      timer = null;
+      console.log(`Auto-update disabled for this install: ${why}`);
+    };
+
     autoUpdater.on("update-available", (info) => forwardUpdateStatus("available", { version: info.version }));
     autoUpdater.on("update-not-available", () => forwardUpdateStatus("not-available"));
     autoUpdater.on("download-progress", (p) => forwardUpdateStatus("downloading", { percent: p.percent }));
     autoUpdater.on("update-downloaded", (info) => forwardUpdateStatus("downloaded", { version: info.version }));
-    autoUpdater.on("error", (err) => forwardUpdateStatus("error", { message: err?.message || String(err) }));
+    autoUpdater.on("error", (err) => {
+      const message = err?.message || String(err);
+      // macOS refuses to apply an update to an app it cannot verify, and
+      // electron-updater reports that as a code-signature error. It is a
+      // permanent property of an unsigned build, not a transient failure, so
+      // retrying every hour just fills the log. Stop and say why once.
+      if (IS_MAC && /code signature|not signed|SQUIRREL|codesign/i.test(message)) {
+        stop("this macOS build is not code-signed, so macOS will not accept updates for it");
+        return;
+      }
+      forwardUpdateStatus("error", { message });
+    });
 
-    const check = () => autoUpdater.checkForUpdates().catch((err) => forwardUpdateStatus("error", { message: err?.message || String(err) }));
+    const check = () =>
+      autoUpdater.checkForUpdates().catch((err) =>
+        forwardUpdateStatus("error", { message: err?.message || String(err) }),
+      );
     check();
     // Installed copies can run for days; check periodically rather than only
     // once at launch so a long-lived session still picks up new releases.
-    setInterval(check, 60 * 60 * 1000);
+    timer = setInterval(check, 60 * 60 * 1000);
   }
 
   ipcMain.handle("pathforge:install-update", () => {
@@ -359,7 +384,12 @@ if (!app.requestSingleInstanceLock()) {
 
     mainWindow = createWindow(startUrl);
 
-    if (app.isPackaged) setupAutoUpdater();
+    // Runs on both platforms: the Windows NSIS install updates from latest.yml
+    // and the macOS .app from latest-mac.yml (which is why the mac target
+    // builds a zip alongside the dmg — electron-updater applies the zip, not
+    // the disk image). The portable Windows build is excluded because it has
+    // no installation to replace.
+    if (app.isPackaged && !IS_PORTABLE) setupAutoUpdater();
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(startUrl);
