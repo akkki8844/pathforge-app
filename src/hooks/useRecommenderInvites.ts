@@ -12,12 +12,6 @@ interface Invite {
   created_at: string;
 }
 
-function randomToken(): string {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  return Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 export function useRecommenderInvites(recommenderId: string) {
   const qc = useQueryClient();
   const key = ["recommender_invites", recommenderId];
@@ -38,21 +32,25 @@ export function useRecommenderInvites(recommenderId: string) {
 
   const create = useMutation({
     mutationFn: async () => {
-      const { data: u } = await supabase.auth.getUser();
-      const userId = u.user?.id;
-      if (!userId) throw new Error("Not authenticated");
-      const token = randomToken();
-      const { data, error } = await supabase
-        .from("recommender_invites" as any)
-        .insert({
-          recommender_id: recommenderId,
-          user_id: userId,
-          token,
-        })
-        .select()
-        .single();
+      // Minting goes through the security-definer RPC rather than a table
+      // insert: the token is generated server-side, the expiry window is set
+      // there (a client-chosen `expires_at` would defeat the point of an
+      // expiring link), ownership of the recommender is verified, and any
+      // previously live link for the same recommender is retired in the same
+      // transaction so a forwarded stale URL stops working.
+      const { data, error } = await supabase.rpc("create_recommender_invite" as any, {
+        _recommender_id: recommenderId,
+      });
       if (error) throw error;
-      return data as unknown as Invite;
+      const res = data as { ok?: boolean; error?: string } | null;
+      if (res?.error) {
+        throw new Error(
+          res.error === "not_found"
+            ? "That recommender no longer exists."
+            : "You need to be signed in to create a link.",
+        );
+      }
+      return res;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: key });

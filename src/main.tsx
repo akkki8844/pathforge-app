@@ -4,19 +4,29 @@ import { createRoot } from "react-dom/client";
 import "@fontsource/plus-jakarta-sans/400.css";
 import "@fontsource/plus-jakarta-sans/600.css";
 import "@fontsource/plus-jakarta-sans/700.css";
-import "@fontsource/work-sans/400.css";
-import "@fontsource/work-sans/600.css";
-import "@fontsource/work-sans/700.css";
+// Work Sans is deliberately NOT loaded. In tailwind.config.ts it appears only
+// as a fallback, never as the first family in any stack — `sans` leads with
+// Plus Jakarta Sans and `display` with Sora, both self-hosted from this origin
+// and therefore never failing to load. So Work Sans could only ever paint in a
+// case that cannot occur, while costing three woff2 downloads on every cold
+// start. It stays in the font stacks as a named fallback, which is free.
 // Display headings use Sora — a clean, open geometric sans that reads well at
 // large sizes. Work Sans / Plus Jakarta remain the body + fallback.
 import "@fontsource/sora/500.css";
 import "@fontsource/sora/600.css";
 import "@fontsource/sora/700.css";
 import "@fontsource/sora/800.css";
-// Fraunces (serif) is kept for the landing hero headline only — see
-// `.atlas-hero h1` in index.css. Not used elsewhere in the app chrome.
-import "@fontsource-variable/fraunces";
-import "@fontsource-variable/fraunces/wght-italic.css";
+// Fraunces (serif) is NOT imported here on purpose. index.html already
+// declares @font-face for "Fraunces Variable" against the self-hosted,
+// <link rel=preload>ed /fonts/fraunces-latin-wght-normal.woff2 so the hero H1
+// can paint without waiting on the bundle's CSS.
+//
+// Importing @fontsource-variable/fraunces as well declared a SECOND @font-face
+// for the very same family name, from the bundled stylesheet — which loads
+// later and therefore won. The result was that the preloaded file was fetched
+// and then never used, and a different copy of the identical font was
+// downloaded instead: two font downloads and a wasted high-priority preload,
+// for one typeface. The italic axis was imported too and is used nowhere.
 import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";

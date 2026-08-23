@@ -2,21 +2,28 @@ import { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Sparkles, X, Zap, Crown, Rocket, PartyPopper } from "lucide-react";
 import { Button } from "@/components/ui/button";
+// The celebratory CTA gets the spring button; "Later" stays standard, so the
+// two are not competing for the same weight of attention.
+import { Button as MotionButton } from "@/components/ui/be-ui-button";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { useNavigate } from "react-router-dom";
 
 const STORAGE_KEY = "pf:lastCelebratedSub";
 
-// Single "Pro" plan with credit tiers. Naming derived from price_id pattern: pro_<credits>_<cycle>
+/*
+ * What to say after a successful checkout.
+ *
+ * Keyed on the ids checkout actually sends — `${tier}_${monthly|annual}`, from
+ * Pricing.tsx. It used to be keyed on `pro_<credits>_monthly` price ids that no
+ * longer exist, so every real subscriber fell through to the generic fallback
+ * and was congratulated on "more daily credits" they were not getting.
+ */
 const PLAN_META: Record<string, { name: string; credits: string; icon: typeof Zap; tagline: string }> = {
-  pro_100_monthly:  { name: "Pro",  credits: "100 credits/mo",   icon: Zap,    tagline: "Welcome to Pro. Every credit, well spent." },
-  pro_200_monthly:  { name: "Pro",  credits: "200 credits/mo",   icon: Zap,    tagline: "Pro unlocked. Build relentlessly." },
-  pro_500_monthly:  { name: "Pro",  credits: "500 credits/mo",   icon: Rocket, tagline: "Now playing in the big leagues." },
-  pro_1000_monthly: { name: "Pro",  credits: "1,000 credits/mo", icon: Crown,  tagline: "Power-user mode. The platform is yours." },
-  pro_2500_monthly: { name: "Pro",  credits: "2,500 credits/mo", icon: Crown,  tagline: "Top-tier access. No throttling." },
-  pro_5000_monthly: { name: "Pro",  credits: "5,000 credits/mo", icon: Crown,  tagline: "Top-tier access. No throttling." },
-  pro_7000_monthly: { name: "Pro",  credits: "7,000 credits/mo", icon: Crown,  tagline: "Maximum Pro. The whole platform is yours." },
+  pro_monthly: { name: "Pro", credits: "250/mo", icon: Zap, tagline: "Pro unlocked. Build relentlessly." },
+  pro_annual: { name: "Pro", credits: "250/mo", icon: Rocket, tagline: "Pro, for the year. Build relentlessly." },
+  max_monthly: { name: "Max", credits: "750/mo", icon: Crown, tagline: "Top-tier access. No throttling." },
+  max_annual: { name: "Max", credits: "750/mo", icon: Crown, tagline: "Max, for the year. The whole platform is yours." },
 };
 
 export function UpgradeCelebration() {
@@ -105,7 +112,7 @@ export function UpgradeCelebration() {
 
               <div className="grid grid-cols-3 gap-3 pt-2">
                 {[
-                  { label: meta.credits, sub: "every day" },
+                  { label: meta.credits, sub: "credits" },
                   { label: "Full AI", sub: "no throttling" },
                   { label: "Priority", sub: "support" },
                 ].map((stat) => (
@@ -117,12 +124,13 @@ export function UpgradeCelebration() {
               </div>
 
               <div className="flex gap-2 pt-2">
-                <Button
+                <MotionButton
                   onClick={() => { setOpen(false); navigate("/journey"); }}
+                  ripple
                   className="flex-1 h-11 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground font-semibold"
                 >
                   Open my journey
-                </Button>
+                </MotionButton>
                 <Button onClick={() => setOpen(false)} variant="outline" className="h-11 rounded-xl">
                   Later
                 </Button>

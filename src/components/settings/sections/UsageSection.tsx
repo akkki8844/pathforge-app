@@ -3,12 +3,16 @@ import { Activity, Zap, Clock, Loader2 } from "lucide-react";
 import { useCredits } from "@/hooks/useCredits";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { planDisplayName } from "@/lib/plans";
 import { SettingsSection, SettingsCard } from "../SettingsShell";
 
 interface FeatureUsage { feature_type: string; count: number; tokens: number; }
 
 export function UsageSection() {
-  const { creditData, creditsRemaining, totalCapacity, totalUsed, usagePercent, getResetTime, loading } = useCredits();
+  const {
+    creditData, creditsRemaining, totalCapacity, totalUsed, usagePercent,
+    getResetTime, loading, unlimited, periodLabel,
+  } = useCredits();
   const { user } = useAuth();
   const [byFeature, setByFeature] = useState<FeatureUsage[]>([]);
   const [last7, setLast7] = useState<{ date: string; count: number }[]>([]);
@@ -59,22 +63,50 @@ export function UsageSection() {
 
   return (
     <SettingsSection title="Usage" description="Your AI activity, credit limits, and reset windows.">
+      {/* A paid plan is not metered, so the three figures that describe a cap —
+          remaining, percent-of-cap, time-to-reset — have nothing to describe.
+          Showing them anyway is what made this page look broken to subscribers. */}
       <div className="grid sm:grid-cols-3 gap-4">
-        <Stat icon={Zap} label="Credits remaining" value={loading ? "—" : `${creditsRemaining}`} hint={`of ${totalCapacity}`} />
-        <Stat icon={Activity} label="Used this cycle" value={loading ? "—" : `${totalUsed}`} hint={`${Math.round(usagePercent)}%`} />
-        <Stat icon={Clock} label="Daily reset in" value={getResetTime() || "—"} hint={`Plan: ${creditData?.plan || "free"}`} />
+        <Stat
+          icon={Zap}
+          label="Credits remaining"
+          value={loading ? "—" : unlimited ? "Unlimited" : `${creditsRemaining}`}
+          hint={unlimited ? "Included with your plan" : `of ${totalCapacity}`}
+        />
+        <Stat
+          icon={Activity}
+          label="Used this cycle"
+          value={loading ? "—" : `${totalUsed}`}
+          hint={unlimited ? "Not counted against a cap" : `${Math.round(usagePercent)}%`}
+        />
+        <Stat
+          icon={Clock}
+          label={unlimited ? "Billing" : `${periodLabel === "monthly" ? "Monthly" : "Daily"} reset in`}
+          value={unlimited ? "No cap" : getResetTime() || "—"}
+          hint={`Plan: ${planDisplayName(creditData?.plan)}`}
+        />
       </div>
 
       <SettingsCard title="Usage capacity">
-        <div className="h-2 rounded-full bg-muted overflow-hidden">
-          <div
-            className="h-full bg-foreground transition-all"
-            style={{ width: `${Math.min(100, usagePercent)}%` }}
-          />
-        </div>
-        <p className="mt-3 text-xs text-muted-foreground">
-          You're using {totalUsed} of {totalCapacity} credits. Daily free credits reset every 24 hours; bonus and plan credits do not reset daily.
-        </p>
+        {unlimited ? (
+          <p className="text-xs text-muted-foreground">
+            Your plan includes unlimited credits and advisor tokens. Everything below is a record of
+            what you've used, not a balance you're spending down.
+          </p>
+        ) : (
+          <>
+            <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div
+                className="h-full bg-foreground transition-all"
+                style={{ width: `${Math.min(100, usagePercent)}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              You're using {totalUsed} of {totalCapacity} credits. Free credits reset every 24 hours;
+              bonus credits stay until you spend them.
+            </p>
+          </>
+        )}
       </SettingsCard>
 
       <SettingsCard title="Last 7 days" description="AI requests across the last week.">

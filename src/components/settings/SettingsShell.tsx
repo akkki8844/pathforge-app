@@ -4,6 +4,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 import {
   UserCircle2, ShieldCheck, CreditCard, Activity, Plug, Bell, Palette, Sliders, Languages, SlidersHorizontal } from "lucide-react";
+import { useSettingsForm, type SectionKey } from "./SettingsFormContext";
+import { SettingsSaveBar } from "./SettingsSaveBar";
+import { UnsavedChangesDialog } from "./UnsavedChangesDialog";
 
 export type SettingsSectionId =
   | "general"
@@ -69,6 +72,7 @@ export function SettingsShell({
     ? (searchParams.get("section") as SettingsSectionId)
     : firstAvailable;
   const [active, setActive] = useState<SettingsSectionId>(initial);
+  const { dirtyBySection } = useSettingsForm();
 
   // React to ?section= changes (e.g. external links jumping to Connectors).
   useEffect(() => {
@@ -88,7 +92,7 @@ export function SettingsShell({
   const activeMeta = ALL_ITEMS.find((i) => i.id === active);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20">
+    <div className="min-h-[100svh] bg-gradient-to-b from-background to-muted/20">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-10 py-10 sm:py-14">
         <div className="mb-10">
           <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground mb-2">
@@ -117,6 +121,10 @@ export function SettingsShell({
                       .map((item) => {
                         const Icon = item.icon;
                         const isActive = active === item.id;
+                        // Sections that stage edits report how many fields are
+                        // waiting on the single save, so unsaved work is
+                        // visible even while you're looking at another tab.
+                        const pending = dirtyBySection[item.id as SectionKey] ?? 0;
                         return (
                           <button
                             key={item.id}
@@ -145,7 +153,7 @@ export function SettingsShell({
                             >
                               <Icon className="h-[18px] w-[18px]" />
                             </span>
-                            <span className="flex flex-col min-w-0">
+                            <span className="flex flex-col min-w-0 flex-1">
                               <span className="text-[15px] font-semibold leading-tight">
                                 {item.label}
                               </span>
@@ -153,6 +161,14 @@ export function SettingsShell({
                                 {item.hint}
                               </span>
                             </span>
+                            {pending > 0 && (
+                              <span
+                                className="flex h-5 min-w-[20px] flex-shrink-0 items-center justify-center rounded-full bg-primary/12 px-1.5 text-[10.5px] font-semibold tabular-nums text-primary"
+                                title={`${pending} unsaved change${pending === 1 ? "" : "s"}`}
+                              >
+                                {pending}
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -185,6 +201,13 @@ export function SettingsShell({
           </main>
         </div>
       </div>
+
+      {/* Room for the docked save bar so it never covers the last control. */}
+      <div className="h-24" aria-hidden />
+      <SettingsSaveBar />
+      {/* Holds Back / link navigation while the save bar still has work to do.
+          Renders nothing at all when the page is clean. */}
+      <UnsavedChangesDialog />
     </div>
   );
 }
@@ -251,21 +274,47 @@ export function SettingsCard({
 export function SettingsRow({
   label,
   description,
+  dirty,
   children,
 }: {
   label: string;
   description?: string;
+  /** Marks the row as edited-but-not-yet-saved. */
+  dirty?: boolean;
   children: ReactNode;
 }) {
   return (
     <div className="flex items-start justify-between gap-6 py-4 first:pt-0 last:pb-0 border-b border-border/40 last:border-0">
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] font-medium text-foreground">{label}</p>
+        <p className="flex items-center gap-2 text-[14px] font-medium text-foreground">
+          {label}
+          {dirty && (
+            <span
+              className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-primary"
+              title="Unsaved"
+              aria-label="Unsaved change"
+            />
+          )}
+        </p>
         {description && (
           <p className="mt-0.5 text-[12.5px] text-muted-foreground leading-relaxed">{description}</p>
         )}
       </div>
       <div className="flex-shrink-0">{children}</div>
     </div>
+  );
+}
+
+/**
+ * Badge for controls that deliberately bypass the page-level save because
+ * they change the UI the instant you touch them (theme, language). Making
+ * that explicit is the difference between "coherent" and "why did some of
+ * these need Save and some didn't".
+ */
+export function InstantBadge() {
+  return (
+    <span className="inline-flex items-center rounded-md border border-border bg-muted/60 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      Applies instantly
+    </span>
   );
 }

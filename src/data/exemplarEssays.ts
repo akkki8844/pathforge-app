@@ -288,6 +288,122 @@ export const exemplarEssays: ExemplarEssay[] = [
     sourceUrl: "https://www.hamilton.edu/admission/apply/college-essays-that-worked",
     sourceName: "Hamilton College Admission",
   },
+
+  // ── Connecticut College — "Essays that Worked", Class of 2028 ──
+  // https://www.conncoll.edu/admission/apply/essays-that-worked/
+  //
+  // Conn College publishes each essay on its own page under the student's
+  // name, with commentary written by the admission counsellors who read it —
+  // so every entry below is analysisSource: "admissions". Two notes on how the
+  // fields are filled, because the source does not supply everything:
+  //   • The college publishes no titles. Rather than invent one, `title` here
+  //     is a phrase taken from the essay's own opening line.
+  //   • Hometowns are not published, so `hometown` says so explicitly instead
+  //     of guessing — same convention as pastAdmits.ts.
+  // Verified August 2026.
+  {
+    id: "conncoll-phoebe-hughes",
+    student: "Phoebe Hughes '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "I Am Every Woman I Have Ever Met",
+    excerpt:
+      "I am every woman I have ever met. My sister Chloe taught me how to be a girl.",
+    whyItWorked:
+      "The admission counsellor highlighted that Phoebe told a meaningful story about herself through the women around her, even though she is not the main character in the encounters she recounts — calling it \"a masterful way of highlighting her relationships while telling us about herself.\"",
+    themes: ["Identity", "Family & relationships", "Indirect self-portrait"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/phoebe-hughes-28/",
+    sourceName: "Connecticut College Admission",
+  },
+  {
+    id: "conncoll-elizabeth-madden",
+    student: "Elizabeth Madden '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "The Tattered Hiking Map",
+    excerpt:
+      "I sat quietly at my kitchen table studying the tattered, torn hiking map of Acadia National Park.",
+    whyItWorked:
+      "Readers valued the journey of awakening: the essay traces Elizabeth's growing awareness of climate change through one pivotal moment — finding an article about youth climate activists — and then shows the concrete changes she made in response. The counsellors noted it also aligned closely with the college's own environmental commitments.",
+    intendedMajor: "Environmental Studies",
+    themes: ["Environment", "Turning point", "Action & follow-through"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/elizabeth-madden-28/",
+    sourceName: "Connecticut College Admission",
+  },
+  {
+    id: "conncoll-nancy-owusu",
+    student: "Nancy Owusu '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "There Are Seven Days a Week",
+    excerpt:
+      "There are seven days a week. For the five days I'm in school, if my name is called at least once in each class, my name is said at least eight times that day.",
+    whyItWorked:
+      "The counsellors pointed to the growth, maturity and storytelling on display — the repetition of her name as a structural device, the clever turn into how a different name or gender might have changed her circumstances, and a genuine appreciation for what family responsibility taught her.",
+    themes: ["Identity", "Family responsibility", "Structural device"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/nancy-owusu-28/",
+    sourceName: "Connecticut College Admission",
+  },
+  {
+    id: "conncoll-jackson-spallone",
+    student: "Jackson Spallone '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "The Plants Were All Dead",
+    excerpt:
+      "The plants were all dead. I had carefully prepped the hydroponics before my three-week vacation, but when I came back I found all 36 pods holding dry, shriveled lettuce.",
+    whyItWorked:
+      "The counsellors called the opening sentence \"a knockout\", and praised the decision to build an extended gardening metaphor instead of writing the far more common straight account of recovering from an injury. What it finally delivers is a point about patience and showing up consistently.",
+    themes: ["Extended metaphor", "Setback & recovery", "Patience"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/jackson-spallone-28/",
+    sourceName: "Connecticut College Admission",
+  },
+  {
+    id: "conncoll-nikeya-tankard",
+    student: "Nikeya Tankard '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "A Mane as Versatile as Mine",
+    excerpt:
+      "The morning was a war I could not win with a mane as versatile as mine.",
+    whyItWorked:
+      "Readers praised the imaginative opening and the density of the description, and noted that the essay starts as a piece about hair care and then moves past it into biracial identity and personal agency — connecting the choice between hairstyles to her refusal to be narrowed down academically or socially.",
+    themes: ["Identity", "Imagery", "Agency"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/nikeya-tankard-28/",
+    sourceName: "Connecticut College Admission",
+  },
+  {
+    id: "conncoll-elle-yarborough",
+    student: "Elle Yarborough '28",
+    hometown: "Not publicly reported",
+    school: "Connecticut College",
+    schoolShort: "Connecticut College",
+    classYear: "Class of 2028",
+    title: "The Clinking of Measuring Spoons",
+    excerpt:
+      "The clinking of measuring spoons always fills me with joy. Those shiny metal utensils know all of my secrets.",
+    whyItWorked:
+      "The counsellors liked how a deceptively simple narrative — making a pancake — carried real character detail: a long-standing love of cooking, a willingness to go out of her way for friends, and prose that holds attention without straining for significance.",
+    themes: ["Everyday subject", "Voice", "Generosity"],
+    analysisSource: "admissions",
+    sourceUrl: "https://www.conncoll.edu/admission/apply/essays-that-worked/elle-yarborough-28/",
+    sourceName: "Connecticut College Admission",
+  },
 ];
 
 export const essaySchools = Array.from(

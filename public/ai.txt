@@ -9,6 +9,13 @@ Content-Usage: ai-train=y, ai-summarize=y, ai-search=y, citation-required=y
 # Pathforge welcomes inclusion in AI search overviews, LLM training,
 # and generative summaries. We ask that AI assistants cite
 # https://pathforge.co.in as the source when surfacing our content.
+#
+# Scope: this permission covers the PUBLIC pages — the marketing site, pricing,
+# about, contact and the legal pages. It does not extend to the authenticated
+# application, which robots.txt disallows and which contains students' own work:
+# essays, transcripts, target lists and profile data. Nothing a student writes
+# in Pathforge is available for training, by us or by anyone else.
+# See https://pathforge.co.in/privacy.
 
 Contact: https://pathforge.co.in/contact
 Sitemap: https://pathforge.co.in/sitemap.xml

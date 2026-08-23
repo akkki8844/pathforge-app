@@ -5,14 +5,17 @@ import { Link } from "react-router-dom";
 import { Seo } from "@/components/Seo";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useAuth } from "@/contexts/AuthContext";
+import SpecularLink from "@/components/ui/specular/SpecularLink";
+import { LayeredText } from "@/components/ui/layered-text";
 
 const MotionLink = motion.create(Link);
+const MotionSpecularLink = motion.create(SpecularLink);
 const MotionA = motion.a;
 const EASE = [0.16, 1, 0.3, 1] as const;
 // Hero is served from /public so the browser can preload it before JS parses
 // (see <link rel="preload"> in index.html). Keeps it out of the JS bundle.
 const heroCampus = "/assets/hero-campus-cinematic-v1.webp";
-import pathforgeMark from "@/assets/pathforge-logo.png";
+import pathforgeMark from "@/assets/pathforge-logo.webp";
 import talkforgeLogo from "@/assets/talkforge-logo.webp";
 
 const features = [
@@ -53,24 +56,6 @@ const features = [
   },
 ];
 
-const principles = [
-  {
-    n: "I.",
-    title: "Personalized to one student.",
-    body: "Country, curriculum, grade, major — every screen reshapes around your file. No generic checklists.",
-  },
-  {
-    n: "II.",
-    title: "Clarity over cleverness.",
-    body: "We surface the single clearest next step, and why it matters now — guidance, not guesswork. Less dashboard, more direction.",
-  },
-  {
-    n: "III.",
-    title: "Authentic, never fabricated.",
-    body: "Every refinement is proof-anchored. We sharpen who you already are; we do not invent who you are not.",
-  },
-];
-
 const universities: { name: string; domain: string }[] = [
   { name: "Harvard", domain: "harvard.edu" },
   { name: "Stanford", domain: "stanford.edu" },
@@ -106,8 +91,8 @@ export default function Index() {
   const { user, loading: authLoading } = useAuth();
   const isReturning = !authLoading && !!user;
   const workspaceHref = isReturning
-    ? "/journey"
-    : "/auth?role=student&view=signup&redirect=%2Fjourney";
+    ? "/dashboard"
+    : "/auth?role=student&view=signup";
 
   // Whole-page scroll progress → the top reader bar.
   const { scrollYProgress } = useScroll();
@@ -162,8 +147,8 @@ export default function Index() {
   return (
     <div className="atlas-page">
       <Seo
-        title="Pathforge — The editorial guide to your college path"
-        description="Build a standout college profile, one clear next step at a time — for students applying to selective global universities."
+        title="Pathforge — College Application Profile"
+        description="Build a standout college application profile, one clear next step at a time — for students applying to selective global universities."
         path="/"
       />
 
@@ -182,7 +167,9 @@ export default function Index() {
           </Link>
           <nav className="atlas-nav" aria-label="Primary navigation">
             <a href="#departments">Explore platform</a>
+            <Link to="/about">About</Link>
             <Link to="/pricing">Pricing</Link>
+            <Link to="/faq">FAQ</Link>
             <Link to="/teacher/auth">Counsellor workspace</Link>
             <Link
               className="atlas-signin"
@@ -213,11 +200,28 @@ export default function Index() {
                 One clear next step at a time.
               </motion.p>
               <motion.div className="atlas-hero-actions" {...load(0.25)}>
-                <MotionLink className="atlas-primary" to="/auth?role=student&view=signup&redirect=%2Fjourney" {...cta}>
+                <MotionSpecularLink
+                  to={workspaceHref}
+                  size="lg"
+                  radius={12}
+                  tint="#4465d8"
+                  tintOpacity={1}
+                  textColor="#ffffff"
+                  lineColor="#ffffff"
+                  baseColor="#29439c"
+                  {...cta}
+                >
                   Build your application plan <span aria-hidden="true">↗</span>
-                </MotionLink>
-                <MotionA className="atlas-secondary" href="#departments" {...cta}>
-                  See how it connects <span aria-hidden="true">↓</span>
+                </MotionSpecularLink>
+                <MotionA
+                  className="atlas-download-win"
+                  href="https://github.com/akkki8844/pathforge-app/releases/latest/download/PathForge-Setup.exe"
+                  {...cta}
+                >
+                  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">
+                    <path d="M3 5.1 10.4 4v7.3H3zm0 13.8V12h7.4v7.9zM11.3 4.1 21 3v8.3H11.3zm0 15.8v-7.9H21V21z" />
+                  </svg>
+                  Download on Windows
                 </MotionA>
               </motion.div>
             </div>
@@ -231,20 +235,12 @@ export default function Index() {
               {[...universities, ...universities].map((u, index) => (
                 <span key={`${u.domain}-${index}`}>
                   <img
-                    src={`https://www.google.com/s2/favicons?domain=${u.domain}&sz=128`}
-                    alt=""
+                    src={`https://www.google.com/s2/favicons?domain=${u.domain}&sz=32`}
+                    alt={`${u.name} logo`}
                     width={20}
                     height={20}
                     loading="lazy"
                     decoding="async"
-                    style={{
-                      width: "1.25rem",
-                      height: "1.25rem",
-                      marginRight: "0.55rem",
-                      borderRadius: "3px",
-                      objectFit: "contain",
-                      verticalAlign: "-4px",
-                    }}
                   />
                   {u.name}
                 </span>
@@ -266,7 +262,9 @@ export default function Index() {
             </h2>
             <p className="atlas-intro">
               One profile. Every important next move. Edit one part and the rest — your resume, LinkedIn, advisor
-              context — stays in sync. Build depth, not a random list of certificates.
+              context — stays in sync. Build depth, not a random list of certificates. Whether you're drafting a
+              personal statement, tracking recommendation letters, or mapping out the next application deadline,
+              it lives in the same file — read by the same advisor, in the same voice.
             </p>
           </motion.div>
           <div className="atlas-department-list">
@@ -299,6 +297,10 @@ export default function Index() {
               “The students who get in aren't the loudest. They are the ones whose <em>file tells a coherent story</em>{" "}
               — chosen carefully, edited honestly, defended with evidence.”
             </blockquote>
+            <p className="atlas-editorial-note">
+              That is the standard every activity, essay, and recommendation on Pathforge is held to before it
+              enters your file.
+            </p>
           </motion.div>
         </section>
 
@@ -306,22 +308,10 @@ export default function Index() {
           <motion.div className="atlas-section-heading" {...reveal}>
             <p>The House Style</p>
             <h2 id="house-title">
-              Three rules we <em>never</em> break.
+              Six rules we <em>never</em> break.
             </h2>
           </motion.div>
-          <div className="atlas-rules">
-            {principles.map((principle, index) => (
-              <motion.article
-                key={principle.n}
-                {...item(index)}
-                whileHover={prefersReduced ? undefined : { y: -3 }}
-              >
-                <span>{principle.n}</span>
-                <h3>{principle.title}</h3>
-                <p>{principle.body}</p>
-              </motion.article>
-            ))}
-          </div>
+          <LayeredText />
         </section>
 
         <section className="atlas-sister atlas-wrap" aria-labelledby="sister-title">
@@ -376,9 +366,19 @@ export default function Index() {
             </h2>
           </motion.div>
           <motion.div className="atlas-colophon-actions" {...item(1)}>
-            <MotionLink className="atlas-primary" to="/auth?role=student&view=signup&redirect=%2Fjourney" {...cta}>
+            <MotionSpecularLink
+              to={workspaceHref}
+              size="lg"
+              radius={12}
+              tint="#4465d8"
+              tintOpacity={1}
+              textColor="#ffffff"
+              lineColor="#ffffff"
+              baseColor="#29439c"
+              {...cta}
+            >
               Build your application plan <span aria-hidden="true">↗</span>
-            </MotionLink>
+            </MotionSpecularLink>
             <MotionLink className="atlas-secondary" to="/activities" {...cta}>
               Browse the activities desk
             </MotionLink>
@@ -393,7 +393,14 @@ export default function Index() {
           </p>
           <a href="mailto:pathforge.co@gmail.com">pathforge.co@gmail.com</a>
           <nav aria-label="Footer navigation">
+            {/* About is hidden from the header below 640px to keep the glass bar
+                from wrapping, so the footer is the only route to it on a phone.
+                It leads here for that reason. */}
+            <Link to="/about">About</Link>
+            <i>·</i>
             <Link to="/pricing">Pricing</Link>
+            <i>·</i>
+            <Link to="/faq">FAQ</Link>
             <i>·</i>
             <Link to="/terms">Terms</Link>
             <i>·</i>

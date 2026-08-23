@@ -9,31 +9,44 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
+import { useSettingsForm } from "../SettingsFormContext";
 
+/**
+ * The duplicate "Notifications" card that used to sit at the bottom of this
+ * section has moved to the Notifications section, where the rest of the
+ * notification switches live. It was the same four user_preferences columns
+ * rendered a second time with different copy.
+ */
 export function PrivacySection() {
-  const { prefs, save, loading } = useUserPreferences();
+  const { draft, set, isDirty, loading } = useSettingsForm();
   const { user } = useAuth();
   const { toast } = useToast();
   const [exporting, setExporting] = useState(false);
-
-  const update = async <K extends keyof typeof prefs>(k: K, v: (typeof prefs)[K]) => {
-    try { await save({ [k]: v } as any); }
-    catch (e: any) { toast({ variant: "destructive", title: "Couldn't save", description: e.message }); }
-  };
 
   const exportData = async () => {
     if (!user) return;
     setExporting(true);
     try {
-      const tables = ["profiles", "onboarding_data", "outcomes_data", "admissions_data", "application_entries", "journey_scores", "readiness_analyses"];
-      const out: Record<string, any> = {};
+      const tables = [
+        "profiles",
+        "onboarding_data",
+        "outcomes_data",
+        "admissions_data",
+        "application_entries",
+        "journey_scores",
+        "readiness_analyses",
+      ];
+      const out: Record<string, unknown> = {};
+      const failed: string[] = [];
       for (const t of tables) {
-        const { data } = await supabase.from(t as any).select("*").eq("user_id", user.id);
+        // A denied or missing table used to be swallowed, producing an export
+        // that silently omitted whole sections of the user's data.
+        const { data, error } = await supabase.from(t as never).select("*").eq("user_id", user.id);
+        if (error) failed.push(t);
         out[t] = data || [];
       }
       const blob = new Blob([JSON.stringify(out, null, 2)], { type: "application/json" });
@@ -43,9 +56,21 @@ export function PrivacySection() {
       a.download = `pathforge-export-${new Date().toISOString().split("T")[0]}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      toast({ title: "Export ready", description: "Your data has been downloaded." });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Export failed", description: e.message });
+      if (failed.length) {
+        toast({
+          variant: "destructive",
+          title: "Export incomplete",
+          description: `Couldn't read: ${failed.join(", ")}. Everything else was downloaded.`,
+        });
+      } else {
+        toast({ title: "Export ready", description: "Your data has been downloaded." });
+      }
+    } catch (e) {
+      toast({
+        variant: "destructive",
+        title: "Export failed",
+        description: e instanceof Error ? e.message : "Please try again.",
+      });
     } finally {
       setExporting(false);
     }
@@ -54,8 +79,16 @@ export function PrivacySection() {
   return (
     <SettingsSection title="Privacy" description="Control who sees your profile and how your data is used.">
       <SettingsCard title="Visibility">
-        <SettingsRow label="Profile visibility" description="Who can see your profile basics (name, school, major).">
-          <Select value={prefs.profile_visibility} onValueChange={(v) => update("profile_visibility", v as any)} disabled={loading}>
+        <SettingsRow
+          label="Profile visibility"
+          description="Who can see your profile basics (name, school, major)."
+          dirty={isDirty("profile_visibility")}
+        >
+          <Select
+            value={draft.profile_visibility}
+            onValueChange={(v) => set("profile_visibility", v as typeof draft.profile_visibility)}
+            disabled={loading}
+          >
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="private">Private</SelectItem>
@@ -64,8 +97,16 @@ export function PrivacySection() {
             </SelectContent>
           </Select>
         </SettingsRow>
-        <SettingsRow label="Activity visibility" description="Who can see your activities, projects, and outcomes.">
-          <Select value={prefs.activity_visibility} onValueChange={(v) => update("activity_visibility", v as any)} disabled={loading}>
+        <SettingsRow
+          label="Activity visibility"
+          description="Who can see your activities, projects, and outcomes."
+          dirty={isDirty("activity_visibility")}
+        >
+          <Select
+            value={draft.activity_visibility}
+            onValueChange={(v) => set("activity_visibility", v as typeof draft.activity_visibility)}
+            disabled={loading}
+          >
             <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="private">Private</SelectItem>
@@ -80,23 +121,13 @@ export function PrivacySection() {
         <SettingsRow
           label="Personalize AI responses"
           description="Use your profile, major, and goals to tailor recommendations and analyses."
+          dirty={isDirty("ai_personalization")}
         >
-          <Switch checked={prefs.ai_personalization} onCheckedChange={(v) => update("ai_personalization", v)} disabled={loading} />
-        </SettingsRow>
-      </SettingsCard>
-
-      <SettingsCard title="Notifications">
-        <SettingsRow label="Product updates" description="New features and improvements.">
-          <Switch checked={prefs.notify_product_updates} onCheckedChange={(v) => update("notify_product_updates", v)} disabled={loading} />
-        </SettingsRow>
-        <SettingsRow label="Deadline reminders" description="Application and scholarship deadlines.">
-          <Switch checked={prefs.notify_deadlines} onCheckedChange={(v) => update("notify_deadlines", v)} disabled={loading} />
-        </SettingsRow>
-        <SettingsRow label="Weekly summary" description="A short recap of your weekly progress.">
-          <Switch checked={prefs.notify_weekly_summary} onCheckedChange={(v) => update("notify_weekly_summary", v)} disabled={loading} />
-        </SettingsRow>
-        <SettingsRow label="Marketing emails" description="Promotions and partner content.">
-          <Switch checked={prefs.notify_marketing} onCheckedChange={(v) => update("notify_marketing", v)} disabled={loading} />
+          <Switch
+            checked={draft.ai_personalization}
+            onCheckedChange={(v) => set("ai_personalization", v)}
+            disabled={loading}
+          />
         </SettingsRow>
       </SettingsCard>
 

@@ -23,8 +23,15 @@ export default {
         // Display / headings: Sora — a clean, open geometric sans that reads
         // well and takes real weights (500/600/700). Work Sans is fallback.
         display: ["Sora", "Work Sans", "Plus Jakarta Sans", "system-ui", "sans-serif"],
-        // `serif` is only used by the Resume document template, which loads Instrument Serif.
-        serif: ['"Instrument Serif"', "ui-serif", "Georgia", "serif"],
+        // Fraunces — the landing page's headline face. It is self-hosted,
+        // preloaded and @font-face'd in index.html, so it is already on every
+        // page for free. This used to name Instrument Serif, which is not
+        // loaded anywhere in the app, so every `font-serif` figure and heading
+        // was silently rendering as Georgia while claiming to be editorial.
+        serif: ['"Fraunces Variable"', "Fraunces", "ui-serif", "Georgia", "serif"],
+        // The printed résumé wants a book serif, not a display one. Instrument
+        // Serif is lazy-loaded by that route alone (see Resume.tsx).
+        document: ['"Instrument Serif"', "ui-serif", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -55,6 +62,25 @@ export default {
         highlight: {
           DEFAULT: "hsl(var(--highlight))",
           foreground: "hsl(var(--highlight-foreground))",
+        },
+        // Focus Flight's marker yellow. Deliberately outside the theme tokens:
+        // it belongs to the aviation surfaces (badges, route markers, boarding
+        // furniture) and must stay identical in light and dark, the way real
+        // airfield signage does.
+        "flight-yellow": "hsl(52 96% 56%)",
+        // Semantic states, so "done" / "due soon" / "informational" have their
+        // own vocabulary instead of borrowing the brand indigo or destructive red.
+        success: {
+          DEFAULT: "hsl(var(--success))",
+          foreground: "hsl(var(--success-foreground))",
+        },
+        warning: {
+          DEFAULT: "hsl(var(--warning))",
+          foreground: "hsl(var(--warning-foreground))",
+        },
+        info: {
+          DEFAULT: "hsl(var(--info))",
+          foreground: "hsl(var(--info-foreground))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",
@@ -113,7 +139,7 @@ export default {
         marquee: "marquee 50s linear infinite",
       },
       boxShadow: {
-        glow: "0 0 40px hsl(221 83% 53% / 0.15)",
+        glow: "0 0 0 1px hsl(226 65% 56% / 0.14), 0 18px 48px -38px hsl(226 65% 56% / 0.5)",
       },
     },
   },

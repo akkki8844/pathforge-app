@@ -2,9 +2,12 @@ import { forwardRef, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Bookmark, BookmarkCheck, Filter, AlertTriangle, ExternalLink, GraduationCap, X, Clock, Layers, Compass, MessageSquare, Check, CheckCircle2, Trophy } from "lucide-react";
+  Bookmark, BookmarkCheck, Filter, AlertTriangle, ExternalLink, GraduationCap, X, Clock, Layers, Compass, MessageSquare, Check, CheckCircle2, Trophy, MoreHorizontal } from "lucide-react";
+import { BackpackIcon } from "@/components/icons/FlatSvgIcons";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
@@ -65,6 +68,8 @@ const ActivityCard = forwardRef<HTMLDivElement, {
   const dLeft = regClose ? daysUntil(regClose) : null;
   const priority = activity.priority || "Medium";
   const done = completedIds.includes(activity.id);
+  const bookmarked = bookmarkedIds.includes(activity.id);
+  const [actionsOpen, setActionsOpen] = useState(false);
 
   return (
     <motion.div
@@ -78,36 +83,88 @@ const ActivityCard = forwardRef<HTMLDivElement, {
       onClick={() => onClick(activity)}
       className={`card-elevated p-5 relative group cursor-pointer hover:border-accent/50 transition-colors ${done ? "ring-1 ring-green-500/40" : ""}`}
     >
-      <div className="absolute top-3 right-3 flex items-center gap-1 z-10">
-        <button
-          onClick={(e) => onCompletedToggle(activity, e)}
-          className={`p-1.5 rounded-lg transition-colors ${done ? "bg-green-500/15 hover:bg-green-500/25" : "hover:bg-muted"}`}
-          aria-label={done ? "Mark as not completed" : "Mark as completed"}
-          title={done ? "Completed — click to undo" : "Mark as completed"}
-        >
-          {done ? (
-            <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
-          ) : (
-            <Check className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
-        <button
-          onClick={(e) => onBookmarkToggle(activity, e)}
-          className="p-1.5 rounded-lg transition-colors hover:bg-muted"
-          aria-label="Bookmark"
-        >
-          {bookmarkedIds.includes(activity.id) ? (
-            <BookmarkCheck className="h-4 w-4 text-accent" />
-          ) : (
-            <Bookmark className="h-4 w-4 text-muted-foreground" />
-          )}
-        </button>
+      <div className="absolute top-3 right-3 z-10">
+        <Popover open={actionsOpen} onOpenChange={setActionsOpen}>
+          <PopoverTrigger asChild>
+            <button
+              onClick={(e) => e.stopPropagation()}
+              className={`p-1.5 rounded-lg transition-colors ${done ? "bg-green-500/15 hover:bg-green-500/25" : "hover:bg-muted"}`}
+              aria-label="Quick actions"
+              title="Quick actions"
+            >
+              <MoreHorizontal className={`h-4 w-4 ${done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"}`} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent
+            align="end"
+            className="w-48 p-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={(e) => {
+                onCompletedToggle(activity, e);
+                setActionsOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
+            >
+              {done ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+              ) : (
+                <Check className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              {done ? "Mark as not completed" : "Mark as completed"}
+            </button>
+            <button
+              onClick={(e) => {
+                onBookmarkToggle(activity, e);
+                setActionsOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
+            >
+              {bookmarked ? (
+                <BookmarkCheck className="h-3.5 w-3.5 text-accent" />
+              ) : (
+                <Bookmark className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              {bookmarked ? "Remove bookmark" : "Bookmark"}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                window.open(activity.learnMoreUrl, "_blank", "noopener,noreferrer");
+                setActionsOpen(false);
+              }}
+              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted"
+            >
+              <ExternalLink className="h-3.5 w-3.5 text-accent" />
+              Visit official site
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       <div className="flex flex-wrap gap-1.5 mb-2.5 pr-20">
-        <Badge className={`${priorityColors[priority]} text-[10px] border`}>
-          {priority} Priority
-        </Badge>
+        {activity.explanation ? (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge className={`${priorityColors[priority]} text-[10px] border cursor-help`}>
+                {priority} Priority
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent
+              side="bottom"
+              align="start"
+              className="max-w-[240px]"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {activity.explanation}
+            </TooltipContent>
+          </Tooltip>
+        ) : (
+          <Badge className={`${priorityColors[priority]} text-[10px] border`}>
+            {priority} Priority
+          </Badge>
+        )}
         {done && (
           <Badge className="bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300 text-[10px]">
             Completed
@@ -366,12 +423,15 @@ export default function Activities() {
 
   return (
     <div className="py-8 sm:py-10">
-      <Seo title='Recommended activities for your major | Pathforge' description='Discover must-do extracurriculars, Olympiads, and competitions tailored to your intended college major.' path='/activities' />
+      <Seo title='Activities — Pathforge' description='Discover must-do extracurriculars, Olympiads, and competitions tailored to your intended college major.' path='/activities' />
       <div className="section-container">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between flex-wrap gap-3">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Activities & Competitions</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-2.5">
+              <BackpackIcon className="h-7 w-7 sm:h-8 sm:w-8" />
+              Activities & Competitions
+            </h1>
             <h2 className="sr-only">Recommended activities for your major</h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
               {userMajor} · {userCountry}
@@ -399,7 +459,7 @@ export default function Activities() {
                             <h4 className="font-medium text-foreground text-sm">{activity.name}</h4>
                             <p className="text-xs text-muted-foreground">{activity.category}</p>
                           </div>
-                          <Button variant="ghost" size="icon" onClick={(e) => handleBookmarkToggle(activity as any, e)} className="shrink-0 h-7 w-7">
+                          <Button variant="ghost" size="icon" onClick={(e) => handleBookmarkToggle(activity as any, e)} className="shrink-0 h-7 w-7" aria-label="Remove bookmark">
                             <X className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -460,12 +520,18 @@ export default function Activities() {
 
         {/* Tabs */}
         <Tabs defaultValue="recommended" className="w-full">
-          <TabsList className="grid grid-cols-1 max-w-md mb-6 h-12 p-1 rounded-xl bg-muted/60 backdrop-blur border border-border/50">
+          <TabsList className="grid grid-cols-2 max-w-md mb-6 h-12 p-1 rounded-xl bg-muted/60 backdrop-blur border border-border/50">
             <TabsTrigger
               value="recommended"
               className="gap-2 text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-accent transition-all"
             >
               <Trophy className="h-3.5 w-3.5" /> Recommended for you
+            </TabsTrigger>
+            <TabsTrigger
+              value="explore"
+              className="gap-2 text-sm rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-accent transition-all"
+            >
+              <Compass className="h-3.5 w-3.5" /> Explore more
             </TabsTrigger>
           </TabsList>
 

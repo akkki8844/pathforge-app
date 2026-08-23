@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, ReactNode } fr
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { logActivity } from '@/lib/activityLogger';
+import { syncTimezone } from '@/lib/routine/timezone';
 
 interface OnboardingData {
   id: string;
@@ -14,6 +15,10 @@ interface OnboardingData {
   gpa_range: string | null;
   standardized_test_type: string | null;
   standardized_test_score: string | null;
+  /** Board-aware subject/level pairs captured during onboarding — see 20260812140000_onboarding_subjects.sql. Grades aren't collected there, only name/level. Optional: not yet in the generated Supabase types, so the raw select('*') result may omit it on older rows. */
+  subjects?: { name: string; level?: string }[] | null;
+  /** e.g. "IB-MYP" — the specific programme, more precise than the legacy free-text `curriculum`. NULL/undefined on rows written before this column existed. */
+  curriculum_programme?: string | null;
   intended_major: string;
   target_universities: string[];
   application_year: string;
@@ -225,6 +230,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         withTimeout(checkAdminStatus()),
       ]);
       if (isSignIn) consumePendingTeacherSignup(userId);
+      // Deliberately not awaited and not inside the Promise.all above: the
+      // deadline-reminder cron needs this, nothing on screen does, and it must
+      // never be able to delay the auth gate.
+      void syncTimezone(userId);
       if (cancelled) return;
       setRoleLoading(false);
       setLoading(false);

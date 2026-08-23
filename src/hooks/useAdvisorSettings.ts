@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { DEFAULT_ADVISOR_MODEL } from "@/lib/advisorModels";
 
 export type AdvisorSettings = {
   user_id?: string;
@@ -9,7 +10,7 @@ export type AdvisorSettings = {
   traits: string;
   extra_notes: string;
   model: string;
-  reasoning_effort: "none" | "low" | "medium" | "high";
+  reasoning_effort: "none" | "low" | "medium" | "high" | "extra" | "max" | "ultracode";
   temperature: number;
   max_response_tokens: number;
   memory_enabled: boolean;
@@ -25,7 +26,12 @@ const DEFAULTS: AdvisorSettings = {
   occupation: "",
   traits: "",
   extra_notes: "",
-  model: "google/gemini-3-flash-preview",
+  // Gateway id for PFA 5.5 (see src/lib/advisorModels.ts). A GA id on purpose:
+  // the previous default was a `-preview` model, and preview ids get retired
+  // upstream, which left every account on a dead model until they touched the
+  // picker. Legacy stored values are mapped back onto a live tier by
+  // `modelFromGateway`, so nothing breaks for accounts already holding one.
+  model: DEFAULT_ADVISOR_MODEL.gateway,
   reasoning_effort: "none",
   temperature: 0.4,
   max_response_tokens: 1500,

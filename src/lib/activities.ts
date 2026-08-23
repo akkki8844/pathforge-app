@@ -6895,7 +6895,7 @@ export const activities: Activity[] = [
     detailedDescription: "Game Off runs through November each year, hosted by GitHub on itch.io around a one-word theme. Because entries are typically open source, your repository - with commit history, issues, and a README - becomes as much of the portfolio as the game itself. The month-long window means you can attempt more ambitious systems than a weekend jam allows, and community voting produces public rankings.",
     relevantMajors: ["Game Design/Development", "Computer Science", "Software Engineering"],
     whyRelevant: "A public repo with a month of real commit history is unusually strong evidence of sustained independent engineering.",
-    countries: [], learnMoreUrl: "https://itch.io/jam/game-off-2025", applyUrl: null,
+    countries: [], learnMoreUrl: "https://github.blog/tag/game-off/", applyUrl: null,
     priorityFactors: { majorAlignment: 9, collegeImpact: 6, uniqueness: 7 } },
   { id: "publish-game-itch-io", name: "Ship and Publish an Original Game on itch.io", category: "Game Development Project", type: "Project", cost: "Free", difficulty: "Beginner", gradeSuitability: "Best for Grades 9-12",
     description: "Take one game from prototype to a public, playable release page with real players.",
@@ -7309,7 +7309,92 @@ export const activities: Activity[] = [
     relevantMajors: ["Urban Planning", "Architecture", "Civil Engineering", "Business/Finance"],
     whyRelevant: "Combining design, zoning law, and basic development finance shows the full breadth of what planning actually requires.",
     countries: [], learnMoreUrl: "https://www.planning.org/", applyUrl: null,
-    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 8 } }
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 8 } },
+
+  // ── Additions, August 2026 ────────────────────────────────────────────
+  // Gaps found by cross-checking the activity list against the per-major
+  // Journey templates in src/data/journey/*. Each is a real, currently
+  // operating programme with an official URL; nothing here is a placeholder.
+
+  { id: "educators-rising", name: "Educators Rising", category: "Education Leadership", type: "Leadership", cost: "Paid", difficulty: "Beginner", gradeSuitability: "Best for Grades 9-12",
+    description: "The national organisation for students preparing to become teachers, with competitions, credentials and a chapter structure.",
+    detailedDescription: "Educators Rising runs local chapters, a national conference, and a set of competitive events covering lesson planning, children's literature, ethical dilemmas and impromptu teaching. It also offers micro-credentials in areas such as learner engagement and formative assessment. Because it is structured around actually planning and delivering instruction rather than around general volunteering, it produces evidence a teacher-education admissions reader can evaluate: a lesson you designed, taught and revised. Starting a chapter where none exists is itself a substantial leadership item.",
+    relevantMajors: ["Education", "Early Childhood Education", "Special Education", "Music Education"],
+    whyRelevant: "Education programmes want candidates who have already stood in front of a class and adjusted a lesson that was not working — this is the structured route to that evidence.",
+    countries: ["United States"], learnMoreUrl: "https://educatorsrising.org/", applyUrl: "https://educatorsrising.org/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 7 } },
+
+  { id: "us-senate-youth-program", name: "United States Senate Youth Program (USSYP)", category: "Government & Civics", type: "Competition", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 11-12",
+    description: "Two delegates per state spend a week in Washington and receive a $10,000 undergraduate scholarship, fully funded by the Hearst Foundations.",
+    detailedDescription: "USSYP selects 104 delegates nationally — two from each state, DC and the Department of Defense Education Activity. Applicants must currently hold an elected student office (student government, class office, or an elected position in a civic organisation). Selection runs through each state's department of education, and deadlines differ by state, often falling in early autumn. Delegates attend Washington Week, meeting senators, cabinet officials and often a Supreme Court justice, and every delegate receives a $10,000 scholarship. It is free to apply and free to attend, which is precisely why it carries weight.",
+    relevantMajors: ["Political Science", "Public Policy", "International Relations", "Law/Pre-Law", "History"],
+    whyRelevant: "One of very few genuinely national, merit-selected civic honours available to school students, and it costs nothing — unlike the fee-paying Washington programmes admissions readers discount.",
+    countries: ["United States"], learnMoreUrl: "https://ussenateyouth.org/", applyUrl: "https://ussenateyouth.org/how-to-apply/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 10, uniqueness: 9 } },
+
+  { id: "cern-beamline-for-schools", name: "CERN Beamline for Schools", category: "Physics Research", type: "Competition", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 10-12",
+    description: "Teams write a real particle-physics beam-time proposal; winners run their experiment at CERN or DESY.",
+    detailedDescription: "Teams of at least five students plus a coach submit a written proposal and a short video describing an experiment they would run on a fully equipped beamline. Winning teams travel to CERN (or the DESY facility) and actually run it. The value does not depend on winning: writing a proposal with a hypothesis, an apparatus design, an expected signal and a background estimate is exactly the document a working experimental physicist produces, and almost no school student has ever written one. Past winning proposals are published, so the standard is visible before you start.",
+    relevantMajors: ["Physics", "Astronomy/Astrophysics", "Engineering", "Materials Science"],
+    whyRelevant: "The proposal itself is a serious technical writing sample, and it demonstrates you understand experimental constraints rather than just physics content.",
+    countries: [], learnMoreUrl: "https://beamlineforschools.cern/", applyUrl: "https://beamlineforschools.cern/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 9, uniqueness: 10 } },
+
+  { id: "jei-publication", name: "Publish in the Journal of Emerging Investigators", category: "Research Publication", type: "Research", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 10-12",
+    description: "A free, genuinely peer-reviewed open-access journal for research conducted by middle and high school students.",
+    detailedDescription: "JEI was founded by Harvard graduate students and puts student manuscripts through real peer review by working scientists. Reviewers send back substantive methodological criticism and most submissions require revision, which is the point: surviving review is the credential, not the byline. There is no submission fee. Papers need a faculty or teacher advisor and must report original research with proper controls and statistics. A published JEI paper gives you a permanent, citable record and a DOI, which is far stronger than an unreviewed preprint or a science-fair abstract.",
+    relevantMajors: ["Biology", "Chemistry", "Physics", "Psychology", "Environmental Science", "Neuroscience", "Public Health", "Data Science"],
+    whyRelevant: "Peer review is the filter that separates real research from a school project, and this is the most accessible legitimate route to clearing it before university.",
+    countries: [], learnMoreUrl: "https://emerginginvestigators.org/", applyUrl: "https://emerginginvestigators.org/submit",
+    priorityFactors: { majorAlignment: 9, collegeImpact: 9, uniqueness: 9 } },
+
+  { id: "nspa-cspa-journalism-awards", name: "NSPA & Columbia Scholastic Press Association Awards", category: "Journalism", type: "Competition", cost: "Paid", difficulty: "Intermediate", gradeSuitability: "Best for Grades 9-12",
+    description: "The two established national student press associations, judging individual work and whole publications.",
+    detailedDescription: "NSPA runs the Pacemaker awards and individual Story of the Year categories; CSPA runs the Gold Circle Awards and Crown Awards. Both are judged by working journalists and journalism educators against published criteria, across news writing, investigative reporting, design, photojournalism, editorials and multimedia. Entry categories are narrow and strictly enforced, so reading the category definitions before submitting matters as much as the work itself. Recognition from either is the field's recognised external validation for school-level journalism.",
+    relevantMajors: ["Journalism", "Communications", "Media Studies", "English/Creative Writing", "Digital Media"],
+    whyRelevant: "Journalism admissions read clips and credits; a national award from an established press association is the clearest external signal available at school level.",
+    countries: ["United States"], learnMoreUrl: "https://studentpress.org/nspa/", applyUrl: "https://cspa.columbia.edu/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 7 } },
+
+  { id: "ebird-structured-survey", name: "Run a Structured eBird Survey Protocol", category: "Field Research", type: "Research", cost: "Free", difficulty: "Intermediate", gradeSuitability: "Best for Grades 9-12",
+    description: "Contribute scientifically usable bird survey data to the Cornell Lab of Ornithology's global dataset.",
+    detailedDescription: "eBird data underpins hundreds of peer-reviewed papers, but only if it is collected properly. Running a fixed-route, fixed-effort survey — same transect, same duration, same time of day, complete checklists — produces data that is genuinely usable for occupancy and abundance modelling, unlike casual incidental records. Sustain it across a full season or, better, a full year, then analyse your own transect for phenology or abundance trends. This is one of the few ways a school student can contribute to a professional dataset and then do original analysis on their own contribution.",
+    relevantMajors: ["Environmental Science", "Ecology", "Biology", "Conservation Biology", "Data Science", "Forestry"],
+    whyRelevant: "Longitudinal field data collected to protocol is rare, cheap, and gives you both a scientific contribution and your own analysable dataset.",
+    countries: [], learnMoreUrl: "https://ebird.org/", applyUrl: "https://ebird.org/about",
+    priorityFactors: { majorAlignment: 9, collegeImpact: 7, uniqueness: 9 } },
+
+  { id: "osf-preregistered-study", name: "Pre-register and Run a Study on OSF", category: "Behavioral Research", type: "Research", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 10-12",
+    description: "Register your hypothesis and analysis plan publicly before collecting data — the standard psychology now expects.",
+    detailedDescription: "The Open Science Framework lets anyone timestamp a hypothesis and analysis plan before data collection, which is the central methodological reform to come out of psychology's replication crisis. Doing this as a school student signals that you understand what went wrong in the field and how it is being fixed. Run the study with proper informed consent and debriefing, have the ethics reviewed by a teacher or academic, and report the result even if it is null — a pre-registered null is far more credible than an unregistered significant finding.",
+    relevantMajors: ["Psychology", "Cognitive Science", "Neuroscience", "Sociology", "Public Health", "Statistics"],
+    whyRelevant: "Almost no school applicant has pre-registered anything; doing so immediately distinguishes you from those whose research experience is reading about famous studies.",
+    countries: [], learnMoreUrl: "https://osf.io/", applyUrl: "https://osf.io/registries",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 10 } },
+
+  { id: "faa-part107-drone-certificate", name: "FAA Part 107 Remote Pilot Certificate", category: "Aerospace & Aviation", type: "Project", cost: "Paid", difficulty: "Intermediate", gradeSuitability: "Best for Grades 11-12",
+    description: "A real FAA-issued pilot certificate, available from age 16, plus a survey or mapping mission flown under it.",
+    detailedDescription: "Part 107 is a genuine federal aviation credential, not a course certificate. The knowledge test covers airspace classification, sectional charts, weather, loading and performance, and regulations — material that maps directly onto an aerospace or geospatial degree. Eligibility starts at 16. Once certified, fly something real: an orthomosaic of a site, a structural inspection, or a change-detection survey. The certificate plus a delivered mapping product is a much stronger artefact than either alone. Outside the US, check your national regulator's equivalent remote pilot certificate.",
+    relevantMajors: ["Aerospace Engineering", "Geography/GIS", "Environmental Science", "Civil Engineering", "Urban Planning"],
+    whyRelevant: "A government-issued technical licence held at 16 or 17 is unusual, verifiable, and directly relevant to aerospace and geospatial study.",
+    countries: ["United States"], learnMoreUrl: "https://www.faa.gov/uas", applyUrl: "https://www.faa.gov/uas/commercial_operators",
+    priorityFactors: { majorAlignment: 9, collegeImpact: 7, uniqueness: 9 } },
+
+  { id: "cern-open-data-analysis", name: "Analyse Real Particle Physics Data (CERN Open Data)", category: "Physics Research", type: "Research", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 10-12",
+    description: "Work with genuine LHC collision data, published openly with the tools and documentation to use it.",
+    detailedDescription: "CERN publishes real, research-grade collision datasets from CMS and other experiments, together with virtual machines, example analyses and educational datasets. You can rediscover known particles from actual detector data, reproduce a published measurement, and then push one step beyond it. The right approach is to reproduce a known result first — that validates your method — and only then attempt your own question. Publishing the notebook makes the work checkable, which is what distinguishes physics analysis from a simulation project.",
+    relevantMajors: ["Physics", "Astronomy/Astrophysics", "Data Science", "Computer Science", "Mathematics"],
+    whyRelevant: "Analysing real detector data with proper statistical treatment is genuine physics practice, and it is free and fully accessible from a laptop.",
+    countries: [], learnMoreUrl: "https://opendata.cern.ch/", applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 10 } },
+
+  { id: "local-newspaper-freelance-byline", name: "Freelance a Story for a Professional Outlet", category: "Journalism", type: "Project", cost: "Free", difficulty: "Advanced", gradeSuitability: "Best for Grades 10-12",
+    description: "Pitch and publish in a real newspaper or magazine, edited by a professional desk.",
+    detailedDescription: "A byline in a professional outlet is categorically different from student publication, because a paid editor decided the story was worth space. Local and regional papers are the realistic entry point, and your advantage is access: you can report on things a staff reporter cannot easily reach. Pitch in three short paragraphs — the story, why now, why you. Deliver on deadline, accept the edit without arguing, and file clean copy. One professional byline plus the editorial relationship that follows is worth more than a year of school newspaper articles.",
+    relevantMajors: ["Journalism", "Communications", "English/Creative Writing", "Media Studies", "Political Science"],
+    whyRelevant: "Journalism programmes read clips, and a professionally edited byline is the clearest evidence that your work meets a publishable standard.",
+    countries: [], learnMoreUrl: "https://www.poynter.org/", applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 8 } }
 ];
 
 // Get activities by major

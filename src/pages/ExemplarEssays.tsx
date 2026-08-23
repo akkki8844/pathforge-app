@@ -225,7 +225,7 @@ export default function ExemplarEssays() {
   return (
     <div className="py-8 sm:py-12">
       <Seo
-        title="Exemplar College Essays That Worked | Pathforge"
+        title="Exemplar Essays — Pathforge"
         description="Real college application essays officially published by admissions offices — with the committee's own notes on why each one worked."
         path="/exemplar-essays"
       />

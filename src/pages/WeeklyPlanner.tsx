@@ -482,7 +482,7 @@ export default function WeeklyPlanner() {
 
   return (
     <div className="section-container py-8 sm:py-10 space-y-6">
-      <Seo title='Weekly planner — track study & application time | Pathforge' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
+      <Seo title='Weekly Planner — Pathforge' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}
@@ -642,19 +642,22 @@ export default function WeeklyPlanner() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.15, duration: 0.4 }}
-        className="grid lg:grid-cols-5 gap-6"
+        className="grid gap-6 md:grid-cols-5"
       >
         {/* Monthly Calendar */}
-        <Card className="card-elevated lg:col-span-3">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)} className="h-8 w-8">
+        <Card className="card-elevated md:col-span-3">
+          {/* flex-wrap + a fluid month heading: the fixed 160px heading between
+              two nav buttons and a Today button came to ~360px, past a 320px
+              viewport. */}
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 pb-2">
+            <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+              <Button variant="ghost" size="icon" onClick={() => navigateMonth(-1)} className="h-10 w-10 shrink-0 sm:h-8 sm:w-8">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <h2 className="text-lg font-semibold min-w-[160px] text-center">
+              <h2 className="min-w-0 flex-1 truncate text-center text-lg font-semibold sm:min-w-[160px] sm:flex-none">
                 {MONTH_NAMES[viewMonth]} {viewYear}
               </h2>
-              <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)} className="h-8 w-8">
+              <Button variant="ghost" size="icon" onClick={() => navigateMonth(1)} className="h-10 w-10 shrink-0 sm:h-8 sm:w-8">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -719,7 +722,7 @@ export default function WeeklyPlanner() {
                           />
                         ))}
                         {actCount > 3 && (
-                          <span className={`text-[9px] leading-none ml-0.5 ${isSelected ? "text-primary-foreground/80" : "text-primary"}`}>
+                          <span className={`text-[11px] leading-none ml-0.5 ${isSelected ? "text-primary-foreground/80" : "text-primary"}`}>
                             +{actCount - 3}
                           </span>
                         )}
@@ -733,7 +736,7 @@ export default function WeeklyPlanner() {
         </Card>
 
         {/* Day Detail Panel */}
-        <Card className="card-elevated lg:col-span-2">
+        <Card className="card-elevated md:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
               <CardTitle className="text-lg">{getDayName(selectedDayIndex)}</CardTitle>
@@ -811,11 +814,13 @@ export default function WeeklyPlanner() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex gap-0.5">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditModal(activity)}>
+                      {/* Edit sits next to a destructive delete, so these get
+                          real targets and real space between them. */}
+                      <div className="flex gap-1.5 sm:gap-0.5">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 sm:h-8 sm:w-8" onClick={() => openEditModal(activity)}>
                           <Edit3 className="h-3.5 w-3.5" />
                         </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => handleDelete(activity.id)}>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 text-destructive hover:text-destructive sm:h-8 sm:w-8" onClick={() => handleDelete(activity.id)}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
@@ -913,8 +918,10 @@ export default function WeeklyPlanner() {
           <CardHeader>
             <CardTitle className="text-lg">Week at a Glance</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-7 gap-2">
+          {/* Seven cells with "N tasks" and "Nh" in each cannot fit 320px —
+              each cell got ~29px. Scroll the strip instead of crushing it. */}
+          <CardContent className="overflow-x-auto">
+            <div className="grid min-w-[420px] grid-cols-7 gap-2">
               {[0, 1, 2, 3, 4, 5, 6].map((dayIdx) => {
                 const acts = getActivitiesForDay(dayIdx);
                 const completed = acts.filter((a) => a.completed).length;
@@ -957,7 +964,7 @@ export default function WeeklyPlanner() {
                 initial="hidden"
                 animate="visible"
                 exit="exit"
-                className="w-full max-w-lg max-h-[90vh] overflow-y-auto bg-background border border-border rounded-2xl shadow-2xl p-6 pointer-events-auto"
+                className="w-full max-w-lg max-h-[90dvh] overflow-y-auto bg-background border border-border rounded-2xl shadow-2xl p-6 pointer-events-auto"
                 onClick={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between mb-5">

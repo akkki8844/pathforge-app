@@ -25,6 +25,7 @@ import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 import { AgentEdit } from "@/components/AgentEdit";
 import { EASE_OUT_EXPO } from "@/lib/motion";
+import { functionErrorMessage } from "@/lib/functionError";
 import { Eyebrow, Panel, Reveal } from "@/components/dashboard/primitives";
 
 /**
@@ -120,9 +121,7 @@ export default function ApplicationBuilder() {
         body: { section: section.id, input, language: localStorage.getItem("pf_language") || "en" },
       });
       if (error) {
-        if (error.message?.includes("429")) toast.error("Rate limited — try again in a moment.");
-        else if (error.message?.includes("402")) toast.error("Daily credit limit reached.");
-        else toast.error("Could not refine. Try again.");
+        toast.error(await functionErrorMessage(error, "Could not refine. Try again."));
         return;
       }
       const refined = (data as { refined?: string; error?: string } | null)?.refined;
@@ -153,7 +152,7 @@ export default function ApplicationBuilder() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Application builder — write standout statements | Pathforge' description='Turn your achievements into professional Common App and supplemental statements with AI guidance.' path='/application-builder' />
+      <Seo title='Application Builder — Pathforge' description='Turn your achievements into professional Common App and supplemental statements with AI guidance.' path='/application-builder' />
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}
@@ -204,7 +203,7 @@ export default function ApplicationBuilder() {
 
           <div className="grid gap-4 lg:grid-cols-3">
             <aside className="lg:col-span-1">
-              <div className="card-motion sticky top-24 max-h-[calc(100vh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4">
+              <div className="card-motion sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4">
                 <Eyebrow>Sections</Eyebrow>
                 <p className="mb-4 mt-2 text-[11px] leading-relaxed text-muted-foreground">
                   Pick the platform you're applying through. Each section auto-saves.

@@ -26,6 +26,7 @@ import {
   ClockIcon, PenIcon, CalendarIcon as CalendarFlatIcon, ChatIcon, TargetIcon,
   type FlatIconProps,
 } from "@/components/icons/FlatIcons";
+import { CertificateIcon } from "@/components/icons/FlatSvgIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveWebSearch } from "@/components/LiveWebSearch";
@@ -40,9 +41,9 @@ const TIP_ICONS: Record<ScholarshipTipIcon, (p: FlatIconProps) => JSX.Element> =
 };
 
 // --- Provider Logo with multi-source fallback chain ---
-// Tries each candidate URL in turn (Clearbit → Google favicon → DuckDuckGo) and
-// only renders the monogram tile after every source fails. This is robust
-// against Clearbit not having a given org, blocked CORS, or 404s.
+// Tries each candidate URL in turn (unavatar → Google favicon → DuckDuckGo)
+// and only renders the monogram tile after every source fails. This is
+// robust against any one source not having a given org, blocked CORS, or 404s.
 function ProviderLogo({ scholarship, size = 48 }: { scholarship: Scholarship; size?: number }) {
   const candidates =
     scholarship.logoCandidates && scholarship.logoCandidates.length > 0
@@ -185,7 +186,7 @@ function RegionTiles({ scholarshipsByCountry, onRegionClick }: {
 function ComparisonView({ items, onClose }: { items: Scholarship[]; onClose: () => void }) {
   return (
     <Dialog open={true} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className="max-w-[81rem] max-h-[88dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Scale className="h-5 w-5 text-accent" /> Compare Scholarships</DialogTitle>
         </DialogHeader>
@@ -344,12 +345,12 @@ export default function Scholarships() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Scholarships discovery | Pathforge' description='Browse a curated, regional database of scholarships matched to your major, region, and grade.' path='/scholarships' />
+      <Seo title='Scholarships — Pathforge' description='Browse a curated, regional database of scholarships matched to your major, region, and grade.' path='/scholarships' />
       <div className="section-container max-w-7xl">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <GraduationCap className="h-8 w-8 text-accent" />
+            <CertificateIcon className="h-9 w-9" />
             Scholarships
           </h1>
           <p className="mt-2 text-muted-foreground">Discover opportunities tailored to your profile — with match scores, deadlines, and application tracking</p>
@@ -636,9 +637,14 @@ export default function Scholarships() {
                           <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
                           <span className={status === "closing-soon" ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}>
                             {new Date(s.deadline).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
+                            {s.deadlineNote && <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">(estimated)</span>}
                             {status === "closing-soon" && ` (${days}d left)`}
                           </span>
                         </div>
+                        {/* An estimated or gated deadline must never read as authoritative. */}
+                        {s.deadlineNote && (
+                          <p className="text-xs text-muted-foreground pl-6 leading-snug">{s.deadlineNote}</p>
+                        )}
                       </div>
                       {/* Match progress bar */}
                       {matchScore !== null && (
@@ -757,7 +763,7 @@ export default function Scholarships() {
               status === "closed" ? "Closed" : status === "closing-soon" ? `${days} days left` : `${days} days left · Open`;
 
             return (
-              <DialogContent className="max-w-4xl max-h-[92vh] overflow-y-auto p-0">
+              <DialogContent className="max-w-[81rem] max-h-[92dvh] overflow-y-auto p-0">
                 {/* Header */}
                 <DialogHeader className="px-6 pt-6 pb-4">
                   <div className="flex items-start gap-4">
@@ -831,6 +837,12 @@ export default function Scholarships() {
                       </h4>
                       <ul className="space-y-1.5 text-sm text-foreground/90">
                         <li className="flex gap-2"><span className="text-muted-foreground shrink-0">Grades</span><span className="ml-auto text-right">{s.eligibility.grades.join(", ")}</span></li>
+                        {s.studyLevel === "postgraduate" && (
+                          <li className="flex gap-2 text-amber-700 dark:text-amber-500">
+                            <span className="shrink-0">Study level</span>
+                            <span className="ml-auto text-right font-medium">Postgraduate — requires a completed bachelor&apos;s degree</span>
+                          </li>
+                        )}
                         {s.eligibility.nationality && (
                           <li className="flex gap-2"><span className="text-muted-foreground shrink-0">Nationality</span><span className="ml-auto text-right">{s.eligibility.nationality}</span></li>
                         )}

@@ -7,7 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import pathforgeLogo from '@/assets/pathforge-logo.png';
+import { PasswordStrength } from '@/components/ui/password-strength';
+import { PATHFORGE_PASSWORD_RULES } from '@/lib/passwordRules';
+import pathforgeLogo from '@/assets/pathforge-logo.webp';
 
 type ResetView = 'verifying' | 'new-password' | 'invalid' | 'success';
 
@@ -114,7 +116,7 @@ export default function ResetPassword() {
       } else {
         setView('success');
         // Send the user straight into their account after a brief confirmation.
-        window.setTimeout(() => navigate('/'), 1200);
+        window.setTimeout(() => navigate('/dashboard'), 1200);
       }
     } finally {
       setLoading(false);
@@ -122,7 +124,7 @@ export default function ResetPassword() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -208,6 +210,16 @@ export default function ResetPassword() {
                 {errors.password && (
                   <p className="text-sm text-destructive">{errors.password}</p>
                 )}
+                {/* Same meter and the same rules as sign-up. Someone resetting
+                    a password is choosing a new one under exactly the same
+                    conditions, and being graded differently on the two screens
+                    is worse than not being graded at all. */}
+                <PasswordStrength
+                  value={newPassword}
+                  rules={PATHFORGE_PASSWORD_RULES}
+                  showRules={newPassword.length > 0}
+                  className="pt-1"
+                />
               </div>
 
               <div className="space-y-2">

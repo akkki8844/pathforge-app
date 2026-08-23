@@ -31,7 +31,7 @@ import { notifyCreditConsumed } from "@/hooks/useCredits";
 import { useAdmissionsData, type AdmissionsFormData, defaultFormData } from "@/hooks/useAdmissionsData";
 import { useOutcomesData } from "@/hooks/useOutcomesData";
 import {
-  GPA_SYSTEMS, defaultGpaSystem, psatVersionForGrade, getCurriculumConfig,
+  GPA_SYSTEMS, defaultGpaSystem, psatVersionForGrade, getCurriculumConfig, CURRICULUM_ORDER,
   type GpaSystem,
 } from "@/lib/curriculumSubjects";
 import { SubjectGradeList } from "@/components/admissions/SubjectGradeList";
@@ -60,6 +60,42 @@ const extracurricularLevelOptions = [
   { value: "local", label: "Local/School Level" },
   { value: "beginner", label: "Beginner/Limited" },
 ];
+
+/**
+ * Where a probability sits *for the tier it was computed against*.
+ *
+ * The page previously called anything under 15% a reach school and coloured
+ * bars at flat 30/15 cuts, which was wrong in both directions: 15% at a
+ * university that admits 4% of applicants is an unusually strong position,
+ * and 15% at a regional university that admits 60% is a crisis. The same
+ * number cannot mean the same thing at both.
+ *
+ * The cuts below are set against the acceptance-rate bands this product's
+ * model is calibrated to and states in its own prompt — roughly 3–7% for the
+ * most selective globals, 10–40% national, 30–75% regional. `likely` sits
+ * comfortably above the published rate for the tier, `competitive` sits around
+ * it, and everything under is a reach.
+ */
+const TIER_STANDING: Record<string, { likely: number; competitive: number }> = {
+  global: { likely: 15, competitive: 7 },
+  national: { likely: 35, competitive: 18 },
+  regional: { likely: 55, competitive: 32 },
+};
+
+type Standing = 'likely' | 'competitive' | 'reach';
+
+function standingFor(probability: number, tier: string): Standing {
+  const band = TIER_STANDING[tier] ?? TIER_STANDING.national;
+  if (probability >= band.likely) return 'likely';
+  if (probability >= band.competitive) return 'competitive';
+  return 'reach';
+}
+
+const STANDING_LABEL: Record<Standing, string> = {
+  likely: 'Likely',
+  competitive: 'Competitive',
+  reach: 'Reach',
+};
 
 const STEPS = [
   { id: 1, title: "Academic Information", icon: BookOpen, desc: "Curriculum, GPA, subjects & rigor" },
@@ -103,7 +139,10 @@ export default function AdmissionsProbability() {
   const gpaConfig = GPA_SYSTEMS.find((s) => s.value === formData.gpaSystem)!;
   const psat = useMemo(() => psatVersionForGrade(onboardingData?.grade), [onboardingData?.grade]);
 
-  // Pre-fill from onboarding
+  // Pre-fill from onboarding. Everything the student already told onboarding
+  // is filled in here; anything onboarding never asked for (grades, test
+  // scores, class rank, extracurricular level) is left blank for them to
+  // enter — pre-filling those would mean inventing data, not reusing it.
   useEffect(() => {
     if (!onboardingData) return;
     let gpaSystem: GpaSystem = defaultGpaSystem(onboardingData.curriculum);
@@ -113,11 +152,28 @@ export default function AdmissionsProbability() {
       if (["gpa-4", "gpa-10", "percentage"].includes(sys)) gpaSystem = sys as GpaSystem;
       if (val) gpaValue = val;
     }
+    // curriculum_programme (e.g. "IB-MYP") is the precise programme key onboarding's
+    // subject-selection step wrote; the legacy `curriculum` column is only a free-text
+    // board name ("IB") and is kept solely as the fallback for rows written before it existed.
+    const programme = onboardingData.curriculum_programme;
+    const curriculum =
+      programme && (CURRICULUM_ORDER as string[]).includes(programme)
+        ? programme
+        : onboardingData.curriculum || "";
     setFormData((prev) => ({
       ...prev,
-      curriculum: onboardingData.curriculum || prev.curriculum,
+      curriculum: curriculum || prev.curriculum,
       gpaSystem,
       gpaValue: prev.gpaValue || gpaValue,
+      // Names/levels are known from onboarding; grade is not — leave it blank for the student to fill.
+      subjects: prev.subjects.length > 0
+        ? prev.subjects
+        : (onboardingData.subjects || []).map((s) => ({
+            id: crypto.randomUUID(),
+            subject: s.name,
+            level: s.level,
+            grade: "",
+          })),
       psat: { ...prev.psat, outOf: psat.max },
     }));
   }, [onboardingData, psat.max]);
@@ -271,7 +327,10 @@ export default function AdmissionsProbability() {
     tier: r.tier,
   }));
 
-  const getBarColor = (p: number) => p >= 30 ? 'hsl(var(--chart-2))' : p >= 15 ? 'hsl(var(--chart-4))' : 'hsl(var(--chart-1))';
+  const getBarColor = (p: number, tier: string) => {
+    const s = standingFor(p, tier);
+    return s === 'likely' ? 'hsl(var(--chart-2))' : s === 'competitive' ? 'hsl(var(--chart-4))' : 'hsl(var(--chart-1))';
+  };
   const getTierBadgeVariant = (tier: string): "default" | "secondary" | "destructive" | "outline" =>
     tier === 'global' ? 'destructive' : tier === 'national' ? 'default' : tier === 'regional' ? 'secondary' : 'outline';
   const getPriorityColor = (p: 'high' | 'medium' | 'low') =>
@@ -297,7 +356,7 @@ export default function AdmissionsProbability() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Admissions probability calculator | Pathforge' description='Get a calibrated AI estimate of your chances at top universities, grounded in your real profile.' path='/admissions-probability' />
+      <Seo title='Admissions Probability — Pathforge' description='Get a calibrated AI estimate of your chances at top universities, grounded in your real profile.' path='/admissions-probability' />
       <div className="section-container max-w-6xl">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
@@ -323,7 +382,7 @@ export default function AdmissionsProbability() {
                 </SheetTrigger>
                 <SheetContent>
                   <SheetHeader><SheetTitle>Analysis History</SheetTitle></SheetHeader>
-                  <div className="mt-4 space-y-3 overflow-y-auto max-h-[calc(100vh-120px)]">
+                  <div className="mt-4 space-y-3 overflow-y-auto max-h-[calc(100dvh-120px)]">
                     {history.length === 0 ? (
                       <p className="text-sm text-muted-foreground text-center py-8">
                         No saved analyses yet. Run an analysis to save it automatically.
@@ -336,10 +395,10 @@ export default function AdmissionsProbability() {
                               {renamingId === entry.id ? (
                                 <div className="flex items-center gap-1 flex-1 mr-2">
                                   <Input value={renameValue} onChange={(e) => setRenameValue(e.target.value)} className="h-7 text-sm" autoFocus />
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { renameAnalysis(entry.id, renameValue); setRenamingId(null); }}>
+                                  <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-8 sm:w-8" onClick={() => { renameAnalysis(entry.id, renameValue); setRenamingId(null); }} aria-label="Save name">
                                     <Check className="h-3 w-3" />
                                   </Button>
-                                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setRenamingId(null)}>
+                                  <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-8 sm:w-8" onClick={() => setRenamingId(null)} aria-label="Cancel rename">
                                     <XIcon className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -347,10 +406,10 @@ export default function AdmissionsProbability() {
                                 <span className="font-medium text-sm text-foreground">{entry.name}</span>
                               )}
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="ghost" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); setRenamingId(entry.id); setRenameValue(entry.name); }}>
+                                <Button size="icon" variant="ghost" className="h-10 w-10 sm:h-8 sm:w-8" onClick={(e) => { e.stopPropagation(); setRenamingId(entry.id); setRenameValue(entry.name); }} aria-label="Rename analysis">
                                   <Pencil className="h-3 w-3" />
                                 </Button>
-                                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); deleteAnalysis(entry.id); }}>
+                                <Button size="icon" variant="ghost" className="h-10 w-10 text-destructive sm:h-8 sm:w-8" onClick={(e) => { e.stopPropagation(); deleteAnalysis(entry.id); }} aria-label="Delete analysis">
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -489,7 +548,10 @@ export default function AdmissionsProbability() {
                         <Select value={formData.curriculum} onValueChange={(v) => updateField("curriculum", v)}>
                           <SelectTrigger><SelectValue placeholder="Select curriculum" /></SelectTrigger>
                           <SelectContent>
-                            {(["IB", "AP", "A-Levels", "CBSE", "ICSE", "IGCSE", "US", "Other"]).map((c) => (
+                            {/* Driven off the shared order so this page and
+                                onboarding always offer the same programmes and
+                                write the same keys. */}
+                            {CURRICULUM_ORDER.map((c) => (
                               <SelectItem key={c} value={c}>{getCurriculumConfig(c).label}</SelectItem>
                             ))}
                           </SelectContent>
@@ -497,9 +559,12 @@ export default function AdmissionsProbability() {
                       </div>
                       <div className="space-y-2">
                         <Label>GPA / Percentage *</Label>
-                        <div className="grid grid-cols-[1fr_140px] gap-2">
+                        {/* Stacked until there is room: the fixed 140px value
+                            field left the system select ~92px, narrower than
+                            its own option text. */}
+                        <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px]">
                           <Select value={formData.gpaSystem} onValueChange={(v) => { updateField("gpaSystem", v as GpaSystem); updateField("gpaValue", ""); }}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="min-w-0"><SelectValue /></SelectTrigger>
                             <SelectContent>
                               {GPA_SYSTEMS.map((s) => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
                             </SelectContent>
@@ -520,7 +585,7 @@ export default function AdmissionsProbability() {
                         </div>
                         <p className="text-xs text-muted-foreground">
                           Scale: {gpaConfig.min}–{gpaConfig.max}
-                          {curriculumConfig.key === "IB" && " · IB diploma is graded 0–45 (use percentage equivalent)"}
+                          {curriculumConfig.key.startsWith("IB-") && " · IB diploma is graded 0–45 (use percentage equivalent)"}
                         </p>
                       </div>
                     </div>
@@ -636,8 +701,13 @@ export default function AdmissionsProbability() {
                           </p>
                           {verifiedProofs.totalApproved > 0 ? (
                             <>
+                              {/* Was stated as an exact "2× weighting, up to +6
+                                  percentage points". Those figures are prompt
+                                  guidance to a language model, not arithmetic
+                                  the app performs, so they cannot be promised
+                                  to the student as a number. */}
                               <p className="text-xs text-muted-foreground mb-2">
-                                Verified achievements are weighted 2× by the AI. Up to +6 percentage points credibility boost when 5+ are approved.
+                                Verified achievements carry materially more weight than self-reported ones, and a profile with none is discounted for credibility.
                               </p>
                               <div className="flex flex-wrap gap-1.5">
                                 {Object.entries(verifiedProofs.byCategory).map(([k, v]) => (
@@ -791,15 +861,18 @@ export default function AdmissionsProbability() {
               <motion.div variants={fadeUp}><Card><CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-muted-foreground">Average Chance</p>
+                    {/* Was "Average Chance" — the mean of a 4% global and a 70%
+                        regional is a number with no referent. A count of how
+                        many schools you are competitive at is the question that
+                        card was standing in for. */}
+                    <p className="text-sm text-muted-foreground">Competitive or better</p>
                     <p className="text-2xl font-bold text-foreground tabular-nums">
                       <AnimatedCounter
-                        target={Math.round(results.reduce((s, r) => s + r.probability, 0) / results.length)}
-                        suffix="%"
+                        target={results.filter(r => standingFor(r.probability, r.tier) !== 'reach').length}
                         duration={1.2}
                       />
                     </p>
-                    <p className="text-xs text-muted-foreground">Across {results.length} universities</p>
+                    <p className="text-xs text-muted-foreground">Of {results.length} universities</p>
                   </div>
                   <Target className="h-8 w-8 text-accent" />
                 </div>
@@ -809,9 +882,13 @@ export default function AdmissionsProbability() {
                   <div>
                     <p className="text-sm text-muted-foreground">Reach Schools</p>
                     <p className="text-2xl font-bold text-foreground tabular-nums">
-                      <AnimatedCounter target={results.filter(r => r.probability < 15).length} duration={1} />
+                      <AnimatedCounter
+                        target={results.filter(r => standingFor(r.probability, r.tier) === 'reach').length}
+                        duration={1}
+                      />
                     </p>
-                    <p className="text-xs text-muted-foreground">Under 15% probability</p>
+                    {/* Counted against each school's own tier, not a flat 15%. */}
+                    <p className="text-xs text-muted-foreground">Below this tier's competitive band</p>
                   </div>
                   <TrendingDown className="h-8 w-8 text-destructive" />
                 </div>
@@ -821,8 +898,11 @@ export default function AdmissionsProbability() {
             <motion.div variants={fadeUp} initial="hidden" animate="visible">
               <Card className="mb-8">
                 <CardHeader><CardTitle>Probability Comparison</CardTitle></CardHeader>
-                <CardContent>
-                  <div className="h-[280px]">
+                {/* interval={0} forces every college label to render, so at
+                    320px they overlapped into an unreadable smear with no way
+                    to scroll. Give the chart a floor and let the card scroll. */}
+                <CardContent className="overflow-x-auto">
+                  <div className="h-[280px] min-w-[520px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData} margin={{ top: 10, right: 10, bottom: 50, left: 0 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -834,11 +914,24 @@ export default function AdmissionsProbability() {
                           contentStyle={{ backgroundColor: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
                         />
                         <Bar dataKey="probability" radius={[6, 6, 0, 0]}>
-                          {chartData.map((d, i) => <Cell key={i} fill={getBarColor(d.probability)} />)}
+                          {chartData.map((d, i) => <Cell key={i} fill={getBarColor(d.probability, d.tier)} />)}
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
+                  {/*
+                   * Provenance. These figures come from a language model reading
+                   * the profile against published acceptance-rate bands, not
+                   * from a closed-form formula, so two runs of the same profile
+                   * can differ by a point or two. Presenting them without saying
+                   * so implies a precision the method does not have.
+                   */}
+                  <p className="mt-4 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+                    These are model estimates read against each university's published acceptance
+                    band — not a guarantee, and not a percentile among applicants. Re-running the
+                    same profile can move a figure by a point or two. Treat the ordering as the
+                    signal, not the decimal.
+                  </p>
                 </CardContent>
               </Card>
             </motion.div>
@@ -864,6 +957,11 @@ export default function AdmissionsProbability() {
                             <Badge variant={getTierBadgeVariant(r.tier)}>{r.tier}</Badge>
                           </div>
                           <div className="flex items-center gap-3">
+                            {/* The percentage alone is unreadable without the
+                                tier it was computed against. */}
+                            <Badge variant="outline" className="text-[10px] uppercase tracking-wider">
+                              {STANDING_LABEL[standingFor(r.probability, r.tier)]}
+                            </Badge>
                             <span className="text-xl font-bold text-foreground tabular-nums">
                               <AnimatedCounter target={r.probability} suffix="%" duration={1} />
                             </span>
@@ -900,7 +998,9 @@ export default function AdmissionsProbability() {
                                 <div key={j} className="text-sm border-l-2 border-accent/30 pl-3">
                                   <p className="text-foreground font-medium">{imp.action}</p>
                                   <p className="text-xs text-muted-foreground">{imp.impact}</p>
-                                  <span className={`text-[10px] uppercase font-bold ${getPriorityColor(imp.priority)}`}>{imp.priority} priority</span>
+                                  {/* This ranks what to do first — not a
+                                    decorative label, so not 10px. */}
+                                <span className={`text-xs uppercase font-bold ${getPriorityColor(imp.priority)}`}>{imp.priority} priority</span>
                                 </div>
                               ))}
                             </div>

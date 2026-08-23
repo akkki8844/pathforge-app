@@ -13,10 +13,12 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Seo } from "@/components/Seo";
+import { SchoolBuildingIcon } from "@/components/icons/FlatSvgIcons";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { fadeUp, staggerParent, staggerStep, transition, viewportOnce } from "@/lib/motion";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 // Permissive type — the AI report schema evolves; we render defensively.
 type RequirementsReport = any;
@@ -82,6 +84,7 @@ function FitGauge({ score, band }: { score: number; band: string }) {
 
 function ReportView({ report }: { report: RequirementsReport }) {
   const fa = report.fitAssessment || ({} as RequirementsReport["fitAssessment"]);
+  const officialUrl = safeExternalUrl(report.officialUrl);
   return (
     <div className="space-y-6">
       {/* Hero: personalized verdict */}
@@ -97,9 +100,9 @@ function ReportView({ report }: { report: RequirementsReport }) {
           <div>
             <div className="text-xs uppercase tracking-wider text-muted-foreground mb-1">Honest verdict for you</div>
             <p className="text-base text-foreground leading-relaxed">{fa.verdict || report.overview}</p>
-            {report.officialUrl && (
+            {officialUrl && (
               <a
-                href={report.officialUrl}
+                href={officialUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs text-accent hover:underline mt-3"
@@ -662,7 +665,7 @@ export default function Requirements() {
   return (
     <div className="py-8 sm:py-12">
       <Seo
-        title="College Requirements | Pathforge"
+        title="Requirements — Pathforge"
         description="Personalized admissions requirements brief for every university on your target list — tailored to your profile."
         path="/requirements"
       />
@@ -673,7 +676,7 @@ export default function Requirements() {
           className="mb-8 flex items-start gap-3"
         >
           <div className="rounded-xl bg-accent/10 p-2.5">
-            <BookOpen className="h-7 w-7 text-accent" />
+            <SchoolBuildingIcon className="h-7 w-7" />
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground tracking-tight">Requirements</h1>
@@ -706,7 +709,7 @@ export default function Requirements() {
               <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-2 px-2">
                 Your shortlist · {targets.length}
               </div>
-              <ScrollArea className="lg:h-[calc(100vh-320px)] pr-2">
+              <ScrollArea className="lg:h-[calc(100svh-320px)] pr-2">
                 <motion.div
                   variants={staggerParent}
                   custom={0.04}

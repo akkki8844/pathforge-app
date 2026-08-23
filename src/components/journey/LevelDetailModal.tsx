@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { LEVELS, LevelTask, StageDef } from "@/lib/journeyLevels";
 import { useProofSubmissions } from "@/hooks/useProofSubmissions";
 import { InlineProofUpload } from "./InlineProofUpload";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 interface Props {
   open: boolean;
@@ -63,7 +64,7 @@ export function LevelDetailModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden gap-0 [&>button]:hidden">
+      <DialogContent className="max-w-[61rem] p-0 overflow-hidden gap-0 [&>button]:hidden">
         <div className={cn("relative bg-gradient-to-br p-6 text-white", lvl.color)}>
           <DialogClose
             className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
@@ -102,7 +103,7 @@ export function LevelDetailModal({
           </div>
         </div>
 
-        <ScrollArea className="max-h-[55vh]">
+        <ScrollArea className="max-h-[55dvh]">
           <div className="p-6 space-y-5">
             {/* What success looks like — the stage's own outcome */}
             <div className="rounded-xl border bg-muted/30 p-4">
@@ -131,12 +132,14 @@ export function LevelDetailModal({
                     gave students confidently wrong instructions, so the stage's
                     own description and outcome above are the brief. Only the
                     task's link is worth surfacing, and only when it exists. */}
-                {guide?.link && (
+                {/* The link is generated too, so an off-site one has to survive
+                    the scheme check and an in-app one has to be a real path. */}
+                {(safeExternalUrl(guide?.link) ?? (guide?.link?.startsWith("/") ? guide.link : null)) && (
                   <div className="flex items-center gap-2">
                     <Target className="h-4 w-4 text-primary shrink-0" />
                     <a
-                      href={guide.link}
-                      target={guide.link.startsWith("http") ? "_blank" : undefined}
+                      href={safeExternalUrl(guide?.link) ?? guide!.link!}
+                      target={safeExternalUrl(guide?.link) ? "_blank" : undefined}
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
                     >

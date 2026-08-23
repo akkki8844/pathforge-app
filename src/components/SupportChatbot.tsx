@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +20,16 @@ export default function SupportChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hey — I'm your Pathforge AI assistant. I already know your major, target universities, and journey progress — ask me anything specific:\n\n- *\"What should I do this week?\"*\n- *\"Which competition is best for my major?\"*\n- *\"How do I improve my admissions probability?\"*",
+      // The old greeting opened by claiming to know the student's major and
+      // target universities. For a guest that is simply false, and for a signed-in
+      // student it front-loaded a boast instead of saying what this thing is for.
+      // It now leads with what it can actually answer — the product itself.
+      content:
+        "Hey — I'm Pathforge support. I know how the product works, so ask me the practical stuff:\n\n" +
+        "- *\"Why is Level 4 locked?\"*\n" +
+        "- *\"What do credits cost on Pro?\"*\n" +
+        "- *\"How do I get a recommender to upload a letter?\"*\n\n" +
+        "If you're signed in I can also see your profile and journey, so \"what should I do this week?\" works too. If I don't know something, I'll say so rather than guess.",
     },
   ]);
   const [input, setInput] = useState("");
@@ -131,7 +141,7 @@ export default function SupportChatbot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[70vh] sm:h-[520px] max-h-[calc(100vh-6rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[70svh] sm:h-[520px] max-h-[calc(100dvh-6rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-accent/10 border-b border-border">
@@ -178,7 +188,7 @@ export default function SupportChatbot() {
                   >
                     {message.role === "assistant" ? (
                       <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
-                        <ReactMarkdown>{message.content}</ReactMarkdown>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{message.content}</p>

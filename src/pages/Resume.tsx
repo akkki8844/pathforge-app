@@ -24,6 +24,7 @@ import { planTierFromString, tierSatisfies } from "@/lib/plans";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 import { Seo } from "@/components/Seo";
+import { parseLinkedInPdf, validateLinkedInPdf } from "@/lib/parseLinkedInPdf";
 
 /* ─────────────────────────────────────────────────────────────────────
    Types
@@ -343,7 +344,7 @@ export default function Resume() {
   if (output) {
     return (
       <div className="container mx-auto max-w-4xl p-6">
-        <Seo title="Resume Builder | Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+        <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
         <ScrollReveal className="mb-8 flex items-start justify-between gap-4 flex-wrap">
           <div>
             <Badge variant="secondary" className="mb-2">{targetRole}</Badge>
@@ -369,7 +370,7 @@ export default function Resume() {
   if (generating) {
     return (
       <div className="container mx-auto max-w-2xl p-6">
-        <Seo title="Resume Builder | Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+        <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -415,7 +416,7 @@ export default function Resume() {
      ────────────────────────────────────────────────────────────── */
   return (
     <div className="container mx-auto max-w-3xl p-6">
-      <Seo title="Resume Builder | Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+      <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
       <ScrollReveal className="mb-6">
         <Badge variant="secondary" className="mb-2 gap-1.5"><FileText className="h-3 w-3" /> Resume Builder</Badge>
         <h1 className="text-3xl font-bold tracking-tight">Build a perfect one-page resume</h1>
@@ -804,7 +805,7 @@ function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
    ────────────────────────────────────────────────────────────────── */
 function ResumePreview({ r }: { r: ResumeOutput }) {
   return (
-    <Card className="p-10 bg-white text-zinc-900 shadow-sm font-serif">
+    <Card className="p-10 bg-white text-zinc-900 shadow-sm font-document">
       <div className="text-center">
         <h2 className="text-2xl font-bold tracking-tight">{r.header.name}</h2>
         <p className="text-xs mt-1 text-zinc-700">
@@ -904,21 +905,6 @@ type LinkedInPatch = {
   skillsLang?: string;
 };
 
-async function parseLinkedInPdf(file: File): Promise<string> {
-  const pdfjs: any = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string)).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const buf = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  let out = "";
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    out += content.items.map((it: any) => it.str).join(" ") + "\n\n";
-  }
-  return out.trim();
-}
-
 function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch) => void }) {
   const { user } = useAuth();
   const { creditData } = useCredits();
@@ -933,12 +919,9 @@ function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch)
     if (fileRef.current) fileRef.current.value = "";
     if (!f) return;
     if (!user) { toast.error("Please sign in first."); return; }
-    if (f.type !== "application/pdf") {
-      toast.error("Please upload a LinkedIn PDF (Profile → More → Save to PDF).");
-      return;
-    }
-    if (f.size > 10 * 1024 * 1024) {
-      toast.error("Max file size is 10MB.");
+    const invalid = validateLinkedInPdf(f);
+    if (invalid) {
+      toast.error(invalid);
       return;
     }
 

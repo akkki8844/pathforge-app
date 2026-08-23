@@ -1,107 +1,130 @@
 # Pathforge Robots.txt
 # https://pathforge.co.in
+#
+# Structure note: robots.txt groups do NOT inherit from each other. A crawler
+# obeys exactly one group — the most specific one naming it — and ignores every
+# rule in every other group, including "User-agent: *".
+#
+# This file previously gave Googlebot, Bingbot and ~25 other crawlers their own
+# group containing nothing but "Allow: /". That meant the "Disallow: /teacher/"
+# sitting under "User-agent: *" applied to none of them: the only crawlers it
+# ever bound were the ones not named anywhere. Every rule below is therefore
+# declared once, against a single group that names every crawler explicitly,
+# so the disallow list actually binds to the crawlers it is written for.
 
-# Search engines
+# ---------------------------------------------------------------------------
+# Search engines, social preview scrapers, and AI/LLM crawlers.
+# AI crawlers are named deliberately: Pathforge wants to appear in AI overviews,
+# so they are allowed on the public pages and excluded only from the app itself.
+#
+# Note on the list below: because "User-agent: *" is part of THIS SAME group,
+# every rule here already applies to any crawler, named or not. The enumeration
+# is therefore documentary — it records which crawlers we have deliberately
+# considered and welcomed, so that a future edit splitting this into per-agent
+# groups starts from the full list rather than silently dropping someone.
+# ---------------------------------------------------------------------------
 User-agent: Googlebot
-Allow: /
-Crawl-delay: 1
-
+# Googlebot-Image fetches the favicon and the Organization logo. It is named
+# here because a blocked icon is exactly why a search result falls back to the
+# generic globe, and that failure is invisible in normal page-level testing.
+User-agent: Googlebot-Image
+User-agent: Googlebot-News
+User-agent: Google-CloudVertexBot
 User-agent: Bingbot
-Allow: /
-Crawl-delay: 1
-
 User-agent: Slurp
-Allow: /
-
 User-agent: DuckDuckBot
-Allow: /
-
 User-agent: YandexBot
-Allow: /
-
 User-agent: Baiduspider
-Allow: /
-
-# Social previews
 User-agent: Twitterbot
-Allow: /
-
 User-agent: facebookexternalhit
-Allow: /
-
 User-agent: LinkedInBot
-Allow: /
-
 User-agent: WhatsApp
-Allow: /
-
 User-agent: Slackbot
-Allow: /
-
 User-agent: TelegramBot
-Allow: /
-
 User-agent: Discordbot
-Allow: /
-
-# AI / LLM crawlers — explicitly allowed so Pathforge appears in AI overviews
 User-agent: GPTBot
-Allow: /
-
 User-agent: OAI-SearchBot
-Allow: /
-
 User-agent: ChatGPT-User
-Allow: /
-
 User-agent: ClaudeBot
-Allow: /
-
 User-agent: Claude-Web
-Allow: /
-
+User-agent: Claude-SearchBot
+User-agent: Claude-User
 User-agent: anthropic-ai
-Allow: /
-
+User-agent: CCBot
+User-agent: DuckAssistBot
+User-agent: Meta-ExternalFetcher
+User-agent: MistralAI-User
+User-agent: PetalBot
+User-agent: AI2Bot
 User-agent: PerplexityBot
-Allow: /
-
 User-agent: Perplexity-User
-Allow: /
-
 User-agent: Google-Extended
-Allow: /
-
 User-agent: Applebot
-Allow: /
-
 User-agent: Applebot-Extended
-Allow: /
-
 User-agent: Amazonbot
-Allow: /
-
 User-agent: Bytespider
-Allow: /
-
 User-agent: Meta-ExternalAgent
-Allow: /
-
 User-agent: cohere-ai
-Allow: /
-
 User-agent: Diffbot
-Allow: /
-
 User-agent: YouBot
-Allow: /
-
 User-agent: Mistral-AI-User
-Allow: /
-
-# Default
 User-agent: *
 Allow: /
+
+# --- Authenticated app surfaces --------------------------------------------
+# Every path below sits behind <ProtectedRoute> in src/App.tsx. A signed-out
+# visitor — which is what every crawler is — gets a client-side redirect to
+# /auth, so the crawler ends up indexing the sign-in screen under the app's URL.
+# Nine of these were being advertised to crawlers by the SiteNavigationElement
+# JSON-LD in index.html, so they were discovered and crawled despite never
+# appearing in the sitemap. The result was a cluster of URLs that all resolved
+# to the same sign-in page: identical meta descriptions, almost no words, and a
+# text-to-HTML ratio near zero.
+#
+# There is no version of these pages a crawler can usefully see, so they are
+# excluded outright rather than made thinner-but-indexable.
+Disallow: /dashboard
+Disallow: /outcomes
+Disallow: /activities
+Disallow: /journey
+Disallow: /profile-builder
+Disallow: /resume
+Disallow: /essays
+Disallow: /application-builder
+Disallow: /lor
+Disallow: /scholarships
+Disallow: /college-readiness
+Disallow: /weekly-planner
+Disallow: /requirements
+Disallow: /admissions-probability
+Disallow: /profile
+Disallow: /exemplar-essays
+Disallow: /past-admits
+Disallow: /recommendations
+Disallow: /advisor
+
+# --- Counsellor / teacher workspace -----------------------------------------
+Disallow: /teacher
+Disallow: /counsellor
+Disallow: /counselor
+
+# --- Admin, account recovery, and one-time token surfaces -------------------
+# The LOR portal URLs embed a secret invitation token and must never be indexed.
+Disallow: /admin
+Disallow: /admin-panel
+Disallow: /reset-password
+Disallow: /auth/confirm
+Disallow: /unsubscribe
+Disallow: /lor/portal/
+Disallow: /.lovable/
+
+# --- Duplicate parameterised URLs -------------------------------------------
+# /auth itself stays indexable (it ranks for brand queries), but the bounce-back
+# URLs a guest lands on after hitting a gated route carry ?redirect= and are
+# duplicates of it. ?explore= is deliberately NOT blocked: it is a duplicate of
+# "/", and the canonical tag already consolidates it — blocking it would stop
+# crawlers reading that canonical at all.
+Disallow: /*?redirect=
 
 # Sitemap
 Sitemap: https://pathforge.co.in/sitemap.xml

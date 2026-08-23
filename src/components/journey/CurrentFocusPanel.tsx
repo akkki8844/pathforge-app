@@ -24,6 +24,7 @@ import {
 import { useProofSubmissions } from "@/hooks/useProofSubmissions";
 import { cn } from "@/lib/utils";
 import { hoverNudge } from "@/lib/motion";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 interface Props {
   level: LevelId;
@@ -254,10 +255,14 @@ function TaskItem({
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
-                {task.link && (
+                {/* task.link is generated, so the old `startsWith("http")`
+                    test sent everything else — including a javascript: URL —
+                    down the same-tab branch. Off-site links get the scheme
+                    check; in-app links have to be a real path. */}
+                {(safeExternalUrl(task.link) ?? (task.link?.startsWith("/") ? task.link : null)) && (
                   <Button asChild variant="outline" size="sm" className="gap-1.5 mt-2">
-                    {task.link.startsWith("http") ? (
-                      <a href={task.link} target="_blank" rel="noopener noreferrer">
+                    {safeExternalUrl(task.link) ? (
+                      <a href={safeExternalUrl(task.link)!} target="_blank" rel="noopener noreferrer">
                         {task.linkLabel || "Open"} <ExternalLink className="w-3 h-3" />
                       </a>
                     ) : (

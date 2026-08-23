@@ -13,6 +13,15 @@ interface CouponSuccessModalProps {
   code: string;
   /** Shown as a call-to-action when a plan still needs to be activated. */
   onActivatePlan?: () => void;
+  /**
+   * True when redemption already put the user on the plan.
+   *
+   * Redemption used to only *unlock* a tier — the user then had to find a "$0"
+   * button on /pricing, which is why coupons appeared to do nothing. The server
+   * now applies the plan during `redeem_coupon`, so telling people to go and
+   * claim it would be sending them after a button that is no longer there.
+   */
+  planActive?: boolean;
 }
 
 /**
@@ -28,6 +37,7 @@ export function CouponSuccessModal({
   creditsGranted,
   code,
   onActivatePlan,
+  planActive = false,
 }: CouponSuccessModalProps) {
   return (
     <AnimatePresence>
@@ -82,7 +92,7 @@ export function CouponSuccessModal({
                 <h2 className="text-2xl font-bold text-foreground">Congratulations</h2>
                 <p className="text-muted-foreground">
                   {planName
-                    ? `${planName} has been unlocked at no charge${planCreditLabel ? ` — ${planCreditLabel}` : ""}.`
+                    ? `${planName} is ${planActive ? "active on your account" : "unlocked"} at no charge${planCreditLabel ? ` — ${planCreditLabel}` : ""}.`
                     : `${creditsGranted ?? 0} bonus credits have been added to your account.`}
                 </p>
                 {planName && creditsGranted != null && creditsGranted > 0 && (
@@ -92,7 +102,9 @@ export function CouponSuccessModal({
                 )}
                 {planName && (
                   <p className="text-sm text-muted-foreground">
-                    Find the {planName} plan in the tier list above and claim it to make it active.
+                    {planActive
+                      ? `Nothing else to do — every ${planName} feature is unlocked right now.`
+                      : `Find the ${planName} plan in the tier list above and claim it to make it active.`}
                   </p>
                 )}
                 <p className="text-xs text-muted-foreground">
@@ -106,7 +118,7 @@ export function CouponSuccessModal({
                 transition={{ delay: 0.3, duration: 0.4 }}
                 className="pt-2"
               >
-                {planName && onActivatePlan ? (
+                {planName && onActivatePlan && !planActive ? (
                   <Button
                     onClick={() => {
                       onActivatePlan();

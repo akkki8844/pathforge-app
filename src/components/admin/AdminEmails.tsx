@@ -582,7 +582,7 @@ export function AdminEmails() {
 
       {/* Preview dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-[61rem]">
           <DialogHeader><DialogTitle>Email preview</DialogTitle></DialogHeader>
           <PreviewBox
             subject={subject} heading={heading || subject} preview={preview}

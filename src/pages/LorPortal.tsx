@@ -110,7 +110,7 @@ export default function LorPortal() {
         description="Private portal for uploading a letter of recommendation."
         path={`/lor/portal/${token ?? ""}`}
       />
-      <div className="min-h-screen bg-background">
+      <div className="min-h-[100svh] bg-background">
         <header className="border-b">
           <div className="max-w-2xl mx-auto px-6 py-5 flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-primary" />

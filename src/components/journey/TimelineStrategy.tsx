@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Calendar, ArrowRight } from "lucide-react";
 import type { MilestoneItem } from "@/hooks/useJourneyData";
 import { competitionCalendar, getCompetitionStatusInfo, formatDate, daysUntil } from "@/lib/competitionCalendar";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 interface Props {
   milestones: MilestoneItem[];
@@ -162,9 +163,11 @@ export function TimelineStrategy({ milestones, onboardingData }: Props) {
                   {item.date && (
                     <p className="text-[10px] mt-0.5 opacity-80">{item.date}</p>
                   )}
-                  {item.link && !item.link.startsWith("/") && (
+                  {/* Milestone links are model-generated; "not an in-app path"
+                      is not the same as "safe to put in an href". */}
+                  {safeExternalUrl(item.link) && (
                     <a
-                      href={item.link}
+                      href={safeExternalUrl(item.link)!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 text-[10px] mt-1 hover:underline"

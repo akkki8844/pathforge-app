@@ -1,14 +1,9 @@
 import { useTheme } from "next-themes";
 import { Moon, Sun, MonitorCog, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Switch } from "@/components/ui/switch";
 import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { useSettingsForm } from "../SettingsFormContext";
 
 type Mode = "light" | "dark" | "system";
 
@@ -93,6 +88,7 @@ function ThemePreview({ mode }: { mode: Mode }) {
 
 export function AppearanceSection() {
   const { theme, setTheme } = useTheme();
+  const { draft, set, isDirty, loading } = useSettingsForm();
 
   return (
     <SettingsSection
@@ -100,8 +96,8 @@ export function AppearanceSection() {
       description="Personalize how Pathforge looks across every page."
     >
       <SettingsCard
-        title="Theme"
-        description="Preview each mode before you pick it. Your choice applies instantly across the workspace."
+        title={"Theme"}
+        description="Preview each mode before you pick it. Theme is stored in this browser and applies the moment you choose it — it isn't part of the page-level save."
       >
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {THEMES.map((t) => {
@@ -146,20 +142,21 @@ export function AppearanceSection() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Layout density">
+      {/* The old "Layout density" control was an uncontrolled
+          <Select defaultValue="comfortable"> — not bound to state, not read by
+          any component, not persisted. It has been replaced with Reduce motion,
+          which is backed by a real preference and a real CSS rule. */}
+      <SettingsCard title="Motion" description="For a calmer interface, or if animation makes you uncomfortable.">
         <SettingsRow
-          label="Interface density"
-          description="Compact for power users, comfortable for everyone else."
+          label="Reduce motion"
+          description="Collapses animations and transitions across the workspace. You'll see the effect immediately; it's saved with the button at the bottom of the page."
+          dirty={isDirty("reduce_motion")}
         >
-          <Select defaultValue="comfortable">
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="comfortable">Comfortable</SelectItem>
-              <SelectItem value="compact">Compact</SelectItem>
-            </SelectContent>
-          </Select>
+          <Switch
+            checked={draft.reduce_motion}
+            onCheckedChange={(v) => set("reduce_motion", v)}
+            disabled={loading}
+          />
         </SettingsRow>
       </SettingsCard>
     </SettingsSection>

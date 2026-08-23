@@ -28,9 +28,12 @@ interface Props {
 // solid dark bottom edge; `text` keeps the icon legible.
 type Clay = { top: string; bottom: string; lip: string; text: string };
 
-// One hue sweep across the ten levels — sea → brand blue → indigo → plum →
-// copper. Saturation is held well below the stock Tailwind ramps so the nodes
-// sit on the warm cream `--background` instead of vibrating against it.
+// One hue sweep across the original ten levels — sea → brand blue → indigo →
+// plum → copper. Saturation is held well below the stock Tailwind ramps so the
+// nodes sit on the warm cream `--background` instead of vibrating against it.
+// Levels 11–15 are a second, deliberately distinct sweep (rose → slate → teal
+// → gold → champagne) — see the comment above `LEVELS` in journeyLevels.ts for
+// why they read as "past the original ten" rather than a seamless extension.
 const LEVEL_CLAY: Record<LevelId, Clay> = {
   1:  { top: "#4fb3a6", bottom: "#3f9e93", lip: "#2b6f68", text: "#ffffff" },
   2:  { top: "#4fa3d4", bottom: "#3d8fc4", lip: "#2a6488", text: "#ffffff" },
@@ -123,6 +126,9 @@ export function LevelPath({
             >
               {showLevelBanner && (
                 <motion.div
+                  // Only the first banner is a tour anchor — they all look the
+                  // same, and the tour needs exactly one element to point at.
+                  data-tour={i === 0 ? "path-level-banner" : undefined}
                   initial={{ opacity: 0, y: 14 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
@@ -303,6 +309,8 @@ function StageNode({
   return (
     <motion.button
       type="button"
+      // The tour spotlights the node itself, not its full-width centring row.
+      data-tour={isCurrent ? "current-stage" : undefined}
       onClick={onClick}
       disabled={isLocked}
       initial={{ opacity: 0, scale: 0.55, y: 36, rotate: -6 }}

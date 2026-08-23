@@ -20,6 +20,9 @@ export interface ProofSubmission {
   created_at: string;
 }
 
+/** Gems credited the first time a submission is approved. Awarded server-side. */
+export const PROOF_GEM_AWARD = 5;
+
 export function useProofSubmissions() {
   const { user } = useAuth();
   const [submissions, setSubmissions] = useState<ProofSubmission[]>([]);
@@ -64,7 +67,13 @@ export function useProofSubmissions() {
     stageId: string;
     taskTitle: string;
     taskContext?: string;
-  }): Promise<{ id: string } | { error: string }> {
+    /**
+     * Gems credited by this submission, straight from the verifier's response.
+     * 0 for anything that didn't auto-approve — including a submission routed
+     * to admin review, which may still pay out later, when an admin approves
+     * it and the database trigger fires.
+     */
+  }): Promise<{ id: string; gemsAwarded: number } | { error: string }> {
     if (!user) return { error: "Not signed in" };
     const { file, url, note, taskId, stageId, taskTitle, taskContext } = args;
 
@@ -72,8 +81,15 @@ export function useProofSubmissions() {
     if (!note || !note.trim()) return { error: "Add a short note (1–2 sentences)" };
 
     // 1 credit per submission-for-verification (only credit charge on Journey).
-    const { data: ok, error: credErr } = await supabase.rpc("consume_credit");
-    if (credErr || ok === false) {
+    const { data: ok, error: credErr } = await supabase.rpc("consume_credit", {
+      _feature_type: "proof_submission",
+    });
+    if (credErr) {
+      // A genuine RPC/database failure, distinct from the function's own
+      // considered "insufficient credits" answer (data === false below).
+      return { error: "Couldn't save right now — please try again." };
+    }
+    if (ok === false) {
       window.dispatchEvent(new CustomEvent("credit-exhausted"));
       return { error: "Out of credits — upgrade to keep submitting evidence." };
     }
@@ -114,11 +130,16 @@ export function useProofSubmissions() {
     // function is unreachable (not deployed, cold-start failure, network drop)
     // nothing else would ever move the row off "verifying", so the student
     // sat on a spinner forever. Park it in admin review instead.
+    let gemsAwarded = 0;
     try {
-      const { error: fnErr } = await supabase.functions.invoke("verify-proof", {
+      const { data: verdict, error: fnErr } = await supabase.functions.invoke("verify-proof", {
         body: { submissionId: row.id },
       });
       if (fnErr) throw fnErr;
+      // The verifier is the only thing that knows whether this submission was
+      // the one that earned the gems; the client never decides that, and never
+      // writes the balance.
+      gemsAwarded = Number(verdict?.gemsAwarded) || 0;
     } catch (e) {
       console.error("verify-proof invoke failed", e);
       await supabase
@@ -131,7 +152,7 @@ export function useProofSubmissions() {
     }
 
     await load();
-    return { id: row.id };
+    return { id: row.id, gemsAwarded };
   }
 
   function getForTask(taskId: string): ProofSubmission | undefined {

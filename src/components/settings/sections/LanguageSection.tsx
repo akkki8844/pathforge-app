@@ -2,10 +2,11 @@ import { useState, useMemo } from "react";
 import { Check, Globe2, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
-import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
+import { SettingsSection, SettingsCard, SettingsRow, InstantBadge } from "../SettingsShell";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/hooks/useLanguage";
+import { useSettingsForm } from "../SettingsFormContext";
 
 const LANGUAGES: { value: string; label: string; native: string }[] = [
   { value: "en", label: "English", native: "English" },
@@ -47,9 +48,7 @@ const LANGUAGES: { value: string; label: string; native: string }[] = [
 export function LanguageSection() {
   const { toast } = useToast();
   const { language, setLanguage } = useLanguage();
-  const [autoTranslate, setAutoTranslate] = useState<boolean>(
-    () => (typeof window !== "undefined" && localStorage.getItem("pf_autotranslate") === "1")
-  );
+  const { draft, set, isDirty, loading } = useSettingsForm();
   const [query, setQuery] = useState("");
 
   const filtered = useMemo(() => {
@@ -66,11 +65,6 @@ export function LanguageSection() {
     toast({ title: "Language updated", description: `AI replies and drafts will now be written in ${label}.` });
   };
 
-  const toggleAuto = (v: boolean) => {
-    setAutoTranslate(v);
-    localStorage.setItem("pf_autotranslate", v ? "1" : "0");
-  };
-
   return (
     <SettingsSection
       title="Language"
@@ -80,6 +74,15 @@ export function LanguageSection() {
         title="Display & AI language"
         description="Pick your preferred language. The advisor, refiners, and email drafts will respond in this language when possible."
       >
+        {/* Selecting a language re-translates the page under you, so batching
+            it behind the page-level Save would be bizarre. It commits on
+            click — and says so — rather than sitting in the draft. */}
+        <div className="mb-4 flex items-center gap-2">
+          <InstantBadge />
+          <span className="text-[12px] text-muted-foreground">
+            Stored in this browser. Applies as soon as you choose.
+          </span>
+        </div>
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -136,8 +139,13 @@ export function LanguageSection() {
         <SettingsRow
           label="Auto-translate AI replies"
           description="If the AI replies in another language, translate it to your selection automatically."
+          dirty={isDirty("auto_translate")}
         >
-          <Switch checked={autoTranslate} onCheckedChange={toggleAuto} />
+          <Switch
+            checked={draft.auto_translate}
+            onCheckedChange={(v) => set("auto_translate", v)}
+            disabled={loading}
+          />
         </SettingsRow>
         <SettingsRow
           label="Region & date format"

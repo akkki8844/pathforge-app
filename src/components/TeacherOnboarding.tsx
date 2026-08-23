@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { SchoolPicker, type SchoolRow } from "@/components/SchoolPicker";
-import pathforgeLogo from "@/assets/pathforge-logo.png";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 
 const TITLES = ["Counselor", "Teacher", "Dean", "Head of School", "Other"];

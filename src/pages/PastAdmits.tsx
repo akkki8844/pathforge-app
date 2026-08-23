@@ -391,7 +391,7 @@ export default function PastAdmits() {
   return (
     <div className="py-8 sm:py-12">
       <Seo
-        title="Past Admits — Real Verified Admissions Outcomes | Pathforge"
+        title="Past Admits — Pathforge"
         description="Real students, real acceptances, real stats — every profile sourced from published reporting, with citations you can check yourself."
         path="/past-admits"
       />

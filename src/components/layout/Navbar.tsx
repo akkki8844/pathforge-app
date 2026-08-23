@@ -1,8 +1,9 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, LogOut, User, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote } from "lucide-react";
+import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { FlowButton } from "@/components/ui/flow-button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,50 +15,101 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
 import { preloadRoute } from "@/lib/routePreload";
+import { ROUTINE_DESTINATIONS } from "@/lib/routine/nav";
+import { COMMUNICATIONS_DESTINATIONS, isCommsPath } from "@/lib/comms/nav";
+import { useCommsBadges } from "@/hooks/comms/useCommsBadges";
 import { DURATION, EASE_OUT_EXPO, transition } from "@/lib/motion";
-import pathforgeLogo from "@/assets/pathforge-logo.png";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
+import { VariableFontHover } from "@/components/ui/variable-font-hover";
+import { NavPopout } from "@/components/layout/NavPopout";
 
 type NavIcon = React.ComponentType<{ className?: string }>;
-/** Top-level links; a couple sit in the bar without an icon. */
-type NavLink = { href: string; label: string; icon?: NavIcon };
-/** Dropdown entries always carry an icon. */
-type NavItem = { href: string; label: string; icon: NavIcon };
+type NavItem = { href: string; label: string; icon: NavIcon; badge?: number };
+type NavGroup = { title: string; links: NavItem[] };
 
-// Links rendered BEFORE the Builders dropdown
-const preBuilderLinks: NavItem[] = [
+// The whole top-level bar, in the exact order requested: Journey, Advisor,
+// Activities, Outcomes, Application Builder, Admissions, Planner. Everything
+// else lives one level down, in the single "Other" dropdown below.
+const mainLinks: NavItem[] = [
   { href: "/journey", label: "Journey", icon: Map },
   { href: "/advisor", label: "Advisor", icon: Mic },
   { href: "/activities", label: "Activities", icon: Compass },
-];
-
-// Links rendered AFTER the Preparation dropdown
-const postBuilderLinks: NavLink[] = [
-  { href: "/scholarships", label: "Scholarships" },
-  { href: "/weekly-planner", label: "Planner" },
-];
-
-const builderLinks: NavItem[] = [
+  { href: "/outcomes", label: "Outcomes", icon: Briefcase },
   { href: "/application-builder", label: "Application Builder", icon: FileSignature },
-  { href: "/profile-builder", label: "LinkedIn Builder", icon: Linkedin },
-  { href: "/resume", label: "Resume Builder", icon: FileText },
-  { href: "/essays", label: "Essay Builder", icon: PenLine },
-  { href: "/lor", label: "Letters of Rec", icon: FileSignature },
-];
-
-const prepLinks: NavItem[] = [
-  { href: "/requirements", label: "Requirements", icon: BookOpen },
-  { href: "/college-readiness", label: "Readiness", icon: GraduationCap },
   { href: "/admissions-probability", label: "Admissions", icon: Target },
-  { href: "/outcomes", label: "Outcomes", icon: Trophy },
+  { href: "/weekly-planner", label: "Planner", icon: CalendarDays },
 ];
 
-const otherLinks: NavItem[] = [
-  { href: "/exemplar-essays", label: "Exemplar Essays", icon: Quote },
-  { href: "/past-admits", label: "Past Admits", icon: Trophy },
+// Everything that isn't a top-seven link, folded into the one "Other"
+// dropdown instead of the old separate Builders/Preparation/Others menus —
+// arranged in the same departments-under-one-menu shape as a reference
+// mega-menu the redesign was modeled on, not its colours.
+const baseOtherGroups: NavGroup[] = [
+  {
+    title: "Builders",
+    links: [
+      { href: "/profile-builder", label: "LinkedIn Builder", icon: Linkedin },
+      { href: "/resume", label: "Resume Builder", icon: FileText },
+      { href: "/essays", label: "Essay Builder", icon: PenLine },
+    ],
+  },
+  {
+    title: "Preparation",
+    links: [
+      { href: "/requirements", label: "Requirements", icon: BookOpen },
+      { href: "/college-readiness", label: "Readiness", icon: GraduationCap },
+      { href: "/exemplar-essays", label: "Exemplar Essays", icon: Quote },
+    ],
+  },
+  {
+    title: "Resources",
+    links: [
+      { href: "/scholarships", label: "Scholarships", icon: Award },
+      { href: "/past-admits", label: "Past Admits", icon: Trophy },
+      { href: "/lor", label: "Professors", icon: FileSignature },
+    ],
+  },
 ];
 
-const navLinks: NavLink[] = [...preBuilderLinks, ...postBuilderLinks, ...prepLinks];
+// Routine's nine pages, folded into "Other" as their own department instead
+// of a standalone top-level dropdown — that's what "Other" is for. Only
+// shown to signed-in users, since every Routine route sits behind
+// ProtectedRoute.
+const routineGroup: NavGroup = {
+  title: "Routine",
+  links: ROUTINE_DESTINATIONS.map((d) => ({ href: d.href, label: d.label, icon: d.icon })),
+};
+
+// Communications, folded into "Other" as its own department — same treatment
+// as Routine. Signed-in only, since every /communications route sits behind
+// ProtectedRoute.
+// Built per render rather than as a module constant, because three of its four
+// links carry a live count. A messaging section whose unread number is only
+// visible once you are already inside it is a messaging section people miss.
+function buildCommsGroup(badges: {
+  chats: number;
+  teams: number;
+  objectives: number;
+}): NavGroup {
+  const countFor = (href: string): number | undefined => {
+    if (href === "/communications/chats") return badges.chats || undefined;
+    if (href === "/communications/teams") return badges.teams || undefined;
+    if (href === "/communications/objectives") return badges.objectives || undefined;
+    return undefined;
+  };
+  return {
+    title: "Communications",
+    links: COMMUNICATIONS_DESTINATIONS.map((d) => ({
+      href: d.href,
+      label: d.label,
+      icon: d.icon,
+      badge: countFor(d.href),
+    })),
+  };
+}
+
+const navLinks: NavItem[] = mainLinks;
 
 /** The sliding underline shared by every top-level nav item. */
 function ActiveIndicator() {
@@ -81,40 +133,47 @@ const menuItem = {
 };
 
 /**
- * Hover-opened nav dropdown. Builders, Preparation and Others were three
- * copies of the same 60 lines, which is how they drifted apart — only one of
- * them had the right menu width.
+ * Hover-opened "Other" menu — a wide, multi-column mega-menu. Each department
+ * (Routine, Builders, Preparation, Resources) is its own column with an
+ * accent-colored, underlined label, so the panel reads as a set of sections
+ * rather than one long overflow list.
  */
 function NavDropdown({
   label,
   icon: Icon,
-  links,
+  groups,
   isActive,
   align = "center",
-  width = "w-52",
 }: {
   label: string;
-  /** Optional — "Others" is a catch-all, so a glyph next to it just adds noise. */
+  /** Optional — "Other" is a catch-all, so a glyph next to it just adds noise. */
   icon?: React.ComponentType<{ className?: string }>;
-  links: NavItem[];
+  groups: NavGroup[];
   isActive: boolean;
   align?: "center" | "right";
-  width?: string;
 }) {
   const [open, setOpen] = useState(false);
   const location = useLocation();
+  const columns = Math.min(groups.length, 3) as 1 | 2 | 3;
+  // A closed menu hides its own badges, so the trigger carries a dot for them.
+  // Unread messages the user cannot see from the bar are unread messages they
+  // never read.
+  const hasBadge = groups.some((g) => g.links.some((l) => (l.badge ?? 0) > 0));
+  // Tailwind's JIT scans for literal class strings, so the width has to be
+  // one of these static options rather than built with template interpolation.
+  const panelWidth = { 1: "w-[min(92vw,16rem)]", 2: "w-[min(92vw,30rem)]", 3: "w-[min(92vw,44rem)]" }[columns];
 
   return (
     <div
       className="relative"
       onMouseEnter={() => {
         setOpen(true);
-        links.forEach((l) => preloadRoute(l.href));
+        groups.forEach((g) => g.links.forEach((l) => preloadRoute(l.href)));
       }}
       onMouseLeave={() => setOpen(false)}
     >
       <button
-        className={`relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 outline-none ${
+        className={`relative px-3 py-2 text-sm font-medium transition-colors hover:font-semibold flex items-center gap-1.5 outline-none ${
           isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
         }`}
         onClick={() => setOpen((o) => !o)}
@@ -130,6 +189,12 @@ function NavDropdown({
         >
           <ChevronDown className="h-3 w-3 opacity-70" />
         </motion.span>
+        {hasBadge && !open && (
+          <span
+            className="absolute right-1 top-1.5 h-1.5 w-1.5 rounded-full bg-accent"
+            aria-hidden="true"
+          />
+        )}
         {isActive && <ActiveIndicator />}
       </button>
       <AnimatePresence>
@@ -139,7 +204,7 @@ function NavDropdown({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.98 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className={`absolute top-full pt-2 z-50 ${width} ${
+            className={`absolute top-full pt-2 z-50 ${panelWidth} ${
               align === "right" ? "right-0" : "left-1/2 -translate-x-1/2"
             }`}
             role="menu"
@@ -148,27 +213,44 @@ function NavDropdown({
               variants={menuList}
               initial="hidden"
               animate="visible"
-              className="rounded-md border border-border bg-popover shadow-lg overflow-hidden py-1"
+              className="grid max-h-[min(75vh,36rem)] gap-x-8 gap-y-4 overflow-y-auto overscroll-contain rounded-2xl border border-border bg-popover p-5 shadow-xl"
+              style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}
             >
-              {links.map((l) => {
-                const ItemIcon = l.icon;
-                const itemActive = location.pathname === l.href;
-                return (
-                  <motion.div key={l.href} variants={menuItem}>
-                    <Link
-                      to={l.href}
-                      onClick={() => setOpen(false)}
-                      className={`flex items-center gap-2 px-3 py-2 text-sm transition-colors ${
-                        itemActive ? "bg-accent/10 text-accent" : "text-foreground hover:bg-muted"
-                      }`}
-                      role="menuitem"
-                    >
-                      <ItemIcon className="h-4 w-4" />
-                      {l.label}
-                    </Link>
-                  </motion.div>
-                );
-              })}
+              {groups.map((group) => (
+                <div key={group.title} className="min-w-0">
+                  <p className="mb-2.5 border-b border-accent/30 pb-1.5 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
+                    {group.title}
+                  </p>
+                  <div className="space-y-0.5">
+                    {group.links.map((l) => {
+                      const itemActive = location.pathname === l.href;
+                      return (
+                        <motion.div key={l.href} variants={menuItem}>
+                          <Link
+                            to={l.href}
+                            onClick={() => setOpen(false)}
+                            aria-current={itemActive ? "page" : undefined}
+                            className={`flex items-center gap-2.5 rounded-md px-2 py-2 text-sm leading-tight transition-colors ${
+                              itemActive
+                                ? "bg-accent/10 font-semibold text-accent"
+                                : "text-foreground hover:bg-muted"
+                            }`}
+                            role="menuitem"
+                          >
+                            <span className="truncate">{l.label}</span>
+                            {!!l.badge && l.badge > 0 && (
+                              <span className="ml-auto inline-flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-accent-foreground">
+                                <span aria-hidden="true">{l.badge > 99 ? "99+" : l.badge}</span>
+                                <span className="sr-only">{l.badge} needing attention</span>
+                              </span>
+                            )}
+                          </Link>
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </motion.div>
           </motion.div>
         )}
@@ -180,30 +262,38 @@ function NavDropdown({
 /** One row in the mobile drawer. Slides in as part of the drawer's stagger. */
 function MobileNavLink({
   to,
-  icon: Icon,
   label,
   isActive,
   onClick,
+  badge,
 }: {
   to: string;
-  icon?: React.ComponentType<{ className?: string }> | null;
   label: string;
   isActive: boolean;
   onClick: () => void;
+  badge?: number;
 }) {
   return (
     <motion.div variants={menuItem}>
       <Link
         to={to}
         onClick={onClick}
-        className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
+        // min-h-[44px], not just padding: at py-2 these drawer rows were ~36px
+        // tall and stacked with gap-2, which is under the touch-target floor on
+        // every mobile platform guideline.
+        className={`px-3 py-3 min-h-[44px] text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${
           isActive
             ? "bg-accent/10 text-accent"
             : "text-muted-foreground hover:bg-muted hover:text-foreground"
         }`}
       >
-        {Icon && <Icon className="h-4 w-4" />}
         {label}
+        {!!badge && badge > 0 && (
+          <span className="ml-auto inline-flex h-4 min-w-[16px] shrink-0 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-bold tabular-nums text-accent-foreground">
+            <span aria-hidden="true">{badge > 99 ? "99+" : badge}</span>
+            <span className="sr-only">{badge} needing attention</span>
+          </span>
+        )}
       </Link>
     </motion.div>
   );
@@ -214,30 +304,41 @@ export function Navbar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const commsBadges = useCommsBadges();
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/', { replace: true });
   };
 
-  const isBuilderActive = builderLinks.some((l) => location.pathname === l.href);
-  const isPrepActive = prepLinks.some((l) => location.pathname === l.href);
-  const isOthersActive = otherLinks.some((l) => location.pathname === l.href);
+  // Communications and Routine only show as "Other" departments once signed
+  // in — their routes are all behind ProtectedRoute, so there's nothing there
+  // for a guest.
+  const otherGroups: NavGroup[] = user
+    ? [buildCommsGroup(commsBadges), routineGroup, ...baseOtherGroups]
+    : baseOtherGroups;
+  const otherLinks: NavItem[] = otherGroups.flatMap((g) => g.links);
+  const isOthersActive = otherLinks.some((l) => location.pathname === l.href) || isCommsPath(location.pathname);
+
+  // The mobile drawer is a flat list of departments — same groups as desktop's
+  // "Other" menu, Communications included since it's no longer a separate
+  // top-level dropdown.
+  const mobileGroups: NavGroup[] = otherGroups;
 
   // backdrop-blur-md, not -lg: this is a full-width bar that re-blurs whatever
   // is behind it on every scroll frame, and the cost scales with the radius.
   // At 80% background opacity the two radii are indistinguishable.
   return (
     <motion.header
-      className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-md"
+      className="sticky top-0 z-50 border-b border-border/50 bg-background/80 pad-safe-top backdrop-blur-md"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
     >
       <nav className="section-container">
         <div className="flex h-16 items-center justify-between">
-          {/* Logo */}
-          <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
+          {/* Logo — signed-in students go to their dashboard, everyone else to the landing page. */}
+          <Link to={user ? "/dashboard" : "/"} className="flex items-center gap-2 group flex-shrink-0">
             <motion.img
               src={pathforgeLogo}
               alt="Pathforge logo"
@@ -251,72 +352,39 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-1">
-            {preBuilderLinks.map((link) => {
+          <div className="hidden lg:flex items-center gap-2.5">
+            {mainLinks.map((link) => {
               const isActive = location.pathname === link.href;
-              const Icon = link.icon;
               return (
                 <Link
                   key={link.href}
                   to={link.href}
                   onMouseEnter={() => preloadRoute(link.href)}
                   onFocus={() => preloadRoute(link.href)}
-                  className={`relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  className={`group relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
                     isActive
                       ? "text-accent"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  {Icon && <Icon className="h-3.5 w-3.5" />}
-                  {link.label}
+                  <VariableFontHover
+                    label={link.label}
+                    fromFontVariationSettings="'wght' 500"
+                    toFontVariationSettings="'wght' 800"
+                    staggerDuration={0.02}
+                    staggerFrom="center"
+                  />
                   {isActive && <ActiveIndicator />}
                 </Link>
               );
             })}
 
-            {/* Builders hover dropdown — placed AFTER Activities */}
+            {/* Other hover dropdown — every link that isn't in the top seven,
+                grouped into departments (Communications and Routine when
+                signed in, Builders, Preparation, Resources) */}
             <NavDropdown
-              label="Builders"
-              icon={FileSignature}
-              links={builderLinks}
-              isActive={isBuilderActive}
-            />
-
-            {/* Preparation hover dropdown */}
-            <NavDropdown
-              label="Preparation"
-              icon={GraduationCap}
-              links={prepLinks}
-              isActive={isPrepActive}
-              width="w-56"
-            />
-
-            {postBuilderLinks.map((link) => {
-              const isActive = location.pathname === link.href;
-              const Icon = link.icon;
-              return (
-                <Link
-                  key={link.href}
-                  to={link.href}
-                  onMouseEnter={() => preloadRoute(link.href)}
-                  onFocus={() => preloadRoute(link.href)}
-                  className={`relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                    isActive
-                      ? "text-accent"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {Icon && <Icon className="h-3.5 w-3.5" />}
-                  {link.label}
-                  {isActive && <ActiveIndicator />}
-                </Link>
-              );
-            })}
-
-            {/* Others hover dropdown */}
-            <NavDropdown
-              label="Others"
-              links={otherLinks}
+              label="Other"
+              groups={otherGroups}
               isActive={isOthersActive}
               align="right"
             />
@@ -324,25 +392,40 @@ export function Navbar() {
 
           {/* Theme Toggle & User Menu */}
           <div className="flex items-center gap-2">
-            {user && <NotificationBell />}
-            
+            {user && (
+              <NavPopout label="Notifications">
+                <NotificationBell />
+              </NavPopout>
+            )}
+
             {!user && (
-              <Button asChild size="sm" variant="default" className="hidden sm:inline-flex">
-                <Link to="/auth">Sign in</Link>
-              </Button>
+              <Link to="/auth" className="hidden sm:inline-flex">
+                <FlowButton text="Sign in" className="px-5 py-2 text-xs" />
+              </Link>
             )}
             {user && (
               <DropdownMenu>
+                <NavPopout label={profile?.username ? `@${profile.username}` : "Account"} align="right">
                 <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-14 w-14" aria-label="User menu">
+                  {/* Deliberately NOT <Button>: buttonVariants carries
+                      `[&_svg]:size-4`, a descendant selector that outranks any
+                      h-/w- utility put on the avatar itself. The avatar is an
+                      inline <svg>, so inside a Button it is pinned to 16px no
+                      matter what size class it is given. */}
+                  <button
+                    type="button"
+                    aria-label="User menu"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95"
+                  >
                     <PathforgeAvatar
                       stored={profile?.avatar_url}
                       seed={user.id}
-                      className="h-12 w-12 ring-2 ring-border/70"
+                      className="h-10 w-10 rounded-full ring-2 ring-border/70"
                       cutout="hsl(var(--background))"
                     />
-                  </Button>
+                  </button>
                 </DropdownMenuTrigger>
+                </NavPopout>
                 <DropdownMenuContent align="end" className="w-56 bg-popover">
                   <div className="px-2 py-1.5">
                     <p className="text-sm font-medium text-foreground">{user.email}</p>
@@ -350,25 +433,24 @@ export function Navbar() {
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link to="/profile" className="cursor-pointer">
-                      <User className="mr-2 h-4 w-4" />
                       Settings
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/profile?section=connectors" className="cursor-pointer">
-                      <Linkedin className="mr-2 h-4 w-4" fill="currentColor" strokeWidth={0} />
                       Connectors
                     </Link>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/about" className="cursor-pointer">About</Link>
-                  </DropdownMenuItem>
+                  {/* About is a public/marketing page and is linked from the
+                      landing page and the footer. It was in this signed-in menu
+                      too, which put a "who we are" pitch in front of people who
+                      had already bought. Contact stays — a signed-in user
+                      needing support is a real errand. */}
                   <DropdownMenuItem asChild>
                     <Link to="/contact" className="cursor-pointer">Contact</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleSignOut} className="text-destructive cursor-pointer">
-                    <LogOut className="mr-2 h-4 w-4" />
                     Log out
                   </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -376,29 +458,30 @@ export function Navbar() {
             )}
 
             {/* Mobile Menu Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="lg:hidden"
-              onClick={() => setIsOpen(!isOpen)}
-              aria-label="Toggle menu"
-              aria-expanded={isOpen}
-            >
-              {/* Crossfade the two icons through a quarter turn so the button
-                  reads as one control changing state, not two swapping. */}
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.span
-                  key={isOpen ? "close" : "open"}
-                  initial={{ rotate: -90, opacity: 0 }}
-                  animate={{ rotate: 0, opacity: 1 }}
-                  exit={{ rotate: 90, opacity: 0 }}
-                  transition={{ duration: 0.15, ease: EASE_OUT_EXPO }}
-                  className="inline-flex"
-                >
-                  {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-                </motion.span>
-              </AnimatePresence>
-            </Button>
+            <NavPopout label={isOpen ? "Close" : "Menu"} className="lg:hidden">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsOpen(!isOpen)}
+                aria-label="Toggle menu"
+                aria-expanded={isOpen}
+              >
+                {/* Crossfade the two icons through a quarter turn so the button
+                    reads as one control changing state, not two swapping. */}
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={isOpen ? "close" : "open"}
+                    initial={{ rotate: -90, opacity: 0 }}
+                    animate={{ rotate: 0, opacity: 1 }}
+                    exit={{ rotate: 90, opacity: 0 }}
+                    transition={{ duration: 0.15, ease: EASE_OUT_EXPO }}
+                    className="inline-flex"
+                  >
+                    {isOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+                  </motion.span>
+                </AnimatePresence>
+              </Button>
+            </NavPopout>
           </div>
         </div>
 
@@ -409,7 +492,10 @@ export function Navbar() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="lg:hidden py-4 border-t border-border max-h-[calc(100vh-4rem)] overflow-y-auto bg-background"
+              // dvh, not vh: on iOS Safari 100vh is the *large* viewport, so the
+              // last rows of this drawer sat permanently under the browser
+              // toolbar with no way to scroll to them.
+              className="lg:hidden py-4 pad-safe-bottom border-t border-border max-h-[calc(100dvh-4rem)] overflow-y-auto overscroll-contain bg-background"
             >
               <motion.div
                 variants={menuList}
@@ -421,64 +507,42 @@ export function Navbar() {
                   <MobileNavLink
                     key={link.href}
                     to={link.href}
-                    icon={link.icon}
                     label={link.label}
                     isActive={location.pathname === link.href}
                     onClick={() => setIsOpen(false)}
                   />
                 ))}
 
-                {/* Mobile Builders group */}
-                <motion.div
-                  variants={menuItem}
-                  className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  Builders
-                </motion.div>
-                {builderLinks.map((b) => (
-                  <MobileNavLink
-                    key={b.href}
-                    to={b.href}
-                    icon={b.icon}
-                    label={b.label}
-                    isActive={location.pathname === b.href}
-                    onClick={() => setIsOpen(false)}
-                  />
-                ))}
-
-                {/* Mobile Others group */}
-                <motion.div
-                  variants={menuItem}
-                  className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
-                >
-                  Others
-                </motion.div>
-                {otherLinks.map((o) => (
-                  <MobileNavLink
-                    key={o.href}
-                    to={o.href}
-                    icon={o.icon}
-                    label={o.label}
-                    isActive={location.pathname === o.href}
-                    onClick={() => setIsOpen(false)}
-                  />
+                {/* Mobile groups — same departments as the desktop menus,
+                    Communications and Routine included when signed in */}
+                {mobileGroups.map((group) => (
+                  <div key={group.title}>
+                    <motion.div
+                      variants={menuItem}
+                      className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
+                    >
+                      {group.title}
+                    </motion.div>
+                    {group.links.map((o) => (
+                      <MobileNavLink
+                        key={o.href}
+                        to={o.href}
+                        label={o.label}
+                        badge={o.badge}
+                        isActive={location.pathname === o.href}
+                        onClick={() => setIsOpen(false)}
+                      />
+                    ))}
+                  </div>
                 ))}
 
                 <motion.div variants={menuItem} className="border-t border-border mt-2 pt-2">
                   <Link
                     to="/profile"
                     onClick={() => setIsOpen(false)}
-                    className="px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground flex items-center gap-2"
-                  >
-                    <User className="h-4 w-4" />
-                    Profile
-                  </Link>
-                  <Link
-                    to="/about"
-                    onClick={() => setIsOpen(false)}
                     className="px-3 py-2 text-sm font-medium rounded-lg transition-colors text-muted-foreground hover:bg-muted hover:text-foreground block"
                   >
-                    About
+                    Profile
                   </Link>
                   <Link
                     to="/contact"
@@ -493,9 +557,8 @@ export function Navbar() {
                         setIsOpen(false);
                         handleSignOut();
                       }}
-                      className="w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-destructive hover:bg-destructive/10 flex items-center gap-2"
+                      className="w-full px-3 py-2 text-sm font-medium rounded-lg transition-colors text-destructive hover:bg-destructive/10 text-left"
                     >
-                      <LogOut className="h-4 w-4" />
                       Log out
                     </button>
                   )}

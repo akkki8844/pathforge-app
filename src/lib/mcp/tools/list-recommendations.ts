@@ -1,8 +1,17 @@
 import { createClient } from "@supabase/supabase-js";
 import { defineTool, type ToolContext } from "@lovable.dev/mcp-js";
 
+// Lovable Cloud injects SUPABASE_ANON_KEY; only the Vite client build sees the
+// VITE_SUPABASE_PUBLISHABLE_KEY spelling. Reading just the latter left the key
+// undefined at runtime, so createClient threw before any tool could run.
+function supabaseKey(): string {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
+
 function sb(ctx: ToolContext) {
-  return createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+  return createClient(process.env.SUPABASE_URL!, supabaseKey(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false },
   });

@@ -1,13 +1,22 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
-import { Flame, Gem, Loader2, Trophy } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useJourneyData } from "@/hooks/useJourneyData";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useWeeklyCheckins } from "@/hooks/useWeeklyCheckins";
 import { Seo } from "@/components/Seo";
 import { EASE_OUT_EXPO } from "@/lib/motion";
-import { CollegeList, Ledger, NextMove, Reading, Upcoming } from "@/components/dashboard/panels";
+import {
+  CollegeList,
+  CollegeNewsPanel,
+  Ledger,
+  NextMove,
+  Reading,
+  TimetableSnapshot,
+  Upcoming,
+} from "@/components/dashboard/panels";
+import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
 
 /**
  * The signed-in home.
@@ -20,12 +29,6 @@ import { CollegeList, Ledger, NextMove, Reading, Upcoming } from "@/components/d
  * the one thing to do about it, then the list and the calendar, then the rest
  * of the file as countable progress.
  */
-
-const LONG_DATE = new Intl.DateTimeFormat(undefined, {
-  weekday: "long",
-  month: "long",
-  day: "numeric",
-});
 
 function greeting(): string {
   const h = new Date().getHours();
@@ -42,36 +45,11 @@ function firstName(full: string | null | undefined, email: string | null | undef
   return e ? e.charAt(0).toUpperCase() + e.slice(1) : "there";
 }
 
-/** Compact status pill for the header strip. */
-function Pill({
-  icon: Icon,
-  value,
-  label,
-  className,
-}: {
-  icon: typeof Flame;
-  value: number | string;
-  label: string;
-  className?: string;
-}) {
-  return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"
-      title={label}
-    >
-      <Icon className={className || "h-3.5 w-3.5 text-muted-foreground"} />
-      <span className="font-serif text-[13px] tabular-nums leading-none">{value}</span>
-      <span className="font-display text-[9px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-        {label}
-      </span>
-    </span>
-  );
-}
-
 export default function Dashboard() {
   const { user, profile } = useAuth();
   const reduced = useReducedMotion();
   const d = useDashboardData();
+  const week = useWeeklyCheckins();
   // The journey hook owns milestone generation and the insight engine; reusing
   // it here keeps a single source of truth for "what should this student do
   // next" rather than duplicating that logic on the dashboard.
@@ -116,7 +94,7 @@ export default function Dashboard() {
 
   if (d.loading && journeyLoading) {
     return (
-      <div className="flex min-h-[70vh] items-center justify-center">
+      <div className="flex min-h-[70svh] items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -131,52 +109,73 @@ export default function Dashboard() {
         description="Your college application in one view: how you compare to the schools on your list, and what to do next."
       />
 
-      <div className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-8 sm:px-6">
+      {/* max-w-[1180px] sits close to the landing page's 75rem/1200px measure,
+          deliberately narrower than the app's max-w-7xl. */}
+      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1180px] px-4 pb-24 pt-8 sm:px-6">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
-          className="mb-6 flex flex-wrap items-end justify-between gap-4"
+          className="mb-6"
         >
-          <div className="min-w-0">
-            <span className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-              {LONG_DATE.format(new Date())}
-            </span>
-            <h1 className="mt-1.5 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
-              {greeting()}, {name}.
-            </h1>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
-            {d.currentLevel > 0 && (
-              <Pill icon={Trophy} value={d.currentLevel} label="Level" className="h-3.5 w-3.5 text-primary" />
-            )}
-            {d.currentStreak > 0 && (
-              <Pill
-                icon={Flame}
-                value={d.currentStreak}
-                label={d.currentStreak === 1 ? "day" : "days"}
-                className="h-3.5 w-3.5 text-amber-500"
-              />
-            )}
-            <Pill icon={Gem} value={d.gems} label="Gems" className="h-3.5 w-3.5 text-primary" />
-            <Link
-              to="/profile"
-              className="rounded-full border border-border bg-card px-3 py-1.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:border-primary/30 hover:text-primary"
-            >
-              Profile
-            </Link>
-          </div>
+          {/*
+           * The page's one serif headline, matching the landing hero: Fraunces
+           * at a sub-1 line-height with hard negative tracking, capped by
+           * measure so it always breaks into two or three short lines instead of
+           * running out as one long one. The lower clamp bound is what a 320px
+           * phone gets.
+           */}
+          <h1 className="max-w-[14ch] text-balance font-serif text-[clamp(2rem,8vw,3.9rem)] leading-[0.95] tracking-[-0.035em]">
+            {greeting()}, {name}.
+          </h1>
+          <div className="dash-double-rule mt-5" aria-hidden />
         </motion.header>
 
-        <div className="space-y-3">
+        {/* 0.65rem between cards against ~4rem between page blocks — the
+            landing page's ratio, and most of why it reads as a printed spread
+            rather than as a grid of widgets. */}
+        <div className="space-y-[0.65rem]">
           <Reading calibration={d.calibration} />
 
-          <div className="grid gap-3 lg:grid-cols-3">
-            <NextMove {...move} priority={priority} />
-            <CollegeList colleges={d.colleges} />
-            <Upcoming deadlines={d.deadlines} />
+          {/*
+           * Asymmetric on purpose. Three equal thirds gave the one instruction
+           * the same weight as a list of dates; on a 12-column bed the move gets
+           * five, the list four, the calendar three.
+           *
+           * The md step is not cosmetic: without it the whole 640–1023px band
+           * (iPad portrait, most Android tablets, a half-width desktop window)
+           * fell back to the mobile stack and rendered three ~700px-wide panels
+           * of 13px copy. There, the move takes the full width and the two
+           * lists sit beside each other.
+           */}
+          <div className="grid gap-[0.65rem] md:grid-cols-2 lg:grid-cols-12">
+            <div className="h-full md:col-span-2 lg:col-span-5">
+              <NextMove {...move} priority={priority} />
+            </div>
+            <div className="h-full md:col-span-1 lg:col-span-4">
+              <CollegeList colleges={d.colleges} />
+            </div>
+            <div className="h-full md:col-span-1 lg:col-span-3">
+              <Upcoming deadlines={d.deadlines} />
+            </div>
           </div>
+
+          {/* The week the student is actually living in, under the cycle dates
+              they are aiming at. It sits on its own row rather than as a fourth
+              cell above because a timetable image has an aspect ratio of its
+              own and would either be squeezed into a 3-column cell or force the
+              other three panels to its height. */}
+          <TimetableSnapshot />
+
+          {/* One outward-looking panel on an otherwise entirely self-referential
+              page — what's happening in admissions beyond this one file. */}
+          <CollegeNewsPanel />
+
+          {/* The page's one input, and it sits where it does for a reason: the
+              reading, then the instruction, then the student's own account of
+              whether any of it happened, then the file as countable progress.
+              Measurement, order, testimony, inventory. */}
+          <WeeklyCheckIn data={week} />
 
           <Ledger
             essays={d.essays}

@@ -103,9 +103,26 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
     ];
   }, [analysis.pillars]);
 
+  /**
+   * The five pillars, averaged.
+   *
+   * Two corrections here. First, the pillars arrive from a language model and
+   * are not range-checked anywhere upstream, so a stray 120 or a null used to
+   * flow straight into the mean and out onto the page; they are now clamped to
+   * 0–100 and non-numeric values are dropped rather than coerced to NaN.
+   *
+   * Second, this is an unweighted mean of five model judgements, which is a
+   * summary of the chart beside it and nothing more. It is labelled as such
+   * below — it is not a score with a denominator behind it, and calling it
+   * "Overall /100" implied one.
+   */
   const overall = useMemo(() => {
     if (!analysis.pillars) return null;
-    const v = Object.values(analysis.pillars);
+    const v = Object.values(analysis.pillars)
+      .map((n) => Number(n))
+      .filter((n) => Number.isFinite(n))
+      .map((n) => Math.max(0, Math.min(100, n)));
+    if (v.length === 0) return null;
     return Math.round(v.reduce((a, b) => a + b, 0) / v.length);
   }, [analysis.pillars]);
 
@@ -154,7 +171,7 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
             </h3>
             {overall !== null && (
               <div className="text-right">
-                <div className="text-xs text-muted-foreground">Overall</div>
+                <div className="text-xs text-muted-foreground">Pillar average</div>
                 <div className="text-2xl font-bold text-accent leading-none">
                   {overall}
                   <span className="text-sm text-muted-foreground font-normal">
@@ -204,6 +221,12 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
               ))}
             </div>
           </div>
+
+          <p className="mt-5 border-t border-border pt-3 text-xs leading-relaxed text-muted-foreground">
+            Each pillar is a reading of your report card by a model, on a 0–100 scale where 100
+            is a fully prepared profile for your stated major. The average is a summary of the
+            five — not a rank against other applicants, and not a percentile.
+          </p>
         </div>
       )}
 

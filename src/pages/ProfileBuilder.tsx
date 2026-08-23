@@ -23,6 +23,7 @@ import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 import { AgentEdit } from "@/components/AgentEdit";
 import { EASE_OUT_EXPO } from "@/lib/motion";
+import { functionErrorMessage } from "@/lib/functionError";
 import { Eyebrow, Panel, Reveal } from "@/components/dashboard/primitives";
 
 /**
@@ -84,9 +85,7 @@ export default function ProfileBuilder() {
         body: { section: sectionId, input, language: localStorage.getItem("pf_language") || "en" },
       });
       if (error) {
-        if (error.message?.includes("429")) toast.error("Rate limit exceeded. Please wait.");
-        else if (error.message?.includes("402")) toast.error("API credits exhausted.");
-        else toast.error("Failed to refine text. Please try again.");
+        toast.error(await functionErrorMessage(error, "Failed to refine text. Please try again."));
         return;
       }
       if (data?.refined) {
@@ -132,7 +131,7 @@ export default function ProfileBuilder() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Profile builder — LinkedIn & application | Pathforge' description='Build a polished student LinkedIn and application profile from your real activities and accomplishments.' path='/profile-builder' />
+      <Seo title='Profile Builder — Pathforge' description='Build a polished student LinkedIn and application profile from your real activities and accomplishments.' path='/profile-builder' />
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}
@@ -185,11 +184,23 @@ export default function ProfileBuilder() {
               <div className="card-motion sticky top-24 rounded-2xl border border-border bg-card p-4">
                 <Eyebrow className="mb-3">Sections</Eyebrow>
                 <nav className="space-y-1">
+                  {/* Gated exactly like Grow below it. The analysis costs 2
+                      credits and is stored on the linkedin_imports row, so
+                      without an import there is nowhere to keep the result and
+                      the user would be paying for something that cannot
+                      outlive the page. Import first, then analyze. */}
                   <button
-                    onClick={() => { setShowAnalysis(true); setShowPreview(false); setShowGrow(false); }}
+                    onClick={() => {
+                      if (!linkedinImport) { window.location.href = "/profile?section=connectors"; return; }
+                      setShowAnalysis(true); setShowPreview(false); setShowGrow(false);
+                    }}
                     className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left transition-colors ${showAnalysis ? "bg-primary/10 text-primary" : "hover:bg-muted text-muted-foreground hover:text-foreground"}`}
                   >
-                    <span className="flex items-center gap-2"><BarChart3 className="h-4 w-4" />Analyze Profile</span>
+                    <span className="flex items-center gap-2">
+                      {linkedinImport ? <BarChart3 className="h-4 w-4" /> : <Lock className="h-4 w-4" />}
+                      Analyze Profile
+                      {!linkedinImport && <span className="text-[10px] uppercase tracking-wide ml-1 text-muted-foreground">Locked</span>}
+                    </span>
                     <ChevronRight className={`h-4 w-4 transition-transform ${showAnalysis ? "rotate-90" : ""}`} />
                   </button>
                   <button

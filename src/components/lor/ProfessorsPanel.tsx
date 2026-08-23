@@ -37,6 +37,8 @@ import {
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecommenders } from "@/hooks/useRecommenders";
+import { functionErrorMessage } from "@/lib/functionError";
+import { safeExternalUrl } from "@/lib/safeUrl";
 
 interface Professor {
   name: string;
@@ -319,7 +321,12 @@ export function ProfessorsPanel() {
           limit: 30,
         },
       });
-      if (error) throw error;
+      // `throw error` alone loses the reason: supabase-js gives every non-2xx
+      // the same "Edge Function returned a non-2xx status code" message, so a
+      // missing FIRECRAWL_API_KEY (500), an expired session (401) and running
+      // out of credits (402) all surfaced as one indistinguishable toast. The
+      // function's own message is on error.context; functionErrorMessage reads it.
+      if (error) throw new Error(await functionErrorMessage(error, "Please try again."));
       if (data?.error) throw new Error(data.error);
       setResults(data?.professors ?? []);
       if (!data?.professors?.length) {
@@ -578,9 +585,12 @@ export function ProfessorsPanel() {
 
                 {/* Links */}
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {p.profile_url && (
+                  {/* These two addresses were found by the find-professors
+                      function crawling the open web, so they get the same
+                      scheme check as any other untrusted link. */}
+                  {safeExternalUrl(p.profile_url) && (
                     <a
-                      href={p.profile_url}
+                      href={safeExternalUrl(p.profile_url)!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 hover:text-foreground"
@@ -588,9 +598,9 @@ export function ProfessorsPanel() {
                       <ExternalLink className="h-3 w-3" /> Faculty profile
                     </a>
                   )}
-                  {p.email_source_url && p.email_source_url !== p.profile_url && (
+                  {safeExternalUrl(p.email_source_url) && p.email_source_url !== p.profile_url && (
                     <a
-                      href={p.email_source_url}
+                      href={safeExternalUrl(p.email_source_url)!}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="inline-flex items-center gap-1 hover:text-foreground"
@@ -630,7 +640,7 @@ export function ProfessorsPanel() {
 
       {/* Brag sheet dialog */}
       <Dialog open={bragOpen} onOpenChange={(o) => !o && setBragOpen(false)}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[70rem] max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Targeted brag sheet — {bragProf?.name}</DialogTitle>
             <DialogDescription>

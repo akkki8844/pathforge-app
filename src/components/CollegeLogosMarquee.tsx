@@ -61,7 +61,7 @@ export function CollegeLogosMarquee() {
               title={c.name}
             >
               <img
-                src={`https://www.google.com/s2/favicons?domain=${c.domain}&sz=128`}
+                src={`https://www.google.com/s2/favicons?domain=${c.domain}&sz=32`}
                 alt={`${c.name} university logo`}
                 loading="lazy"
                 width={28}

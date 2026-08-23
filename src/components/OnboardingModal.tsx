@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, BookOpen, ArrowRight } from "lucide-react";
-import pathforgeLogo from "@/assets/pathforge-logo.svg";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { Button } from "@/components/ui/button";
 import {
   Select,

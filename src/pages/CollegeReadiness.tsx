@@ -7,7 +7,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import {
   Collapsible,
@@ -198,18 +197,9 @@ export default function CollegeReadiness() {
     }
   };
 
-  const getAlignmentColor = (score: string) => {
-    switch (score) {
-      case "Strong":
-        return "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
-      case "Moderate":
-        return "text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400";
-      case "Needs Work":
-        return "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400";
-      default:
-        return "text-muted-foreground bg-muted";
-    }
-  };
+  // `getAlignmentColor` used to live here as a byte-for-byte duplicate of
+  // `alignmentColor` in ReadinessReport, which is the only place the alignment
+  // badge is actually rendered. It was never called from this file.
 
   const addUniversity = (uni: string) => {
     if (!targetUniversities.includes(uni) && targetUniversities.length < 5) {
@@ -241,7 +231,7 @@ export default function CollegeReadiness() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='College readiness analysis | Pathforge' description='Upload your report card and goals to see where you stand for top colleges and what to improve next.' path='/college-readiness' />
+      <Seo title='College Readiness — Pathforge' description='Upload your report card and goals to see where you stand for top colleges and what to improve next.' path='/college-readiness' />
       <div className="section-container">
         {/* Header */}
         <motion.div
@@ -294,7 +284,7 @@ export default function CollegeReadiness() {
                       View and load your past readiness analyses
                     </SheetDescription>
                   </SheetHeader>
-                  <div className="mt-6 space-y-3 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  <div className="mt-6 space-y-3 max-h-[calc(100dvh-200px)] overflow-y-auto">
                     {historyLoading ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -618,7 +608,17 @@ export default function CollegeReadiness() {
                   <p className="text-muted-foreground text-sm">
                     Evaluating academic performance and alignment with your goals...
                   </p>
-                  <Progress value={66} className="mt-6 h-2" />
+                  {/* Was `<Progress value={66} />` — a fixed bar that claimed
+                      two thirds done regardless of what the request was doing.
+                      Nothing here knows the real progress, so this reports
+                      activity rather than a fabricated fraction. */}
+                  <div
+                    className="mt-6 h-2 w-full overflow-hidden rounded-full bg-muted"
+                    role="progressbar"
+                    aria-label="Analysing"
+                  >
+                    <div className="h-full w-full animate-pulse rounded-full bg-accent/70" />
+                  </div>
                 </motion.div>
               ) : analysis ? (
                 <div key="results">

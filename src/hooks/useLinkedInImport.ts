@@ -10,6 +10,15 @@ export interface LinkedInImport {
   grow_plan_updated_at: string | null;
   created_at: string;
   updated_at: string;
+  /**
+   * Last analysis produced by the `analyze-linkedin` edge function, which the
+   * function now writes back itself (it costs the user 2 credits, so it must
+   * survive a reload rather than be re-bought). Optional here on purpose — see
+   * the cast in `refetch` below for why these two are not on the generated Row
+   * type, and so that a row saved before the column existed still type-checks.
+   */
+  analysis?: unknown;
+  analyzed_at?: string | null;
 }
 
 let cachedImport: LinkedInImport | null | undefined = undefined;
@@ -39,7 +48,19 @@ export function useLinkedInImport() {
       .select("*")
       .eq("user_id", user.id)
       .maybeSingle();
-    cachedImport = (row as LinkedInImport | null) ?? null;
+    // `select("*")` already returns `analysis` and `analyzed_at` at runtime —
+    // they exist on the live table as of
+    // supabase/migrations/20260809110000_linkedin_import_analysis.sql. They are
+    // missing only from the COMPILE-TIME row type, because
+    // src/integrations/supabase/types.ts is generated output that cannot be
+    // regenerated right now (it needs an interactive `npx supabase login` the
+    // repo owner has to run), and hand-editing generated output would be
+    // silently reverted by the next regeneration.
+    //
+    // So the stale Row is widened once, here, at the single point where this
+    // table enters the app — rather than every consumer doing its own `as any`.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    cachedImport = ((row as any) as LinkedInImport | null) ?? null;
     setData(cachedImport);
     setLoading(false);
   }, [user]);

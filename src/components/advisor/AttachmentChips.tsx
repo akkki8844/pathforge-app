@@ -13,6 +13,7 @@ export type Attachment = {
   extractedText?: string;
   dataUrl?: string; // for image preview / multimodal
   error?: string;
+  pasted?: boolean; // large text pasted directly into the composer, not a file
 };
 
 const ICON: Record<Attachment["kind"], any> = {
@@ -46,12 +47,21 @@ export function AttachmentChips({
               a.status === "error" && "border-destructive/50 bg-destructive/5"
             )}
           >
-            {busy ? (
+            {a.kind === "image" && a.dataUrl ? (
+              <img src={a.dataUrl} alt={a.name} className="h-6 w-6 shrink-0 rounded object-cover" />
+            ) : busy ? (
               <Loader2 className="h-3.5 w-3.5 shrink-0 animate-spin text-muted-foreground" />
             ) : (
               <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             )}
-            <span className="truncate font-medium" title={a.name}>{a.name}</span>
+            <span className="flex min-w-0 flex-col leading-tight">
+              {a.pasted && (
+                <span className="text-[9px] font-display font-bold uppercase tracking-wider text-accent">
+                  Pasted
+                </span>
+              )}
+              <span className="truncate font-medium" title={a.name}>{a.name}</span>
+            </span>
             <button
               type="button"
               onClick={() => onRemove(a.id)}

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { notifyCreditConsumed } from "@/hooks/useCredits";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLinkedInImport } from "@/hooks/useLinkedInImport";
+import { readEdgeError } from "@/lib/edgeFunctionError";
 
 interface OutreachItem {
   category: string;
@@ -53,7 +54,7 @@ export default function LinkedInGrow() {
     if (!linkedinImport) return;
     setLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("linkedin-grow", {
+      const result = await supabase.functions.invoke("linkedin-grow", {
         body: {
           major: onboardingData?.intended_major || "",
           targetCollege: onboardingData?.target_universities?.[0] || "",
@@ -62,22 +63,35 @@ export default function LinkedInGrow() {
           activities: onboardingData?.areas_of_interest || [],
         },
       });
-      if (error) {
-        if (error.message?.includes("402")) toast.error("Credits exhausted. Upgrade your plan.");
-        else if (error.message?.includes("429")) toast.error("Rate limit. Try again in a moment.");
-        else toast.error("Failed to generate growth plan.");
+
+      // The old branch string-matched "402"/"429" against error.message, but
+      // on a non-2xx that message is always the constant "Edge Function
+      // returned a non-2xx status code" — it never contains a status code, so
+      // every failure fell through to the generic "Failed to generate growth
+      // plan" and the function's real reason ("No LinkedIn import found",
+      // "Daily credit limit reached") was thrown away.
+      const failure = await readEdgeError(result);
+      if (failure) {
+        toast.error("Couldn't generate your Grow plan", { description: failure.message });
         return;
       }
-      if (data?.error) { toast.error(data.error); return; }
+
+      const data = result.data as { plan?: GrowPlan } | null;
       if (data?.plan) {
         setPlan(data.plan);
         notifyCreditConsumed();
         refetch();
         toast.success("Your personalized Grow plan is ready!");
+      } else {
+        toast.error("Couldn't generate your Grow plan", {
+          description: "The service returned an empty plan. Please try again.",
+        });
       }
     } catch (err) {
       console.error(err);
-      toast.error("Unexpected error generating plan.");
+      toast.error("Unexpected error generating plan.", {
+        description: err instanceof Error ? err.message : undefined,
+      });
     } finally {
       setLoading(false);
     }
@@ -103,7 +117,8 @@ export default function LinkedInGrow() {
           <Sparkles className="mr-2 h-4 w-4" />
           Generate my Grow plan
         </Button>
-        <p className="text-xs text-muted-foreground mt-3">Powered by an advanced reasoning model · Uses 1 credit</p>
+        {/* The edge function calls consume_credits with amount: 2. */}
+        <p className="text-xs text-muted-foreground mt-3">Powered by an advanced reasoning model · Uses 2 credits</p>
       </div>
     );
   }

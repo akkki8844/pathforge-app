@@ -38,7 +38,14 @@ export function preloadRoute(href: string) {
   fn().catch(() => triggered.delete(href));
 }
 
-/** Warm up the most common destinations once the app is idle. */
+/**
+ * Warm up the most common destinations once the app is idle.
+ *
+ * Only call this for a signed-in user. Every route below is behind
+ * ProtectedRoute, so warming them for an anonymous visitor downloads four
+ * chunks they cannot reach without authenticating first — bandwidth spent on
+ * the landing page, competing with it, for nothing.
+ */
 export function preloadCommonRoutes() {
   if (typeof window === "undefined") return;
   const run = () => {

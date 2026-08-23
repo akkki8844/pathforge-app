@@ -78,7 +78,7 @@ export function AnimatedHero({ children, className = "" }: AnimatedHeroProps) {
         />
 
         {/* Stepped pillars silhouette */}
-        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[38vh]">
+        <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-[38svh]">
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-transparent" />
           <div className="absolute inset-x-0 bottom-0 flex h-full items-end gap-px px-[2px]">
             {pillars.map((h, i) => (

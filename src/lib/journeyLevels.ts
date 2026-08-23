@@ -1,6 +1,8 @@
 // Duolingo-style level system + hyper-specific, major-aware task library.
 // Each task is a concrete, real-world action — never generic.
 
+import { detectTemplateMajor, getTemplateTasks } from "@/data/journeyTemplates";
+
 export type LevelId = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15;
 
 /** Highest level in the system. The one place code should read "15" from. */
@@ -20,6 +22,19 @@ export interface LevelDef {
 // the path reads as one continuous journey rather than a pile of stickers.
 // `color` is the Tailwind gradient used for banners/headers; `LEVEL_CLAY` in
 // LevelPath carries the matching hex ramp for the 3D nodes.
+//
+// Levels 11–15 extend the arc past Apex rather than undercutting it: Apex is
+// "operate like a college sophomore" — the peak of *readiness* — and what
+// comes after isn't more readiness, it's the senior-year execution that
+// readiness was for: interviews, the decision, committing, closing every
+// high-school loop, and actually arriving on campus. The hue continues into a
+// second sweep (rose → slate → teal → gold → champagne) so it visually reads
+// as "past the original ten," not a seamless continuation of the same ramp.
+//
+// unlockScores are re-derived across all 15 (not just appended) because the
+// scoring model's `overall_score` is a 0–100 ceiling shared by every level —
+// packing 5 more thresholds above the old 98 would leave them clustered in
+// the last 2 points and functionally unreachable.
 export const LEVELS: LevelDef[] = [
   { id: 1,  name: "Foundation",      tagline: "Set the academic & test base",     unlockScore: 0,  color: "from-[#3f9e93] to-[#2f7d74]" },
   { id: 2,  name: "Exploration",     tagline: "Discover what excites you",        unlockScore: 9,  color: "from-[#3d8fc4] to-[#2f6f9c]" },
@@ -531,6 +546,24 @@ const TASKS: Record<MajorKey, Partial<Record<LevelId, (ctx: Ctx) => LevelTask[]>
 };
 
 export function getLevelTasksForUser(ctx: Ctx): LevelTask[] {
+  // Hand-written per-major templates take priority. Before these existed, ten
+  // of the thirteen majors below were aliases onto `generic` or `finance` —
+  // and `physics` aliased onto `computer_science`, so a physics student's
+  // Journey told them to finish CS50 and land merged pull requests. Anything
+  // the template registry recognises now gets tasks written for its own field.
+  const templateKey = detectTemplateMajor(ctx.major);
+  if (templateKey) {
+    return getTemplateTasks(templateKey, {
+      major: ctx.major,
+      country: ctx.country,
+      curriculum: ctx.curriculum,
+      grade: ctx.grade,
+      // Level 6+ reuses the Level 5 library, as below.
+      level: Math.min(5, ctx.level),
+      targetUniversity: ctx.targetUniversity,
+    });
+  }
+
   const key = detectMajor(ctx.major);
   const lib = TASKS[key] || TASKS.generic;
   // Level 6+ reuses the Level 5 task library — major-specific hand-written
@@ -669,15 +702,17 @@ export function placeUserAtLevel(a: PlacementAnswers, gradeStr: string, overallS
   s = s * (1 + Math.min(0.10, pillarsWithDepth * 0.025));
 
   // Raw scale now totals ~129 across 35 questions; normalise back to ~100
-  // so existing level thresholds (12, 26, 42, 58, 70, 80, 88, 94, 98) hold.
+  // so the LEVELS unlockScore thresholds (whatever they currently are) hold.
   s = s * (100 / 129);
 
   // Blend with platform-computed overall score (60/40 toward the test).
   const blended = Math.round(s * 0.6 + overallScore * 0.4);
 
-  // Soft grade cap — earlier grades shouldn't be placed too high.
+  // Soft grade cap — earlier grades shouldn't be placed too high. Scaled to
+  // MAX_LEVEL rather than hardcoded to 10, so a future level count doesn't
+  // silently cap every grade at the old ceiling.
   const cap: Record<number, LevelId> =
-    { 8: 4, 9: 6, 10: 8, 11: 11, 12: MAX_LEVEL } as any;
+    { 8: 4, 9: 7, 10: 10, 11: 13, 12: MAX_LEVEL } as any;
   const gradeCap = cap[gradeNum(gradeStr)] ?? MAX_LEVEL;
 
   let level: LevelId = 1;
@@ -697,7 +732,7 @@ export function getCurrentLevel(overallScore: number, placementOverride?: LevelI
 }
 
 // ── Stages: a Duolingo-style sub-level system ─────────────────────────
-// Each Level is split into 20 Stages. 5 Levels × 20 Stages = 100 nodes.
+// Each Level is split into 20 Stages. 15 Levels × 20 Stages = 300 nodes.
 
 export type SubIndex = number; // 1..STAGES_PER_LEVEL
 
@@ -941,6 +976,7 @@ const STAGE_TEMPLATES: Array<{
   { level: 10, sub: 19, name: "Yield Strategy",     description: "Lock financial fit and apply for every major scholarship you qualify for.", outcome: "Scholarship applications submitted + decisions tracked." },
   { level: 10, sub: 20, name: "Apex Review",        description: "Final audit. You're operating like a college sophomore in your field. Pick your seat.", outcome: "Final decision logged + commitment made." },
 
+  // ── Level 11 — Interview & Decision (Stages 11.1–11.20) ──────────────
   { level: 11, sub: 1,  name: "Interview Rehearsal",   description: "Run three full mock interviews against real questions your target schools actually ask.", outcome: "3 mock interviews completed with written feedback after each." },
   { level: 11, sub: 2,  name: "Story Bank",             description: "Curate 8–10 concrete stories from your file, each mapped to a strength an interviewer might probe.", outcome: "Story bank document with a 2-3 sentence version of each story." },
   { level: 11, sub: 3,  name: "School Deep-Dive",       description: "For every school still live, know two specific programs, professors, or traditions you'd actually use.", outcome: "One-page brief per school with specifics, not brochure language." },

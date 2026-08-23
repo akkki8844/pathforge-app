@@ -11,10 +11,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { submitPublicForm } from "@/lib/publicContact";
 import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import { z } from "zod";
 import { Seo } from "@/components/Seo";
+import { FAQS } from "@/data/faq";
 
 const contactSchema = z.object({
   name: z.string().trim().min(1, "Name is required").max(100),
@@ -68,28 +69,13 @@ export default function Contact() {
 
     setIsSubmitting(true);
     const subjectLabel = SUBJECTS.find((s) => s.value === subject)?.label || subject;
-    const submissionId = crypto.randomUUID();
 
     try {
-      // Send admin notification to pathforge.co@gmail.com
-      const adminInvoke = supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "contact-notification",
-          recipientEmail: "pathforge.co@gmail.com",
-          idempotencyKey: `contact-notify-${submissionId}`,
-          templateData: { fromName: name, fromEmail: email, subject: subjectLabel, message },
-        },
-      });
-      // Send confirmation to the user
-      const userInvoke = supabase.functions.invoke("send-transactional-email", {
-        body: {
-          templateName: "contact-confirmation",
-          recipientEmail: email,
-          idempotencyKey: `contact-confirm-${submissionId}`,
-          templateData: { name, subject: subjectLabel, message },
-        },
-      });
-      await Promise.all([adminInvoke, userInvoke]);
+      // Throws on failure — including the non-2xx responses that invoke()
+      // otherwise resolves through, which is why this form used to report
+      // "Message sent!" for messages it never sent.
+      await submitPublicForm({ kind: "contact", name, email, subject: subjectLabel, message });
+
       setShowConfirmation(true);
       clearContactDraft();
       toast({ title: "Message sent!", description: "We'll be in touch within 2–3 business days." });
@@ -107,13 +93,27 @@ export default function Contact() {
 
   return (
     <div className="py-10 sm:py-16 relative overflow-hidden">
-      <Seo title='Contact Pathforge — get in touch' description='Reach the Pathforge team for support, partnerships, school programs, and student success questions.' path='/contact' />
+      <Seo
+        title='Contact — Pathforge'
+        description='Reach the Pathforge team for support, refunds, school and counsellor partnerships, bug reports and press. Most messages get a personal reply within 2–3 business days.'
+        path='/contact'
+        jsonLd={{
+          "@context": "https://schema.org",
+          "@type": "FAQPage",
+          "@id": "https://pathforge.co.in/contact#faq",
+          mainEntity: FAQS.map((f) => ({
+            "@type": "Question",
+            name: f.q,
+            acceptedAnswer: { "@type": "Answer", text: f.a },
+          })),
+        }}
+      />
       <div className="absolute top-20 right-0 w-72 h-72 bg-accent/5 rounded-full blur-3xl pointer-events-none" />
 
       <div className="section-container max-w-5xl relative z-10">
         <div className="text-center mb-10">
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 bg-accent/10 text-accent text-xs font-medium px-3 py-1.5 rounded-full mb-3">
-            <Star className="h-3 w-3" /> We typically reply within 2–3 business days
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-1.5 text-accent text-xs font-semibold uppercase tracking-wide mb-3">
+            <Star className="h-3.5 w-3.5" /> We typically reply within 2–3 business days
           </motion.div>
           <motion.h1
             initial={{ opacity: 0, y: 12 }}
@@ -271,6 +271,29 @@ export default function Contact() {
             </AnimatePresence>
           </motion.div>
         </div>
+
+        {/* Before you write — the questions we answer most often. This is also
+            the on-page counterpart to the FAQPage JSON-LD above: the markup is
+            only valid while every question and answer here is visible to the
+            reader, so both are rendered from the same FAQS array rather than
+            being maintained as two copies that can drift apart. */}
+        <ScrollReveal className="mt-16">
+          <h2 className="text-2xl font-bold text-foreground text-center mb-2">
+            Before you write
+          </h2>
+          <p className="text-sm text-muted-foreground text-center max-w-xl mx-auto mb-8">
+            These are the questions we get most. If yours is here, you have your answer
+            immediately instead of in two days.
+          </p>
+          <div className="grid sm:grid-cols-2 gap-4 max-w-4xl mx-auto">
+            {FAQS.map((faq) => (
+              <div key={faq.q} className="rounded-2xl border border-border/50 bg-card p-5">
+                <h3 className="font-semibold text-foreground text-sm mb-2">{faq.q}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+          </div>
+        </ScrollReveal>
       </div>
     </div>
   );

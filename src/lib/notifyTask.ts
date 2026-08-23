@@ -58,3 +58,32 @@ export async function notifyTaskComplete(opts: {
     /* fail silently — toast already shown */
   }
 }
+
+/**
+ * Fire a Routine reminder through the notification system that already exists.
+ *
+ * Deliberately not a second notification stack: it writes the same
+ * `notifications` row the bell already reads and shows the same sonner toast.
+ * The only difference from {@link notifyTaskComplete} is which preference gates
+ * it — `aiTasks` is about AI jobs finishing, and a student who muted those has
+ * not asked to stop being reminded about their own reminders.
+ */
+export async function notifyReminderDue(opts: { title: string; message: string }) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+
+  const prefs = getNotifPrefs(user.id);
+  if (prefs.toasts) {
+    toast(opts.title, { description: opts.message });
+  }
+
+  try {
+    await supabase.from("notifications").insert({
+      user_id: user.id,
+      title: opts.title,
+      message: opts.message,
+    });
+  } catch {
+    /* fail silently — toast already shown */
+  }
+}

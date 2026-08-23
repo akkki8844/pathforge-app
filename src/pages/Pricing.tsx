@@ -2,12 +2,17 @@ import { useState, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+// The spring-physics CTA button, used only for the plan actions below — the
+// clicks that actually cost money. Everything else on this page stays on the
+// standard Button so a "Cancel" doesn't animate like a purchase.
+import { Button as MotionButton } from "@/components/ui/be-ui-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useCredits } from "@/hooks/useCredits";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { submitPublicForm } from "@/lib/publicContact";
 import { z } from "zod";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useSubscription } from "@/hooks/useSubscription";
@@ -35,7 +40,7 @@ const ENTERPRISE_FEATURES = [
 ];
 
 export default function Pricing() {
-  const { creditData, refreshCredits, claimFreePlan, switchPlan } = useCredits();
+  const { creditData, claimFreePlan, switchPlan, redeemCoupon } = useCredits();
   const { user } = useAuth();
   const [claiming, setClaiming] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
@@ -50,7 +55,8 @@ export default function Pricing() {
   const [couponCode, setCouponCode] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponSuccess, setCouponSuccess] = useState<{
-    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null; creditsGranted: number;
+    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null;
+    creditsGranted: number; planActive: boolean;
   } | null>(null);
 
   const handleRedeemCoupon = async () => {
@@ -58,33 +64,38 @@ export default function Pricing() {
       toast({ title: "Sign in required", description: "Please sign in to redeem a coupon.", variant: "destructive" });
       return;
     }
-    const code = couponCode.trim();
-    if (!code) {
-      toast({ title: "Enter a code", description: "Please enter a coupon code.", variant: "destructive" });
-      return;
-    }
     setCouponLoading(true);
     try {
-      const { data, error } = await supabase.rpc("redeem_coupon", { _code: code });
-      if (error) throw error;
-      const result = data as {
-        success: boolean; error?: string; credits_granted?: number; code?: string;
-        plan_unlocked?: string | null;
-      };
-      if (!result?.success) {
-        toast({ title: "Couldn't redeem", description: result?.error || "Invalid code.", variant: "destructive" });
+      // One shared implementation with Settings > Billing — the two used to
+      // hold separate copies of this logic and had already drifted apart on
+      // what a successful redemption meant.
+      const result = await redeemCoupon(couponCode);
+      if (!result.success) {
+        toast({ title: "Couldn't redeem", description: result.error || "Invalid code.", variant: "destructive" });
         return;
       }
-      const unlockedPlan = result.plan_unlocked ? PLANS.find((p) => p.tier === result.plan_unlocked) : undefined;
-      setCouponSuccess({
-        code: result.code || code,
-        planName: unlockedPlan?.name || result.plan_unlocked || null,
-        planTier: result.plan_unlocked || null,
-        planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
-        creditsGranted: result.credits_granted || 0,
-      });
       setCouponCode("");
-      await refreshCredits();
+
+      // The code granted a tier below what they already hold, so the server
+      // declined to apply it. Say so — going quiet reads as a broken code.
+      if (!result.planTier && result.planKept) {
+        const kept = PLANS.find((p) => p.tier === result.planKept);
+        toast({
+          title: "Code applied",
+          description: `You're already on ${kept?.name || result.planKept}, which is better than this code grants — your plan is unchanged.`,
+        });
+        return;
+      }
+
+      const unlockedPlan = result.planTier ? PLANS.find((p) => p.tier === result.planTier) : undefined;
+      setCouponSuccess({
+        code: result.code || couponCode.trim().toUpperCase(),
+        planName: unlockedPlan?.name || result.planTier || null,
+        planTier: result.planTier,
+        planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
+        creditsGranted: result.creditsGranted,
+        planActive: result.planActivated,
+      });
     } catch (e: any) {
       toast({ title: "Couldn't redeem", description: e?.message || "Try again in a moment.", variant: "destructive" });
     } finally {
@@ -192,33 +203,26 @@ export default function Pricing() {
     setEnterpriseSubmitting(true);
     try {
       const { name, email, org, message } = parsed.data;
-      const { data: insertRow, error: insertErr } = await supabase
+      const { error: insertErr } = await supabase
         .from("enterprise_inquiries")
         .insert({ name, email, organization: org || null, message })
         .select("id")
         .single();
       if (insertErr) throw insertErr;
-      const inquiryId = insertRow?.id || crypto.randomUUID();
 
-      // Fire-and-forget: notify team + confirm to submitter
-      await Promise.allSettled([
-        supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "enterprise-inquiry-notification",
-            recipientEmail: "pathforge.co@gmail.com",
-            idempotencyKey: `enterprise-notify-${inquiryId}`,
-            templateData: { name, email, organization: org || "—", message },
-          },
-        }),
-        supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "enterprise-inquiry-confirmation",
-            recipientEmail: email,
-            idempotencyKey: `enterprise-confirm-${inquiryId}`,
-            templateData: { name },
-          },
-        }),
-      ]);
+      // The row above is the durable record, so the enquiry itself was never at
+      // risk — but the notification emails were. They went straight to
+      // `send-transactional-email`, which is service-role-only and not exempt
+      // from verify_jwt, so a signed-out visitor's call was rejected at the
+      // gateway. Promise.allSettled then swallowed both rejections and the form
+      // showed its success state regardless: nobody on the team was told.
+      await submitPublicForm({
+        kind: "enterprise",
+        name,
+        email,
+        organization: org || undefined,
+        message,
+      });
       setEnterpriseSubmitted(true);
     } catch (e: any) {
       toast({
@@ -241,29 +245,47 @@ export default function Pricing() {
   };
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-[100svh] relative overflow-hidden">
       <Seo
-        title='Pathforge pricing — Free, Pro, Max, Enterprise'
+        title='Pricing — Pathforge'
         description='Free forever with 3 credits a day. Pro is $20/mo for 250 credits a month, Max is $75/mo for 750. Enterprise plans for schools and counselling teams.'
         path='/pricing'
         jsonLd={{
           "@context": "https://schema.org",
           "@type": "Product",
+          // Carries its own @id and points `brand` at the Organization declared
+          // in index.html's graph, so this is a fourth linked node rather than a
+          // second, unrelated thing also called "Pathforge".
+          "@id": "https://pathforge.co.in/pricing#product",
           name: "Pathforge",
-          description: "AI-powered college application platform with activity recommendations, essay refinement, LinkedIn building, and application tracking.",
-          brand: { "@type": "Brand", name: "Pathforge" },
+          description:
+            "AI-powered college application platform with activity recommendations, essay refinement, LinkedIn building, and application tracking.",
+          brand: { "@id": "https://pathforge.co.in/#organization" },
+          image: "https://pathforge.co.in/logo.png",
+          // An AggregateOffer, not a bare list. The list previously ended with an
+          // Enterprise entry that had neither `price` nor `priceCurrency` —
+          // Enterprise is quote-only, so there was no number to put there — and an
+          // Offer without a price fails validation. Enterprise is described in
+          // `offerCount` and the page copy instead of being asserted as a priced
+          // offer that does not exist.
+          //
           // Built from PLANS so the structured data can't drift from the page.
-          offers: [
-            ...PLANS.map((p) => ({
+          offers: {
+            "@type": "AggregateOffer",
+            priceCurrency: "USD",
+            lowPrice: String(Math.min(...PLANS.map((p) => p.priceUSD))),
+            highPrice: String(Math.max(...PLANS.map((p) => p.priceUSD))),
+            offerCount: PLANS.length + 1, // + Enterprise, which is priced on request
+            offers: PLANS.map((p) => ({
               "@type": "Offer",
               name: p.name,
               price: String(p.priceUSD),
               priceCurrency: "USD",
               description: `${p.advisorModel} advisor model — ${creditLabel(p)}`,
               url: "https://pathforge.co.in/pricing",
+              availability: "https://schema.org/InStock",
             })),
-            { "@type": "Offer", name: "Enterprise", description: "Custom credit allocations for schools and counselling teams", url: "https://pathforge.co.in/pricing" },
-          ],
+          },
         }}
       />
       <div className="absolute inset-0 pointer-events-none">
@@ -276,7 +298,7 @@ export default function Pricing() {
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-2 bg-primary/10 text-primary text-xs font-medium px-3 py-1.5 rounded-full border border-primary/20"
+            className="text-primary text-xs font-semibold uppercase tracking-wide"
           >
             Simple, scalable pricing
           </motion.div>
@@ -329,6 +351,9 @@ export default function Pricing() {
 
         {/* Plan grid — rendered from src/lib/plans.ts, the same source the
             in-app billing settings use, so the two can never disagree. */}
+        <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight text-center mb-6">
+          Plans and credits
+        </h2>
         {/* pt-4 leaves room for the overhanging "Most Popular" badge. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 pt-4">
           {PLANS.map((plan, i) => {
@@ -337,10 +362,16 @@ export default function Pricing() {
               ? { displayUSD: "0", displayINR: 0, totalUSD: 0 }
               : priceFor(plan);
             const off = discountPercent(plan);
+            /* Compare tiers, not raw plan strings. The server stores whatever
+               the webhook wrote — "pro_monthly", "enterprise", "admin" — so an
+               exact match against "pro" told a paying subscriber that they were
+               on no plan at all. planTierFromString is the same normaliser the
+               downgrade check on the next line already used. */
+            const currentTier = planTierFromString(creditData?.plan);
             const planActive =
-              creditData?.plan === plan.tier &&
-              (!creditData.planExpiresAt || new Date(creditData.planExpiresAt) > new Date());
-            const isCurrent = isFreeUnlock ? false : creditData?.plan === plan.tier;
+              currentTier === plan.tier &&
+              (!creditData?.planExpiresAt || new Date(creditData.planExpiresAt) > new Date());
+            const isCurrent = isFreeUnlock ? false : currentTier === plan.tier;
             const isPaid = plan.priceUSD > 0;
             const isDowngradeTarget =
               !!creditData &&
@@ -383,55 +414,57 @@ export default function Pricing() {
                 >
                   {!isPaid ? (
                     isDowngradeTarget ? (
-                      <Button
+                      <MotionButton
                         onClick={() => handleSwitchPlan(plan)}
                         disabled={switching === plan.tier}
                         variant="outline"
                         className="w-full rounded-xl h-11 font-semibold"
                       >
                         {switching === plan.tier ? <Loader2 className="h-4 w-4 animate-spin" /> : "Switch to Free"}
-                      </Button>
+                      </MotionButton>
                     ) : (
-                      <Button variant="outline" className="w-full rounded-xl h-11" disabled>
+                      <MotionButton variant="outline" className="w-full rounded-xl h-11" disabled>
                         {isCurrent ? "Current Plan" : "Free Forever"}
-                      </Button>
+                      </MotionButton>
                     )
                   ) : isFreeUnlock ? (
-                    <Button
+                    <MotionButton
                       onClick={() => handleClaimFreePlan(plan)}
                       disabled={claiming}
+                      ripple
                       className="w-full rounded-xl h-11 font-semibold"
                     >
                       {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : "Activate for $0"}
-                    </Button>
+                    </MotionButton>
                   ) : planActive ? (
-                    <Button variant="outline" className="w-full rounded-xl h-11 font-semibold" disabled>
+                    <MotionButton variant="outline" className="w-full rounded-xl h-11 font-semibold" disabled>
                       Current Plan
-                    </Button>
+                    </MotionButton>
                   ) : isDowngradeTarget ? (
-                    <Button
+                    <MotionButton
                       onClick={() => handleSwitchPlan(plan)}
                       disabled={switching === plan.tier}
                       variant="outline"
                       className="w-full rounded-xl h-11 font-semibold"
                     >
                       {switching === plan.tier ? <Loader2 className="h-4 w-4 animate-spin" /> : `Switch to ${plan.name}`}
-                    </Button>
+                    </MotionButton>
                   ) : isActive && subscription?.product_id?.startsWith(plan.tier) ? (
-                    <Button
+                    <MotionButton
                       onClick={handleManageSubscription}
                       disabled={portalLoading}
                       variant="outline"
                       className="w-full rounded-xl h-11 font-semibold"
                     >
                       {portalLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Manage Subscription"}
-                    </Button>
+                    </MotionButton>
                   ) : (
-                    <Button
+                    <MotionButton
                       onClick={() => handleUpgrade(plan)}
                       disabled={checkoutLoading}
+                      ripple
                       className="w-full rounded-xl h-11 font-semibold"
-                      variant={plan.highlighted ? "default" : "outline"}
+                      variant={plan.highlighted ? "primary" : "outline"}
                     >
                       {checkoutLoading ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -440,7 +473,7 @@ export default function Pricing() {
                       ) : (
                         `Upgrade to ${plan.name}`
                       )}
-                    </Button>
+                    </MotionButton>
                   )}
                 </TierPlanCard>
               </motion.div>
@@ -459,7 +492,7 @@ export default function Pricing() {
               <p className="mt-1 text-xs text-muted-foreground">For schools & counselling teams</p>
               <p className="mt-4 text-3xl font-bold text-foreground">Custom</p>
               <p className="mt-3 pt-3 border-t border-border text-sm font-medium text-foreground">
-                Custom credit pool <span className="text-muted-foreground">· Pathforge Max</span>
+                Custom credit pool <span className="text-muted-foreground">· PFA 7</span>
               </p>
               <ul className="mt-4 flex-1 space-y-2">
                 {ENTERPRISE_FEATURES.map((f) => (
@@ -470,9 +503,9 @@ export default function Pricing() {
                 ))}
               </ul>
               <div className="mt-5 pt-4 border-t border-border">
-                <Button onClick={() => setShowEnterprise(true)} variant="outline" className="w-full rounded-xl h-11">
+                <MotionButton onClick={() => setShowEnterprise(true)} variant="outline" className="w-full rounded-xl h-11">
                   Contact sales
-                </Button>
+                </MotionButton>
               </div>
             </article>
           </motion.div>
@@ -485,12 +518,14 @@ export default function Pricing() {
           transition={{ delay: 0.4 }}
           className="max-w-md mx-auto mb-8 rounded-2xl border border-border/60 bg-card/60 backdrop-blur-xl p-5"
         >
-          <h3 className="text-sm font-semibold text-foreground mb-3">Have a coupon code?</h3>
+          <h3 className="text-sm font-semibold text-foreground mb-3" id="coupon-heading">Have a coupon code?</h3>
           <p className="text-xs text-muted-foreground mb-3">
             Redeem a promo code for bonus credits or a free plan unlock — no payment required.
           </p>
           <div className="flex gap-2">
             <Input
+              id="coupon-code"
+              aria-label="Coupon code"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
               placeholder="Enter coupon code"
@@ -531,7 +566,7 @@ export default function Pricing() {
               exit={{ scale: 0.96, y: 16, opacity: 0 }}
               transition={{ type: "spring", stiffness: 260, damping: 24 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative bg-card border border-border/60 sm:rounded-3xl shadow-2xl w-full sm:max-w-3xl my-auto min-h-screen sm:min-h-0 overflow-hidden"
+              className="relative bg-card border border-border/60 sm:rounded-3xl shadow-2xl w-full sm:max-w-3xl my-auto min-h-[100svh] sm:min-h-0 overflow-hidden"
             >
               {/* Close */}
               <button
@@ -553,7 +588,7 @@ export default function Pricing() {
                     <div className="relative p-7 sm:p-9 bg-gradient-to-br from-primary/10 via-accent/5 to-transparent border-b md:border-b-0 md:border-r border-border/40">
                       <div className="absolute top-0 right-0 -mt-16 -mr-16 w-48 h-48 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
                       <div className="relative space-y-5">
-                        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary text-[11px] font-semibold px-2.5 py-1 rounded-full border border-primary/20">
+                        <div className="text-primary text-[11px] font-semibold uppercase tracking-wide">
                           Pathforge for teams
                         </div>
                         <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight leading-tight">
@@ -586,8 +621,9 @@ export default function Pricing() {
                       <h3 className="text-lg font-bold text-foreground">Tell us about your team</h3>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground">Name</label>
+                        <label htmlFor="ent-name" className="text-xs font-semibold text-foreground">Name</label>
                         <Input
+                          id="ent-name"
                           placeholder="Your full name"
                           value={enterpriseForm.name}
                           onChange={(e) => setEnterpriseForm((p) => ({ ...p, name: e.target.value }))}
@@ -597,8 +633,9 @@ export default function Pricing() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground">Email <span className="text-destructive">*</span></label>
+                        <label htmlFor="ent-email" className="text-xs font-semibold text-foreground">Email <span className="text-destructive">*</span></label>
                         <Input
+                          id="ent-email"
                           type="email"
                           placeholder="you@school.edu"
                           value={enterpriseForm.email}
@@ -609,8 +646,9 @@ export default function Pricing() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground">Organization <span className="text-muted-foreground font-normal">(optional)</span></label>
+                        <label htmlFor="ent-org" className="text-xs font-semibold text-foreground">Organization <span className="text-muted-foreground font-normal">(optional)</span></label>
                         <Input
+                          id="ent-org"
                           placeholder="School, district, or company"
                           value={enterpriseForm.org}
                           onChange={(e) => setEnterpriseForm((p) => ({ ...p, org: e.target.value }))}
@@ -619,8 +657,9 @@ export default function Pricing() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-xs font-semibold text-foreground">What do you need?</label>
+                        <label htmlFor="ent-message" className="text-xs font-semibold text-foreground">What do you need?</label>
                         <Textarea
+                          id="ent-message"
                           placeholder="Number of students, timeline, integrations, anything we should know…"
                           value={enterpriseForm.message}
                           onChange={(e) => setEnterpriseForm((p) => ({ ...p, message: e.target.value }))}
@@ -687,8 +726,9 @@ export default function Pricing() {
         planName={couponSuccess?.planName}
         planCreditLabel={couponSuccess?.planCreditLabel}
         creditsGranted={couponSuccess?.creditsGranted}
+        planActive={couponSuccess?.planActive}
         onActivatePlan={
-          couponSuccess?.planTier
+          couponSuccess?.planTier && !couponSuccess.planActive
             ? () => {
                 setTimeout(() => {
                   document

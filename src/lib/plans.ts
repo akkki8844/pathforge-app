@@ -19,9 +19,26 @@ export type PlanTier = "free" | "pro" | "max";
 
 export const PLAN_RANK: Record<PlanTier, number> = { free: 0, pro: 1, max: 2 };
 
-/** Map a raw server plan string (from get_credits) onto a tier. */
+/**
+ * Map a raw server plan string (from get_credits) onto a tier.
+ *
+ * The string is not always one of the three tier names. Paddle writes the
+ * subscribed product's external id straight into `user_credits.plan`, so a
+ * paying account can carry `pro_monthly`, `max_annual`, or one of the older
+ * `pro_100`…`pro_7000` catalogue ids; coupon and admin grants use the
+ * historical `starter`/`growth`/`power` aliases for Pro. Everything
+ * unrecognised used to fall through to "free", which is precisely how a
+ * subscriber ended up locked out of the paid models and metered at three
+ * credits a day. The tier is the part before the first underscore, so the
+ * suffix is stripped before the lookup rather than after the complaint.
+ *
+ * `normalize_plan()` in the database does the same thing for the server-side
+ * allowance functions; the two must agree.
+ */
 export function planTierFromString(plan?: string | null): PlanTier {
-  switch ((plan || "free").toLowerCase()) {
+  const raw = (plan || "free").trim().toLowerCase();
+  const base = raw.split("_")[0];
+  switch (base) {
     case "max":
     case "admin": // admins get top-tier access
     case "enterprise": // custom/highest-tier plan, at least Max-level access
@@ -57,6 +74,12 @@ export interface PlanConfig {
   accent: string;
   highlighted?: boolean;
   features: string[];
+  /**
+   * Monthly advisor token pool. Separate from `credits`: the advisor is metered
+   * in tokens, everything else in the app spends credits. Mirrors
+   * `advisor_token_allowance()` in the database, which does the enforcing.
+   */
+  advisorTokens: number;
   /** Advisor model this tier unlocks. */
   advisorModel: string;
   /** One line on what that model is actually good for. */
@@ -74,6 +97,11 @@ export function creditLabel(plan: PlanConfig): string {
   return `${plan.credits.toLocaleString()} credits / ${plan.creditPeriod}`;
 }
 
+/** "25,000 advisor tokens / month". */
+export function advisorTokenLabel(plan: PlanConfig): string {
+  return `${plan.advisorTokens.toLocaleString()} advisor tokens / month`;
+}
+
 export const PLANS: PlanConfig[] = [
   {
     tier: "free",
@@ -82,15 +110,17 @@ export const PLANS: PlanConfig[] = [
     priceUSD: 0,
     credits: 3,
     creditPeriod: "day",
+    advisorTokens: 25000,
     icon: Sparkles,
     accent: "from-slate-400 to-slate-500",
-    advisorModel: "Pathforge Core",
+    advisorModel: "PFA 5.5",
     advisorModelBlurb: "Fast answers for everyday planning questions.",
     features: [
       "The full 300-quest Journey",
-      "Pathforge Core advisor model",
+      "PFA 5.5 advisor model",
       "Activities, essays & resume builders",
       "3 credits / day",
+      "25,000 advisor tokens / month",
       "Community support",
     ],
   },
@@ -102,16 +132,18 @@ export const PLANS: PlanConfig[] = [
     originalPriceUSD: 25,
     credits: 250,
     creditPeriod: "month",
+    advisorTokens: 100000,
     icon: Zap,
     accent: "from-indigo-500 to-violet-600",
     highlighted: true,
-    advisorModel: "Pathforge Pro",
+    advisorModel: "PFA 6.5",
     advisorModelBlurb:
       "Reasons across your whole profile — scores, activities and target list — before it answers.",
     features: [
       "Everything in Free",
-      "Pathforge Pro advisor model",
+      "PFA 6.5 advisor model",
       "250 credits / month",
+      "100,000 advisor tokens / month",
       "Priority screenshot verification",
       "All application & LinkedIn builders",
       "Email support",
@@ -125,15 +157,17 @@ export const PLANS: PlanConfig[] = [
     originalPriceUSD: 100,
     credits: 750,
     creditPeriod: "month",
+    advisorTokens: 250000,
     icon: Crown,
     accent: "from-amber-400 via-orange-500 to-rose-500",
-    advisorModel: "Pathforge Max",
+    advisorModel: "PFA 7",
     advisorModelBlurb:
       "Our deepest reasoning model — for essay strategy, school-list calls and anything you only get one shot at.",
     features: [
       "Everything in Pro",
-      "Pathforge Max advisor model",
+      "PFA 7 advisor model",
       "750 credits / month",
+      "250,000 advisor tokens / month",
       "Fastest verification queue",
       "1:1 priority support",
       "Early access to new features",
@@ -143,4 +177,19 @@ export const PLANS: PlanConfig[] = [
 
 export function planForTier(tier: PlanTier): PlanConfig {
   return PLANS.find((p) => p.tier === tier) ?? PLANS[0];
+}
+
+/**
+ * What to call a raw server plan string in the UI.
+ *
+ * Deliberately not `planForTier(planTierFromString(plan)).name`: that collapse
+ * is right for access decisions and wrong for a label. An Enterprise customer
+ * reading their own billing page should be told they are on Enterprise, not on
+ * Max, and an admin should not be told they are a paying Max subscriber.
+ */
+export function planDisplayName(plan?: string | null): string {
+  const base = (plan || "free").trim().toLowerCase().split("_")[0];
+  if (base === "enterprise") return "Enterprise";
+  if (base === "admin") return "Admin";
+  return planForTier(planTierFromString(base)).name;
 }

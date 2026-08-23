@@ -5,8 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RatingScaleGroup, RatingScaleItem } from "@/components/ui/rating-scale-group";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
+import { submitPublicForm } from "@/lib/publicContact";
 import { toast } from "sonner";
 
 /**
@@ -26,6 +28,7 @@ export function FeedbackWidget() {
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [email, setEmail] = useState("");
+  const [rating, setRating] = useState("7");
   const [submitting, setSubmitting] = useState(false);
 
   // Hide on routes where it would be disruptive or where the audience is wrong.
@@ -45,6 +48,7 @@ export function FeedbackWidget() {
     setSubmitting(true);
     try {
       const contactEmail = email.trim() || profile?.email || user?.email || null;
+      const withRating = `Satisfaction: ${rating}/10\n\n${trimmed}`;
 
       // 1) Save to admin_feedback if signed in (RLS requires auth.uid())
       if (user) {
@@ -52,7 +56,7 @@ export function FeedbackWidget() {
           user_id: user.id,
           type: "general",
           title: trimmed.slice(0, 80),
-          description: trimmed,
+          description: withRating,
           status: "pending",
           priority: "medium",
           admin_notes: contactEmail ? `Reply-to: ${contactEmail}` : null,
@@ -60,29 +64,30 @@ export function FeedbackWidget() {
         if (error) throw error;
       }
 
-      // 2) Best-effort email to the team. Don't fail the submission if this
-      // throws — the record is already saved (or, for guests, the user wanted
-      // a quick note out the door).
+      // 2) Notify the team. Previously this called `send-transactional-email`
+      // directly, which is service-role-only and not exempt from verify_jwt —
+      // so from the browser it always failed, and the catch below reduced that
+      // to a console warning nobody read. Guests, who never reach step 1, had
+      // their feedback discarded entirely while being told it was sent.
+      //
+      // Still best-effort for signed-in users: their row is already saved, so a
+      // mail problem shouldn't present as a lost submission.
       try {
-        await supabase.functions.invoke("send-transactional-email", {
-          body: {
-            templateName: "user-feedback-notification",
-            recipientEmail: "pathforge.co@gmail.com",
-            idempotencyKey: `feedback-${user?.id ?? "guest"}-${Date.now()}`,
-            templateData: {
-              message: trimmed,
-              fromEmail: contactEmail || "(anonymous guest)",
-              fromUserId: user?.id || null,
-            },
-          },
+        await submitPublicForm({
+          kind: "feedback",
+          email: contactEmail || undefined,
+          message: withRating,
         });
       } catch (emailErr) {
-        console.warn("Feedback email notification failed:", emailErr);
+        console.warn("Feedback notification failed:", emailErr);
+        // A guest has no saved row, so for them this WAS the submission.
+        if (!user) throw emailErr;
       }
 
       toast.success("Thanks — your feedback was sent to the team!");
       setMessage("");
       setEmail("");
+      setRating("7");
       setOpen(false);
     } catch (e: any) {
       toast.error(e?.message || "Could not send feedback. Please try again.");
@@ -153,6 +158,24 @@ export function FeedbackWidget() {
                     <strong className="font-semibold text-foreground">Pathforge Max free for a month</strong>.
                     Leave a contact email below so we can reach you.
                   </p>
+                </div>
+
+                <div>
+                  <Label className="text-xs">How satisfied are you with Pathforge?</Label>
+                  <RatingScaleGroup value={rating} onValueChange={setRating} className="mt-2 gap-0.5">
+                    {Array.from({ length: 10 }).map((_, i) => (
+                      <RatingScaleItem
+                        key={i}
+                        value={(i + 1).toString()}
+                        label={(i + 1).toString()}
+                        className="h-8 w-8 text-xs"
+                      />
+                    ))}
+                  </RatingScaleGroup>
+                  <div className="mt-1 flex justify-between text-[10px] text-muted-foreground">
+                    <span>Not satisfied</span>
+                    <span>Very satisfied</span>
+                  </div>
                 </div>
 
                 <div>

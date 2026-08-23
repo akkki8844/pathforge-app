@@ -9,10 +9,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Coins, Loader2, Search } from "lucide-react";
 import { toast } from "sonner";
 
+// Must stay a subset of the plans admin_set_user_plan() accepts, which raises
+// on anything outside free/pro/max/enterprise. `daily` is only a display
+// fallback -- the RPC derives the real limit from ai_plan_limits.
 const PLAN_OPTIONS: { value: string; label: string; daily: number }[] = [
   { value: "free", label: "Free", daily: 5 },
-  { value: "pro", label: "Pro", daily: 100 },
+  { value: "pro", label: "Pro", daily: 25 },
+  { value: "max", label: "Max", daily: 100 },
+  { value: "enterprise", label: "Enterprise", daily: 100 },
 ];
+
+// Which bucket actually meters a user depends on their plan. consume_credits()
+// branches on `monthly_credit_allowance(plan)`: above zero it spends
+// credits_used_month against that allowance and never looks at the daily
+// columns; at zero it falls back to credits_used_today against
+// effective_daily_credit_limit(). Every paid plan takes the monthly branch, so
+// showing "used_today / max_daily_credits" for them reported a bucket the
+// system does not charge -- a Pro user at 180/250 for the month displayed as
+// "0 / 5", which reads like a locked-out free account.
+//
+// Allowances are read from the database rather than mirrored here. They live
+// in a CASE inside monthly_credit_allowance() with no backing table, and a
+// hardcoded copy would silently drift the moment that function is edited --
+// which is exactly what stranded enterprise at the ELSE 0 branch.
+const ALLOWANCE_PLANS = PLAN_OPTIONS.map((p) => p.value);
 
 interface UserRow {
   user_id: string;
@@ -20,6 +40,7 @@ interface UserRow {
   username: string | null;
   plan: string;
   credits_used_today: number;
+  credits_used_month: number;
   bonus_credits: number;
   max_daily_credits: number;
 }
@@ -39,6 +60,27 @@ export function AdminCreditsControl() {
   const [loading, setLoading] = useState(true);
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [pending, setPending] = useState<Record<string, { delta: string; reason: string }>>({});
+  const [allowances, setAllowances] = useState<Record<string, number>>({});
+
+  // Monthly allowance per plan, straight from the function consume_credits()
+  // itself calls, so this table can never disagree with what users are charged.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const entries = await Promise.all(
+        ALLOWANCE_PLANS.map(async (plan) => {
+          const { data } = await supabase.rpc("monthly_credit_allowance", { _plan: plan } as any);
+          return [plan, Number(data) || 0] as const;
+        }),
+      );
+      // Falling back to an empty map is safe: every row then renders the daily
+      // bucket, which is the pre-existing behaviour rather than a blank cell.
+      if (!cancelled) setAllowances(Object.fromEntries(entries));
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -51,7 +93,7 @@ export function AdminCreditsControl() {
     const ids = (profiles || []).map((p) => p.user_id);
     const { data: credits } = await supabase
       .from("user_credits")
-      .select("user_id, plan, credits_used_today, bonus_credits, max_daily_credits")
+      .select("user_id, plan, credits_used_today, credits_used_month, bonus_credits, max_daily_credits")
       .in("user_id", ids);
     const map = new Map(credits?.map((c) => [c.user_id, c]) || []);
     setUsers(
@@ -61,6 +103,7 @@ export function AdminCreditsControl() {
         username: p.username,
         plan: map.get(p.user_id)?.plan || "free",
         credits_used_today: map.get(p.user_id)?.credits_used_today || 0,
+        credits_used_month: map.get(p.user_id)?.credits_used_month || 0,
         bonus_credits: map.get(p.user_id)?.bonus_credits || 0,
         max_daily_credits: map.get(p.user_id)?.max_daily_credits || 5,
       })),
@@ -102,24 +145,47 @@ export function AdminCreditsControl() {
   const setPlan = async (userId: string, plan: string) => {
     const opt = PLAN_OPTIONS.find((p) => p.value === plan);
     if (!opt) return;
-    // Best-effort: read configured daily limit; fall back to known defaults
-    const { data: limit } = await supabase
-      .from("ai_plan_limits")
-      .select("max_daily_credits")
-      .eq("plan", plan)
-      .maybeSingle();
-    const daily = limit?.max_daily_credits ?? opt.daily;
-    const { error } = await supabase
-      .from("user_credits")
-      .update({ plan, max_daily_credits: daily })
-      .eq("user_id", userId);
+
+    // Route through admin_set_user_plan() instead of updating user_credits
+    // directly. A direct update set `plan` but left plan_expires_at NULL, which
+    // the expiry sweep reads as lapsed and reverts to free -- the same bug that
+    // made redeemed coupon plans vanish after a day. The RPC re-checks
+    // is_admin(), derives the daily limit and monthly allowance, sets a real
+    // expiry, and writes the credit_adjustments audit row that a direct table
+    // write skipped entirely.
+    const { data, error } = await supabase.rpc("admin_set_user_plan", {
+      _target_user_id: userId,
+      _plan: plan,
+    } as any);
     if (error) {
       toast.error(error.message);
       return;
     }
+
+    const res = (data ?? {}) as {
+      max_daily_credits?: number;
+      bonus_credits?: number;
+      plan_expires_at?: string | null;
+    };
+    const daily = res.max_daily_credits ?? opt.daily;
     toast.success(`Plan set to ${opt.label} (${daily}/day)`);
     setUsers((prev) =>
-      prev.map((u) => (u.user_id === userId ? { ...u, plan, max_daily_credits: daily } : u)),
+      prev.map((u) =>
+        u.user_id === userId
+          ? {
+              ...u,
+              plan,
+              max_daily_credits: daily,
+              // The RPC also zeroes the usage counters and replaces the bonus
+              // grant, so mirror that rather than leaving stale numbers on
+              // screen. Both buckets are reset because the plan change can move
+              // the user between them.
+              bonus_credits: res.bonus_credits ?? u.bonus_credits,
+              credits_used_today: 0,
+              credits_used_month: 0,
+            }
+          : u,
+      ),
     );
   };
 
@@ -167,7 +233,7 @@ export function AdminCreditsControl() {
                 <TableRow>
                   <TableHead>User</TableHead>
                   <TableHead>Plan</TableHead>
-                  <TableHead>Today</TableHead>
+                  <TableHead>Usage</TableHead>
                   <TableHead>Bonus</TableHead>
                   <TableHead>Adjust (+/−)</TableHead>
                   <TableHead>Reason</TableHead>
@@ -177,6 +243,10 @@ export function AdminCreditsControl() {
               <TableBody>
                 {filtered.map((u) => {
                   const p = pending[u.user_id] || { delta: "", reason: "" };
+                  const allowance = allowances[u.plan] ?? 0;
+                  const monthly = allowance > 0;
+                  const used = monthly ? u.credits_used_month : u.credits_used_today;
+                  const cap = monthly ? allowance : u.max_daily_credits;
                   return (
                     <TableRow key={u.user_id}>
                       <TableCell>
@@ -189,16 +259,24 @@ export function AdminCreditsControl() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {PLAN_OPTIONS.map((p) => (
-                              <SelectItem key={p.value} value={p.value}>
-                                {p.label} · {p.daily}/day
-                              </SelectItem>
-                            ))}
+                            {PLAN_OPTIONS.map((p) => {
+                              const a = allowances[p.value] ?? 0;
+                              return (
+                                <SelectItem key={p.value} value={p.value}>
+                                  {p.label} · {a > 0 ? `${a}/mo` : `${p.daily}/day`}
+                                </SelectItem>
+                              );
+                            })}
                           </SelectContent>
                         </Select>
                       </TableCell>
                       <TableCell>
-                        {u.credits_used_today} / {u.max_daily_credits}
+                        <div className="font-mono">
+                          {used} / {cap}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {monthly ? "this month" : "today"}
+                        </div>
                       </TableCell>
                       <TableCell className="font-mono">{u.bonus_credits}</TableCell>
                       <TableCell>

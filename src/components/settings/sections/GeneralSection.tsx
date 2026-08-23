@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { Loader2, Save } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -11,147 +8,32 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/hooks/use-toast";
 import { majors } from "@/lib/data";
 import { CountryCombobox } from "@/components/CountryCombobox";
 import { MultiCountryCombobox } from "@/components/MultiCountryCombobox";
 import { MultiUniversityCombobox } from "@/components/UniversityCombobox";
-import { SchoolPicker, type SchoolRow } from "@/components/SchoolPicker";
-import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
+import { SchoolPicker } from "@/components/SchoolPicker";
+import { SettingsSection, SettingsCard } from "../SettingsShell";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
 import { AvatarPicker } from "@/components/avatar/AvatarPicker";
 import { resolveAvatar, serializeAvatar, type AvatarId } from "@/lib/avatars";
+import { useSettingsForm } from "../SettingsFormContext";
+import { cn } from "@/lib/utils";
 
 const grades = ["9th Grade", "10th Grade", "11th Grade", "12th Grade"];
 
 export function GeneralSection() {
-  const { user, onboardingData, refreshOnboardingData, updateUsername } = useAuth();
-  const { toast } = useToast();
-  
-  const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
+  const { draft, set, isDirty, school, setSchool, loading } = useSettingsForm();
 
-  const [fullName, setFullName] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [username, setUsername] = useState("");
-  const [savingUsername, setSavingUsername] = useState(false);
-  const [grade, setGrade] = useState(onboardingData?.grade || "");
-  const [intendedMajor, setIntendedMajor] = useState(onboardingData?.intended_major || "");
-  const [country, setCountry] = useState(onboardingData?.country || "");
-  const [studyDest, setStudyDest] = useState<string[]>(
-    (onboardingData as any)?.study_destinations || []
-  );
-  const [targetUniversities, setTargetUniversities] = useState<string[]>(
-    (onboardingData as any)?.target_universities || []
-  );
-  const [school, setSchool] = useState<SchoolRow | null>(null);
-
-  useEffect(() => {
-    if (!user) return;
-    supabase
-      .from("profiles")
-      .select("full_name, avatar_url, username")
-      .eq("user_id", user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) {
-          setFullName((data as any).full_name || "");
-          setAvatarUrl((data as any).avatar_url || null);
-          setUsername((data as any).username || "");
-        }
-      });
-  }, [user]);
-
-  const handleSaveUsername = async () => {
-    const trimmed = username.trim();
-    if (!trimmed) {
-      toast({ variant: "destructive", title: "Display name can't be empty" });
-      return;
-    }
-    setSavingUsername(true);
-    const { error } = await updateUsername(trimmed);
-    setSavingUsername(false);
-    if (error) {
-      toast({ variant: "destructive", title: "Couldn't save display name", description: error.message });
-    } else {
-      toast({ title: "Display name saved", description: "This is what other students see on the leaderboard." });
-    }
-  };
-
-  useEffect(() => {
-    const sid = (onboardingData as any)?.school_id;
-    if (!sid) return;
-    supabase
-      .from("schools")
-      .select("id,name,city,country,domain")
-      .eq("id", sid)
-      .maybeSingle()
-      .then(({ data }) => data && setSchool(data as SchoolRow));
-  }, [(onboardingData as any)?.school_id]);
-
-  /**
-   * Persist an avatar choice. Stored in the existing `avatar_url` column as a
-   * `pf:face:palette` token rather than a URL — no upload, no image hosting.
-   */
-  const handleAvatarSelect = async (next: AvatarId) => {
-    if (!user) return;
-    const previous = avatarUrl;
-    const serialized = serializeAvatar(next);
-    setAvatarUrl(serialized); // optimistic: the picker should feel instant
-    const { error } = await supabase
-      .from("profiles")
-      .update({ avatar_url: serialized })
-      .eq("user_id", user.id);
-    if (error) {
-      setAvatarUrl(previous);
-      toast({ variant: "destructive", title: "Couldn't save avatar", description: error.message });
-    }
-  };
-
-
-  const handleSave = async () => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const { error: pErr } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName.trim() || null })
-        .eq("user_id", user.id);
-      if (pErr) throw pErr;
-
-      if (onboardingData) {
-        const { error } = await supabase
-          .from("onboarding_data")
-          .update({
-            grade,
-            intended_major: intendedMajor,
-            country,
-            study_destinations: studyDest,
-            target_universities: targetUniversities,
-            high_school_name: school?.name || onboardingData.high_school_name,
-            school_id: school?.id ?? (onboardingData as any)?.school_id ?? null,
-          })
-          .eq("user_id", user.id);
-        if (error) throw error;
-        await refreshOnboardingData();
-      }
-
-      toast({ title: "Saved", description: "Your changes are live." });
-    } catch (e: any) {
-      toast({ variant: "destructive", title: "Save failed", description: e.message });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Falls back to a stable per-user default, so the picker always opens on the
+  // Falls back to a stable per-user default so the picker always opens on the
   // avatar the rest of the app is already showing.
-  const selectedAvatar: AvatarId = resolveAvatar(avatarUrl, user?.id ?? "");
+  const selectedAvatar: AvatarId = resolveAvatar(draft.avatar_url, user?.id ?? "");
 
   return (
     <SettingsSection
       title="General"
-      description="Your profile basics flow into recommendations across the app."
+      description="Your profile basics flow into recommendations across the app. Changes are staged here and committed with the Save button at the bottom of the page."
     >
       <SettingsCard
         title="Your avatar"
@@ -166,59 +48,70 @@ export function GeneralSection() {
             />
           </div>
           <div className="min-w-0 flex-1">
-            <AvatarPicker value={selectedAvatar} onChange={handleAvatarSelect} />
+            <AvatarPicker
+              value={selectedAvatar}
+              onChange={(next) => set("avatar_url", serializeAvatar(next))}
+            />
           </div>
         </div>
       </SettingsCard>
 
-      <SettingsCard
-        title="Display name"
-        description="Shown on the Journey leaderboard instead of an auto-generated handle."
-      >
-        <div className="flex items-end gap-2 max-w-sm">
-          <Field label="Display name" hint="Visible to other students on the leaderboard.">
+      <SettingsCard title="Identity">
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field
+            label="Display name"
+            hint="Shown on the Journey leaderboard instead of an auto-generated handle."
+            dirty={isDirty("username")}
+          >
             <Input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={draft.username}
+              onChange={(e) => set("username", e.target.value)}
               placeholder="Pick a display name"
               maxLength={24}
+              disabled={loading}
             />
           </Field>
-          <Button onClick={handleSaveUsername} disabled={savingUsername} size="sm" className="h-9">
-            {savingUsername ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Save"}
-          </Button>
+          <Field label="Full name" dirty={isDirty("full_name")}>
+            <Input
+              value={draft.full_name}
+              onChange={(e) => set("full_name", e.target.value)}
+              placeholder="Your name"
+              disabled={loading}
+            />
+          </Field>
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Profile">
+      <SettingsCard title="Academics">
         <div className="grid gap-5 sm:grid-cols-2">
-          <Field label="Full name">
-            <Input value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your name" />
-          </Field>
-          <Field label="Grade">
-            <Select value={grade} onValueChange={setGrade}>
+          <Field label="Grade" dirty={isDirty("grade")}>
+            <Select value={draft.grade} onValueChange={(v) => set("grade", v)} disabled={loading}>
               <SelectTrigger><SelectValue placeholder="Select grade" /></SelectTrigger>
               <SelectContent>
                 {grades.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Intended major">
-            <Select value={intendedMajor} onValueChange={setIntendedMajor}>
+          <Field label="Intended major" dirty={isDirty("intended_major")}>
+            <Select
+              value={draft.intended_major}
+              onValueChange={(v) => set("intended_major", v)}
+              disabled={loading}
+            >
               <SelectTrigger><SelectValue placeholder="Select major" /></SelectTrigger>
               <SelectContent className="max-h-72">
                 {majors.map((m) => <SelectItem key={m} value={m}>{m}</SelectItem>)}
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Country of residence">
-            <CountryCombobox value={country} onChange={setCountry} />
+          <Field label="Country of residence" dirty={isDirty("country")}>
+            <CountryCombobox value={draft.country} onChange={(v) => set("country", v)} />
           </Field>
           <div className="sm:col-span-2">
-            <Field label="School">
+            <Field label="School" dirty={isDirty("school_id")}>
               <SchoolPicker
                 value={school}
-                initialQuery={onboardingData?.high_school_name}
+                initialQuery={draft.high_school_name}
                 onChange={setSchool}
               />
             </Field>
@@ -227,10 +120,11 @@ export function GeneralSection() {
             <Field
               label="Countries of study"
               hint="Where you're considering applying for university."
+              dirty={isDirty("study_destinations")}
             >
               <MultiCountryCombobox
-                values={studyDest}
-                onChange={setStudyDest}
+                values={draft.study_destinations}
+                onChange={(v) => set("study_destinations", v)}
                 placeholder="Add a destination"
               />
             </Field>
@@ -239,11 +133,12 @@ export function GeneralSection() {
             <Field
               label="Target universities"
               hint="Pick up to 5 — drives college fit, essays, and admissions probability."
+              dirty={isDirty("target_universities")}
             >
               <MultiUniversityCombobox
-                values={targetUniversities}
-                onChange={setTargetUniversities}
-                countries={studyDest}
+                values={draft.target_universities}
+                onChange={(v) => set("target_universities", v)}
+                countries={draft.study_destinations}
                 max={5}
                 placeholder="Search universities"
               />
@@ -251,21 +146,36 @@ export function GeneralSection() {
           </div>
         </div>
       </SettingsCard>
-
-      <div className="flex justify-end">
-        <Button onClick={handleSave} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Save changes
-        </Button>
-      </div>
     </SettingsSection>
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  dirty,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  dirty?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{label}</Label>
+      <div className="flex items-center gap-2">
+        <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          {label}
+        </Label>
+        <span
+          className={cn(
+            "h-1.5 w-1.5 rounded-full bg-primary transition-opacity duration-200",
+            dirty ? "opacity-100" : "opacity-0",
+          )}
+          title={dirty ? "Unsaved" : undefined}
+          aria-hidden={!dirty}
+        />
+      </div>
       {children}
       {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>

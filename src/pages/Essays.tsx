@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AnimatedCounter } from "@/components/animations/AnimatedCounter";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { fadeUp, staggerParent } from "@/lib/motion";
+import { functionErrorMessage } from "@/lib/functionError";
 import {
   FileText, CheckCircle2, Circle, RefreshCw, ArrowRight, Sparkles, Loader2, AlertTriangle, Lightbulb, Target, TrendingUp, ThumbsUp, ThumbsDown, Wand2, BarChart3, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,6 +27,7 @@ import { notifyCreditConsumed } from "@/hooks/useCredits";
 import { Seo } from "@/components/Seo";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
+import { ReadingIcon } from "@/components/icons/FlatSvgIcons";
 
 const checklistItems = [
   { key: "opening", label: "Strong opening hook" },
@@ -117,11 +119,7 @@ export default function Essays() {
         },
       });
       if (error) {
-        const msg = error.message || "";
-        if (msg.includes("429")) toast.error("Rate limit. Try again shortly.");
-        else if (msg.includes("402") || msg.includes("credits"))
-          toast.error("Out of credits.");
-        else toast.error("Failed to refine essay.");
+        toast.error(await functionErrorMessage(error, "Failed to refine essay."));
         return;
       }
       if (data?.refined) {
@@ -193,11 +191,14 @@ export default function Essays() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='AI essay refiner for college applications | Pathforge' description='Polish your college essays with grounded AI feedback that preserves your voice — no hallucinations.' path='/essays' />
+      <Seo title='Essays — Pathforge' description='Polish your college essays with grounded AI feedback that preserves your voice — no hallucinations.' path='/essays' />
       <div className="section-container max-w-5xl">
         {/* Header */}
         <ScrollReveal className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground">Essay Refiner & Analyzer</h1>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
+            <ReadingIcon className="h-8 w-8" />
+            Essay Refiner & Analyzer
+          </h1>
           <p className="mt-2 text-muted-foreground">
             Polish your essay and get an honest, structured evaluation from an admissions-trained AI.
           </p>
@@ -294,13 +295,22 @@ export default function Essays() {
                 <motion.div variants={fadeUp} className="grid md:grid-cols-2 gap-6">
                   <div className="card-elevated p-6">
                     <h4 className="text-sm font-medium text-muted-foreground mb-3">Original</h4>
-                    <div className="prose prose-sm text-foreground whitespace-pre-wrap">{originalEssay}</div>
+                    {/* break-words because this is arbitrary pasted text: one
+                        long unbroken token (a URL, a run-on string) blows the
+                        card out sideways at 320px. dark:prose-invert because
+                        the prose plugin's child styles are light-mode until
+                        told otherwise. */}
+                    <div className="prose prose-sm dark:prose-invert break-words text-foreground whitespace-pre-wrap">
+                      {originalEssay}
+                    </div>
                   </div>
                   <div className="card-elevated p-6 border-accent/50">
                     <h4 className="text-sm font-medium text-accent mb-3 flex items-center gap-2">
                       <PenLine className="h-4 w-4" />Refined
                     </h4>
-                    <div className="prose prose-sm text-foreground whitespace-pre-wrap">{refinedEssay}</div>
+                    <div className="prose prose-sm dark:prose-invert break-words text-foreground whitespace-pre-wrap">
+                      {refinedEssay}
+                    </div>
                   </div>
                 </motion.div>
 
@@ -417,8 +427,9 @@ export default function Essays() {
         </Tabs>
         </motion.div>
 
-        {/* Checklist + Tips */}
-        <div className="grid md:grid-cols-3 gap-6">
+        {/* Checklist + Tips. The sm step matters: 1 → 3 columns put three cards
+            into ~230px each at tablet width. */}
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <ScrollReveal delay={0}>
             <div className="card-elevated p-6">
               <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
@@ -429,7 +440,9 @@ export default function Essays() {
                   <motion.button
                     key={item.key}
                     onClick={() => toggleCheck(item.key)}
-                    className="flex items-center gap-3 w-full text-left group"
+                    // The row's height was set by a 20px icon and 14px text, so
+                    // the page's only checklist had a ~24px tap target.
+                    className="flex min-h-[44px] w-full items-center gap-3 py-1 text-left group"
                     initial={{ opacity: 0, x: -12 }}
                     whileInView={{ opacity: 1, x: 0 }}
                     viewport={{ once: true }}

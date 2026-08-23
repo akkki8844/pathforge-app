@@ -12,7 +12,7 @@ function Block({ className }: { className?: string }) {
  */
 export function RouteSkeleton() {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-[100svh] bg-background">
       <div className="section-container py-8 space-y-6">
         <Block className="h-8 w-56" />
         <Block className="h-4 w-full max-w-md" />

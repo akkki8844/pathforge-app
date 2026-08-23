@@ -185,13 +185,17 @@ export function CollegeLogo({ name, size = 24, className }: CollegeLogoProps) {
 
   const sources = useMemo(() => {
     if (!domain) return [];
-    const px = Math.max(64, size * 3); // request crisp art for retina
+    // Clearbit's logo API was sunset — it used to sit here and 404 on every
+    // single request, silently costing a round trip before falling through
+    // to Google. unavatar aggregates real brand logos (favicons, Twitter/X,
+    // etc.) and is usually the best-looking hit, so it leads; Google's
+    // favicon service is the reliable-but-small fallback, DuckDuckGo last.
     return [
+      `https://unavatar.io/${domain}?fallback=false`,
       `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-      `https://logo.clearbit.com/${domain}?size=${px}`,
       `https://icons.duckduckgo.com/ip3/${domain}.ico`,
     ];
-  }, [domain, size]);
+  }, [domain]);
 
   const [idx, setIdx] = useState(0);
   const [failed, setFailed] = useState(false);

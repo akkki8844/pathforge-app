@@ -149,8 +149,8 @@ export default function LOR() {
   return (
     <>
       <Seo
-        title="Letters of Recommendation — Pathforge"
-        description="Track recommenders, statuses, and deadlines for your college recommendation letters in one place."
+        title="Professors — Pathforge"
+        description="Find professors, track recommenders, statuses, and deadlines for your college recommendation letters in one place."
         path="/lor"
       />
 
@@ -162,14 +162,14 @@ export default function LOR() {
           className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-10"
         >
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-              [ Recommendations ]
+            <p className="text-[11px] font-display font-bold uppercase tracking-[0.16em] text-muted-foreground mb-2">
+              Preparation
             </p>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight">
-              Letters of Recommendation
+            <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
+              Professors
             </h1>
             <p className="text-muted-foreground mt-2 max-w-xl">
-              Keep every recommender, status, and deadline in one quiet place. Add the people writing for you, and we'll handle the rest as we ship more.
+              Find the professors worth reaching out to, and keep every recommender, status, and deadline in one quiet place.
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
@@ -274,7 +274,7 @@ export default function LOR() {
 
       {/* Add / Edit sheet */}
       <Sheet open={creating || !!editing} onOpenChange={(o) => !o && closeSheet()}>
-        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-[41rem] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>{editing ? "Edit recommender" : "Add recommender"}</SheetTitle>
             <SheetDescription>

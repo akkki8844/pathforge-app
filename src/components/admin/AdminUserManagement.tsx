@@ -600,7 +600,7 @@ export function AdminUserManagement() {
 
       {/* Detail Dialog */}
       <Dialog open={!!detailUserId} onOpenChange={(o) => !o && closeDetail()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[81rem] max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />

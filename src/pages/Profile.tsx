@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { RouteSkeleton } from "@/components/RouteSkeleton";
 import { SettingsShell } from "@/components/settings/SettingsShell";
+import { SettingsFormProvider } from "@/components/settings/SettingsFormContext";
 import { GeneralSection } from "@/components/settings/sections/GeneralSection";
 import { AccountSection } from "@/components/settings/sections/AccountSection";
 import { PrivacySection } from "@/components/settings/sections/PrivacySection";
@@ -27,7 +28,11 @@ export default function Profile() {
 
   return (
     <>
-    <Seo title="Settings | Pathforge" description="Manage your Pathforge account, preferences, notifications, connectors, and billing." path="/profile" />
+    <Seo title="Settings — Pathforge" description="Manage your Pathforge account, preferences, notifications, connectors, and billing." path="/profile" />
+    {/* One draft store above the sections. SettingsShell unmounts inactive
+        sections, so per-section state could never survive a tab switch —
+        which is why edits used to silently vanish before you hit save. */}
+    <SettingsFormProvider>
     <SettingsShell
       sections={{
         general: <GeneralSection />,
@@ -43,6 +48,7 @@ export default function Profile() {
         usage: <UsageSection />,
       }}
     />
+    </SettingsFormProvider>
     </>
   );
 }

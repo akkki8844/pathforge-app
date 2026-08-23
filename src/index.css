@@ -41,6 +41,20 @@
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
+    /* Semantic state colours. `destructive` already covered "this is bad", but
+       there was no vocabulary for "this succeeded", "this needs attention soon"
+       or "this is just information" — so every such state had to borrow the
+       brand indigo (which is also `--accent`) or red, and a completed objective
+       looked identical to a link. Muted enough to sit on a cream page without
+       shouting; dark-mode variants are lightened for contrast, not just
+       reused. */
+    --success: 152 58% 36%;
+    --success-foreground: 0 0% 100%;
+    --warning: 32 88% 44%;
+    --warning-foreground: 0 0% 100%;
+    --info: 199 82% 42%;
+    --info-foreground: 0 0% 100%;
+
     --border: 222 18% 86%;
     --input: 222 18% 86%;
     --ring: 226 65% 56%;
@@ -98,6 +112,15 @@
 
     --destructive: 0 72% 55%;
     --destructive-foreground: 0 0% 100%;
+
+    /* Same roles as light mode, lifted in lightness so they stay legible on the
+       near-black card background rather than sinking into it. */
+    --success: 152 52% 52%;
+    --success-foreground: 222 45% 8%;
+    --warning: 36 92% 58%;
+    --warning-foreground: 222 45% 8%;
+    --info: 199 84% 58%;
+    --info-foreground: 222 45% 8%;
 
     --border: 222 25% 22%;
     --input: 222 25% 22%;
@@ -192,6 +215,41 @@
     color: hsl(var(--foreground));
   }
 
+  /*
+   * Horizontal containment lives here, not on a page wrapper.
+   *
+   * `overflow-x: hidden` on an ancestor div makes that div the containing block
+   * for any `position: sticky` inside it, which silently disabled the sticky
+   * navbar app-wide. On the root elements there is no such descendant to
+   * capture. `clip` is the correct value — it contains without creating a
+   * scroll container at all — with `hidden` first as the fallback for Safari
+   * below 16.
+   */
+  html,
+  body {
+    overflow-x: hidden;
+    overflow-x: clip;
+  }
+
+  /*
+   * Notched-device padding. `viewport-fit=cover` (index.html) lets the page
+   * paint under the notch and home indicator, which is what we want for
+   * backgrounds — these two utilities put the *content* back inside the safe
+   * area. They resolve to 0 on every device without insets, so they are free.
+   */
+  .pad-safe-top {
+    padding-top: env(safe-area-inset-top, 0px);
+  }
+
+  .pad-safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .pad-safe-x {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
   /* Refined scrollbar — quiet, never sloppy */
   ::-webkit-scrollbar { width: 10px; height: 10px; }
   ::-webkit-scrollbar-track { background: transparent; }
@@ -236,14 +294,57 @@
     transform: none;
   }
 
-  .btn-accent {
-    @apply bg-accent text-accent-foreground font-semibold px-6 py-3 rounded-lg;
-    background: var(--gradient-primary);
-    transition: transform var(--dur-fast) var(--ease-out-quart),
-                box-shadow var(--dur-base) var(--ease-out-quart);
+  /*
+   * Dashboard feature panel.
+   *
+   * The signed-in home needs one surface that leads, or the eye has nowhere to
+   * land among six identical cards. Two earlier passes tried to buy that with
+   * colour: first by inverting to navy, then by washing the card with a blue
+   * radial from one corner and an amber one from the other. Both read as a
+   * decorated box rather than as the page's headline — three light sources on a
+   * card that is supposed to be paper, with a hue at each corner that means
+   * nothing, next to standings that use hue to mean something specific.
+   *
+   * The lead is bought typographically instead: the panel holds the page's one
+   * large serif sentence and its one dial. All this needs to do is sit a half
+   * step off the plain cards, which one flat tone, a slightly firmer hairline
+   * and a real shadow does — with no hue that could be mistaken for a signal.
+   */
+  .dash-feature {
+    border-color: hsl(var(--foreground) / 0.16);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-lg);
   }
 
-  .btn-accent:hover { box-shadow: var(--shadow-glow); }
+  .dark .dash-feature {
+    border-color: hsl(var(--foreground) / 0.2);
+    background: hsl(var(--card));
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Newspaper double rule: one heavy hairline, one light, tight together. */
+  .dash-double-rule {
+    height: 3px;
+    border-top: 2px solid hsl(var(--foreground) / 0.75);
+    border-bottom: 1px solid hsl(var(--foreground) / 0.75);
+  }
+
+  /*
+   * The in-app primary button.
+   *
+   * Flat, not a gradient. A 135° two-stop ramp on a button is the single most
+   * recognisable tell of a generated interface, and it buys nothing here: the
+   * button is 40px tall, so the ramp resolves as a slightly muddy fill rather
+   * than as depth. One solid brand colour reads as more expensive and survives
+   * being placed next to the flat cards it now sits on.
+   */
+  .btn-accent {
+    @apply bg-primary text-primary-foreground font-semibold px-6 py-3 rounded-lg;
+    transition: background-color var(--dur-fast) var(--ease-out-quart),
+                transform var(--dur-fast) var(--ease-out-quart);
+  }
+
+  .btn-accent:hover { background-color: hsl(var(--primary) / 0.9); }
   .btn-accent:active { transform: translateY(1px); }
 
   .section-container {
@@ -463,65 +564,6 @@
     animation: blobDrift 28s ease-in-out infinite;
   }
   .dark .aurora-blob { opacity: 0.36; filter: blur(140px); }
-
-  /* ───── App backdrop layers (see components/visual/AuroraBackdrop) ─────
-     Every layer here is static. The app sits in a tab for hours, so an
-     animated blur behind it would burn battery on something nobody looks
-     at directly. These live in CSS rather than inline styles because each
-     one needs a dark-mode value. */
-
-  /* The colour field. Three wide tints rather than one: --accent and
-     --primary are the same 226 blue, so a wash built from those reads as
-     a flat cast. The aurora tokens carry blue → violet → cyan, which is
-     what stops it looking like a solid fill. Radial gradients, not blurred
-     circles — same softness, no filter pass. */
-  .backdrop-field {
-    background-image:
-      radial-gradient(900px 620px at 12% -6%, hsl(var(--aurora-1) / 0.20), transparent 62%),
-      radial-gradient(780px 560px at 92% 10%, hsl(var(--aurora-2) / 0.15), transparent 60%),
-      radial-gradient(1100px 720px at 50% 106%, hsl(var(--aurora-3) / 0.13), transparent 66%);
-  }
-  .dark .backdrop-field {
-    background-image:
-      radial-gradient(900px 620px at 12% -6%, hsl(var(--aurora-1) / 0.30), transparent 62%),
-      radial-gradient(780px 560px at 92% 10%, hsl(var(--aurora-2) / 0.24), transparent 60%),
-      radial-gradient(1100px 720px at 50% 106%, hsl(var(--aurora-3) / 0.20), transparent 66%);
-  }
-
-  /* Vertical depth. Stops interpolate to hsl(--muted / 0) rather than
-     `transparent`, which is transparent *black* and greys out the middle
-     of the fade on the cream palette. */
-  .backdrop-depth {
-    background-image: linear-gradient(
-      180deg,
-      hsl(var(--muted) / 0.4) 0%,
-      hsl(var(--muted) / 0) 18%,
-      hsl(var(--muted) / 0) 74%,
-      hsl(var(--muted) / 0.55) 100%
-    );
-  }
-
-  /* Fine grain. Flat colour at this size is what actually reads as
-     "plain" — a couple of percent of noise gives the surface a texture
-     without adding anything you can consciously see. */
-  .backdrop-grain {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-size: 160px 160px;
-    opacity: 0.04;
-  }
-  .dark .backdrop-grain { opacity: 0.055; }
-
-  /* Centre column rule, faded at both ends so it reads as a printer's
-     gutter mark rather than a line bisecting the page. */
-  .backdrop-rule {
-    background-image: linear-gradient(
-      180deg,
-      hsl(var(--foreground) / 0) 0%,
-      hsl(var(--foreground) / 0.07) 24%,
-      hsl(var(--foreground) / 0.07) 76%,
-      hsl(var(--foreground) / 0) 100%
-    );
-  }
 }
 
 @layer utilities {
@@ -628,7 +670,7 @@
 .atlas-wrap { width: min(100% - 3rem, 75rem); margin-inline: auto; }
 
 .atlas-header { position: absolute; z-index: 103; top: 0; width: 100%; padding: 0.9rem 1.5rem; }
-.atlas-header-inner { display: flex; width: min(100%, 75rem); min-height: 3.4rem; align-items: center; justify-content: space-between; gap: 1rem; margin-inline: auto; padding: 0.38rem 0.55rem 0.38rem 0.85rem; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1rem; background: rgba(11, 21, 43, 0.36); box-shadow: 0 10px 30px rgba(5, 11, 27, 0.18); backdrop-filter: blur(18px) saturate(120%); }
+.atlas-header-inner { display: flex; width: min(100%, 75rem); min-height: 3.4rem; align-items: center; justify-content: space-between; gap: 1rem; margin-inline: auto; padding: 0.38rem 0.55rem 0.38rem 0.85rem; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1rem; background: rgba(11, 21, 43, 0.36); box-shadow: 0 10px 30px rgba(5, 11, 27, 0.18); -webkit-backdrop-filter: blur(18px) saturate(120%); backdrop-filter: blur(18px) saturate(120%); }
 .atlas-brand { display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; padding: 0 0.25rem; font-family: "Work Sans", "Plus Jakarta Sans", "Aptos", "Segoe UI", system-ui, sans-serif; font-size: 1.28rem; font-weight: 400; letter-spacing: -0.05em; color: #fff; }
 .atlas-brand img { width: 1.65rem; height: 1.65rem; object-fit: contain; }
 .atlas-nav { display: flex; align-items: center; gap: 0.15rem; font-size: var(--text-sm); font-weight: 620; }
@@ -637,23 +679,21 @@
 .atlas-nav .atlas-signin { gap: 0.4rem; color: var(--accent-deep); background: #fff; }
 .atlas-nav .atlas-signin:hover { color: #fff; background: var(--accent); }
 
-.atlas-hero { position: relative; display: grid; min-height: min(54rem, 100svh); align-items: center; padding: clamp(10rem, 16vw, 13rem) 0 clamp(5rem, 9vw, 8rem); overflow: clip; isolation: isolate; background: #101a34; }
+.atlas-hero { position: relative; display: grid; min-height: min(54rem, 100svh); align-items: center; padding: clamp(10rem, 16vw, 13rem) 0 clamp(5rem, 9vw, 8rem); overflow: hidden; overflow: clip; isolation: isolate; background: #101a34; }
 .atlas-hero::before { position: absolute; z-index: 101; inset: 0; background: linear-gradient(100deg, rgba(6, 15, 34, 0.38) 0%, rgba(8, 18, 42, 0.17) 44%, rgba(8, 18, 42, 0.04) 100%); content: ""; pointer-events: none; }
 .atlas-hero::after { display: none; }
 /*
- * The slow hero drift.
- *
  * This used to animate `background-position` AND `filter` (saturate/contrast/
  * brightness) on a full-viewport cover image, forever. Both are repaint
  * properties: every frame the browser re-decoded and re-painted ~2 megapixels
  * and then ran a colour filter over the result, on the first screen the user
  * ever sees. It was the single most expensive thing on the site.
  *
- * Same drift, expressed as a transform on a promoted layer — the compositor
- * moves an already-rasterised texture and never touches paint. The grade is
- * now static, which is what it looked like anyway at any given instant.
+ * Now fully static — no animation, no per-frame repaint. The grade below is
+ * a fixed filter, which is what the animated version looked like anyway at
+ * any given instant.
  */
-.atlas-hero-photo { position: absolute; z-index: 100; inset: 0; margin: 0; overflow: hidden; background: #101a34 url("/assets/hero-campus-cinematic-v1.webp") 53% 62% / cover no-repeat; filter: saturate(0.96) contrast(1.03) brightness(1.05); will-change: transform; animation: atlas-campus-morph 18s var(--ease-out) infinite alternate; }
+.atlas-hero-photo { position: absolute; z-index: 100; inset: 0; margin: 0; overflow: hidden; background: #101a34 url("/assets/hero-campus-cinematic-v1.webp") 53% 62% / cover no-repeat; filter: saturate(0.96) contrast(1.03) brightness(1.05); }
 .atlas-hero-photo img { display: none; }
 .atlas-hero-inner { position: relative; z-index: 102; display: grid; }
 .atlas-hero-copy { max-width: 55rem; margin-inline: auto; text-align: center; }
@@ -666,6 +706,36 @@
 .atlas-primary:hover { background: var(--accent-deep); box-shadow: 0 15px 28px rgba(68, 101, 216, 0.27); transform: translateY(-2px); }
 .atlas-secondary { display: inline-flex; min-height: 3.15rem; align-items: center; justify-content: center; gap: 0.45rem; padding: 0.8rem 0.2rem; color: rgba(255, 255, 255, 0.86); border-bottom: 1px solid rgba(255, 255, 255, 0.62); font-size: var(--text-sm); font-weight: 630; transition: color var(--dur-1) var(--ease-out), border-color var(--dur-1) var(--ease-out); }
 .atlas-secondary:hover { color: #fff; border-color: #fff; }
+/* Liquid glass: translucent, blurred, lit by a soft inner highlight rather
+   than a flat fill — matches the hero's own glass surfaces instead of
+   sitting on it as an opaque navy slab. */
+.atlas-download-win {
+  display: inline-flex;
+  min-height: 3.15rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  padding: 0.8rem 1.15rem;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.05), 0 8px 20px -10px rgba(0, 0, 0, 0.35);
+  font-size: var(--text-sm);
+  font-weight: 630;
+  transition: background var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), transform var(--dur-2) var(--ease-out);
+}
+.atlas-download-win:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-2px);
+}
+/* SpecularLink's built-in --lg size (1.15rem font, 18px/40px padding) is tuned
+   for the Auth pages; the hero CTA sits next to atlas-download-win and must
+   match its height/font/padding exactly or the two buttons read as unequal. */
+.atlas-hero-actions .specular-button--lg { min-height: 3.15rem; padding: 0.8rem 1.15rem; font-size: var(--text-sm); font-weight: 630; }
 
 .atlas-universities { padding: 1.4rem 0 1.7rem; overflow: hidden; border-block: 1px solid var(--line); background: var(--surface); }
 .atlas-universities > p { margin: 0; color: var(--muted); font-size: var(--text-xs); font-weight: 680; letter-spacing: 0.08em; text-align: center; text-transform: uppercase; }
@@ -673,6 +743,7 @@
 .atlas-marquee { width: 100%; padding-top: 1.35rem; mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
 .atlas-track { display: flex; width: max-content; align-items: center; gap: 2.1rem; padding-left: 2.1rem; animation: atlas-marquee 85s linear infinite; }
 .atlas-track > span { display: inline-flex; align-items: center; min-height: 2.35rem; color: var(--ink-soft); font-size: 0.86rem; font-weight: 650; white-space: nowrap; }
+.atlas-track > span > img { width: 1.25rem; height: 1.25rem; margin-right: 0.55rem; border-radius: 3px; object-fit: contain; vertical-align: -4px; }
 
 .atlas-departments { padding-block: clamp(6rem, 12vw, 11rem); }
 .atlas-section-heading > p:first-child { margin: 0 0 1.1rem; color: var(--accent-deep); font-size: var(--text-xs); font-weight: 720; letter-spacing: 0.09em; text-transform: uppercase; }
@@ -696,6 +767,7 @@
 .atlas-editorial p { margin: 0.7rem 0 0; color: #bac8ff; font-size: var(--text-xs); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .atlas-editorial blockquote { max-width: 16ch; margin: 0; font-family: var(--display); font-size: clamp(3.2rem, 6.1vw, 6.5rem); font-weight: 600; letter-spacing: -0.025em; line-height: 0.98; text-wrap: balance; }
 .atlas-editorial em { color: #b9ceff; font-weight: inherit; }
+.atlas-editorial-note { grid-column: 2; max-width: 34rem; margin-top: 1.4rem; color: #bac8ff; font-size: var(--text-md); font-weight: 500; letter-spacing: normal; text-transform: none; line-height: var(--lh-body); }
 
 .atlas-house { padding-block: clamp(6rem, 12vw, 11rem); }
 .atlas-rules { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; margin-top: clamp(3.3rem, 6vw, 5rem); }
@@ -736,16 +808,6 @@
 .atlas-footer nav { display: flex; flex-wrap: wrap; justify-content: end; }
 
 @keyframes atlas-marquee { to { transform: translateX(-50%); } }
-/* Ken Burns via transform only — composited, zero paint per frame. The scale
-   floor is >1 so the drift never exposes an edge of the image. */
-@keyframes atlas-campus-morph {
-  0%   { transform: scale(1.06) translate3d(0.7%, 0.9%, 0); }
-  52%  { transform: scale(1.09) translate3d(-0.3%, -0.2%, 0); }
-  100% { transform: scale(1.07) translate3d(-0.8%, -0.6%, 0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  .atlas-hero-photo { animation: none; transform: scale(1.06); will-change: auto; }
-}
 
 @media (max-width: 900px) {
   .atlas-hero { min-height: 47rem; padding-top: 9.5rem; }
@@ -768,8 +830,13 @@
   .atlas-brand img { width: 1.45rem; height: 1.45rem; }
   .atlas-nav { gap: 0; }
   .atlas-nav > a { min-height: 2.3rem; padding-inline: 0.58rem; font-size: 0.72rem; }
+  /* Three secondary links come out of the glass bar below 640px, leaving the
+     brand, Pricing and the workspace CTA. All three are still one tap away in
+     the footer, and at ~360px the header cannot hold more than that without
+     wrapping onto a second line. */
   .atlas-nav > a[href="/teacher/auth"] { display: none; }
   .atlas-nav > a[href="#departments"] { display: none; }
+  .atlas-nav > a[href="/about"] { display: none; }
   .atlas-hero { min-height: 44rem; padding: 8.1rem 0 4.1rem; }
   .atlas-hero h1 { font-size: clamp(3.45rem, 16vw, 5rem); }
   .atlas-hero-copy > p { margin-top: 1.35rem; font-size: var(--text-md); }
@@ -799,4 +866,65 @@
   .atlas-talkforge > span:last-child { grid-column: 2; }
   .atlas-brief { padding-block: 4.8rem; }
   .atlas-colophon { display: grid; gap: 2rem; padding-block: 4.8rem; }
+}
+
+/* ---------------------------------------------------------------------------
+ * Reduce motion (Settings -> Appearance).
+ *
+ * The setting used to be a switch bound to component-local state that was
+ * never persisted and never read by anything. It now sets data-reduce-motion
+ * on <html>, and this rule is what makes it real: animations collapse to a
+ * single frame instead of being cancelled outright, so anything that reveals
+ * itself via an entrance animation still ends up visible rather than stuck at
+ * opacity 0.
+ * ------------------------------------------------------------------------- */
+html[data-reduce-motion="true"] *,
+html[data-reduce-motion="true"] *::before,
+html[data-reduce-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
+/* Focus Flight — in-flight map marker. Fixed intrinsic size and an explicit
+   center transform-origin, so the plane glyph rotates in place instead of
+   swinging around a corner when MapLibre applies its bearing transform. */
+.flight-deck-plane {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: 50% 50%;
+  pointer-events: none;
+  /* Position ticks land every 500ms (see useFocusFlight); without this the
+     marker teleports each tick instead of gliding. MapLibre drives position
+     and rotation through the same `transform` style, so one transition
+     covers both — glide across ticks, snap instantly on route change. */
+  transition: transform 480ms linear;
+}
+.flight-deck-plane__glyph {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* A soft, neutral shadow — the plane reads as a lit object sitting above
+     the map, not a glowing marker on it. */
+  filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.4)) drop-shadow(0 0 1px rgb(0 0 0 / 0.5));
+}
+/* The ground shadow: offset down-and-right of the glyph, the way a real
+   aerial shadow falls when the light source isn't directly overhead. Reads
+   as altitude, not decoration. */
+.flight-deck-plane__shadow {
+  position: absolute;
+  top: 62%;
+  left: 58%;
+  width: 20px;
+  height: 8px;
+  background: rgb(15 23 42 / 0.32);
+  border-radius: 9999px;
+  filter: blur(2.5px);
+  transform: translate(-50%, -50%);
+  z-index: -1;
 }

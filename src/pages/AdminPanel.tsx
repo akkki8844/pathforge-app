@@ -40,7 +40,7 @@ export default function AdminPanel() {
   // Show loading while checking auth/admin status
   if (authLoading || adminLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-[100svh] flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-accent" />
       </div>
     );
@@ -116,7 +116,7 @@ export default function AdminPanel() {
   };
 
   return (
-    <div className="relative min-h-screen flex">
+    <div className="relative min-h-[100svh] flex">
       <AuroraBackdrop />
       {/* Desktop Sidebar */}
       <div className="hidden lg:flex relative z-10">

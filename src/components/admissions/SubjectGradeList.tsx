@@ -6,16 +6,23 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CURRICULA, getCurriculumConfig } from "@/lib/curriculumSubjects";
+import {
+  getCurriculumConfig,
+  gradeScaleFor,
+  levelsForSubject,
+  subjectsInGroup,
+} from "@/lib/curriculumSubjects";
 
 export interface SubjectEntry {
   id: string;
   subject: string;
-  level?: string; // HL/SL or Higher/Standard etc
+  level?: string; // HL/SL, Core/Extended, Standard/Basic — board-dependent
   grade: string;
 }
 
@@ -29,15 +36,7 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
   const config = useMemo(() => getCurriculumConfig(curriculum), [curriculum]);
 
   const addEntry = () => {
-    onChange([
-      ...entries,
-      {
-        id: crypto.randomUUID(),
-        subject: "",
-        level: config.hasLevels ? config.levelOptions?.[0] : undefined,
-        grade: "",
-      },
-    ]);
+    onChange([...entries, { id: crypto.randomUUID(), subject: "", grade: "" }]);
   };
 
   const removeEntry = (id: string) => {
@@ -48,17 +47,18 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
     onChange(entries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
   };
 
-  const usedSubjects = new Set(entries.map((e) => e.subject).filter(Boolean));
-
-  const validateGrade = (val: string): boolean => {
-    if (!val) return true;
-    if (config.gradeScale.options) {
-      return config.gradeScale.options.includes(val);
-    }
-    const num = parseFloat(val);
-    if (isNaN(num)) return false;
-    return num >= config.gradeScale.min && num <= config.gradeScale.max;
+  /**
+   * Changing the subject can change which levels are legal, so the old level
+   * has to be re-derived rather than carried over — otherwise picking IGCSE
+   * Art after IGCSE Maths would leave a stale "Extended" tier attached to a
+   * subject that has no tiers.
+   */
+  const selectSubject = (id: string, subject: string) => {
+    const levels = levelsForSubject(config, subject);
+    updateEntry(id, { subject, level: levels[0], grade: "" });
   };
+
+  const usedSubjects = new Set(entries.map((e) => e.subject).filter(Boolean));
 
   return (
     <div className="space-y-3">
@@ -82,42 +82,56 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
       ) : (
         <div className="space-y-2">
           {entries.map((entry) => {
-            const gradeValid = validateGrade(entry.grade);
+            const levels = entry.subject ? levelsForSubject(config, entry.subject) : [];
+            const scale = gradeScaleFor(config, entry.subject, entry.level);
+            const gradeValid = (() => {
+              if (!entry.grade) return true;
+              if (scale.options) return scale.options.includes(entry.grade);
+              const num = parseFloat(entry.grade);
+              return !isNaN(num) && num >= scale.min && num <= scale.max;
+            })();
+
             return (
               <div
                 key={entry.id}
-                className="grid gap-2 sm:grid-cols-[1fr_120px_120px_40px] items-start p-3 rounded-lg border border-border bg-muted/20"
+                className="grid gap-2 sm:grid-cols-[1fr_130px_130px_40px] items-start p-3 rounded-lg border border-border bg-muted/20"
               >
-                <div className="space-y-1">
-                  <Select
-                    value={entry.subject}
-                    onValueChange={(v) => updateEntry(entry.id, { subject: v })}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Choose subject" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {config.subjects
-                        .filter((s) => s === entry.subject || !usedSubjects.has(s))
-                        .map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <Select value={entry.subject} onValueChange={(v) => selectSubject(entry.id, v)}>
+                  <SelectTrigger className="h-9 text-sm">
+                    <SelectValue placeholder="Choose subject" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    {config.groups.map((groupName) => {
+                      const available = subjectsInGroup(config, groupName).filter(
+                        (s) => s.name === entry.subject || !usedSubjects.has(s.name),
+                      );
+                      if (available.length === 0) return null;
+                      return (
+                        <SelectGroup key={groupName}>
+                          <SelectLabel className="text-[11px] uppercase tracking-wider text-muted-foreground">
+                            {groupName}
+                          </SelectLabel>
+                          {available.map((s) => (
+                            <SelectItem key={s.name} value={s.name}>
+                              {s.name}
+                            </SelectItem>
+                          ))}
+                        </SelectGroup>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
 
-                {config.hasLevels && config.levelOptions ? (
+                {levels.length > 0 ? (
                   <Select
                     value={entry.level || ""}
-                    onValueChange={(v) => updateEntry(entry.id, { level: v })}
+                    onValueChange={(v) => updateEntry(entry.id, { level: v, grade: "" })}
                   >
                     <SelectTrigger className="h-9 text-sm">
-                      <SelectValue placeholder="Level" />
+                      <SelectValue placeholder={config.levelLabel ?? "Level"} />
                     </SelectTrigger>
                     <SelectContent>
-                      {config.levelOptions.map((lv) => (
+                      {levels.map((lv) => (
                         <SelectItem key={lv} value={lv}>
                           {lv}
                         </SelectItem>
@@ -128,7 +142,7 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
                   <div />
                 )}
 
-                {config.gradeScale.options ? (
+                {scale.options ? (
                   <Select
                     value={entry.grade}
                     onValueChange={(v) => updateEntry(entry.id, { grade: v })}
@@ -137,7 +151,7 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
                       <SelectValue placeholder="Grade" />
                     </SelectTrigger>
                     <SelectContent>
-                      {config.gradeScale.options.map((g) => (
+                      {scale.options.map((g) => (
                         <SelectItem key={g} value={g}>
                           {g}
                         </SelectItem>
@@ -149,17 +163,17 @@ export function SubjectGradeList({ curriculum, entries, onChange }: SubjectGrade
                     <Input
                       type="number"
                       inputMode="decimal"
-                      min={config.gradeScale.min}
-                      max={config.gradeScale.max}
-                      step={config.gradeScale.step}
+                      min={scale.min}
+                      max={scale.max}
+                      step={scale.step}
                       value={entry.grade}
                       onChange={(e) => updateEntry(entry.id, { grade: e.target.value })}
                       className={`h-9 text-sm ${entry.grade && !gradeValid ? "border-destructive" : ""}`}
-                      placeholder={`${config.gradeScale.min}–${config.gradeScale.max}`}
+                      placeholder={`${scale.min}–${scale.max}`}
                     />
                     {entry.grade && !gradeValid && (
                       <p className="text-[10px] text-destructive">
-                        {config.gradeScale.min}–{config.gradeScale.max}
+                        {scale.min}–{scale.max}
                       </p>
                     )}
                   </div>

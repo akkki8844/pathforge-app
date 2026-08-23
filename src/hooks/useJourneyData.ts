@@ -721,7 +721,15 @@ export function useJourneyData() {
         .eq("major", major)
         .maybeSingle();
       if (cancelled) return;
-      if (cached?.tasks && Array.isArray(cached.tasks) && cached.tasks.length > 0) {
+      // Rows written before generate-journey stopped persisting its offline
+      // fallback are still in this table. Reading them here would bypass the
+      // identical guard inside the function and pin the student to the fallback
+      // roadmap permanently; skipping them falls through to a regeneration,
+      // which caches a real journey the moment the gateway is healthy again.
+      const isFallbackSet = Array.isArray(cached?.tasks) &&
+        (cached!.tasks as unknown as { id?: string }[])
+          .some((t) => String(t?.id ?? "").startsWith("fallback-"));
+      if (cached?.tasks && Array.isArray(cached.tasks) && cached.tasks.length > 0 && !isFallbackSet) {
         setAiTasks(cached.tasks as unknown as LevelTask[]);
         return;
       }

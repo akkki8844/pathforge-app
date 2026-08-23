@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { LEVELS, LevelId, MAX_LEVEL } from "@/lib/journeyLevels";
+import { LEVELS, LevelId } from "@/lib/journeyLevels";
 import type { LevelEvaluation } from "@/hooks/useLevelEvaluations";
 
 interface Props {
@@ -119,7 +119,7 @@ export function LevelReportModal({ open, onOpenChange, level, evaluation, onRege
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden gap-0 [&>button]:hidden">
+      <DialogContent className="max-w-[61rem] p-0 overflow-hidden gap-0 [&>button]:hidden">
         <div className={cn("relative bg-gradient-to-br p-6 text-white", lvl.color)}>
           <DialogClose
             className="absolute top-4 right-4 h-8 w-8 rounded-full bg-white/20 hover:bg-white/30 flex items-center justify-center transition z-10 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
@@ -156,7 +156,7 @@ export function LevelReportModal({ open, onOpenChange, level, evaluation, onRege
           )}
         </div>
 
-        <ScrollArea className="max-h-[58vh]">
+        <ScrollArea className="max-h-[58dvh]">
           <div className="p-6">
             {!evaluation || status === "generating" ? (
               <div className="py-12 flex flex-col items-center text-center gap-3">
@@ -207,7 +207,7 @@ export function LevelReportModal({ open, onOpenChange, level, evaluation, onRege
                 <Section icon={Target} title="Where it's thin" items={evaluation.gaps ?? []} tone="negative" />
                 <Section
                   icon={ArrowRight}
-                  title={level < MAX_LEVEL ? `Prioritize in Level ${level + 1}` : "Prioritize before you submit"}
+                  title={level < 10 ? `Prioritize in Level ${level + 1}` : "Prioritize before you submit"}
                   items={evaluation.priorities ?? []}
                   tone="action"
                   ordered
@@ -225,7 +225,7 @@ export function LevelReportModal({ open, onOpenChange, level, evaluation, onRege
         {isReady && (
           <div className="border-t bg-muted/30 p-4 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs text-muted-foreground">
-              Level {lvl.id} banked. {level < MAX_LEVEL ? `Level ${level + 1} is open.` : "You're at the end of the path."}
+              Level {lvl.id} banked. {level < 10 ? `Level ${level + 1} is open.` : "You're at the end of the path."}
             </div>
             <Button size="sm" variant="outline" onClick={onRegenerate} className="gap-1.5">
               <RotateCw className="h-3.5 w-3.5" />

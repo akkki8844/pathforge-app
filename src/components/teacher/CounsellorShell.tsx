@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
-import pathforgeLogo from "@/assets/pathforge-logo.png";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 import { cn } from "@/lib/utils";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
@@ -304,7 +304,7 @@ export function CounsellorShell({ children }: { children: ReactNode }) {
   return (
     <SidebarProvider defaultOpen>
       <AuroraBackdrop />
-      <div className="relative z-10 min-h-screen flex w-full">
+      <div className="relative z-10 min-h-[100svh] flex w-full">
         <CounsellorSidebar />
         <div className="flex-1 flex flex-col min-w-0 relative">
           {/* Ambient glow */}

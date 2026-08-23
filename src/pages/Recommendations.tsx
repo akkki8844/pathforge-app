@@ -5,8 +5,9 @@ import {
   Sparkles, ArrowRight, Target, AlertTriangle, Lightbulb, Clock, TrendingUp, TrendingDown, Mic, GraduationCap } from "lucide-react";
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import pathforgeLogo from '@/assets/pathforge-logo.png';
+import pathforgeLogo from '@/assets/pathforge-logo.webp';
 import { Seo } from "@/components/Seo";
+import { WelcomeTourDialog } from "@/components/WelcomeTourDialog";
 
 interface Recommendation {
   type: 'do' | 'improve' | 'stop';
@@ -188,10 +189,11 @@ function generateSummary(data: any): string {
 }
 
 export default function Recommendations() {
-  const { onboardingData } = useAuth();
+  const { onboardingData, profile } = useAuth();
   const navigate = useNavigate();
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [summary, setSummary] = useState('');
+  const [showWelcomeTour, setShowWelcomeTour] = useState(false);
 
   useEffect(() => {
     if (onboardingData) {
@@ -199,6 +201,18 @@ export default function Recommendations() {
       setSummary(generateSummary(onboardingData));
     }
   }, [onboardingData]);
+
+  // Fires exactly once: OnboardingSurvey sets this right before routing here
+  // on submit, so a later revisit to /recommendations (bookmark, back button)
+  // never re-shows the tour.
+  useEffect(() => {
+    try {
+      if (sessionStorage.getItem('pf:justOnboarded') === '1') {
+        sessionStorage.removeItem('pf:justOnboarded');
+        setShowWelcomeTour(true);
+      }
+    } catch { /* ignore */ }
+  }, []);
 
   const typeStyles = {
     do: 'border-green-500/30 bg-green-500/5',
@@ -213,8 +227,13 @@ export default function Recommendations() {
   };
 
   return (
-    <div className="min-h-screen bg-background py-12">
-      <Seo title='Personalized recommendations | Pathforge' description='High-impact, personalized actions to strengthen your college profile based on your major and goals.' path='/recommendations' />
+    <div className="min-h-[100svh] bg-background py-12">
+      <Seo title='Recommendations — Pathforge' description='High-impact, personalized actions to strengthen your college profile based on your major and goals.' path='/recommendations' />
+      <WelcomeTourDialog
+        open={showWelcomeTour}
+        onOpenChange={setShowWelcomeTour}
+        firstName={profile?.full_name?.trim().split(/\s+/)[0]}
+      />
       <div className="section-container max-w-3xl">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -285,7 +304,7 @@ export default function Recommendations() {
             Talk to Your Advisor
           </Button>
           <Button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/dashboard')}
             variant="outline"
             size="lg"
             className="gap-2"

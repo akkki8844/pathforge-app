@@ -7,9 +7,9 @@ import { toast } from "sonner";
 const PENDING_OAUTH_REDIRECT_KEY = "pathforge_pending_oauth_redirect";
 
 const safeRedirectPath = (value?: string) => {
-  if (!value) return "/journey";
+  if (!value) return "/dashboard";
   const path = value.startsWith("/") ? value : `/${value}`;
-  return path.startsWith("//") ? "/journey" : path;
+  return path.startsWith("//") ? "/dashboard" : path;
 };
 
 export function GoogleSignInButton({

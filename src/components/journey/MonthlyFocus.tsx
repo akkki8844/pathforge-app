@@ -319,14 +319,14 @@ export function MonthlyFocus({ milestones, scores, completedMilestones, onToggle
 
       {/* Picker dialog */}
       <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-[41rem]">
           <DialogHeader>
             <DialogTitle>Choose your monthly focus</DialogTitle>
             <DialogDescription>
               Pick one goal to commit to for the next 30 days. We'll break it down into weekly steps.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1.5 max-h-[55vh] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[55dvh] overflow-y-auto pr-1">
             {eligible.map(m => (
               <button
                 key={m.id}

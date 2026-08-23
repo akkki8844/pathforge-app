@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useProofSubmissions, type ProofSubmission } from "@/hooks/useProofSubmissions";
+import { GemAward } from "@/components/journey/GemAward";
 import { LevelTask, StageDef } from "@/lib/journeyLevels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -28,6 +29,7 @@ export function ProofUploadDialog({ open, onOpenChange, task, stage }: Props) {
   const [url, setUrl] = useState("");
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [award, setAward] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   if (!task || !stage) return null;
@@ -58,13 +60,22 @@ export function ProofUploadDialog({ open, onOpenChange, task, stage }: Props) {
     });
     setSubmitting(false);
     if ("error" in res) { toast.error(res.error); return; }
-    toast.success("Evidence submitted — verifying now…");
     setFile(null); setUrl(""); setNote("");
+    if (res.gemsAwarded > 0) {
+      // Close the dialog first — the award card is the answer to what the
+      // dialog was asking, and leaving both on screen stacks two surfaces.
+      onOpenChange(false);
+      setAward(res.gemsAwarded);
+      return;
+    }
+    toast.success("Evidence submitted — verifying now…");
   };
 
   return (
+    <>
+    <GemAward amount={award} onDismiss={() => setAward(0)} />
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-[46rem]">
         <DialogTitle>Submit evidence</DialogTitle>
         <DialogDescription className="text-xs">
           Upload a file <em>or</em> paste a public link that proves you completed:{" "}
@@ -73,7 +84,9 @@ export function ProofUploadDialog({ open, onOpenChange, task, stage }: Props) {
 
         {existing ? <ExistingSubmission submission={existing} /> : null}
 
-        <Tabs value={mode} onValueChange={(v) => setMode(v as "file" | "link")} className="mt-2">
+        {/* min-h keeps the popup at the taller ("Upload file") tab's height so
+            switching to "Paste link" doesn't make it visibly shrink. */}
+        <Tabs value={mode} onValueChange={(v) => setMode(v as "file" | "link")} className="mt-2 min-h-[9.5rem]">
           <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="file" className="gap-2"><Upload className="h-3.5 w-3.5" />Upload file</TabsTrigger>
             <TabsTrigger value="link" className="gap-2"><Link2 className="h-3.5 w-3.5" />Paste link</TabsTrigger>
@@ -138,6 +151,7 @@ export function ProofUploadDialog({ open, onOpenChange, task, stage }: Props) {
         <div className="rounded-lg bg-muted/50 p-3 text-xs text-muted-foreground space-y-1 mt-2">
           <div>• AI checks the evidence plausibly matches this task.</div>
           <div>• High-confidence matches auto-approve. Edge cases go to manual review.</div>
+          <div>• Approved evidence earns 5 gems — once per submission, whoever approves it.</div>
         </div>
 
         <div className="flex justify-end gap-2 pt-2">
@@ -149,6 +163,7 @@ export function ProofUploadDialog({ open, onOpenChange, task, stage }: Props) {
         </div>
       </DialogContent>
     </Dialog>
+    </>
   );
 }
 

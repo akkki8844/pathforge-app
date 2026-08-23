@@ -16,11 +16,13 @@ import { RouteActivityLogger } from "@/components/RouteActivityLogger";
 import ScrollToTop from "@/components/ScrollToTop";
 import { KeepAliveProvider } from "@/components/KeepAliveProvider";
 import { IMessageCursor } from "@/components/animations/iMessageCursor";
-import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
 import { MotionConfig } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
+import Maintenance from "./pages/Maintenance";
 import { isDesktop } from "@/lib/desktop";
+import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
+
 
 // Resilient lazy: retry once, then hard-reload so a stale chunk after a deploy
 // (or extension blocking a chunk) never leaves users on an infinite spinner.
@@ -46,21 +48,40 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
   });
 }
 
-const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const AppLogin = lazyWithRetry(() => import("./pages/AppLogin"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
 const DashboardPreview = lazyWithRetry(() => import("./pages/__DashboardPreview"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Activities = lazyWithRetry(() => import("./pages/Activities"));
 const Journey = lazyWithRetry(() => import("./pages/Journey"));
+const Leaderboard = lazyWithRetry(() => import("./pages/Leaderboard"));
 const ProfileBuilder = lazyWithRetry(() => import("./pages/ProfileBuilder"));
 const Essays = lazyWithRetry(() => import("./pages/Essays"));
 const Scholarships = lazyWithRetry(() => import("./pages/Scholarships"));
 const CollegeReadiness = lazyWithRetry(() => import("./pages/CollegeReadiness"));
 const Outcomes = lazyWithRetry(() => import("./pages/Outcomes"));
 const WeeklyPlanner = lazyWithRetry(() => import("./pages/WeeklyPlanner"));
+// Routine — one product area, nine views over one shared data model.
+const RoutineToday = lazyWithRetry(() => import("./pages/routine/Today"));
+const RoutineTimetable = lazyWithRetry(() => import("./pages/routine/Timetable"));
+const RoutineStudyPlanner = lazyWithRetry(() => import("./pages/routine/StudyPlanner"));
+const RoutineTasks = lazyWithRetry(() => import("./pages/routine/Tasks"));
+const RoutineReminders = lazyWithRetry(() => import("./pages/routine/Reminders"));
+const RoutineFocus = lazyWithRetry(() => import("./pages/routine/Focus"));
+const RoutineHabits = lazyWithRetry(() => import("./pages/routine/Habits"));
+const RoutineGoals = lazyWithRetry(() => import("./pages/routine/Goals"));
+const CommsChats = lazyWithRetry(() => import("./pages/communications/Chats"));
+const CommsTeams = lazyWithRetry(() => import("./pages/communications/Teams"));
+const CommsTeamWorkspace = lazyWithRetry(() => import("./pages/communications/TeamWorkspace"));
+const CommsObjectives = lazyWithRetry(() => import("./pages/communications/Objectives"));
+const CommsAnnouncements = lazyWithRetry(() => import("./pages/communications/Announcements"));
 const About = lazyWithRetry(() => import("./pages/About"));
 const Contact = lazyWithRetry(() => import("./pages/Contact"));
+const Faq = lazyWithRetry(() => import("./pages/Faq"));
+const IvyLeagueAdmissions = lazyWithRetry(() => import("./pages/guides/IvyLeagueAdmissions"));
+const IvyLeagueStudyTools = lazyWithRetry(() => import("./pages/guides/IvyLeagueStudyTools"));
 const ResetPassword = lazyWithRetry(() => import("./pages/ResetPassword"));
 const AuthConfirm = lazyWithRetry(() => import("./pages/AuthConfirm"));
 
@@ -112,10 +133,9 @@ function consumeSafePendingOAuthRedirect() {
 }
 
 import { useCredits } from "@/hooks/useCredits";
-import { Loader2 } from "lucide-react";
-import { RouteSkeleton } from "@/components/RouteSkeleton";
+import { LogoSpinner } from "@/components/LogoSpinner";
 
-const RouteFallback = () => <RouteSkeleton />;
+const RouteFallback = () => <LogoSpinner />;
 
 // These are never needed for the very first paint (onboarding only appears
 // once auth resolves; the rest are non-landing chrome), so keeping them out
@@ -128,9 +148,6 @@ const SupportChatbot = lazyWithRetry(() => import("@/components/SupportChatbot")
 // (default export — no .then() mapping needed, unlike the named exports above/below)
 const NameBackfillGate = lazyWithRetry(() =>
   import("@/components/NameBackfillGate").then((m) => ({ default: m.NameBackfillGate }))
-);
-const CreditMeter = lazyWithRetry(() =>
-  import("@/components/CreditMeter").then((m) => ({ default: m.CreditMeter }))
 );
 const CreditGiftNotification = lazyWithRetry(() =>
   import("@/components/CreditGiftNotification").then((m) => ({ default: m.CreditGiftNotification }))
@@ -170,9 +187,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // This prevents the onboarding survey from flashing for admins/teachers.
   if (loading || (user && roleLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+<LogoSpinner />
     );
   }
 
@@ -208,9 +223,7 @@ function TeacherRoute({ children }: { children: ReactNode }) {
 
   if (loading || (user && roleLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+<LogoSpinner />
     );
   }
   if (!user) return <Navigate to={`/teacher/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
@@ -239,7 +252,10 @@ function LandingRoute({ children }: { children: ReactNode }) {
   if (user && isAdmin) return <Navigate to="/admin" replace />;
   // Authenticated teachers go straight to their workspace
   if (user && isTeacher) return <Navigate to="/teacher" replace />;
-  // Authenticated students who haven't onboarded see the survey
+  // Authenticated students who haven't onboarded see the survey. This branch
+  // also catches Google sign-up, which returns the browser to the origin (`/`)
+  // — without it a brand-new OAuth account would land on marketing copy with
+  // no prompt to finish onboarding.
   if (user && !onboardingCompleted) {
     return (
       <Suspense fallback={<RouteFallback />}>
@@ -247,14 +263,10 @@ function LandingRoute({ children }: { children: ReactNode }) {
       </Suspense>
     );
   }
-  // An onboarded student has no use for the sales page — `/` is their dashboard.
-  // Rendered in place rather than redirected so the URL stays clean and a
-  // shared "pathforge.tech" link resolves correctly for both audiences.
-  return (
-    <Layout>
-      <Dashboard />
-    </Layout>
-  );
+  // Onboarded students stay here: `/` is the landing page for everyone, signed
+  // in or not. The workspace is entered deliberately via "Open workspace",
+  // which points at `/dashboard` — not by a silent bounce off the home URL.
+  return <>{children}</>;
 }
 
 function AuthRoute({ children }: { children: ReactNode }) {
@@ -270,9 +282,7 @@ function AuthRoute({ children }: { children: ReactNode }) {
 
   if (loading || (user && roleLoading)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+<LogoSpinner />
     );
   }
 
@@ -281,9 +291,10 @@ function AuthRoute({ children }: { children: ReactNode }) {
   if (user && isTeacher) return <Navigate to="/teacher" replace />;
 
   // If user is logged in and onboarding is complete, honor ?redirect= deep link.
-  // Otherwise land on `/`, which is the dashboard for onboarded students.
+  // Otherwise land on `/dashboard`. Not `/` — that is the public landing page
+  // even when signed in, and finishing a sign-in should put you in the app.
   if (user && onboardingCompleted) {
-    return <Navigate to={safeRedirect || "/"} replace />;
+    return <Navigate to={safeRedirect || "/dashboard"} replace />;
   }
 
   // If user is logged in but onboarding is not complete, show onboarding
@@ -317,29 +328,40 @@ function OAuthRedirectBridge() {
   return null;
 }
 
-/** Public routes (pricing, about, contact) — block admins from accessing user-facing pages. */
+/**
+ * Public routes (pricing, about, contact) — block admins from accessing
+ * user-facing pages.
+ *
+ * Deliberately renders `children` straight away instead of holding them behind
+ * a spinner until auth resolves. These are the marketing pages in the sitemap;
+ * gating them on a Supabase auth round-trip meant a crawler (which has no
+ * session to resolve) had to wait on that boot before any content painted, and
+ * would index a spinner if it were slow or blocked in the rendering sandbox.
+ * Nothing here is sensitive — the guard exists only to bounce admins — so the
+ * redirect can happen once roles settle. `LandingRoute` already works this way.
+ */
 function PublicGuestRoute({ children }: { children: ReactNode }) {
   const { user, isAdmin, roleLoading, loading } = useAuth();
-  if (loading || (user && roleLoading)) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
-  }
-  if (user && isAdmin) return <Navigate to="/admin" replace />;
+  if (!loading && user && !roleLoading && isAdmin) return <Navigate to="/admin" replace />;
   return <>{children}</>;
 }
 
 function AppRoutes() {
   const { showUpgradeModal, setShowUpgradeModal } = useCredits();
-  const { user, onboardingCompleted } = useAuth();
+  const { user } = useAuth();
   const location = useLocation();
-  // `/` is the marketing landing for guests but the dashboard for onboarded
-  // students. Only the former should be stripped of app chrome — signed-in
-  // users still need the credit meter, support chat and upgrade prompts there.
-  const isLandingPage =
-    location.pathname === "/" && !(user && onboardingCompleted);
+
+  // Warm common route chunks once after the initial paint so the first
+  // navigation feels instant. Gated on `user` — every warmed route is behind
+  // ProtectedRoute, so doing this for guests (as it did when it ran at App
+  // level, outside AuthProvider) just made the landing page compete with four
+  // chunks no signed-out visitor can open.
+  useEffect(() => {
+    if (user) preloadCommonRoutes();
+  }, [user]);
+  // `/` is always the public landing page — for guests and signed-in students
+  // alike. Only strip app chrome on the landing.
+  const isLandingPage = location.pathname === "/";
   return (
     <>
       <TopLoadingBar />
@@ -434,9 +456,7 @@ function AppRoutes() {
         <Route path="/counsellor/*" element={<Navigate to="/teacher" replace />} />
         <Route path="/counselor" element={<Navigate to="/teacher" replace />} />
         <Route path="/counselor/*" element={<Navigate to="/teacher" replace />} />
-        {/* `/dashboard` is a permanent alias for `/`, which already renders the
-            dashboard for signed-in students. Kept as its own route so existing
-            links and bookmarks don't 404. */}
+        {/* Dashboard — primary route for authenticated students */}
         <Route
           path="/dashboard"
           element={
@@ -474,6 +494,16 @@ function AppRoutes() {
             <ProtectedRoute>
               <Layout>
                 <Journey />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/leaderboard"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <Leaderboard />
               </Layout>
             </ProtectedRoute>
           }
@@ -562,6 +592,156 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+
+        {/* Routine. Nine views over one data model; /routine itself is not a
+            page, so it lands on Today, and an unknown child does the same
+            rather than dropping the student out of the section entirely. */}
+        <Route path="/routine" element={<Navigate to="/routine/today" replace />} />
+        <Route
+          path="/routine/today"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineToday />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/timetable"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineTimetable />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/study-planner"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineStudyPlanner />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        {/* Calendar merged into Study Planner as a second tab; old links redirect. */}
+        <Route path="/routine/calendar" element={<Navigate to="/routine/study-planner" replace />} />
+        <Route
+          path="/routine/tasks"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineTasks />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/reminders"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineReminders />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/focus"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineFocus />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/habits"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineHabits />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/routine/goals"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <RoutineGoals />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/routine/*" element={<Navigate to="/routine/today" replace />} />
+
+        {/* Communications. Chats is the default landing route because it is the
+            surface the section gets opened for; an unknown child still lands
+            there rather than dropping the student out of the section. */}
+        <Route
+          path="/communications"
+          element={<Navigate to="/communications/chats" replace />}
+        />
+        <Route
+          path="/communications/chats"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommsChats />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communications/teams"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommsTeams />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communications/teams/:teamId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommsTeamWorkspace />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communications/objectives"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommsObjectives />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communications/announcements"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <CommsAnnouncements />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communications/*"
+          element={<Navigate to="/communications/chats" replace />}
+        />
         <Route
           path="/requirements"
           element={
@@ -633,6 +813,36 @@ function AppRoutes() {
           }
         />
         <Route
+          path="/faq"
+          element={
+            <PublicGuestRoute>
+              <Layout>
+                <Faq />
+              </Layout>
+            </PublicGuestRoute>
+          }
+        />
+        <Route
+          path="/guides/ivy-league-admissions"
+          element={
+            <PublicGuestRoute>
+              <Layout>
+                <IvyLeagueAdmissions />
+              </Layout>
+            </PublicGuestRoute>
+          }
+        />
+        <Route
+          path="/guides/ivy-league-study-tools"
+          element={
+            <PublicGuestRoute>
+              <Layout>
+                <IvyLeagueStudyTools />
+              </Layout>
+            </PublicGuestRoute>
+          }
+        />
+        <Route
           path="/recommendations"
           element={
             <ProtectedRoute>
@@ -667,9 +877,13 @@ function AppRoutes() {
         {import.meta.env.DEV && (
           <Route path="/__dashboard-preview" element={<Layout><DashboardPreview /></Layout>} />
         )}
-        <Route path="/terms" element={<Terms />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="/refund-policy" element={<RefundPolicy />} />
+        {/* Wrapped in Layout like the other public pages. Without it these
+            three rendered with no nav and no footer, and neither Privacy nor
+            RefundPolicy contains an outbound link of its own — three indexed
+            pages that link nowhere, so crawlers walked in and stopped. */}
+        <Route path="/terms" element={<Layout><Terms /></Layout>} />
+        <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
+        <Route path="/refund-policy" element={<Layout><RefundPolicy /></Layout>} />
         {/* Admin Panel - Hidden route, role-protected */}
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin-panel" element={<Navigate to="/admin" replace />} />
@@ -677,6 +891,8 @@ function AppRoutes() {
         <Route path="/auth/confirm" element={<AuthConfirm />} />
         
         <Route path="/unsubscribe" element={<Unsubscribe />} />
+        {/* Desktop sign-in hand-off — the browser half of the pathforge:// flow */}
+        <Route path="/app-login" element={<AppLogin />} />
         {/* Public recommender portal — token-based, no auth */}
         <Route path="/lor/portal/:token" element={<LorPortal />} />
         {/* OAuth 2.1 consent screen for MCP clients (ChatGPT, Claude, etc.) */}
@@ -686,7 +902,6 @@ function AppRoutes() {
       </Suspense>
       {!isLandingPage && (
         <Suspense fallback={null}>
-          <CreditMeter />
           <CreditGiftNotification />
           <SupportChatbot />
           <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
@@ -696,12 +911,11 @@ function AppRoutes() {
   );
 }
 
+const MAINTENANCE_MODE = false;
+
 const App = () => {
-  useEffect(() => {
-    // Warm common route chunks once after the initial paint so the first
-    // navigation feels instant instead of waiting on a fresh dynamic import.
-    preloadCommonRoutes();
-  }, []);
+  if (MAINTENANCE_MODE) return <Maintenance />;
+
   const Provider = persister ? PersistQueryClientProvider : QueryClientProvider;
   // Exclude sensitive query keys (profiles, onboarding data, GPA, target universities,
   // journey scores, credits) from being written to localStorage so they don't
@@ -710,6 +924,10 @@ const App = () => {
     "profile", "profiles", "onboarding", "onboarding_data", "journey", "journey_scores",
     "credits", "subscription", "admissions", "readiness", "advisor", "linkedin",
     "application", "outcomes", "recommendations", "user", "me",
+    // Every Communications key starts with "comms". Private message content
+    // must not be written to localStorage on what may be a shared or school
+    // device — it is the single most sensitive thing this app now holds.
+    "comms",
   ];
   const shouldDehydrateQuery = (query: { queryKey: readonly unknown[] }) => {
     const first = query.queryKey?.[0];

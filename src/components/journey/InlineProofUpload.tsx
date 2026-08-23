@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { useProofSubmissions, type ProofSubmission } from "@/hooks/useProofSubmissions";
+import { GemAward } from "@/components/journey/GemAward";
 import { LevelTask, StageDef } from "@/lib/journeyLevels";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,7 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
     try { return localStorage.getItem(NOTE_KEY(stage.id)) || ""; } catch { return ""; }
   });
   const [submitting, setSubmitting] = useState(false);
+  const [award, setAward] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Persist note draft so it survives modal close / page revisit
@@ -63,6 +65,9 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
           </div>
         </StatusBox>
         <SubmittedFileLink submission={submission!} />
+        {/* The approved branch is where a freshly verified submission lands, so
+            this is the one that actually shows the award most of the time. */}
+        <GemAward amount={award} onDismiss={() => setAward(0)} />
       </div>
     );
   }
@@ -121,7 +126,11 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
       toast.error(res.error);
       return;
     }
-    toast.success("Evidence uploaded — verifying now…");
+    if (res.gemsAwarded > 0) {
+      setAward(res.gemsAwarded);
+    } else {
+      toast.success("Evidence uploaded — verifying now…");
+    }
     setFile(null);
     setNote("");
     try { localStorage.removeItem(NOTE_KEY(stage.id)); } catch {}
@@ -241,8 +250,11 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
       </div>
 
       <p className="text-[10px] text-muted-foreground leading-relaxed">
-        AI auto-approves high-confidence matches in under a minute. Edge cases route to manual admin review.
+        Verified evidence earns 5 gems. AI auto-approves high-confidence matches in under a minute;
+        edge cases route to manual admin review and are paid the same when approved.
       </p>
+
+      <GemAward amount={award} onDismiss={() => setAward(0)} />
     </div>
   );
 }

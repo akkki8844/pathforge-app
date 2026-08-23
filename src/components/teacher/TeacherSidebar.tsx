@@ -3,7 +3,7 @@ import { LayoutDashboard, Users, Target, LogOut, ShieldCheck, AlertCircle, Megap
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import pathforgeLogo from "@/assets/pathforge-logo.png";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 
 /**
  * Counselor workspace top header. Strategy-focused, not classroom-style.

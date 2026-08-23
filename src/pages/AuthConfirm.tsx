@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import pathforgeLogo from '@/assets/pathforge-logo.png';
+import pathforgeLogo from '@/assets/pathforge-logo.webp';
 
 type View = 'verifying' | 'success' | 'invalid';
 
@@ -41,7 +41,7 @@ export default function AuthConfirm() {
           await new Promise((r) => setTimeout(r, 400));
           const { data } = await supabase.auth.getSession();
           if (cancelled) return;
-          if (data.session) { setView('success'); setTimeout(() => navigate('/'), 900); return; }
+          if (data.session) { setView('success'); setTimeout(() => navigate('/dashboard'), 900); return; }
           setView('invalid');
           setMessage('Missing or invalid confirmation token.');
           return;
@@ -54,7 +54,7 @@ export default function AuthConfirm() {
         }
         window.history.replaceState({}, '', '/auth/confirm');
         setView('success');
-        setTimeout(() => navigate('/'), 900);
+        setTimeout(() => navigate('/dashboard'), 900);
       } catch (e: any) {
         if (cancelled) return;
         setView('invalid');
@@ -65,7 +65,7 @@ export default function AuthConfirm() {
   }, [navigate]);
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-md card-elevated p-8 text-center">
         <img src={pathforgeLogo} alt="Pathforge" className="h-12 mx-auto mb-6" />
         {view === 'verifying' && (

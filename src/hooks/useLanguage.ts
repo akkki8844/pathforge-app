@@ -32,6 +32,27 @@ function setGoogTransCookie(lang: string) {
   }
 }
 
+// Google's element.js is ~100KB and pulls further Google scripts once it runs.
+// It used to sit in index.html and load on every cold start for every visitor,
+// competing with our own bundle for bandwidth on the critical path — even
+// though almost nobody leaves English. It is now injected only when a
+// non-English language is actually in play. Idempotent.
+let translateScriptInjected = false;
+function ensureGoogleTranslate() {
+  if (typeof document === "undefined" || translateScriptInjected) return;
+  // A previous injection in this document (e.g. after a soft nav) still counts.
+  if (document.querySelector("script[data-goog-translate]")) {
+    translateScriptInjected = true;
+    return;
+  }
+  translateScriptInjected = true;
+  const s = document.createElement("script");
+  s.src = "https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+  s.async = true;
+  s.dataset.googTranslate = "1";
+  document.head.appendChild(s);
+}
+
 function applyGoogleTranslate(lang: string): boolean {
   const select = document.querySelector<HTMLSelectElement>(".goog-te-combo");
   if (!select) return false;
@@ -49,6 +70,11 @@ export function setStoredLanguage(lang: string) {
   // Drive the Google Translate widget. If the widget hasn't initialised yet,
   // set the cookie and reload so it picks the target language on boot.
   setGoogTransCookie(lang);
+  // Switching back to English never needs the widget if it was never loaded —
+  // the page is already in English, and injecting it here would fetch ~100KB
+  // to accomplish nothing.
+  if (lang !== "en") ensureGoogleTranslate();
+  else if (!translateScriptInjected) return;
   let attempts = 0;
   const tryApply = () => {
     if (applyGoogleTranslate(lang)) return;
@@ -86,6 +112,7 @@ export function useLanguage() {
     if (language && language !== "en" && translatePollLang !== language) {
       translatePollLang = language;
       setGoogTransCookie(language);
+      ensureGoogleTranslate();
       let tries = 0;
       const id = window.setInterval(() => {
         if (applyGoogleTranslate(language) || ++tries > 20) {

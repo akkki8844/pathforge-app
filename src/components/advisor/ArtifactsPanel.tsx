@@ -4,12 +4,14 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { FileText, FileImage, Presentation, ListChecks, Download, Trash2, ArrowLeft, Copy, Check, ImageIcon, ExternalLink, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import { useAdvisorArtifacts, type AdvisorArtifact } from "@/hooks/useAdvisorArtifacts";
+import remarkGfm from "remark-gfm";
+import { type AdvisorArtifact } from "@/hooks/useAdvisorArtifacts";
+import { markdownCodeComponents } from "@/components/advisor/CodeBlock";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
-const KIND_META: Record<string, { icon: any; label: string; tone: string }> = {
+export const KIND_META: Record<string, { icon: any; label: string; tone: string }> = {
   plan:     { icon: ListChecks,   label: "Plan",     tone: "text-emerald-500" },
   document: { icon: FileText,     label: "Document", tone: "text-blue-500" },
   pdf:      { icon: FileImage,    label: "PDF",      tone: "text-rose-500" },
@@ -17,21 +19,38 @@ const KIND_META: Record<string, { icon: any; label: string; tone: string }> = {
   image:    { icon: ImageIcon,    label: "Image",    tone: "text-fuchsia-500" },
 };
 
+// Artifacts are passed in rather than re-fetched. Advisor.tsx already holds the
+// list for the header badge; calling the hook again here opened a second
+// realtime channel and a second query for the same rows, and let the badge and
+// the panel disagree mid-flight.
 export function ArtifactsPanel({
   open,
   onOpenChange,
-  conversationId,
+  artifacts,
+  getDownloadUrl,
+  remove,
+  focusArtifactId,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  conversationId: string | null;
+  artifacts: AdvisorArtifact[];
+  getDownloadUrl: (a: AdvisorArtifact) => Promise<string | null>;
+  remove: (id: string) => Promise<void>;
+  focusArtifactId?: string | null;
 }) {
-  const { artifacts, getDownloadUrl, remove } = useAdvisorArtifacts(conversationId);
   const [active, setActive] = useState<AdvisorArtifact | null>(null);
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Jump straight to the artifact the user tapped inline in the chat, once
+  // it's loaded into the list.
+  useEffect(() => {
+    if (!open || !focusArtifactId) return;
+    const target = artifacts.find((a) => a.id === focusArtifactId);
+    if (target) setActive(target);
+  }, [open, focusArtifactId, artifacts]);
 
   // Resolve a signed preview URL whenever the user opens a file-backed artifact.
   useEffect(() => {
@@ -120,25 +139,12 @@ export function ArtifactsPanel({
           <>
             <ScrollArea className="flex-1">
               <div className="p-5">
-                {active.content_markdown ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none">
-                    <ReactMarkdown>{active.content_markdown}</ReactMarkdown>
-                  </div>
-                ) : active.kind === "slides" && active.content_json?.slides ? (
-                  <div className="space-y-4">
-                    {active.content_json.slides.map((s: any, i: number) => (
-                      <div key={i} className="rounded-lg border bg-card p-4">
-                        <div className="text-xs text-muted-foreground mb-1">Slide {i + 1}</div>
-                        <div className="font-semibold">{s.heading}</div>
-                        {s.bullets && (
-                          <ul className="mt-2 text-sm list-disc pl-5 space-y-1">
-                            {s.bullets.map((b: string, j: number) => <li key={j}>{b}</li>)}
-                          </ul>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : active.kind === "image" && active.file_path ? (
+                {/* Order matters: the real file wins over the markdown it was
+                    rendered from. PDFs and images now also carry
+                    content_markdown, so checking that first — as this used to —
+                    would swap a faithful preview for a re-rendered
+                    approximation. */}
+                {active.kind === "image" && active.file_path ? (
                   previewLoading ? (
                     <div className="flex items-center justify-center py-10 text-muted-foreground">
                       <Loader2 className="h-5 w-5 animate-spin" />
@@ -162,11 +168,34 @@ export function ArtifactsPanel({
                     <iframe
                       src={previewUrl}
                       title={active.title}
-                      className="w-full h-[70vh] rounded-lg border bg-card"
+                      className="w-full h-[70svh] rounded-lg border bg-card"
                     />
                   ) : (
                     <p className="text-sm text-muted-foreground">Preview unavailable — use download.</p>
                   )
+                ) : active.kind === "slides" && active.content_json?.slides ? (
+                  <div className="space-y-4">
+                    {active.content_json.slides.map((s: any, i: number) => (
+                      <div key={i} className="rounded-lg border bg-card p-4">
+                        <div className="text-xs text-muted-foreground mb-1">Slide {i + 1}</div>
+                        <div className="font-semibold">{s.heading}</div>
+                        {s.bullets && (
+                          <ul className="mt-2 text-sm list-disc pl-5 space-y-1">
+                            {s.bullets.map((b: string, j: number) => <li key={j}>{b}</li>)}
+                          </ul>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : active.content_markdown ? (
+                  // Word documents land here: there is no in-browser .docx
+                  // renderer, but the markdown they were generated from is the
+                  // same content, so the preview is faithful.
+                  <div className="prose prose-sm dark:prose-invert max-w-none">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeComponents}>
+                      {active.content_markdown}
+                    </ReactMarkdown>
+                  </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">
                     This artifact has no inline preview — use download to open it.

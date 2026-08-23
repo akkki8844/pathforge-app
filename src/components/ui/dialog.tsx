@@ -19,7 +19,7 @@ const DialogOverlay = React.forwardRef<
   <DialogPrimitive.Overlay
     ref={ref}
     className={cn(
-      "fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none",
+      "fixed inset-0 z-50 bg-black/70 backdrop-blur-sm data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=open]:duration-200 data-[state=closed]:duration-150 motion-reduce:animate-none",
       className,
     )}
     {...props}
@@ -36,13 +36,20 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        // +30% default width: max-w-lg (32rem) -> max-w-2xl (42rem). Pages can still override via className.
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-2xl max-h-[90vh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 sm:p-7 shadow-2xl",
+        // Default width, ~45% over the max-w-2xl baseline. Pages can still override via className.
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-[61rem] max-h-[90dvh] overflow-y-auto translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 sm:p-7 shadow-2xl",
+        // A dialog is the loudest interruption in the product, so it gets the
+        // most visible entrance: a real pop (90% -> 100%, not the barely-there
+        // 95% shadcn ships by default) on the house expo-out curve, landing in
+        // one deliberate motion. The exit is faster and plainer than the
+        // entrance on purpose — closing should feel instant, not performed.
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-        "data-[state=closed]:slide-out-to-top-[2%] data-[state=open]:slide-in-from-top-[2%]",
-        "duration-200 ease-out motion-reduce:animate-none motion-reduce:transition-none",
+        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-90",
+        "data-[state=closed]:slide-out-to-top-[1%] data-[state=open]:slide-in-from-top-[2%]",
+        "data-[state=open]:duration-[250ms] data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)]",
+        "data-[state=closed]:duration-[150ms] data-[state=closed]:ease-[cubic-bezier(0.4,0,1,1)]",
+        "motion-reduce:animate-none motion-reduce:transition-none",
         "sm:rounded-lg",
         className,
       )}

@@ -461,6 +461,8 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
   const section = SECTIONS[sectionIdx];
   const totalQuestions = useMemo(() => SECTIONS.reduce((n, s) => n + s.questions.length, 0), []);
   const answeredCount = touched.size;
+  const isLastSection = sectionIdx === totalSections - 1;
+  const allAnswered = answeredCount === totalQuestions;
 
   const setAnswer = (key: keyof PlacementAnswers, value: string | number) => {
     setAnswers((prev) => ({ ...prev, [key]: value as never }));
@@ -512,7 +514,7 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto p-0">
+      <DialogContent className="max-w-[70rem] max-h-[92dvh] overflow-y-auto p-0">
         {/* Sticky header */}
         <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b border-border px-6 sm:px-8 pt-6 pb-4">
           <DialogHeader className="space-y-2">
@@ -640,12 +642,19 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div className="text-xs text-muted-foreground">
                 {answeredCount} / {totalQuestions} answered
+                {isLastSection && !allAnswered && (
+                  <span className="text-amber-600"> — answer every question to calculate your level</span>
+                )}
               </div>
               <div className="flex items-center gap-2">
                 <Button variant="outline" onClick={prev} disabled={sectionIdx === 0 || submitting} className="gap-2">
                   <ArrowLeft className="w-4 h-4" /> Back
                 </Button>
-                <Button onClick={next} disabled={submitting} className="gap-2">
+                <Button
+                  onClick={next}
+                  disabled={submitting || (isLastSection && !allAnswered)}
+                  className="gap-2"
+                >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : sectionIdx === totalSections - 1 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                   {sectionIdx === totalSections - 1 ? "Calculate Level (1 credit)" : "Next Section"}
                 </Button>

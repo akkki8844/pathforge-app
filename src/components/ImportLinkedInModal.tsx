@@ -8,6 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { notifyLinkedInImported } from "@/hooks/useLinkedInImport";
+import { readEdgeError } from "@/lib/edgeFunctionError";
+import { parseLinkedInPdf, validateLinkedInPdf } from "@/lib/parseLinkedInPdf";
 import linkedinLogo from "@/assets/linkedin-logo.png";
 
 interface ImportLinkedInModalProps {
@@ -16,43 +18,31 @@ interface ImportLinkedInModalProps {
   onImported?: () => void;
 }
 
-async function parsePdf(file: File): Promise<string> {
-  const pdfjs: any = await import("pdfjs-dist");
-  const workerUrl = (await import("pdfjs-dist/build/pdf.worker.min.mjs?url" as string)).default;
-  pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
-  const buf = await file.arrayBuffer();
-  const doc = await pdfjs.getDocument({ data: buf }).promise;
-  let out = "";
-  for (let i = 1; i <= doc.numPages; i++) {
-    const page = await doc.getPage(i);
-    const content = await page.getTextContent();
-    out += content.items.map((it: any) => it.str).join(" ") + "\n\n";
-  }
-  return out.trim();
-}
-
 export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLinkedInModalProps) {
   const { user } = useAuth();
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
+  // Parsing a multi-page export takes a couple of seconds. Without this the
+  // submit button was already enabled (it only checked `file`), so an eager
+  // click hit the empty-text guard and read as "the import does nothing".
+  const [parsing, setParsing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     if (!f) return;
-    if (f.type !== "application/pdf") {
-      toast.error("Please upload a PDF (LinkedIn → More → Save to PDF).");
-      return;
-    }
-    if (f.size > 10 * 1024 * 1024) {
-      toast.error("Max file size is 10MB.");
+    const invalid = validateLinkedInPdf(f);
+    if (invalid) {
+      toast.error(invalid);
       return;
     }
     setFile(f);
+    setText("");
+    setParsing(true);
     try {
-      const parsed = await parsePdf(f);
+      const parsed = await parseLinkedInPdf(f);
       if (!parsed.trim()) {
         toast.error("Could not extract text from this PDF. Re-export from LinkedIn and try again.");
         setFile(null);
@@ -63,6 +53,8 @@ export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLi
       console.error(err);
       toast.error("Could not read PDF. Please re-export from LinkedIn and try again.");
       setFile(null);
+    } finally {
+      setParsing(false);
     }
   };
 
@@ -95,48 +87,69 @@ export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLi
         );
       if (error) throw error;
 
+      // The profile IS saved at this point. Everything below is the optional
+      // AI auto-fill pass, so a failure there must NOT discard the import.
+      //
+      // The old code bailed out of the whole flow on any extraction problem:
+      // it skipped notifyLinkedInImported(), skipped onImported(), and left
+      // the dialog open — so the Connectors card still read "Not connected"
+      // and the button looked broken, even though the row was in the database
+      // the whole time. And because supabase-js resolves (rather than throws)
+      // on a non-2xx, `extractRes` was null and the message shown was always
+      // the useless "Edge Function returned a non-2xx status code" instead of
+      // the real reason the function returned.
+      let extractionNote: { ok: boolean; message: string } | null = null;
       try {
-        const { data: extractRes, error: extractErr } = await supabase.functions.invoke("linkedin-extract", {
+        const result = await supabase.functions.invoke("linkedin-extract", {
           body: { profile_text: finalText, linkedin_url: finalUrl },
         });
-        const errMsg = (extractRes as any)?.error || extractErr?.message;
-        if (errMsg) {
-          toast.error(errMsg);
-          return;
-        }
-        const counts = (extractRes as any)?.counts;
-        if (counts) {
-          const total =
-            (counts.projects_added || 0) +
-            (counts.leadership_added || 0) +
-            (counts.competitions_added || 0) +
-            (counts.internships_added || 0) +
-            (counts.service_added || 0) +
-            (counts.research_added || 0) +
-            (counts.awards_added || 0) +
-            (counts.certifications_added || 0);
-          toast.success(
-            total > 0
-              ? `Imported ${total} items — projects, leadership, internships, volunteering, awards, certifications & more were auto-filled.`
-              : "LinkedIn imported, but we couldn't find new activities. Add more detail to your PDF.",
-          );
+        const failure = await readEdgeError(result);
+
+        if (failure) {
+          extractionNote = { ok: false, message: failure.message };
         } else {
-          toast.success("LinkedIn imported.");
+          const counts = (result.data as { counts?: Record<string, number> } | null)?.counts;
+          const total = counts
+            ? Object.entries(counts)
+                .filter(([k]) => k.endsWith("_added"))
+                .reduce((sum, [, v]) => sum + (Number(v) || 0), 0)
+            : 0;
+          extractionNote = {
+            ok: true,
+            message:
+              total > 0
+                ? `Imported ${total} items — projects, leadership, internships, volunteering, awards, certifications & more were auto-filled.`
+                : "LinkedIn imported. We couldn't find new activities to add — add more detail to your profile and re-import.",
+          };
         }
       } catch (e) {
-        console.warn("extract failed", e);
-        toast.error(e instanceof Error ? e.message : "LinkedIn saved, but AI extraction failed.");
-        return;
+        console.warn("linkedin-extract failed", e);
+        extractionNote = {
+          ok: false,
+          message: e instanceof Error ? e.message : "AI auto-fill failed.",
+        };
       }
 
+      // Refresh + close regardless: the import itself succeeded.
       try { localStorage.setItem("linkedin-import-popup-dismissed", "1"); } catch { /* ignore */ }
       notifyLinkedInImported();
       onImported?.();
       onOpenChange(false);
       reset();
+
+      if (extractionNote?.ok) {
+        toast.success(extractionNote.message);
+      } else {
+        toast.warning("LinkedIn profile saved, but auto-fill didn't run", {
+          description: extractionNote?.message,
+          duration: 8000,
+        });
+      }
     } catch (err) {
       console.error(err);
-      toast.error("Could not save import. Please try again.");
+      toast.error("Could not save import", {
+        description: err instanceof Error ? err.message : "Please try again.",
+      });
     } finally {
       setBusy(false);
     }
@@ -144,7 +157,7 @@ export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLi
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[46rem] max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <img src={linkedinLogo} alt="LinkedIn" className="h-5 w-5 rounded-sm" />
@@ -169,7 +182,7 @@ export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLi
                 <FileText className="h-6 w-6 text-accent flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{file.name}</p>
-                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {text.length.toLocaleString()} chars extracted</p>
+                  <p className="text-xs text-muted-foreground">{(file.size / 1024).toFixed(0)} KB · {parsing ? "reading PDF…" : `${text.length.toLocaleString()} chars extracted`}</p>
                 </div>
                 <button
                   onClick={() => { setFile(null); setText(""); if (fileRef.current) fileRef.current.value = ""; }}
@@ -211,10 +224,10 @@ export function ImportLinkedInModal({ open, onOpenChange, onImported }: ImportLi
 
         <Button
           onClick={submit}
-          disabled={busy || !file}
+          disabled={busy || parsing || !file || !text.trim()}
           className="w-full mt-2"
         >
-          {busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing & auto-filling…</> : <><Check className="mr-2 h-4 w-4" />Import & auto-fill profile</>}
+          {parsing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Reading your PDF…</> : busy ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Importing & auto-filling…</> : <><Check className="mr-2 h-4 w-4" />Import & auto-fill profile</>}
         </Button>
       </DialogContent>
     </Dialog>

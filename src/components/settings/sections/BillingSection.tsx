@@ -7,25 +7,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useCredits } from "@/hooks/useCredits";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePlanTier } from "@/hooks/usePlanTier";
-import { PLANS, PLAN_RANK, discountPercent, creditLabel } from "@/lib/plans";
+import { PLANS, PLAN_RANK, discountPercent, creditLabel, planDisplayName } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CouponSuccessModal } from "@/components/CouponSuccessModal";
 import { TierPlanCard } from "@/components/pricing/TierPlanCard";
 import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
 
-const PLAN_LABEL: Record<string, string> = {
-  free: "Free",
-  pro: "Pro",
-  starter: "Pro",
-  growth: "Pro",
-  power: "Pro",
-  admin: "Admin",
-};
-
 export function BillingSection() {
   const { user } = useAuth();
-  const { creditData, creditsRemaining, totalCapacity, refreshCredits, claimFreePlan } = useCredits();
+  const {
+    creditData, creditsRemaining, totalCapacity, periodLabel, unlimited,
+    claimFreePlan, redeemCoupon,
+  } = useCredits();
   const { subscription, isActive } = useSubscription();
   const { tier: currentTier } = usePlanTier();
   const { toast } = useToast();
@@ -34,48 +28,58 @@ export function BillingSection() {
   const [claiming, setClaiming] = useState(false);
   const [history, setHistory] = useState<{ code: string; credits_granted: number; redeemed_at: string }[]>([]);
   const [couponSuccess, setCouponSuccess] = useState<{
-    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null; creditsGranted: number;
+    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null;
+    creditsGranted: number; planActive: boolean;
   } | null>(null);
 
-  useEffect(() => {
+  const loadHistory = async () => {
     if (!user) return;
-    supabase
+    const { data } = await supabase
       .from("coupon_redemptions" as any)
       .select("code, credits_granted, redeemed_at")
       .eq("user_id", user.id)
       .order("redeemed_at", { ascending: false })
-      .limit(10)
-      .then(({ data }) => setHistory((data as any) || []));
-  }, [user]);
+      .limit(10);
+    setHistory((data as any) || []);
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadHistory(); }, [user]);
 
   const redeem = async () => {
     if (!code.trim()) return;
     setRedeeming(true);
-    const { data, error } = await supabase.rpc("redeem_coupon", { _code: code.trim() });
-    setRedeeming(false);
-    const res = data as { success?: boolean; error?: string; credits_granted?: number; plan_unlocked?: string | null };
-    if (error || !res?.success) {
-      toast({ variant: "destructive", title: "Couldn't redeem", description: res?.error || error?.message });
-      return;
-    }
-    const unlockedPlan = res.plan_unlocked ? PLANS.find((p) => p.tier === res.plan_unlocked) : undefined;
-    setCouponSuccess({
-      code: code.trim().toUpperCase(),
-      planName: unlockedPlan?.name || res.plan_unlocked || null,
-      planTier: res.plan_unlocked || null,
-      planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
-      creditsGranted: res.credits_granted || 0,
-    });
-    setCode("");
-    await refreshCredits();
-    if (user) {
-      const { data: h } = await supabase
-        .from("coupon_redemptions" as any)
-        .select("code, credits_granted, redeemed_at")
-        .eq("user_id", user.id)
-        .order("redeemed_at", { ascending: false })
-        .limit(10);
-      setHistory((h as any) || []);
+    try {
+      // Shared with /pricing via the credits context, which also refreshes the
+      // plan so the cards below re-render as "Current plan" straight away.
+      const result = await redeemCoupon(code);
+      if (!result.success) {
+        toast({ variant: "destructive", title: "Couldn't redeem", description: result.error });
+        return;
+      }
+      setCode("");
+      await loadHistory();
+
+      if (!result.planTier && result.planKept) {
+        const kept = PLANS.find((p) => p.tier === result.planKept);
+        toast({
+          title: "Code applied",
+          description: `You're already on ${kept?.name || result.planKept}, which is better than this code grants — your plan is unchanged.`,
+        });
+        return;
+      }
+
+      const unlockedPlan = result.planTier ? PLANS.find((p) => p.tier === result.planTier) : undefined;
+      setCouponSuccess({
+        code: result.code || code.trim().toUpperCase(),
+        planName: unlockedPlan?.name || result.planTier || null,
+        planTier: result.planTier,
+        planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
+        creditsGranted: result.creditsGranted,
+        planActive: result.planActivated,
+      });
+    } finally {
+      setRedeeming(false);
     }
   };
 
@@ -93,7 +97,9 @@ export function BillingSection() {
     }
   };
 
-  const planLabel = PLAN_LABEL[creditData?.plan || "free"] || creditData?.plan;
+  // The local label map this replaced was keyed on exact plan strings, so a
+  // Paddle subscriber whose plan reads `pro_monthly` was shown that raw id.
+  const planLabel = planDisplayName(creditData?.plan);
 
   return (
     <SettingsSection title="Billing" description="Your plan, credits, and coupon redemptions.">
@@ -102,7 +108,12 @@ export function BillingSection() {
           <div>
             <p className="text-base font-semibold text-foreground">{planLabel}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {creditsRemaining} of {totalCapacity} credits available
+              {unlimited
+                ? "Unlimited credits and advisor tokens"
+                : `${creditsRemaining} of ${totalCapacity} ${periodLabel} credits available`}
+              {creditData?.planExpiresAt && !subscription && (
+                <> · until {new Date(creditData.planExpiresAt).toLocaleDateString()}</>
+              )}
               {subscription?.current_period_end && isActive && (
                 <> · renews {new Date(subscription.current_period_end).toLocaleDateString()}</>
               )}
@@ -116,7 +127,7 @@ export function BillingSection() {
 
       <SettingsCard
         title="Plans"
-        description="Credits refresh on their own cycle and don't carry over — Free resets every 24 hours, paid plans every month."
+        description="Free gets 3 credits a day, reset every 24 hours. Paid plans get a larger monthly pool of credits and advisor tokens."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PLANS.map((plan) => {
@@ -227,8 +238,9 @@ export function BillingSection() {
         planName={couponSuccess?.planName}
         planCreditLabel={couponSuccess?.planCreditLabel}
         creditsGranted={couponSuccess?.creditsGranted}
+        planActive={couponSuccess?.planActive}
         onActivatePlan={
-          couponSuccess?.planTier
+          couponSuccess?.planTier && !couponSuccess.planActive
             ? () => {
                 setTimeout(() => {
                   document

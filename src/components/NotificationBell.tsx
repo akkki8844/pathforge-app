@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { Bell, Check, Shield, GraduationCap } from "lucide-react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -10,7 +11,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { formatDistanceToNow } from "date-fns";
+import { timeAgo } from "@/lib/timeAgo";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -108,8 +109,11 @@ export function NotificationBell() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-96 p-0">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3">
+      <PopoverContent
+        align="end"
+        className="w-96 p-0 rounded-xl border-border/50 bg-popover/95 backdrop-blur-sm shadow-lg overflow-hidden"
+      >
+        <div className="flex items-center justify-between border-b border-border/50 px-4 py-3">
           <div>
             <h3 className="font-semibold text-sm">Notifications</h3>
             <p className="text-xs text-muted-foreground">
@@ -134,12 +138,15 @@ export function NotificationBell() {
               No notifications yet
             </div>
           ) : (
-            <ul className="divide-y divide-border">
-              {items.map((n) => (
-                <li
+            <ul className="divide-y divide-border/40">
+              {items.map((n, index) => (
+                <motion.li
                   key={n.id}
+                  initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
+                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
+                  transition={{ duration: 0.3, delay: Math.min(index, 8) * 0.05 }}
                   className={cn(
-                    "p-4 cursor-pointer hover:bg-muted/50 transition-colors",
+                    "p-4 cursor-pointer hover:bg-accent/40 transition-colors",
                     !n.is_read && "bg-primary/5",
                   )}
                   onClick={() => !n.is_read && markOneRead(n.id)}
@@ -161,12 +168,12 @@ export function NotificationBell() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
+                        {!n.is_read && (
+                          <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
+                        )}
                         <h4 className="font-medium text-sm truncate">
                           {n.title}
                         </h4>
-                        {!n.is_read && (
-                          <span className="h-2 w-2 rounded-full bg-primary flex-shrink-0" />
-                        )}
                       </div>
                       <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-wrap">
                         {n.message}
@@ -177,14 +184,12 @@ export function NotificationBell() {
                         </span>
                         <span>·</span>
                         <span>
-                          {formatDistanceToNow(new Date(n.created_at), {
-                            addSuffix: true,
-                          })}
+                          {timeAgo(n.created_at)}
                         </span>
                       </div>
                     </div>
                   </div>
-                </li>
+                </motion.li>
               ))}
             </ul>
           )}

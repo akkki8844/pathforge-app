@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { EASE_OUT_EXPO } from "@/lib/motion";
+import { functionErrorMessage } from "@/lib/functionError";
 
 /**
  * "Tell the agent" — a precise, single-purpose edit box that sits under any
@@ -52,13 +53,7 @@ export function AgentEdit({ section, currentText, onApplied, className }: AgentE
         },
       });
       if (error) {
-        toast.error(
-          error.message?.includes("402")
-            ? "Daily credit limit reached."
-            : error.message?.includes("429")
-              ? "Rate limited — try again in a moment."
-              : "Could not apply that. Try again.",
-        );
+        toast.error(await functionErrorMessage(error, "Could not apply that. Try again."));
         setLog((l) => [{ instruction: instr, ok: false }, ...l].slice(0, 5));
         return;
       }

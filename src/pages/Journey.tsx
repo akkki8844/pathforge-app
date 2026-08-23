@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   Rocket, Loader2, Gauge, Target, CheckCircle2, ExternalLink,
-  ChevronLeft, BookOpen, Flame, Gem, Heart, RotateCcw,
+  ChevronLeft, Compass, Flame, Gem, Heart, RotateCcw, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,8 +18,7 @@ import {
 } from "@/lib/journeyLevels";
 import { useLevelEvaluations, isLevelComplete } from "@/hooks/useLevelEvaluations";
 import { cn } from "@/lib/utils";
-import { JourneyGuidebookModal } from "@/components/journey/JourneyGuidebookModal";
-import { JourneyLeaderboard } from "@/components/journey/JourneyLeaderboard";
+import { JourneyTour, JOURNEY_TOUR_SEEN_KEY } from "@/components/journey/JourneyTour";
 
 import { LevelPath } from "@/components/journey/LevelPath";
 import { LevelDetailModal } from "@/components/journey/LevelDetailModal";
@@ -36,7 +35,7 @@ import { ProgressRadar } from "@/components/journey/ProgressRadar";
 import { CounsellorOverrideBanner } from "@/components/journey/CounsellorOverrideBanner";
 import { CounsellorRoadmapBanner } from "@/components/journey/CounsellorRoadmapBanner";
 import { Seo } from "@/components/Seo";
-import { fadeUp, staggerParent, staggerStep, viewportOnce } from "@/lib/motion";
+import { fadeUp, staggerParent, staggerStep, viewportOnce, transition, EASE_OUT_EXPO } from "@/lib/motion";
 
 // ── Confirmation / start screen ────────────────────────────────────────
 
@@ -44,33 +43,36 @@ function StartScreen({
   onConfirm, onPlace, saving,
 }: { onConfirm: () => void; onPlace: () => void; saving: boolean }) {
   return (
-    <div className="min-h-[75vh] flex items-center justify-center px-4">
+    <div className="min-h-[75svh] flex items-center justify-center px-4">
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
+        transition={transition.base}
         className="max-w-xl text-center space-y-6"
       >
-        <div className="mx-auto h-20 w-20 rounded-3xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-xl">
-          <Rocket className="h-10 w-10 text-primary-foreground" />
+        <div className="mx-auto h-20 w-20 rounded-lg border bg-card flex items-center justify-center shadow-sm">
+          <Rocket className="h-10 w-10 text-primary" />
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-          Your personalized path to{" "}
-          <span className="bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
-            your dream college
+        <div className="space-y-3">
+          <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            Your Journey
           </span>
-        </h1>
+          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
+            Your personalized path to your dream college
+          </h1>
+        </div>
         <p className="text-muted-foreground">
           A 300-quest journey across 15 levels, with hyper-specific, proof-verified tasks tailored to your major,
           country, curriculum, and grade. Choose how to start:
         </p>
         <div className="grid sm:grid-cols-2 gap-3 pt-2">
-          <Button onClick={onConfirm} disabled={saving} size="lg" className="h-14 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground hover:opacity-90 gap-2">
+          <Button onClick={onConfirm} disabled={saving} size="lg" className="h-14 rounded-lg gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
             Start from Foundation
           </Button>
-          <Button onClick={onPlace} variant="outline" size="lg" className="h-14 rounded-xl gap-2 border-2">
+          <Button onClick={onPlace} variant="outline" size="lg" className="h-14 rounded-lg gap-2">
             <Gauge className="h-4 w-4 text-primary" />
-            Place Me — Test My Level
+            Place My Level
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -85,12 +87,12 @@ function StartScreen({
 
 function JourneyHeader({
   stage, level, major, completedCount, gems, hearts, heartResetsRemaining,
-  onResetHearts, onGuidebook, onPlace, stageTasks,
+  onResetHearts, onTour, onPlace, stageTasks,
 }: {
   stage: StageDef | null; level: number; major: string;
   completedCount: number; gems: number; hearts: number;
   heartResetsRemaining: number; onResetHearts: () => void;
-  onGuidebook: () => void; onPlace: () => void;
+  onTour: () => void; onPlace: () => void;
   stageTasks?: LevelTask[];
 }) {
   const lvl = getLevelById((stage?.level ?? level) as any);
@@ -118,19 +120,27 @@ function JourneyHeader({
   ];
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-end gap-5 px-1">
+      <div data-tour="journey-stats" className="flex items-center justify-end gap-2 px-1 flex-wrap">
         {stats.map((s, i) => (
-          <motion.div
+          <motion.span
             key={i}
-            initial={{ opacity: 0, y: -8, scale: 0.8 }}
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            transition={{ delay: 0.15 + i * 0.09, type: "spring", stiffness: 420, damping: 18 }}
-            className={cn("flex items-center gap-1.5 text-sm font-bold", s.cls)}
+            transition={{ ...transition.fast, delay: i * 0.05 }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"
             title={s.title}
           >
-            <s.icon className={cn("h-5 w-5", s.fill)} />
-            <span className="tabular-nums">{s.value}</span>
-          </motion.div>
+            <s.icon className={cn("h-3.5 w-3.5", s.cls)} />
+            <span className="font-display text-[13px] font-semibold leading-none tabular-nums">
+              {s.value}
+            </span>
+            {/* 11px, matching the dashboard pills: this label is the only thing
+                telling three adjacent numbers apart. The singular/plural ternary
+                this replaces had identical branches. */}
+            <span className="font-display text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground">
+              {s.title.split(" ")[0]}
+            </span>
+          </motion.span>
         ))}
         {/* Only surfaced once hearts are actually short — an always-visible
             reset would read as "the weekly deadline is optional". */}
@@ -147,48 +157,62 @@ function JourneyHeader({
       </div>
 
       <motion.div
+        data-tour="journey-banner"
         initial={{ opacity: 0, y: 18, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className={cn("relative overflow-hidden rounded-2xl p-5 sm:p-6 text-white shadow-xl bg-gradient-to-br", lvl.color)}
+        transition={transition.slow}
+        className={cn("relative overflow-hidden rounded-lg border bg-card shadow-sm p-5 sm:p-6", lvl.color && "border-primary/20")}
       >
-        {/* Slow sheen sweep for a premium, alive surface */}
+        {/* Subtle sheen sweep for depth */}
         <motion.span
           aria-hidden
-          className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-12"
+          className="pointer-events-none absolute inset-y-0 -left-1/3 w-1/3 bg-gradient-to-r from-transparent via-primary/5 to-transparent skew-x-12"
           initial={{ x: 0 }}
           animate={{ x: ["0%", "460%"] }}
           transition={{ duration: 6, repeat: Infinity, repeatDelay: 3.5, ease: "easeInOut" }}
         />
-        <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/15 to-transparent" />
         <div className="relative flex items-start justify-between gap-4 flex-wrap">
-          <div className="min-w-0 space-y-1">
-            <div className="flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-[0.18em] text-white/85">
+          <div className="min-w-0 space-y-2">
+            <div className="flex items-center gap-2 text-[11px] font-display font-bold uppercase tracking-[0.16em] text-muted-foreground">
               <ChevronLeft className="h-3.5 w-3.5" />
               Level {lvl.id} · {lvl.name}
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight leading-tight">
+            <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight leading-tight">
               {headline}
             </h1>
-            <p className="max-w-2xl text-sm sm:text-base text-white/85 leading-relaxed">
+            <p className="max-w-2xl text-sm sm:text-base text-muted-foreground leading-relaxed">
               {sub}
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-2 flex-wrap">
             <button
               type="button"
-              onClick={onGuidebook}
-              className="inline-flex items-center gap-2 rounded-xl bg-white/15 hover:bg-white/25 backdrop-blur px-4 py-2.5 text-[12px] font-extrabold uppercase tracking-wider text-white border border-white/25 transition"
+              data-tour="tour-button"
+              onClick={onTour}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border bg-background hover:bg-muted/50 px-3.5 py-2 text-[12px] font-display font-bold uppercase tracking-wider text-foreground transition-colors"
             >
-              <BookOpen className="h-4 w-4" />
-              Guidebook
+              <Compass className="h-4 w-4" />
+              Tour
             </button>
+            {/* The standings moved off this page to /leaderboard — a five-column
+                table had no business in a 260px sidebar. `data-tour` is kept on
+                this trigger so the walkthrough's leaderboard step still has an
+                anchor to point at. */}
+            <Link
+              to="/leaderboard"
+              data-tour="journey-leaderboard"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-md border border-border bg-background hover:bg-muted/50 px-3.5 py-2 text-[12px] font-display font-bold uppercase tracking-wider text-foreground transition-colors"
+            >
+              <Trophy className="h-4 w-4 text-amber-500" />
+              Leaderboard
+            </Link>
             <button
               type="button"
+              data-tour="place-level"
               onClick={onPlace}
-              className="inline-flex items-center gap-2 rounded-xl bg-white text-foreground hover:bg-white/90 px-4 py-2.5 text-[12px] font-extrabold uppercase tracking-wider border border-white/40 shadow-md transition"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 px-3.5 py-2 text-[12px] font-display font-bold uppercase tracking-wider transition-colors"
             >
-              <Gauge className="h-4 w-4 text-primary" />
+              <Gauge className="h-4 w-4" />
               Place My Level
             </button>
           </div>
@@ -211,7 +235,7 @@ export default function Journey() {
 
 
   const [showPlacement, setShowPlacement] = useState(false);
-  const [showGuidebook, setShowGuidebook] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [openStage, setOpenStage] = useState<StageDef | null>(null);
   const [reportLevel, setReportLevel] = useState<LevelId | null>(null);
   const scrollRootRef = useRef<HTMLDivElement | null>(null);
@@ -282,6 +306,35 @@ export default function Journey() {
     if (fresh) setReportLevel(fresh);
   }, [loading, completedLevels]);
 
+  // First run: auto-open the walkthrough once, and only once the real page is
+  // actually mounted — never over the spinner or the start screen, where every
+  // one of the tour's targets is absent. The short delay lets the entrance
+  // animations settle so the spotlight lands on a rect that has stopped moving.
+  const autoTourFired = useRef(false);
+  useEffect(() => {
+    if (autoTourFired.current) return;
+    if (loading || !onboardingData || !journeyStarted) return;
+    let seen: string | null = null;
+    try {
+      seen = localStorage.getItem(JOURNEY_TOUR_SEEN_KEY);
+    } catch {
+      // Private mode / storage disabled — treat as seen rather than replaying
+      // the tour on every single visit.
+      seen = "1";
+    }
+    if (seen) return;
+    autoTourFired.current = true;
+    const t = window.setTimeout(() => {
+      try {
+        localStorage.setItem(JOURNEY_TOUR_SEEN_KEY, "1");
+      } catch {
+        /* nothing we can do; the in-session guard still holds */
+      }
+      setShowTour(true);
+    }, 600);
+    return () => window.clearTimeout(t);
+  }, [loading, onboardingData, journeyStarted]);
+
   const handleNext = (task: LevelTask) => {
     // task.link comes from journey/milestone data, not hand-typed by this
     // user — validate the scheme before navigating so a bad record (or a
@@ -301,20 +354,28 @@ export default function Journey() {
 
   if (loading) {
     return (
-      <div className="min-h-[60vh] flex items-center justify-center">
-        <Loader2 className="h-7 w-7 animate-spin text-primary" />
+      <div className="min-h-[60svh] flex items-center justify-center">
+        <div className="text-center space-y-3">
+          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+          <p className="text-sm text-muted-foreground">Loading your journey...</p>
+        </div>
       </div>
     );
   }
 
   if (!onboardingData) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-4">
-        <h1 className="text-2xl font-bold">Finish onboarding first</h1>
+      <div className="max-w-xl mx-auto px-4 py-20 text-center space-y-6">
+        <div className="space-y-3">
+          <span className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
+            Setup
+          </span>
+          <h1 className="font-display text-2xl sm:text-3xl font-semibold tracking-tight">Finish onboarding first</h1>
+        </div>
         <p className="text-muted-foreground">
           We need your major, grade, and country to personalize your journey.
         </p>
-        <Button asChild>
+        <Button asChild size="lg">
           <Link to="/profile">Complete Profile</Link>
         </Button>
       </div>
@@ -352,10 +413,12 @@ export default function Journey() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-4 space-y-4">
-      <Seo title='Start your journey — 4-phase roadmap | Pathforge' description='Your phased dashboard roadmap to top colleges, with progress radar and next best actions.' path='/journey' />
+      <Seo title='Journey — Pathforge' description='Your phased dashboard roadmap to top colleges, with progress radar and next best actions.' path='/journey' />
 
       <motion.div
-        className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4"
+        // Single column since the leaderboard left for /leaderboard. The path
+        // gets the whole measure back, which is what it wanted all along.
+        className="grid grid-cols-1 gap-4"
         variants={staggerParent}
         initial="hidden"
         whileInView="visible"
@@ -372,7 +435,7 @@ export default function Journey() {
             hearts={hearts ?? HEARTS_PER_MONTH}
             heartResetsRemaining={heartResetsRemaining ?? 0}
             onResetHearts={resetHearts}
-            onGuidebook={() => setShowGuidebook(true)}
+            onTour={() => setShowTour(true)}
             onPlace={() => setShowPlacement(true)}
             stageTasks={openStage ? stageTasks : undefined}
           />
@@ -387,8 +450,9 @@ export default function Journey() {
           {/* Path — fills the rest of the viewport; scrolls INSIDE, not the page */}
           <motion.div
             variants={fadeUp}
+            data-tour="journey-path"
             className="relative rounded-2xl border bg-gradient-to-b from-muted/30 via-background to-muted/20 [perspective:1400px] overflow-hidden"
-            style={{ height: "calc(100vh - 280px)", minHeight: "520px" }}
+            style={{ height: "calc(100svh - 280px)", minHeight: "520px" }}
           >
             <div
               id="journey-path-scroll"
@@ -415,10 +479,6 @@ export default function Journey() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-background to-transparent" />
           </motion.div>
         </div>
-
-        <motion.aside variants={fadeUp} className="lg:sticky lg:top-4 self-start">
-          <JourneyLeaderboard />
-        </motion.aside>
       </motion.div>
 
       <PlacementTest
@@ -432,7 +492,7 @@ export default function Journey() {
         }}
       />
 
-      <JourneyGuidebookModal open={showGuidebook} onOpenChange={setShowGuidebook} />
+      <JourneyTour open={showTour} onOpenChange={setShowTour} />
 
       <LevelDetailModal
         open={!!openStage}

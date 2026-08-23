@@ -69,7 +69,7 @@ export default function TeacherCopilot() {
 
   return (
     <TeacherLayout>
-      <div className="flex flex-col h-[calc(100vh-8rem)]">
+      <div className="flex flex-col h-[calc(100svh-8rem)]">
         {/* Header */}
         <div className="mb-4">
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">

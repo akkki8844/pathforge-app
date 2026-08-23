@@ -30,7 +30,7 @@ import { ALL_COUNTRY_NAMES } from "@/lib/countries";
 import { useStepBackNavigation } from "@/hooks/useStepBackNavigation";
 import { getMajorNames } from "@/lib/majors";
 import { Search, X } from "lucide-react";
-import pathforgeLogo from "@/assets/pathforge-logo.png";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 
 const ROLES = ["School Counselor", "College Counselor", "Teacher", "Dean", "Head of School", "Independent Counselor", "Consultant", "Other"];

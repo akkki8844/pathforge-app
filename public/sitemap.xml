@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- lastmod matters more than usual here because the site is client-rendered:
+     crawlers get no meaningful Last-Modified from the static index.html, so
+     this is the only recrawl hint they have. The legal pages carry the date
+     printed in their own "Last updated" line. -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>https://pathforge.co.in/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>https://pathforge.co.in/about</loc><changefreq>monthly</changefreq><priority>0.6</priority></url>
-  <url><loc>https://pathforge.co.in/contact</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://pathforge.co.in/pricing</loc><changefreq>monthly</changefreq><priority>0.8</priority></url>
-  <url><loc>https://pathforge.co.in/auth</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-  <url><loc>https://pathforge.co.in/teacher/auth</loc><changefreq>monthly</changefreq><priority>0.4</priority></url>
-  <url><loc>https://pathforge.co.in/privacy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://pathforge.co.in/terms</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
-  <url><loc>https://pathforge.co.in/refund-policy</loc><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://pathforge.co.in/</loc><lastmod>2026-08-06</lastmod><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://pathforge.co.in/pricing</loc><lastmod>2026-08-06</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://pathforge.co.in/about</loc><lastmod>2026-08-06</lastmod><changefreq>monthly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://pathforge.co.in/guides/ivy-league-admissions</loc><lastmod>2026-08-22</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://pathforge.co.in/guides/ivy-league-study-tools</loc><lastmod>2026-08-22</lastmod><changefreq>monthly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://pathforge.co.in/contact</loc><lastmod>2026-08-06</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pathforge.co.in/auth</loc><lastmod>2026-08-06</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://pathforge.co.in/privacy</loc><lastmod>2026-08-06</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://pathforge.co.in/terms</loc><lastmod>2026-08-06</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
+  <url><loc>https://pathforge.co.in/refund-policy</loc><lastmod>2026-08-06</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
 </urlset>

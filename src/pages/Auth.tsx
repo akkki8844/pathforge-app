@@ -3,7 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, KeyRound, UserCircle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import { PasswordStrength } from '@/components/ui/password-strength';
+import { PATHFORGE_PASSWORD_RULES } from '@/lib/passwordRules';
 import { Button } from '@/components/ui/button';
+import SpecularButtonBase from '@/components/ui/specular/SpecularButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -11,10 +14,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { z } from 'zod';
-import pathforgeLogo from '@/assets/pathforge-logo.png';
+import pathforgeLogo from '@/assets/pathforge-logo.webp';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
+import { GitHubSignInButton } from '@/components/auth/GitHubSignInButton';
 import { ReviewsRail } from '@/components/auth/ReviewsRail';
 import { Seo } from '@/components/Seo';
+
+const SpecularButton = motion.create(SpecularButtonBase);
 
 // zod's built-in .email() is deliberately permissive (accepts things like
 // "a@b" with no TLD). A stricter shape check on top catches the obviously-
@@ -44,6 +50,29 @@ const passwordSchema = z.string().min(6, 'Password must be at least 6 characters
 const PASSWORD_HINT = 'At least 6 characters. Letters, numbers, or symbols — your choice.';
 
 type AuthView = 'signup' | 'signin' | 'forgot-password';
+
+// One title AND one description per view. All three views used to share a
+// single description, so /auth, /auth?view=signup and every gated route that
+// bounces a guest here presented identical metadata — which is what a crawler
+// reads as duplicate pages. Each string below describes only what that
+// particular screen actually does.
+const AUTH_SEO: Record<AuthView, { title: string; description: string }> = {
+  signin: {
+    title: 'Sign in to Pathforge',
+    description:
+      'Sign in to your Pathforge account to pick up your college journey — your activities, essays, target list and admissions estimates are where you left them.',
+  },
+  signup: {
+    title: 'Sign up — Pathforge',
+    description:
+      'Create a free Pathforge account in under a minute. Three AI credits a day, forever, with no card required — build your activity plan, refine essays and estimate your admissions odds.',
+  },
+  'forgot-password': {
+    title: 'Reset your Pathforge password',
+    description:
+      'Forgotten your Pathforge password? Enter the email on your account and we will send you a secure link to choose a new one.',
+  },
+};
 
 const EASE = [0.16, 1, 0.3, 1] as const;
 
@@ -76,7 +105,7 @@ const viewTransition = {
 export default function Auth() {
   const [searchParams] = useSearchParams();
   const initialView: AuthView = (searchParams.get('view') as AuthView) || 'signin';
-  const redirectTo = searchParams.get('redirect') || '/journey';
+  const redirectTo = searchParams.get('redirect') || '/dashboard';
 
   const [view, setView] = useState<AuthView>(initialView);
   const [email, setEmail] = useState('');
@@ -115,7 +144,7 @@ export default function Auth() {
         title: 'Welcome, Guest!',
         description: "You're exploring as a guest — progress won't be saved.",
       });
-      navigate('/');
+      navigate('/dashboard');
     } finally {
       setGuestLoading(false);
     }
@@ -246,13 +275,17 @@ export default function Auth() {
         }
 
         promptSavePassword(email, password);
+        // Fire-and-forget welcome email (idempotent server-side per user).
+        supabase.functions
+          .invoke('send-welcome-email')
+          .catch((err) => console.error('welcome email:', err));
         toast({
           title: 'Welcome to Pathforge',
           description: `You're in, with 3 credits a day on the free plan. We sent a verification link to ${email} — click it anytime to secure your account.`,
           duration: 9000,
         });
         setPassword('');
-        navigate(redirectTo || '/journey');
+        navigate(redirectTo || '/dashboard');
       } else {
         const { error, isAdmin, isTeacher } = await signIn(email, password, stayLoggedIn);
 
@@ -282,7 +315,7 @@ export default function Auth() {
         // Redirect admins to admin panel, teachers to /teacher, others to redirect or home
         if (isAdmin) navigate('/admin');
         else if (isTeacher) navigate('/teacher');
-        else navigate(redirectTo || '/journey');
+        else navigate(redirectTo || '/dashboard');
       }
     } finally {
       setLoading(false);
@@ -290,11 +323,15 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4">
       <Seo
-        title={view === 'signup' ? 'Sign up for Pathforge — start your journey' : view === 'forgot-password' ? 'Reset your Pathforge password' : 'Sign in to Pathforge'}
-        description='Sign in or create a Pathforge account to access AI-powered college guidance, activity recommendations, essay refinement, and admissions tools built for high schoolers.'
-        path='/auth'
+        title={AUTH_SEO[view].title}
+        description={AUTH_SEO[view].description}
+        path={view === 'signin' ? '/auth' : `/auth?view=${view}`}
+        // A guest who hits a gated route is bounced here with ?redirect=, which
+        // produces a near-duplicate of /auth for every app route that exists.
+        // Those copies are the URLs that got indexed as separate thin pages.
+        noindex={searchParams.has('redirect')}
       />
       {/* Two columns on desktop: testimony on the left, the form pinned right.
           Below lg the reviews drop out entirely — on a phone the only thing
@@ -423,13 +460,19 @@ export default function Auth() {
                   under the email form was costing us the students who already
                   have a Google account through school. */}
               <motion.div
+                className="space-y-2.5"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.35, ease: EASE }}
               >
                 <GoogleSignInButton
                   label={isSignUp ? "Sign up with Google" : "Continue with Google"}
-                  redirectTo={redirectTo || '/journey'}
+                  redirectTo={redirectTo || '/dashboard'}
+                  className="h-11 text-sm font-medium"
+                />
+                <GitHubSignInButton
+                  label={isSignUp ? "Sign up with GitHub" : "Continue with GitHub"}
+                  redirectTo={redirectTo || '/dashboard'}
                   className="h-11 text-sm font-medium"
                 />
               </motion.div>
@@ -550,16 +593,24 @@ export default function Auth() {
                       >
                         {errors.password}
                       </motion.p>
-                    ) : isSignUp ? (
-                      <motion.p
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        className="text-xs text-muted-foreground"
-                      >
-                        {PASSWORD_HINT}
-                      </motion.p>
                     ) : null}
                   </AnimatePresence>
+
+                  {/*
+                   * The meter replaces the static hint on sign-up. A line that
+                   * says "at least 6 characters" is read once and then ignored;
+                   * four cells that fill as you type are the only feedback
+                   * anyone actually acts on. Sign-in gets nothing — grading a
+                   * password someone already has is pure noise.
+                   */}
+                  {isSignUp && (
+                    <PasswordStrength
+                      value={password}
+                      rules={PATHFORGE_PASSWORD_RULES}
+                      showRules={password.length > 0}
+                      className="pt-1"
+                    />
+                  )}
                 </motion.div>
 
 
@@ -586,22 +637,29 @@ export default function Auth() {
                 )}
 
                 <motion.div variants={formFieldVariants} custom={isSignUp ? 2 : 3}>
-                  <motion.div whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }}>
-                    <Button
-                      type="submit"
-                      className="w-full btn-accent"
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <>
-                          {isSignUp ? 'Create Account' : 'Sign In'}
-                          <ArrowRight className="ml-2 h-4 w-4" />
-                        </>
-                      )}
-                    </Button>
-                  </motion.div>
+                  <SpecularButton
+                    type="submit"
+                    size="md"
+                    radius={10}
+                    tint="#4465d8"
+                    tintOpacity={1}
+                    textColor="#ffffff"
+                    lineColor="#ffffff"
+                    baseColor="#29439c"
+                    className="w-full"
+                    disabled={loading}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.985 }}
+                  >
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <>
+                        {isSignUp ? 'Create Account' : 'Sign In'}
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </SpecularButton>
                 </motion.div>
               </motion.form>
 

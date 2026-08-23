@@ -17,6 +17,14 @@ export interface AdvisorArtifact {
   created_at: string;
 }
 
+export async function getArtifactSignedUrl(artifact: AdvisorArtifact) {
+  if (!artifact.file_path) return null;
+  const { data } = await supabase.storage
+    .from("advisor-artifacts")
+    .createSignedUrl(artifact.file_path, 60 * 60);
+  return data?.signedUrl || null;
+}
+
 export function useAdvisorArtifacts(conversationId: string | null) {
   const { user } = useAuth();
   const [artifacts, setArtifacts] = useState<AdvisorArtifact[]>([]);
@@ -24,10 +32,24 @@ export function useAdvisorArtifacts(conversationId: string | null) {
 
   const refresh = useCallback(async () => {
     if (!user) return;
+    // Artifacts belong to the conversation that produced them. With no
+    // conversation open — a brand-new chat that hasn't been saved yet — the
+    // filter used to be skipped entirely, so the badge counted and the panel
+    // listed every artifact the user had ever generated, across every chat.
+    // An unsaved chat has produced nothing, so the honest answer is none.
+    if (!conversationId) {
+      setArtifacts([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
-    let q = supabase.from("advisor_artifacts").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
-    if (conversationId) q = q.eq("conversation_id", conversationId);
-    const { data } = await q.limit(50);
+    const { data } = await supabase
+      .from("advisor_artifacts")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(50);
     setArtifacts((data as any) || []);
     setLoading(false);
   }, [user, conversationId]);
@@ -35,7 +57,7 @@ export function useAdvisorArtifacts(conversationId: string | null) {
   useEffect(() => { refresh(); }, [refresh]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user || !conversationId) return;
     const suffix = Math.random().toString(36).slice(2, 8);
     const ch = supabase.channel(`advisor_artifacts:${user.id}:${suffix}`);
     try {
@@ -44,7 +66,9 @@ export function useAdvisorArtifacts(conversationId: string | null) {
         { event: "INSERT", schema: "public", table: "advisor_artifacts", filter: `user_id=eq.${user.id}` },
         (payload: any) => {
           const a = payload.new as AdvisorArtifact;
-          if (!conversationId || a.conversation_id === conversationId) {
+          // Same scoping as the fetch: an artifact created in another tab, on
+          // another conversation, must not appear in this one's list.
+          if (a.conversation_id === conversationId) {
             setArtifacts((prev) => [a, ...prev.filter((x) => x.id !== a.id)]);
           }
         }
@@ -55,13 +79,7 @@ export function useAdvisorArtifacts(conversationId: string | null) {
     return () => { supabase.removeChannel(ch); };
   }, [user, conversationId]);
 
-  const getDownloadUrl = useCallback(async (artifact: AdvisorArtifact) => {
-    if (!artifact.file_path) return null;
-    const { data } = await supabase.storage
-      .from("advisor-artifacts")
-      .createSignedUrl(artifact.file_path, 60 * 60);
-    return data?.signedUrl || null;
-  }, []);
+  const getDownloadUrl = useCallback(getArtifactSignedUrl, []);
 
   const remove = useCallback(async (id: string) => {
     const a = artifacts.find((x) => x.id === id);

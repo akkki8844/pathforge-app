@@ -4,13 +4,14 @@ import { motion } from 'framer-motion';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, Loader2, KeyRound, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
+import SpecularButton from '@/components/ui/specular/SpecularButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { z } from 'zod';
-import pathforgeLogo from '@/assets/pathforge-logo.png';
+import pathforgeLogo from '@/assets/pathforge-logo.webp';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { Seo } from '@/components/Seo';
 
@@ -143,9 +144,9 @@ export default function TeacherAuth() {
   const isForgot = view === 'forgot-password';
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4">
       <Seo
-        title="Counsellor sign in | Pathforge"
+        title="Counsellor Sign In — Pathforge"
         description="Sign in to the Pathforge counsellor portal to support your students with cohort tracking, action plans, and outcomes insights."
         path="/teacher/auth"
       />
@@ -308,11 +309,22 @@ export default function TeacherAuth() {
                   </Label>
                 </div>
 
-                <Button type="submit" className="w-full btn-accent" disabled={loading}>
+                <SpecularButton
+                  type="submit"
+                  size="md"
+                  radius={10}
+                  tint="#4465d8"
+                  tintOpacity={1}
+                  textColor="#ffffff"
+                  lineColor="#ffffff"
+                  baseColor="#29439c"
+                  className="w-full"
+                  disabled={loading}
+                >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : (
                     <>Sign In <ArrowRight className="ml-2 h-4 w-4" /></>
                   )}
-                </Button>
+                </SpecularButton>
               </form>
 
               {/* Google sign-in for counsellors */}

@@ -1,18 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Trophy, Gem, Heart, Globe, School as SchoolIcon, GraduationCap, Flame, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Gem, Flame, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-// Matches the non-PII fallback handle the backend assigns when a student
-// hasn't set a display name yet (see get_journey_leaderboard SQL).
-const AUTO_HANDLE_RE = /^Student-[A-Z0-9]{4}$/;
+/**
+ * Leaderboard data + row primitives.
+ *
+ * This used to be a self-contained 220-line card wedged into the Journey
+ * sidebar at 260px wide, where six columns of numbers had nowhere to go. The
+ * board now has its own page (`src/pages/Leaderboard.tsx`); what lives here is
+ * the part that page needs — one fetch, one row renderer, one podium — so the
+ * page file stays about layout and typography rather than about Supabase.
+ */
 
-type Scope = "global" | "school" | "grade";
+/**
+ * The non-PII fallback handle the backend assigns when a student has set
+ * neither a username nor a full name.
+ *
+ * This regex was already here, with a comment claiming `get_journey_leaderboard`
+ * produced that shape. It did not — the live function fell back to the local
+ * part of the user's EMAIL, so 66 students had their address on a board every
+ * other student could read. 20260808120000_leaderboard_no_guests_no_pii.sql
+ * makes the claim true.
+ */
+export const AUTO_HANDLE_RE = /^Student-[A-Z0-9]{4}$/;
 
-interface Row {
+export type LeaderboardScope = "global" | "school" | "grade";
+
+export interface LeaderboardRow {
   rank: number;
   display_name: string;
   grade: string | null;
@@ -23,200 +38,117 @@ interface Row {
   is_me: boolean;
 }
 
-const PAGE_SIZE = 10;
-
-function LeaderboardRow({ r }: { r: Row }) {
-  return (
-    <li
-      className={cn(
-        "grid grid-cols-[1.5rem_minmax(0,1fr)_3rem_3rem_3rem] items-center gap-2 rounded-lg px-2 py-1.5 text-xs",
-        r.is_me ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/50"
-      )}
-    >
-      <span
-        className={cn(
-          "w-6 text-center font-extrabold tabular-nums",
-          r.rank === 1 && "text-amber-500",
-          r.rank === 2 && "text-zinc-400",
-          r.rank === 3 && "text-orange-500",
-          r.rank > 3 && "text-muted-foreground"
-        )}
-      >
-        {r.rank}
-      </span>
-      <span className="min-w-0 truncate font-medium">
-        {r.display_name}
-        {r.is_me && <span className="ml-1 text-[9px] text-primary font-bold uppercase">you</span>}
-      </span>
-      <span className="flex items-center justify-end gap-0.5 text-sky-500 tabular-nums font-bold">
-        <Gem className="h-3 w-3" />
-        {r.diamonds}
-      </span>
-      <span className="flex items-center justify-end gap-0.5 text-orange-500 tabular-nums font-bold">
-        <Flame className="h-3 w-3" />
-        {r.streak}
-      </span>
-      <span className="flex items-center justify-end gap-0.5 text-rose-500 tabular-nums font-bold">
-        <Heart className="h-3 w-3" />
-        {r.hearts}
-      </span>
-    </li>
-  );
+/** Ordinal medal colour for the top three. */
+export function rankAccent(rank: number): string {
+  if (rank === 1) return "text-amber-500";
+  if (rank === 2) return "text-zinc-400";
+  if (rank === 3) return "text-orange-600";
+  return "text-muted-foreground";
 }
 
-export function JourneyLeaderboard() {
-  const [scope, setScope] = useState<Scope>("global");
-  const [rows, setRows] = useState<Row[]>([]);
+/**
+ * Loads the whole board once per scope.
+ *
+ * Pagination is client-side on purpose: the population is in the low hundreds,
+ * and holding every row means the signed-in student's own rank can be pinned
+ * without a second round-trip for the page they aren't looking at.
+ */
+export function useLeaderboard(scope: LeaderboardScope) {
+  const [rows, setRows] = useState<LeaderboardRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [page, setPage] = useState(1);
 
   useEffect(() => {
     let alive = true;
     setLoading(true);
     setError(null);
-    setPage(1);
     supabase
       .rpc("get_journey_leaderboard", { scope, limit_count: 10000 })
-      .then(({ data, error }) => {
+      .then(({ data, error: rpcError }) => {
         if (!alive) return;
-        if (error) {
-          console.error("Leaderboard failed:", error);
+        if (rpcError) {
+          console.error("Leaderboard failed:", rpcError);
           setRows([]);
-          setError(error.message || "Couldn't load the leaderboard.");
+          setError(rpcError.message || "Couldn't load the leaderboard.");
         } else {
-          setRows((data ?? []) as unknown as Row[]);
+          setRows((data ?? []) as unknown as LeaderboardRow[]);
         }
         setLoading(false);
       });
     return () => { alive = false; };
   }, [scope]);
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
-  const pageRows = useMemo(
-    () => rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [rows, page]
-  );
+  const me = useMemo(() => rows.find((r) => r.is_me) ?? null, [rows]);
 
-  // The signed-in user's own row, so we can pin it when it falls off the
-  // visible page — otherwise a mid-pack rank is invisible without paging.
-  const myRow = useMemo(() => rows.find((r) => r.is_me) ?? null, [rows]);
-  const myRowOnPage = useMemo(
-    () => (myRow ? pageRows.some((r) => r.is_me) : false),
-    [myRow, pageRows]
-  );
+  return { rows, loading, error, me };
+}
 
-  const emptyMessage =
-    scope === "school"
-      ? "No school on your profile yet — set one to see classmates here."
-      : scope === "grade"
-      ? "Set your grade in onboarding to see grade-mates here."
-      : "No one's on the board yet — complete a stage to claim the top spot.";
+/** Shared column template so the header and every row line up exactly. */
+export const STANDINGS_GRID =
+  "grid grid-cols-[2.25rem_minmax(0,1fr)_3.25rem] sm:grid-cols-[2.75rem_minmax(0,1fr)_4rem_4rem_4rem] items-center gap-3";
 
+function Stat({
+  icon: Icon, value, className, label,
+}: { icon: typeof Gem; value: number; className: string; label: string }) {
   return (
-    <div className="rounded-2xl border bg-card p-3 sm:p-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Trophy className="h-4 w-4 text-amber-500" />
-        <h2 className="text-sm font-bold text-foreground">Leaderboard</h2>
-      </div>
+    <span className="flex items-center justify-end gap-1 tabular-nums" title={label}>
+      <Icon className={cn("h-3.5 w-3.5 shrink-0", className)} />
+      <span className="font-display text-[13px] font-semibold">{value}</span>
+    </span>
+  );
+}
 
-      {myRow && AUTO_HANDLE_RE.test(myRow.display_name) && (
-        <Link
-          to="/profile?section=general"
-          className="mb-3 flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-2.5 py-2 text-[11px] font-medium text-foreground hover:bg-primary/10 transition-colors"
-        >
-          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-          You're showing up as "{myRow.display_name}" — set a real display name
-        </Link>
+/**
+ * One line of the standings table.
+ *
+ * On phones the streak and hearts columns are dropped rather than shrunk —
+ * three tiny numbers in a 40px column is the failure mode of the old card.
+ */
+export function StandingRow({ r, dense = false }: { r: LeaderboardRow; dense?: boolean }) {
+  return (
+    <li
+      className={cn(
+        STANDINGS_GRID,
+        "rounded-lg border border-transparent px-3 transition-colors",
+        dense ? "py-2" : "py-2.5",
+        r.is_me
+          ? "border-primary/25 bg-primary/[0.06]"
+          : "hover:border-border hover:bg-muted/40",
       )}
+    >
+      <span
+        className={cn(
+          "font-serif text-[17px] leading-none tabular-nums",
+          rankAccent(r.rank),
+          r.rank > 3 && "text-muted-foreground/80",
+        )}
+      >
+        {r.rank}
+      </span>
 
-      <Tabs value={scope} onValueChange={(v) => setScope(v as Scope)}>
-        <TabsList className="grid grid-cols-3 w-full mb-3 h-9">
-          <TabsTrigger value="global" className="text-[11px] gap-1"><Globe className="h-3 w-3" />Global</TabsTrigger>
-          <TabsTrigger value="school" className="text-[11px] gap-1"><SchoolIcon className="h-3 w-3" />School</TabsTrigger>
-          <TabsTrigger value="grade" className="text-[11px] gap-1"><GraduationCap className="h-3 w-3" />Grade</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={scope} className="m-0">
-          {loading ? (
-            <div className="py-6 flex justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : error ? (
-            <div className="py-6 text-center text-xs text-muted-foreground">
-              {error}
-            </div>
-          ) : rows.length === 0 ? (
-            <div className="py-6 text-center text-xs text-muted-foreground">
-              {emptyMessage}
-            </div>
-          ) : (
-            <div>
-              <div className="mb-2 grid grid-cols-[1.5rem_minmax(0,1fr)_3rem_3rem_3rem] items-center gap-2 px-2 text-[10px] font-extrabold uppercase tracking-wider text-muted-foreground">
-                <span>#</span>
-                <span>User</span>
-                <span className="text-right">Gems</span>
-                <span className="text-right">Streak</span>
-                <span className="text-right">Hearts</span>
-              </div>
-              <ul className="space-y-1.5">
-                {pageRows.map((r) => (
-                  <LeaderboardRow key={`${r.rank}-${r.display_name}`} r={r} />
-                ))}
-              </ul>
-
-              {/* Pin the user's own row when it isn't on the visible page. */}
-              {myRow && !myRowOnPage && (
-                <>
-                  <div className="my-1.5 flex items-center gap-2 px-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground/70">
-                    <span className="h-px flex-1 bg-border" />
-                    Your rank
-                    <span className="h-px flex-1 bg-border" />
-                  </div>
-                  <ul>
-                    <LeaderboardRow r={myRow} />
-                  </ul>
-                </>
-              )}
-
-              {totalPages > 1 && (
-                <div className="mt-3 flex items-center justify-between px-2 text-[11px] text-muted-foreground">
-                  <span className="tabular-nums">
-                    {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setPage((p) => Math.max(1, p - 1))}
-                      disabled={page === 1}
-                      aria-label="Previous page"
-                    >
-                      <ChevronLeft className="h-3.5 w-3.5" />
-                    </Button>
-                    <span className="px-1 tabular-nums font-medium text-foreground">
-                      {page}/{totalPages}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                      disabled={page === totalPages}
-                      aria-label="Next page"
-                    >
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
+      <span className="min-w-0">
+        <span className="flex items-baseline gap-2">
+          <span className="truncate text-sm font-medium text-foreground">{r.display_name}</span>
+          {r.is_me && (
+            <span className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-primary">
+              You
+            </span>
           )}
-        </TabsContent>
-      </Tabs>
-    </div>
+        </span>
+        {(r.school_name || r.grade) && (
+          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+            {[r.school_name, r.grade ? `Grade ${r.grade}` : null].filter(Boolean).join(" · ")}
+          </span>
+        )}
+      </span>
+
+      <Stat icon={Gem} value={r.diamonds} className="text-sky-500" label="Gems" />
+      <span className="hidden sm:block">
+        <Stat icon={Flame} value={r.streak} className="text-orange-500" label="Streak" />
+      </span>
+      <span className="hidden sm:block">
+        <Stat icon={Heart} value={r.hearts} className="text-rose-500" label="Hearts" />
+      </span>
+    </li>
   );
 }

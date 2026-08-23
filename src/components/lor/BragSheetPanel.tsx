@@ -210,7 +210,7 @@ export function BragSheetPanel() {
       )}
 
       <Dialog open={open} onOpenChange={(o) => !o && close()}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-[61rem] max-h-[85dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Edit brag sheet" : "New brag sheet"}</DialogTitle>
             <DialogDescription>
