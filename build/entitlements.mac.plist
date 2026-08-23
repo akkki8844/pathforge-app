@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!--
+    The renderer runs V8's JIT, which the hardened runtime forbids unless the
+    app asks for it explicitly. Without these two, a signed build launches to a
+    blank window on macOS.
+  -->
+  <key>com.apple.security.cs.allow-jit</key>
+  <true/>
+  <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+  <true/>
+
+  <!--
+    Sign-in happens in the user's real browser and comes back over
+    pathforge://, but the app itself still talks to Supabase and serves its own
+    bundle from a loopback HTTP server on 127.0.0.1:43110.
+  -->
+  <key>com.apple.security.network.client</key>
+  <true/>
+  <key>com.apple.security.network.server</key>
+  <true/>
+</dict>
+</plist>

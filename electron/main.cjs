@@ -29,6 +29,7 @@ const WEB_ORIGIN = "https://pathforge.co.in";
 const SIGN_IN_URL = `${WEB_ORIGIN}/app-login`;
 const DOWNLOADS_URL = `${WEB_ORIGIN}/#download`;
 const PROTOCOL = "pathforge";
+const IS_MAC = process.platform === "darwin";
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -116,7 +117,7 @@ function createWindow(startUrl) {
     backgroundColor: "#ffffff",
     show: false,
     autoHideMenuBar: true,
-    icon: path.join(__dirname, "..", "build", "icon.ico"),
+    ...(IS_MAC ? {} : { icon: path.join(__dirname, "..", "build", "icon.ico") }),
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
@@ -186,10 +187,22 @@ function authFromArgv(argv) {
   return link ? parseAuthDeepLink(link) : null;
 }
 
+// macOS puts the first submenu in the menu bar under the app name and expects
+// an About / Services / Hide / Quit block there, plus a Window menu. Shipping
+// the Windows template unchanged would leave a menu labelled "File" holding
+// Quit, and no Cmd+M / Cmd+W. So the app menu and the Window menu are added
+// only on darwin; everything else is shared.
 const menu = Menu.buildFromTemplate([
+  ...(IS_MAC
+    ? [
+        {
+          role: "appMenu",
+        },
+      ]
+    : []),
   {
     label: "File",
-    submenu: [{ role: "quit" }],
+    submenu: IS_MAC ? [{ role: "close" }] : [{ role: "quit" }],
   },
   {
     label: "Edit",
@@ -217,6 +230,13 @@ const menu = Menu.buildFromTemplate([
       { role: "togglefullscreen" },
     ],
   },
+  ...(IS_MAC
+    ? [
+        {
+          role: "windowMenu",
+        },
+      ]
+    : []),
 ]);
 
 // A second launch focuses the running window instead of racing it for the port.
@@ -347,6 +367,6 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on("window-all-closed", () => {
-    if (process.platform !== "darwin") app.quit();
+    if (!IS_MAC) app.quit();
   });
 }

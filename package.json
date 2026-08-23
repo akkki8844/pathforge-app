@@ -19,7 +19,9 @@
     "dist:dir": "npm run build:web && electron-builder --win --dir",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "dist:mac": "npm run build:web && electron-builder --mac",
+    "dist:mac:dir": "npm run build:web && electron-builder --mac --dir"
   },
   "build": {
     "appId": "tech.pathforge.desktop",
@@ -74,6 +76,49 @@
     },
     "portable": {
       "artifactName": "PathForge-Portable.${ext}"
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.education",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "universal"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSHighResolutionCapable": true,
+        "LSMinimumSystemVersion": "11.0"
+      },
+      "artifactName": "PathForge.${ext}"
+    },
+    "dmg": {
+      "artifactName": "PathForge.${ext}",
+      "contents": [
+        {
+          "x": 140,
+          "y": 200,
+          "type": "file"
+        },
+        {
+          "x": 400,
+          "y": 200,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
     }
   },
   "dependencies": {

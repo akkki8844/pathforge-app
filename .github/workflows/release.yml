@@ -1,4 +1,4 @@
-name: Build & release Windows installer
+name: Build & release desktop installers
 
 on:
   push:
@@ -11,7 +11,21 @@ permissions:
 
 jobs:
   build:
-    runs-on: windows-latest
+    # A macOS app can only be produced on a macOS runner — the .app bundle, the
+    # .icns, the DMG and (when signing is configured) codesign/notarytool all
+    # need the real toolchain. So the release fans out by platform and both
+    # halves publish into the same GitHub Release for the tag.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: --win
+          - os: macos-latest
+            platform: --mac
+
+    runs-on: ${{ matrix.os }}
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +37,17 @@ jobs:
 
       - run: npm run build:web
 
-      - name: Build and publish installer
-        run: npx electron-builder --win --publish always
+      - name: Build and publish installers
+        run: npx electron-builder ${{ matrix.platform }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Apple signing + notarization. All five are optional: with none of
+          # them set, electron-builder skips signing and still produces a
+          # working DMG — one that Gatekeeper will quarantine, and that
+          # electron-updater will refuse to auto-install, because macOS only
+          # accepts updates from a signed app. Add the secrets to turn both on.
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
