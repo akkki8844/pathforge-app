@@ -156,11 +156,18 @@ export function IMessageCursor() {
       `}</style>
       <motion.div
         aria-hidden
-        className="pointer-events-none fixed left-0 top-0 z-[9999]"
+        className="pointer-events-none fixed left-0 top-0"
         style={{
           x,
           y,
           willChange: "transform",
+          // Above everything, deliberately. Sonner paints its toaster at
+          // z-index 999999999, so any sane number here left the arrow buried
+          // under toasts: the OS pointer is hidden by the `cursor: none` rule
+          // above, so hovering a toast made the cursor vanish entirely and its
+          // buttons became impossible to aim at. Nothing is lost by sitting on
+          // top — the element is pointer-events-none and draws 22px.
+          zIndex: 2147483647,
         }}
         animate={{
           // Under prefers-reduced-motion the arrow still tracks the pointer
