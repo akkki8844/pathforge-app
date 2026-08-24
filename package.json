@@ -38,7 +38,8 @@
     "publish": {
       "provider": "github",
       "owner": "akkki8844",
-      "repo": "pathforge-app"
+      "repo": "pathforge-app",
+      "releaseType": "release"
     },
     "protocols": [
       {
