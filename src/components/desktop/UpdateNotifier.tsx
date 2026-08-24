@@ -18,7 +18,7 @@ export function UpdateNotifier() {
     return bridge.onUpdateStatus((payload) => {
       if (payload.status !== "downloaded") return;
       toast("Update ready", {
-        description: "Restart PathForge to finish updating.",
+        description: "Restart Pathforge to finish updating.",
         duration: Infinity,
         action: {
           label: "Restart now",

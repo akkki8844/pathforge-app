@@ -110,7 +110,7 @@ export default function Welcome() {
               className="text-[2rem] font-semibold tracking-[-0.025em] text-foreground"
               style={{ fontFamily: INTER }}
             >
-              PathForge
+              Pathforge
             </span>
           </div>
 
@@ -123,7 +123,7 @@ export default function Welcome() {
             style={{ fontFamily: INTER, fontSize: "clamp(2.5rem, 4.6vw, 3.75rem)" }}
           >
             Welcome to{" "}
-            <span className="text-muted-foreground/70">PathForge</span>
+            <span className="text-muted-foreground/70">Pathforge</span>
           </h1>
           <p
             className="mt-5 font-normal leading-snug tracking-[-0.011em] text-muted-foreground"
@@ -200,7 +200,7 @@ export default function Welcome() {
           </p>
 
           {/* The reference puts press logos here. Press logos are a claim
-              PathForge has not earned yet; the universities its users are
+              Pathforge has not earned yet; the universities its users are
               actually applying to are the honest version of the same beat. */}
           <div className="mt-7">
             <CollegeMarquee />
@@ -323,7 +323,7 @@ function ProductShot() {
         <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
         <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
         <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-        <span className="ml-3 text-[0.8rem] font-medium text-muted-foreground">PathForge</span>
+        <span className="ml-3 text-[0.8rem] font-medium text-muted-foreground">Pathforge</span>
       </div>
       <PreviewCard />
     </div>

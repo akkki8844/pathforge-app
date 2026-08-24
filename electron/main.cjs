@@ -5,7 +5,7 @@ const fs = require("fs");
 const path = require("path");
 const { pathToFileURL } = require("url");
 
-// The renderer is the unmodified PathForge web app, so it still assumes a real
+// The renderer is the unmodified Pathforge web app, so it still assumes a real
 // http origin: react-router uses BrowserRouter, and Supabase auth / Paddle
 // checkout both build callback URLs from `window.location.origin`. Loading the
 // bundle over file:// would make that origin "null" and break all three.

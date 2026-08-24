@@ -215,7 +215,7 @@ export default function Index() {
                 </MotionSpecularLink>
                 <MotionA
                   className="atlas-download-win"
-                  href="https://github.com/akkki8844/pathforge-app/releases/latest/download/PathForge-Setup.exe"
+                  href="https://github.com/akkki8844/pathforge-app/releases/latest/download/Pathforge-Setup.exe"
                   {...cta}
                 >
                   <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">

@@ -1,11 +1,11 @@
 {
   "name": "pathforge-app",
-  "productName": "PathForge",
+  "productName": "Pathforge",
   "private": true,
-  "version": "1.0.4",
-  "description": "PathForge desktop app — college application readiness, as a native Windows build.",
+  "version": "1.0.5",
+  "description": "Pathforge desktop app — college application readiness, as a native desktop build for Windows and macOS.",
   "author": {
-    "name": "PathForge"
+    "name": "Pathforge"
   },
   "type": "module",
   "main": "electron/main.cjs",
@@ -25,7 +25,7 @@
   },
   "build": {
     "appId": "tech.pathforge.desktop",
-    "productName": "PathForge",
+    "productName": "Pathforge",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -43,7 +43,7 @@
     },
     "protocols": [
       {
-        "name": "PathForge",
+        "name": "Pathforge",
         "schemes": [
           "pathforge"
         ]
@@ -72,11 +72,11 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "PathForge",
-      "artifactName": "PathForge-Setup.${ext}"
+      "shortcutName": "Pathforge",
+      "artifactName": "Pathforge-Setup.${ext}"
     },
     "portable": {
-      "artifactName": "PathForge-Portable.${ext}"
+      "artifactName": "Pathforge-Portable.${ext}"
     },
     "mac": {
       "icon": "build/icon.png",
@@ -103,10 +103,10 @@
         "NSHighResolutionCapable": true,
         "LSMinimumSystemVersion": "11.0"
       },
-      "artifactName": "PathForge.${ext}"
+      "artifactName": "Pathforge.${ext}"
     },
     "dmg": {
-      "artifactName": "PathForge.${ext}",
+      "artifactName": "Pathforge.${ext}",
       "contents": [
         {
           "x": 140,

@@ -6,7 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Seo } from "@/components/Seo";
 
 const DOWNLOAD_URL =
-  "https://github.com/akkki8844/pathforge-app/releases/latest/download/PathForge-Setup.exe";
+  "https://github.com/akkki8844/pathforge-app/releases/latest/download/Pathforge-Setup.exe";
 
 /**
  * The browser half of desktop sign-in.
@@ -66,8 +66,8 @@ export default function AppLogin() {
   return (
     <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 font-display">
       <Seo
-        title="Opening PathForge"
-        description="Handing your PathForge session to the desktop app."
+        title="Opening Pathforge"
+        description="Handing your Pathforge session to the desktop app."
         path="/app-login"
         noindex
       />
@@ -98,7 +98,7 @@ export default function AppLogin() {
       </div>
 
       <h1 className="text-center text-[3.25rem] font-bold leading-[1.05] tracking-[-0.035em] text-foreground">
-        Opening PathForge
+        Opening Pathforge
       </h1>
       <p className="mt-6 text-center text-[1.2rem] font-normal text-muted-foreground">
         {handedOff ? "If the app has not opened, " : "Handing off to the app, "}
@@ -114,13 +114,13 @@ export default function AppLogin() {
 
       <div className="absolute bottom-[12vh] flex flex-col items-center gap-5">
         <p className="text-[1.05rem] font-normal text-muted-foreground">
-          Don't have PathForge yet?
+          Don't have Pathforge yet?
         </p>
         <a
           href={DOWNLOAD_URL}
           className="inline-flex h-[3.1rem] items-center rounded-[0.65rem] bg-muted px-6 text-[1.05rem] font-semibold tracking-[-0.01em] text-foreground transition-colors hover:bg-muted/70"
         >
-          Download PathForge
+          Download Pathforge
         </a>
       </div>
     </div>
