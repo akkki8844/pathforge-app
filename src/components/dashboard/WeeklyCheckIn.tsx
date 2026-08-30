@@ -222,12 +222,14 @@ function MoodSlider({
   const [dragValue, setDragValue] = useState<number | null>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
-  const lastStationRef = useRef(value ?? defaultValue);
 
   const span = MORALE_MAX - MORALE_MIN;
   const hasValue = value !== null;
   const isDragging = dragValue !== null;
-  const liveValue = dragValue ?? (hasValue ? value! : MORALE_MIN);
+  // Unset, the thumb rests at the default station rather than at the floor.
+  // Resting at MORALE_MIN put it under the "Rough" label, which reads as a
+  // value the student did not choose.
+  const liveValue = dragValue ?? (hasValue ? value! : defaultValue);
   const percentage = ((liveValue - MORALE_MIN) / span) * 100;
 
   /** Pulls a continuous position toward whichever station it's already close
@@ -252,12 +254,25 @@ function MoodSlider({
     return applyMagnet(ratio * span + MORALE_MIN);
   };
 
+  /**
+   * Compared against the committed `value`, not against a ref.
+   *
+   * This used to dedupe against `lastStationRef`, seeded to `value ?? defaultValue`
+   * — so on an unfiled week the ref started at the default station (4, "Steady")
+   * while `value` was still null. Clicking the middle of the track, which is the
+   * obvious first move on a 1-to-7 mood scale, rounded to 4, matched the ref, and
+   * returned without calling `onChange`. Morale stayed null, so no thumb and no
+   * fill appeared, and submitting still refused with "Pick where the week landed".
+   * The control looked completely dead for the one gesture most students make first.
+   *
+   * The ref also never resynced when the parent reset `morale` from a loaded
+   * check-in, so after an edit it could reject a genuinely new station too.
+   * `value` is a prop and is correct on every render, which is all the guard
+   * against redundant onChange calls during a drag ever needed to be.
+   */
   const commitStation = (raw: number) => {
     const station = Math.min(MORALE_MAX, Math.max(MORALE_MIN, Math.round(raw)));
-    if (station !== lastStationRef.current) {
-      lastStationRef.current = station;
-      onChange(station);
-    }
+    if (station !== value) onChange(station);
   };
 
   const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -388,13 +403,22 @@ function MoodSlider({
             })}
           </div>
 
-          {(hasValue || isDragging) && (
-            <motion.div
-              className="absolute top-1/2 z-[3] h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full bg-primary shadow-sm active:cursor-grabbing"
-              animate={{ left: `${percentage}%` }}
-              transition={thumbTransition}
-            />
-          )}
+          {/* The thumb is present from the moment the track is revealed. It used
+              to render only once a value existed, so a student opening the
+              control was handed a bare grey bar with nothing to grab — and if
+              their first click landed on the station the old guard swallowed,
+              nothing ever appeared. Hollow while unset, so it reads as a handle
+              waiting to be placed rather than as a mood already recorded. */}
+          <motion.div
+            className={cn(
+              "absolute top-1/2 z-[3] h-[10px] w-[10px] -translate-x-1/2 -translate-y-1/2 cursor-grab rounded-full shadow-sm active:cursor-grabbing",
+              hasValue || isDragging
+                ? "bg-primary"
+                : "border-2 border-primary/45 bg-card"
+            )}
+            animate={{ left: `${percentage}%` }}
+            transition={thumbTransition}
+          />
         </div>
       </div>
 

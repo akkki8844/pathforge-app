@@ -47,6 +47,7 @@ import { Button } from '@/components/ui/button';
 import ClaudeModelSelector from '@/components/ui/claude-model-selector';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { PromptGlow } from '@/components/ui/prompt-glow';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -2195,11 +2196,18 @@ export default function Advisor() {
               onDragLeave={handleComposerDragLeave}
               onDrop={handleComposerDrop}
               className={cn(
-                'relative flex flex-col rounded-2xl border backdrop-blur-xl bg-card/70 shadow-lg transition-all',
+                'group relative isolate flex flex-col rounded-2xl border backdrop-blur-xl bg-card/70 shadow-lg transition-all',
                 'border-border/60 focus-within:border-accent/50 focus-within:shadow-xl',
                 isListening && 'border-destructive/50 ring-2 ring-destructive/20',
               )}
             >
+              {/* Decorative only, and deliberately layered under the composer
+                  rather than replacing it — the model picker, effort slider,
+                  voice input, file drop and command palette all keep working.
+                  Suppressed while recording so the destructive ring stays the
+                  only thing the box is saying. */}
+              {!isListening && <PromptGlow radius="rounded-2xl" />}
+
               {isDraggingFiles && (
                 <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent/10 backdrop-blur-sm">
                   <span className="text-sm font-medium text-accent">Drop files to upload</span>

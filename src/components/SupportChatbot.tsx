@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { PromptGlow } from "@/components/ui/prompt-glow";
 
 interface Message {
   role: "user" | "assistant";
@@ -20,16 +21,12 @@ export default function SupportChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      // The old greeting opened by claiming to know the student's major and
-      // target universities. For a guest that is simply false, and for a signed-in
-      // student it front-loaded a boast instead of saying what this thing is for.
-      // It now leads with what it can actually answer — the product itself.
-      content:
-        "Hey — I'm Pathforge support. I know how the product works, so ask me the practical stuff:\n\n" +
-        "- *\"Why is Level 4 locked?\"*\n" +
-        "- *\"What do credits cost on Pro?\"*\n" +
-        "- *\"How do I get a recommender to upload a letter?\"*\n\n" +
-        "If you're signed in I can also see your profile and journey, so \"what should I do this week?\" works too. If I don't know something, I'll say so rather than guess.",
+      // Two lines. The previous greeting spent a bulleted menu and a caveat
+      // explaining itself before the student had asked anything, which is a lot
+      // of reading to do before typing one sentence and none of it is needed to
+      // start. What it can and cannot do is better demonstrated in the first
+      // answer than promised in the first message.
+      content: "Hey — support here. What's not working, or what are you trying to figure out?",
     },
   ]);
   const [input, setInput] = useState("");
@@ -141,7 +138,7 @@ export default function SupportChatbot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 w-[calc(100vw-2rem)] sm:w-[380px] h-[70svh] sm:h-[520px] max-h-[calc(100dvh-6rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl h-[70svh] max-h-[calc(100dvh-6rem)] sm:h-[600px] sm:w-[480px] lg:w-[560px]"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-accent/10 border-b border-border">
@@ -180,7 +177,7 @@ export default function SupportChatbot() {
                     </div>
                   )}
                   <div
-                    className={`max-w-[80%] rounded-2xl px-4 py-2.5 text-sm ${
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-sm ${
                       message.role === "user"
                         ? "bg-accent text-accent-foreground rounded-br-md"
                         : "bg-muted text-foreground rounded-bl-md"
@@ -220,7 +217,11 @@ export default function SupportChatbot() {
 
             {/* Input */}
             <div className="p-3 border-t border-border bg-background/50">
-              <div className="flex gap-2">
+              {/* `group` and `isolate` are what PromptGlow needs from its host:
+                  the first drives the hover and focus rims, the second keeps the
+                  overlay's negative z-index inside this box. */}
+              <div className="group relative isolate flex gap-2 rounded-xl">
+                <PromptGlow radius="rounded-xl" intensity={0.5} />
                 <Textarea
                   ref={textareaRef}
                   value={input}

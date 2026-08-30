@@ -21,6 +21,7 @@ import {
 } from "./primitives";
 import type { CollegeItem, DeadlineItem, EssayProgress, PortfolioCounts } from "@/hooks/useDashboardData";
 import { TIER_LABELS, type Calibration, type ListCalibration, type PillarGap } from "@/lib/collegeCalibration";
+import { AddUniversityDialog } from "./AddUniversityDialog";
 
 /**
  * Dashboard panels.
@@ -239,11 +240,17 @@ export function CollegeList({ colleges }: { colleges: CollegeItem[] }) {
     return (
       <Reveal delay={0.1} className="h-full">
         <Panel className="h-full">
-          <PanelHead eyebrow="Your list" title="No target schools yet" to="/profile" action="Add" />
+          <PanelHead eyebrow="Your list" title="No target schools yet" />
           <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">
             The index can't mean much until it has something to measure against. Add a few schools
             and every number on this page recalibrates to them.
           </p>
+          {/* The empty state used to send the student to /profile to find the
+              picker. Adding a school is the entire job of this panel when it is
+              empty, so the picker opens here instead of costing a navigation. */}
+          <div className="mt-4">
+            <AddUniversityDialog />
+          </div>
         </Panel>
       </Reveal>
     );
@@ -284,6 +291,9 @@ export function CollegeList({ colleges }: { colleges: CollegeItem[] }) {
           Each figure is your profile against that school's tier, where 100 is the typical admitted
           student.
         </p>
+        <div className="mt-4">
+          <AddUniversityDialog />
+        </div>
       </Panel>
     </Reveal>
   );

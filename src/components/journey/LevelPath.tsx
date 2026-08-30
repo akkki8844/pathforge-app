@@ -63,6 +63,45 @@ function clayForLevel(level: LevelId): Clay {
   return LEVEL_CLAY[level] ?? LEVEL_CLAY[1];
 }
 
+/** The level number, extruded on the same clay rules as the nodes it heads. */
+function LevelPlaque({ level }: { level: LevelId }) {
+  const pal = clayForLevel(level);
+  const S = 44;
+  const D = 5;
+  return (
+    <div className="relative shrink-0" style={{ width: S, height: S + D }}>
+      <span
+        aria-hidden
+        className="absolute left-1/2 -translate-x-1/2 rounded-[50%] blur-md"
+        style={{ bottom: -1, width: S * 0.72, height: 7, background: "rgba(15,23,42,0.3)" }}
+      />
+      <span
+        aria-hidden
+        className="absolute left-0 rounded-2xl"
+        style={{
+          top: D,
+          width: S,
+          height: S,
+          background: `linear-gradient(180deg, ${pal.lip} 0%, ${pal.lip} 45%, rgba(0,0,0,0.35) 100%)`,
+        }}
+      />
+      <span
+        className="absolute left-0 top-0 flex items-center justify-center rounded-2xl font-black"
+        style={{
+          width: S,
+          height: S,
+          color: pal.text,
+          background: `linear-gradient(180deg, ${pal.top} 0%, ${pal.bottom} 100%)`,
+          boxShadow:
+            "inset 0 3px 6px rgba(255,255,255,0.5), inset 0 -8px 12px rgba(0,0,0,0.18), 0 5px 10px rgba(15,23,42,0.16)",
+        }}
+      >
+        <span className="drop-shadow-[0_2px_0_rgba(0,0,0,0.22)]">{level}</span>
+      </span>
+    </div>
+  );
+}
+
 /**
  * Duolingo-style scrollable path. Scroll happens INSIDE the parent container,
  * not the window. Nodes spring-pop into view as the user scrolls down the path.
@@ -134,15 +173,12 @@ export function LevelPath({
                   transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
                   className="mb-4 mt-9 first:mt-2 flex items-center gap-3"
                 >
-                  <div
-                    className={cn(
-                      "relative h-11 w-11 rounded-2xl bg-gradient-to-br flex items-center justify-center text-white font-black shadow-lg",
-                      levelDef.color
-                    )}
-                  >
-                    <span className="relative z-10">{levelDef.id}</span>
-                    <span className="absolute inset-x-1 -bottom-1 h-2 rounded-b-lg bg-black/25 blur-sm -z-0" />
-                  </div>
+                  {/* The plaque is built from the same clay palette as the
+                      nodes below it rather than from `levelDef.color`. A flat
+                      Tailwind gradient with a blurred bar under it was the one
+                      element on the path with no actual thickness, and it sat
+                      directly above twenty coins that have it. */}
+                  <LevelPlaque level={levelDef.id} />
                   <div className="flex-1 min-w-0">
                     <div className="text-[10px] font-extrabold uppercase tracking-[0.2em] text-muted-foreground">
                       Level {levelDef.id}
@@ -194,11 +230,32 @@ export function LevelPath({
           transition={{ type: "spring", stiffness: 220, damping: 16 }}
           className="mt-12 mx-auto flex flex-col items-center gap-2"
         >
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-amber-400 via-orange-500 to-rose-500 flex items-center justify-center text-white shadow-2xl ring-4 ring-amber-300/30">
-              <Trophy className="h-7 w-7" />
-            </div>
-            <span className="absolute inset-x-2 -bottom-1.5 h-3 rounded-b-xl bg-black/25 blur-md -z-0" />
+          <div className="relative" style={{ width: 64, height: 64 + 10 }}>
+            <span
+              aria-hidden
+              className="absolute left-1/2 -translate-x-1/2 rounded-[50%] blur-md"
+              style={{ bottom: -2, width: 50, height: 9, background: "rgba(15,23,42,0.35)" }}
+            />
+            <span
+              aria-hidden
+              className="absolute left-0 rounded-2xl"
+              style={{
+                top: 10,
+                width: 64,
+                height: 64,
+                background: "linear-gradient(180deg, #9a4a1f 0%, #9a4a1f 42%, rgba(0,0,0,0.4) 100%)",
+              }}
+            />
+            <span
+              className="absolute left-0 top-0 flex h-16 w-16 items-center justify-center rounded-2xl text-white ring-4 ring-amber-300/30"
+              style={{
+                background: "linear-gradient(180deg, #fbbf24 0%, #f97316 55%, #e11d48 100%)",
+                boxShadow:
+                  "inset 0 4px 7px rgba(255,255,255,0.5), inset 0 -10px 14px rgba(0,0,0,0.2), 0 8px 16px rgba(15,23,42,0.22)",
+              }}
+            >
+              <Trophy className="h-7 w-7 drop-shadow-[0_2px_0_rgba(0,0,0,0.25)]" />
+            </span>
           </div>
           <div className="text-center">
             <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground">
@@ -283,7 +340,10 @@ function PathConnector({ from, to, completed }: { from: number; to: number; comp
 // ── Node ────────────────────────────────────────────────────────────────
 
 const W = 80; // cap diameter
-const DEPTH = 9; // extrusion depth / press travel
+// Extrusion depth and press travel. 9px read as a drop shadow rather than as
+// thickness once the cap picked up its own outer shadow; 13 is enough for the
+// side wall below to be a visible surface with its own shading.
+const DEPTH = 13;
 
 function StageNode({
   stage,
@@ -340,8 +400,16 @@ function StageNode({
         </motion.div>
       )}
 
-      {/* Clay coin: ground shadow + solid dark lip + bright pressable cap */}
-      <div className="relative" style={{ width: W, height: W + DEPTH }}>
+      {/* Clay coin: ground shadow + shaded side wall + pressable cap. The live
+          node is scaled rather than sized differently, so the weave geometry
+          and the connector endpoints stay on the same grid as every other node. */}
+      <motion.div
+        className="relative"
+        style={{ width: W, height: W + DEPTH }}
+        initial={false}
+        animate={{ scale: isCurrent ? 1.07 : 1 }}
+        transition={{ type: "spring", stiffness: 320, damping: 20 }}
+      >
         {/* Pulsing halo on the active node */}
         {isCurrent && (
           <>
@@ -375,28 +443,43 @@ function StageNode({
           }}
         />
 
-        {/* LIP — solid dark bottom edge that gives the coin real thickness */}
+        {/* LIP — the side wall. Shaded rather than flat: a cylinder seen from
+            slightly above is lit at the top of its wall and falls to black at
+            the bottom, and a single solid colour here read as a shadow copy of
+            the cap instead of as material. */}
         <span
           aria-hidden
           className="absolute rounded-full"
-          style={{ left: 0, top: DEPTH, width: W, height: W, background: pal.lip }}
+          style={{
+            left: 0,
+            top: DEPTH,
+            width: W,
+            height: W,
+            background: `linear-gradient(180deg, ${pal.lip} 0%, ${pal.lip} 42%, rgba(0,0,0,0.38) 100%)`,
+            boxShadow: "inset 0 -5px 8px rgba(0,0,0,0.22)",
+          }}
         />
 
         {/* CAP — bright glossy face; presses down into the lip on tap */}
         <motion.span
           initial={false}
-          whileHover={!isLocked ? { y: -3 } : undefined}
-          whileTap={!isLocked ? { y: DEPTH } : undefined}
+          // Lifting the cap off its own wall tilts it toward the viewer. The
+          // rotation is what makes the lift read as the coin coming up out of
+          // the page rather than the whole node sliding upward.
+          whileHover={!isLocked ? { y: -4, rotateX: -9 } : undefined}
+          whileTap={!isLocked ? { y: DEPTH, rotateX: 0 } : undefined}
           transition={{ type: "spring", stiffness: 700, damping: 26 }}
           className="absolute left-0 top-0 flex items-center justify-center rounded-full"
           style={{
             width: W,
             height: W,
             color: pal.text,
+            transformPerspective: 620,
+            transformOrigin: "50% 100%",
             background: `linear-gradient(180deg, ${pal.top} 0%, ${pal.bottom} 100%)`,
             boxShadow: isLocked
-              ? "inset 0 3px 5px rgba(255,255,255,0.5), inset 0 -6px 10px rgba(0,0,0,0.10)"
-              : "inset 0 4px 7px rgba(255,255,255,0.55), inset 0 -10px 14px rgba(0,0,0,0.18)",
+              ? "inset 0 3px 5px rgba(255,255,255,0.5), inset 0 -6px 10px rgba(0,0,0,0.10), 0 4px 8px rgba(15,23,42,0.10)"
+              : "inset 0 4px 7px rgba(255,255,255,0.55), inset 0 -10px 14px rgba(0,0,0,0.18), 0 7px 14px rgba(15,23,42,0.20)",
           }}
         >
           {/* Glossy top highlight */}
@@ -432,7 +515,7 @@ function StageNode({
             />
           )}
         </motion.span>
-      </div>
+      </motion.div>
     </motion.button>
   );
 }

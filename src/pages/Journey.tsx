@@ -103,18 +103,23 @@ function JourneyHeader({
   const sub = stage
     ? (firstTask ? firstTask.why : stage.description)
     : `Personalized for ${major}`;
+  // `edge` is the pill's bottom lip. The HUD pills were flat 1px-outlined chips
+  // sitting directly above a path built entirely from extruded clay coins, which
+  // made the one part of this screen the student reads every visit the only part
+  // with no thickness. A solid unblurred bottom edge is the cheapest honest way
+  // to give a small control depth — it is a surface, not a shadow.
   const stats = [
     {
-      icon: Flame, cls: "text-orange-500", fill: "fill-orange-500/20",
+      icon: Flame, cls: "text-orange-500", edge: "#c2410c",
       value: Math.min(completedCount, 99),
       title: "Streak — consecutive days with a completed action",
     },
     {
-      icon: Gem, cls: "text-sky-500", fill: "fill-sky-500/20", value: gems,
+      icon: Gem, cls: "text-sky-500", edge: "#0369a1", value: gems,
       title: "Gems — one for every level you complete",
     },
     {
-      icon: Heart, cls: "text-rose-500", fill: "fill-rose-500/20", value: hearts,
+      icon: Heart, cls: "text-rose-500", edge: "#be123c", value: hearts,
       title: `Hearts — ${HEARTS_PER_MONTH} a month, one lost per week without a completed level`,
     },
   ];
@@ -127,7 +132,8 @@ function JourneyHeader({
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ ...transition.fast, delay: i * 0.05 }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"
+            className="mb-[3px] inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1"
+            style={{ boxShadow: `0 3px 0 ${s.edge}33, 0 4px 6px rgba(15,23,42,0.10)` }}
             title={s.title}
           >
             <s.icon className={cn("h-3.5 w-3.5", s.cls)} />
