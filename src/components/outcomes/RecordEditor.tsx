@@ -1,9 +1,11 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useMemo, useState, type ReactNode } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Github, Loader2, Plus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ColumnHead, Figure, Panel, PanelHead, Reveal } from "./primitives";
 import { EntryCard } from "./EntryCard";
@@ -45,8 +47,31 @@ const SUBJECTS = [
 
 const FIELD = "h-9 text-xs";
 
+const TEST_OPTIONS = [
+  { value: "none", label: "Not taken" },
+  { value: "sat", label: "SAT" },
+  { value: "act", label: "ACT" },
+  { value: "psat", label: "PSAT/NMSQT" },
+];
+
 function newId(): string {
   return Math.random().toString(36).substring(2, 9);
+}
+
+/** Which kinds the feed shows. `all` is not a kind, so it is spelled out. */
+export type RecordFilter = RecordKind | "all";
+
+/**
+ * One labelled field in the profile strip. Label above, control below, so the
+ * three read as a row of questions rather than as a toolbar.
+ */
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <Label className="text-[12.5px] font-medium text-muted-foreground">{label}</Label>
+      <div className="mt-1.5">{children}</div>
+    </div>
+  );
 }
 
 export interface RecordEditorProps {
@@ -55,12 +80,12 @@ export interface RecordEditorProps {
   githubLoading: boolean;
   onSyncGithub: () => void;
   /**
-   * Which kinds to show. Lifted out of this component: it is one of the page's
-   * filters, and every filter now lives in the left-hand panel rather than as a
-   * row of pills halfway down the thing it filters.
+   * Which kinds the feed shows. Owned by the page because logging a new entry
+   * has to clear it, but presented here — a filter belongs on the thing it
+   * filters, not in a panel on the far side of the page.
    */
-  filter: RecordKind | "all";
-  onFilter: (filter: RecordKind | "all") => void;
+  filter: RecordFilter;
+  onFilter: (filter: RecordFilter) => void;
 }
 
 export function RecordEditor({
@@ -106,6 +131,13 @@ export function RecordEditor({
   const dropRow = drop as (key: ListKey, id: string) => void;
 
   const entries = useMemo(() => listEntries(profile), [profile]);
+  // How many of each kind are on file, so every filter option can say what it
+  // will show before it is chosen.
+  const kindCounts = useMemo(() => {
+    const map = new Map<RecordKind, number>();
+    for (const e of entries) map.set(e.spec.id, (map.get(e.spec.id) ?? 0) + 1);
+    return map;
+  }, [entries]);
   const shown = filter === "all" ? entries : entries.filter((e) => e.spec.id === filter);
   const groups = useMemo(() => groupByYear(shown), [shown]);
 
@@ -146,7 +178,7 @@ export function RecordEditor({
   };
 
   return (
-    <div className="space-y-[0.65rem]">
+    <div className="space-y-3">
       {/* ── Who you are, and what you are aiming at ─────────────────────── */}
       <Reveal delay={0.05}>
         <Panel flush>
@@ -159,19 +191,84 @@ export function RecordEditor({
                   <Figure size="sm" className="text-foreground">
                     {entries.length}
                   </Figure>
-                  <span className="ml-1 font-display text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                  <span className="ml-1 font-cluely text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     entries
                   </span>
                 </>
               }
             />
-            <p className="mt-3 max-w-[64ch] text-[15px] leading-relaxed text-muted-foreground">
-              Anything you have done belongs here — a project, a job, a club, a competition, an
-              award, a paper, a term of volunteering. Write it once, date it, and say what came of
-              it. Everything saves as you type, and the reading is computed from nothing else.
+            <p className="mt-2.5 max-w-[64ch] text-[14px] leading-relaxed text-muted-foreground">
+              Projects, jobs, clubs, competitions, awards, papers, volunteering. Everything saves
+              as you type, and the reading above is computed from this and nothing else.
             </p>
           </div>
 
+          {/*
+           * Grade and testing.
+           *
+           * These are facts about the student, not filters, and they used to be
+           * grouped with the target tier inside a panel headed "Filters" — with
+           * a note explaining that the reset button deliberately would not
+           * touch two of the four controls in it. That explanation was the tell:
+           * they were never the same kind of thing. They belong with the rest
+           * of the record, which is the only other place on this page a student
+           * states a fact about themselves.
+           */}
+          <div className="grid gap-4 border-t border-border p-5 sm:grid-cols-3 sm:p-6">
+            <Field label="Grade">
+              <Select
+                value={profile.gradeLevel}
+                onValueChange={(v) => update((p) => ({ ...p, gradeLevel: v }))}
+              >
+                <SelectTrigger aria-label="Grade level" className={FIELD}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="cly-scope font-cluely">
+                  {["9", "10", "11", "12"].map((g) => (
+                    <SelectItem key={g} value={g}>
+                      Grade {g}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            <Field label="Test">
+              <Select
+                value={profile.testType}
+                onValueChange={(v) => update((p) => ({ ...p, testType: v, testScore: "" }))}
+              >
+                <SelectTrigger aria-label="Test type" className={FIELD}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="cly-scope font-cluely">
+                  {TEST_OPTIONS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>
+                      {t.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {/* Only rendered once a test is named, so an untested student is
+                never shown an empty box that looks like a missing answer. A
+                blank score is left out of the reading entirely rather than
+                counted as a zero. */}
+            {profile.testType !== "none" && (
+              <Field label="Score">
+                <Input
+                  className={FIELD}
+                  type="number"
+                  inputMode="numeric"
+                  aria-label="Test score"
+                  placeholder={profile.testType === "act" ? "36" : "1600"}
+                  value={profile.testScore}
+                  onChange={(e) => update((p) => ({ ...p, testScore: e.target.value }))}
+                />
+              </Field>
+            )}
+          </div>
         </Panel>
       </Reveal>
 
@@ -186,7 +283,7 @@ export function RecordEditor({
        */}
       {/* 4rem is the navbar's own height; the inset keeps it clear of the
           notch, where the navbar pads itself by the same amount. */}
-      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+4rem)] z-20 rounded-2xl border border-foreground/[0.14] bg-card/95 backdrop-blur-sm">
+      <div className="sticky top-[calc(env(safe-area-inset-top,0px)+4rem)] z-20 rounded-[0.875rem] border border-border bg-card/95 backdrop-blur-sm">
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3 px-5 py-3.5 sm:px-6">
           <div className="min-w-0">
             <ColumnHead>Log something</ColumnHead>
@@ -245,7 +342,7 @@ export function RecordEditor({
                     onClick={() => logSomething(spec)}
                     className="bg-card px-5 py-3.5 text-left transition-colors hover:bg-muted/50 sm:px-6"
                   >
-                    <span className="font-display text-[15px] font-semibold tracking-tight">
+                    <span className="font-cluely text-[15px] font-semibold tracking-tight">
                       {spec.label}
                     </span>
                     <span className="mt-1 block max-w-[38ch] text-[13.5px] leading-snug text-muted-foreground">
@@ -261,7 +358,7 @@ export function RecordEditor({
                   }}
                   className="bg-card px-5 py-3.5 text-left transition-colors hover:bg-muted/50 sm:px-6"
                 >
-                  <span className="font-display text-[15px] font-semibold tracking-tight">
+                  <span className="font-cluely text-[15px] font-semibold tracking-tight">
                     Course
                   </span>
                   <span className="mt-1 block max-w-[38ch] text-[13.5px] leading-snug text-muted-foreground">
@@ -281,13 +378,12 @@ export function RecordEditor({
             {entries.length === 0 ? (
               <div className="p-5 sm:p-8">
                 <ColumnHead>Nothing logged yet</ColumnHead>
-                <p className="mt-3 max-w-[46ch] text-balance font-serif text-[clamp(1.3rem,4.5vw,1.9rem)] leading-[1.1] tracking-[-0.02em]">
+                <p className="mt-3 max-w-[46ch] text-balance font-cluely text-[clamp(1.3rem,4.5vw,1.9rem)] leading-[1.1] tracking-[-0.02em]">
                   Start with the thing you would tell someone about first.
                 </p>
-                <p className="mt-4 max-w-[58ch] text-[15px] leading-relaxed text-muted-foreground">
-                  It does not have to be finished, impressive, or dated to the month. Get it down,
-                  then say what came of it. The reading above is computed from this and nothing
-                  else, so an empty record reads as an empty file.
+                <p className="mt-3 max-w-[58ch] text-[14px] leading-relaxed text-muted-foreground">
+                  It does not have to be finished or impressive. Get it down, then say what came
+                  of it — an empty record reads as an empty file.
                 </p>
                 <Button size="sm" className="mt-6 h-9 text-xs" onClick={() => setPicking(true)}>
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
@@ -296,25 +392,36 @@ export function RecordEditor({
               </div>
             ) : (
               <>
-                {/* What the feed is currently showing. Says it rather than
-                    offering it: the choice itself is one dropdown away in the
-                    filter panel, and repeating eleven pills here is what made
-                    the record read as a control surface. */}
-                <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 px-5 py-3.5 sm:px-6">
-                  <ColumnHead>
-                    {filter === "all"
-                      ? "Showing everything"
-                      : `Showing ${(KIND_SPECS.find((s) => s.id === filter)?.label ?? "entries").toLowerCase()}`}
-                  </ColumnHead>
-                  {filter !== "all" && (
-                    <button
-                      type="button"
-                      onClick={() => onFilter("all")}
-                      className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground underline underline-offset-2 transition-colors hover:text-foreground"
+                {/*
+                 * One dropdown, on the feed it filters.
+                 *
+                 * This has now been a row of eleven pills and then a select in
+                 * a panel on the other side of the page. One control, sitting
+                 * on the thing it acts on, with the count of what each option
+                 * will show — a filter that is far from its list is a filter
+                 * you forget you left on.
+                 *
+                 * Kinds with nothing on file are left out rather than offered
+                 * and then showing nothing.
+                 */}
+                <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 px-5 py-3 sm:px-6">
+                  <ColumnHead>Showing</ColumnHead>
+                  <Select value={filter} onValueChange={(v) => onFilter(v as RecordFilter)}>
+                    <SelectTrigger
+                      aria-label="Filter the record by kind"
+                      className={cn("w-[13.5rem]", FIELD)}
                     >
-                      Show everything ({entries.length})
-                    </button>
-                  )}
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="cly-scope font-cluely">
+                      <SelectItem value="all">Everything ({entries.length})</SelectItem>
+                      {KIND_SPECS.filter((s) => (kindCounts.get(s.id) ?? 0) > 0).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.label} ({kindCounts.get(s.id) ?? 0})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="grid grid-cols-1 gap-px border-t border-border bg-border">
@@ -335,7 +442,7 @@ export function RecordEditor({
                             {group.year}
                           </Figure>
                         )}
-                        <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+                        <span className="font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
                           {group.year === null
                             ? "Add a month and these file themselves"
                             : `${group.entries.length} ${group.entries.length === 1 ? "entry" : "entries"}`}
@@ -385,7 +492,7 @@ export function RecordEditor({
                   <Figure size="sm" className="text-foreground">
                     {profile.courses.length}
                   </Figure>
-                  <span className="ml-1 font-display text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+                  <span className="ml-1 font-cluely text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
                     courses
                   </span>
                 </>
@@ -416,7 +523,7 @@ export function RecordEditor({
                       <SelectTrigger aria-label="Course subject" className={cn("min-w-0 flex-1", FIELD)}>
                         <SelectValue placeholder="Subject" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="cly-scope font-cluely">
                         {SUBJECTS.map((s) => (
                           <SelectItem key={s} value={s}>
                             {s}
@@ -431,7 +538,7 @@ export function RecordEditor({
                       <SelectTrigger aria-label="Course level" className={cn("w-28", FIELD)}>
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="cly-scope font-cluely">
                         <SelectItem value="regular">Regular</SelectItem>
                         <SelectItem value="honors">Honors</SelectItem>
                         <SelectItem value="ap">AP</SelectItem>

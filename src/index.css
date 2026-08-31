@@ -4,6 +4,28 @@
 
 /* Pathforge Design System - Premium College Application Platform */
 
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/geist-latin-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215,
+    U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Geist Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url('/fonts/geist-latin-ext-wght-normal.woff2') format('woff2-variations');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304,
+    U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0,
+    U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
 @layer base {
   :root {
     /* Atlas vibrant palette — warm cream paper, ink navy, editorial blue */
@@ -621,6 +643,97 @@
   .animate-levitate { animation: levitate 6s ease-in-out infinite; }
 }
 
+@layer base {
+  /*
+   * Cluely palette and type.
+   *
+   * Outcomes is the one page in this app that is a single verdict rather than
+   * a set of surfaces, and it was being drawn in Atlas cream with a serif
+   * headline and six ruled ledgers — a broadsheet, when what a student wants
+   * here is an instrument that reads in one glance.
+   *
+   * These are Cluely's own tokens, taken from the shipped desktop app's
+   * stylesheet (`resources/app.asar` -> `dist/assets/index-*.css`) and
+   * converted from oklch to the HSL triplets this codebase's Tailwind layer
+   * expects. Zinc neutrals with the warmth taken out, one cyan-blue accent at
+   * full chroma, a 10px radius. The typeface is Geist Variable, self-hosted
+   * from the same bundle — @font-face'd here rather than in the critical head
+   * so only this route pays for it.
+   *
+   * Scoped to [data-cluely], exactly like [data-dash] above: nothing outside
+   * the Outcomes route changes, and every shadcn control inside it picks the
+   * palette up for free because they all read these same variables.
+   */
+  [data-cluely],
+  .cly-scope {
+    --background: 0 0% 100%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --foreground: 240 11% 4%;
+    --card-foreground: 240 11% 4%;
+    --popover-foreground: 240 11% 4%;
+    --muted: 240 4% 96%;
+    --muted-foreground: 240 4% 46%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --secondary: 240 4% 96%;
+    --secondary-foreground: 240 6% 10%;
+    --accent: 240 4% 96%;
+    --accent-foreground: 240 6% 10%;
+    --primary: 200 100% 39%;
+    --primary-foreground: 204 92% 97%;
+    --ring: 240 6% 64%;
+    --destructive: 357 100% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --radius: 0.625rem;
+  }
+
+  .dark [data-cluely],
+  .dark .cly-scope {
+    --background: 240 11% 4%;
+    --card: 240 6% 10%;
+    --popover: 240 6% 10%;
+    --foreground: 0 0% 98%;
+    --card-foreground: 0 0% 98%;
+    --popover-foreground: 0 0% 98%;
+    --muted: 240 4% 16%;
+    --muted-foreground: 240 6% 64%;
+    --border: 240 4% 19%;
+    --input: 240 4% 19%;
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --accent: 240 4% 16%;
+    --accent-foreground: 0 0% 98%;
+    --primary: 198 100% 46%;
+    --primary-foreground: 204 75% 16%;
+    --ring: 240 4% 46%;
+    --destructive: 359 100% 70%;
+    --destructive-foreground: 240 11% 4%;
+  }
+
+  /*
+   * The one lifted surface. Cluely leads with a single panel a half step off
+   * the page rather than with colour, which is the same trick `.dash-feature`
+   * plays — this is that spec on the Cluely neutrals, plus the faint blue
+   * wash the app uses behind its own primary panel.
+   */
+  [data-cluely] .cly-lead {
+    border-color: hsl(var(--foreground) / 0.1);
+    background:
+      radial-gradient(120% 140% at 100% 0%, hsl(var(--primary) / 0.07), transparent 60%),
+      hsl(var(--card));
+    box-shadow: 0 1px 2px hsl(240 11% 4% / 0.04), 0 8px 24px -12px hsl(240 11% 4% / 0.12);
+  }
+
+  .dark [data-cluely] .cly-lead {
+    border-color: hsl(0 0% 100% / 0.1);
+    background:
+      radial-gradient(120% 140% at 100% 0%, hsl(var(--primary) / 0.12), transparent 60%),
+      hsl(var(--card));
+    box-shadow: none;
+  }
+}
+
 /* ──────────────────────────────────────────────────────────────────────
    ATLAS EDITORIAL LANDING SYSTEM — exact spec from user-provided atlas.css
    ────────────────────────────────────────────────────────────────────── */
@@ -777,6 +890,38 @@
 .atlas-rules h3 { margin: 4.8rem 0 0; font-family: var(--display); font-size: clamp(1.8rem, 2.4vw, 2.5rem); font-weight: 600; letter-spacing: -0.015em; line-height: 1.05; }
 .atlas-rules p { margin: 1rem 0 0; color: var(--ink-soft); font-size: var(--text-sm); line-height: var(--lh-body); }
 
+/* The integrations orbit. Sits in `.atlas-house`, so it inherits the landing
+   page's own palette rather than the Tailwind token set the app uses. */
+.atlas-orbit { display: flex; flex-direction: column; align-items: center; margin-top: clamp(2.4rem, 5vw, 4rem); }
+.atlas-orbit-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.4rem; margin: 0 0 clamp(1.6rem, 3vw, 2.6rem); padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--text-xs); font-weight: 640; letter-spacing: 0.06em; text-transform: uppercase; }
+.atlas-orbit-legend li { display: inline-flex; align-items: center; gap: 0.5rem; }
+.atlas-orbit-legend i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
+.atlas-orbit-legend li:last-child i { background: transparent; border: 1px dashed var(--line-strong); }
+
+.pfo { position: relative; max-width: 100%; }
+.pfo-glow { position: absolute; left: 50%; top: 8%; width: 78%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle at center, rgba(68, 101, 216, 0.18), transparent 68%); filter: blur(46px); pointer-events: none; }
+.pfo-arcs { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.pfo-arcs path { stroke: var(--line); stroke-width: 1; }
+.pfo-arcs path:last-child { stroke-dasharray: 4 6; }
+
+.pfo-node { position: absolute; z-index: 2; }
+.pfo-chip { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--accent-deep); box-shadow: 0 4px 14px rgba(33, 48, 88, 0.07); transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out); }
+.pfo-chip:hover, .pfo-chip:focus-visible { transform: scale(1.1); border-color: var(--accent); box-shadow: 0 8px 20px rgba(33, 48, 88, 0.16); outline: none; }
+/* Dashed and unfilled, so a queued integration never reads as a live one even
+   before the tooltip is opened. */
+.pfo-chip-planned { border-style: dashed; background: transparent; color: var(--muted); box-shadow: none; }
+
+.pfo-tip { position: absolute; left: 50%; z-index: 6; display: none; width: 12.5rem; transform: translateX(-50%); padding: 0.55rem 0.7rem; border-radius: 0.6rem; background: var(--ink); color: #fff; font-size: 0.72rem; line-height: 1.35; text-align: center; text-transform: none; letter-spacing: normal; box-shadow: 0 10px 24px rgba(23, 32, 51, 0.25); }
+.pfo-tip strong { display: block; font-weight: 700; }
+.pfo-tip-above { bottom: calc(100% + 8px); }
+.pfo-tip-below { top: calc(100% + 8px); }
+.pfo-node:hover .pfo-tip, .pfo-node:focus-within .pfo-tip { display: block; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pfo-chip { transition: none; }
+  .pfo-chip:hover, .pfo-chip:focus-visible { transform: none; }
+}
+
 .atlas-sister { padding-bottom: clamp(6rem, 12vw, 11rem); }
 .atlas-talkforge { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1.4rem; align-items: center; margin-top: 3.2rem; padding: clamp(1.25rem, 2vw, 1.7rem); border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-blue); transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
 .atlas-talkforge:hover { box-shadow: 0 15px 28px rgba(33, 48, 88, 0.12); transform: translateY(-3px); }
@@ -816,6 +961,7 @@
   .atlas-editorial-grid, .atlas-brief-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .atlas-editorial blockquote { max-width: 17ch; }
   .atlas-rules { grid-template-columns: 1fr; }
+  .pfo-tip { width: 10rem; }
   .atlas-rules article { min-height: auto; }
   .atlas-rules h3 { margin-top: 2.9rem; }
   .atlas-footer .atlas-wrap { grid-template-columns: 1fr; gap: 0.7rem; }

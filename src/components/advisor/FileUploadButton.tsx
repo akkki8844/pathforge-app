@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Paperclip } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const ACCEPT = [
@@ -35,17 +35,20 @@ export function FileUploadButton({
           if (ref.current) ref.current.value = "";
         }}
       />
+      {/* A `+` rather than a paperclip. It leads the composer's control row,
+          where it reads as "add something to this message" — which is what it
+          does, and what a first-time user is looking for there. */}
       <Button
         type="button"
         size="icon"
         variant="ghost"
-        className="h-8 w-8 rounded-lg"
+        className="h-8 w-8 rounded-full"
         disabled={disabled}
         onClick={() => ref.current?.click()}
         aria-label="Attach files"
         title="Attach files"
       >
-        <Paperclip className="h-4 w-4" />
+        <Plus className="h-4 w-4" />
       </Button>
     </>
   );

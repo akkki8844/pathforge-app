@@ -4,26 +4,38 @@ import { cn } from "@/lib/utils";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 
 /**
- * Outcomes primitives.
+ * Outcomes primitives — Cluely spec.
  *
- * The page is a student's evidence file being read, so it is set like a
- * document under assessment rather than a dashboard: ruled surfaces, tracked
- * small-caps column heads, serif figures, and one measuring instrument.
+ * The page used to be set as a document under assessment: cream paper, serif
+ * figures, tracked small-caps column heads and six ruled ledgers stacked down
+ * the page. That is a good way to publish a finding and a poor way to deliver
+ * one. A student opening this page is asking a single question, and the
+ * broadsheet made them read four panels of prose to reach the answer.
  *
- * The visual language is the dashboard's — same eyebrow spec, same 1rem radius,
- * same `dash-feature` hero panel — because a student moving between the two
- * pages should not feel they have changed product. What is new here is the
- * *scale*: everything on this page is drawn against a marked bar rather than
- * as a percentage of nothing.
+ * This is Cluely's language instead, taken from their shipped desktop app:
+ * Geist at two weights, zinc neutrals, one cyan-blue accent, a 10px radius,
+ * flat cards with a single lifted lead. Figures are tabular sans rather than
+ * serif — a readiness index is an instrument reading, and Geist's numerals are
+ * drawn for exactly that.
+ *
+ * Palette tokens live in `index.css` under `[data-cluely]`, so every shadcn
+ * control on this route inherits them without a per-component override.
  */
 
-// ─── Type and surface ────────────────────────────────────────────────────
+// ─── Type ────────────────────────────────────────────────────────────────
 
+/**
+ * Section label. Muted, not blue.
+ *
+ * Blue is the accent this page uses to mean "this is the measured quantity" —
+ * on the index, on a fill, on a points figure. Spending it on every heading as
+ * well left the page with no way to point at anything.
+ */
 export function Eyebrow({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "block font-display text-[11px] font-bold uppercase tracking-[0.16em] text-primary",
+        "block font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground",
         className
       )}
     >
@@ -32,12 +44,12 @@ export function Eyebrow({ children, className }: { children: ReactNode; classNam
   );
 }
 
-/** Column head inside a ledger. Muted rather than blue — it labels, it doesn't announce. */
+/** Kept as a distinct name because it labels a column rather than a section. */
 export function ColumnHead({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <span
       className={cn(
-        "font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
+        "font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground",
         className
       )}
     >
@@ -46,7 +58,7 @@ export function ColumnHead({ children, className }: { children: ReactNode; class
   );
 }
 
-/** Serif numeral. Every figure on this page is set in it, at one of three sizes. */
+/** Every numeral on this page. Geist, tabular, tight. */
 export function Figure({
   children,
   size = "md",
@@ -59,15 +71,29 @@ export function Figure({
   return (
     <span
       className={cn(
-        "font-serif leading-none tabular-nums",
-        size === "sm" && "text-[16px]",
-        size === "md" && "text-[clamp(1.5rem,4vw,2rem)]",
-        size === "lg" && "text-[clamp(2.4rem,9vw,4rem)] tracking-[-0.01em]",
+        "font-cluely font-semibold leading-none tabular-nums tracking-[-0.02em]",
+        size === "sm" && "text-[15px]",
+        size === "md" && "text-[clamp(1.4rem,4vw,1.9rem)]",
+        size === "lg" && "text-[clamp(3.4rem,13vw,5.75rem)] tracking-[-0.045em]",
         className
       )}
     >
       {children}
     </span>
+  );
+}
+
+/** Panel headings. */
+export function Title({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <h2
+      className={cn(
+        "font-cluely text-[17px] font-semibold leading-[1.2] tracking-[-0.02em] text-foreground",
+        className
+      )}
+    >
+      {children}
+    </h2>
   );
 }
 
@@ -85,20 +111,22 @@ export function Reveal({
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 12 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.45, delay, ease: EASE_OUT_EXPO }}
+      transition={{ duration: 0.4, delay, ease: EASE_OUT_EXPO }}
     >
       {children}
     </motion.div>
   );
 }
 
+// ─── Surface ─────────────────────────────────────────────────────────────
+
 /**
- * The card. Matches `dashboard/primitives.Panel` exactly so the two pages
- * share one surface, with `flush` for panels whose content is a ruled grid
- * that needs to reach the edges.
+ * The card. One hairline, one radius, no shadow — except `lead`, which is the
+ * page's single elevated surface and is defined in `index.css` so it can carry
+ * a gradient and a dark-mode variant.
  */
 export function Panel({
   children,
@@ -108,15 +136,15 @@ export function Panel({
 }: {
   children: ReactNode;
   className?: string;
-  tone?: "default" | "feature";
+  tone?: "default" | "lead";
   flush?: boolean;
 }) {
   return (
     <section
       className={cn(
-        "rounded-2xl border",
+        "rounded-[0.875rem] border",
         flush ? "overflow-hidden p-0" : "p-5 sm:p-6",
-        tone === "feature" ? "dash-feature" : "border-foreground/[0.14] bg-card/70",
+        tone === "lead" ? "cly-lead" : "border-border bg-card",
         className
       )}
     >
@@ -125,27 +153,58 @@ export function Panel({
   );
 }
 
-/** Eyebrow, title, and an optional right-hand note. */
+/** Panel header: a title, and an optional right-hand note. */
 export function PanelHead({
   eyebrow,
   title,
   note,
+  className,
 }: {
-  eyebrow: string;
+  eyebrow?: string;
   title?: string;
   note?: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className={cn("flex items-start justify-between gap-4", className)}>
       <div className="min-w-0">
-        <Eyebrow>{eyebrow}</Eyebrow>
-        {title && (
-          <h2 className="mt-2 font-display text-lg font-semibold leading-[1.15] tracking-[-0.015em]">
-            {title}
-          </h2>
-        )}
+        {eyebrow && <Eyebrow>{eyebrow}</Eyebrow>}
+        {title && <Title className={cn(eyebrow && "mt-1.5")}>{title}</Title>}
       </div>
       {note && <div className="shrink-0 text-right">{note}</div>}
+    </div>
+  );
+}
+
+/**
+ * A labelled quantity.
+ *
+ * Three of the old page's six panels existed only to state one number with a
+ * paragraph under it — the file's shape, the months of runway, how much of the
+ * record carries proof. Each was a full ruled card with its own heading, its
+ * own prose and its own explanation of why it is not a score. They are these
+ * instead, in a row beneath the verdict they qualify.
+ */
+export function Stat({
+  label,
+  value,
+  hint,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  hint?: string;
+  className?: string;
+}) {
+  return (
+    <div className={cn("min-w-0", className)}>
+      <ColumnHead>{label}</ColumnHead>
+      <div className="mt-1.5 font-cluely text-[15px] font-semibold tracking-[-0.01em] text-foreground">
+        {value}
+      </div>
+      {hint && (
+        <p className="mt-0.5 text-[12.5px] leading-snug text-muted-foreground">{hint}</p>
+      )}
     </div>
   );
 }
@@ -158,15 +217,10 @@ const SCALE_MAX = 115;
 /**
  * The page's one instrument.
  *
- * A readiness figure only means something next to the thing it is being
- * measured against, so this draws the tier bar as a fixed notch at 100 and
- * puts the reading on the same rule. A profile at 62 reads as "well short of
- * the mark", which a 62% progress bar never does — 62% of an unnamed total is
- * not information.
- *
- * Deliberately horizontal and deliberately not a dial: the brief for this
- * page is a verdict a student can read in one glance, and a number inside a
- * ring hides the only comparison that matters.
+ * A readiness figure only means something next to the thing it is measured
+ * against, so this draws the tier bar as a fixed notch at 100 and puts the
+ * reading on the same rule. A profile at 62 reads as "well short of the mark",
+ * which a 62% progress bar never does.
  */
 export function IndexScale({
   value,
@@ -183,48 +237,31 @@ export function IndexScale({
 
   return (
     <div className="w-full">
-      <div className="relative pt-7">
-        {/* The reading, riding above its own position on the rule. */}
+      <div className="relative h-[6px] w-full overflow-hidden rounded-full bg-muted">
         <motion.div
-          className="absolute top-0 -translate-x-1/2 whitespace-nowrap"
-          initial={reduced ? false : { opacity: 0, left: "0%" }}
-          animate={{ opacity: 1, left: `${pct}%` }}
-          transition={{ duration: reduced ? 0 : 0.9, ease: EASE_OUT_EXPO }}
+          className={cn("absolute inset-y-0 left-0 rounded-full bg-current", toneClass)}
+          initial={reduced ? false : { width: 0 }}
+          animate={{ width: `${pct}%` }}
+          transition={{ duration: reduced ? 0 : 0.8, ease: EASE_OUT_EXPO }}
+        />
+        {/* The bar, drawn over the fill so passing it stays visible. */}
+        <span
+          className="absolute inset-y-0 w-[2px] bg-foreground/45"
+          style={{ left: `${barPct}%` }}
+          aria-hidden
+        />
+      </div>
+
+      <div className="relative mt-2 h-4">
+        <span className="absolute left-0 font-cluely text-[11px] font-medium tabular-nums text-muted-foreground">
+          0
+        </span>
+        <span
+          className="absolute -translate-x-1/2 whitespace-nowrap font-cluely text-[11px] font-semibold uppercase tracking-[0.08em] text-foreground/70"
+          style={{ left: `${barPct}%` }}
         >
-          <span className={cn("font-display text-[12.5px] font-bold tabular-nums", toneClass)}>
-            {value}
-          </span>
-        </motion.div>
-
-        {/* The rule itself. 3px, squared off — a measuring edge, not a pill. */}
-        <div className="relative h-[3px] w-full bg-border">
-          <motion.div
-            className={cn("absolute inset-y-0 left-0 bg-current", toneClass)}
-            initial={reduced ? false : { width: 0 }}
-            animate={{ width: `${pct}%` }}
-            transition={{ duration: reduced ? 0 : 0.9, ease: EASE_OUT_EXPO }}
-          />
-          {/* The bar. Full-height and darker than the rule so it reads as the
-              thing being cleared, not as another segment of the fill. */}
-          <span
-            className="absolute -top-1.5 h-[15px] w-[2px] bg-foreground/70"
-            style={{ left: `${barPct}%` }}
-            aria-hidden
-          />
-        </div>
-
-        {/* Ticks. Only three, at the two ends and the bar. */}
-        <div className="relative mt-2 h-4">
-          <span className="absolute left-0 font-display text-[11px] uppercase tracking-[0.1em] text-muted-foreground">
-            0
-          </span>
-          <span
-            className="absolute -translate-x-1/2 whitespace-nowrap font-display text-[11px] font-bold uppercase tracking-[0.1em] text-foreground/70"
-            style={{ left: `${barPct}%` }}
-          >
-            {barLabel}
-          </span>
-        </div>
+          {barLabel}
+        </span>
       </div>
     </div>
   );
@@ -235,17 +272,16 @@ export function IndexScale({
 /**
  * One measured line against its bar.
  *
- * The notch is the same device as the scale above, shrunk to a row: the fill
- * is the student's score, the hairline is what the tier expects. A row that
- * looks two-thirds full but stops short of the notch still reads as short,
- * which is the fact a bare 0–100 meter was hiding.
+ * The notch is the scale above shrunk to a row: the fill is the student's
+ * score, the hairline is what the tier expects. The explanatory `note` that
+ * used to print under every one of these is gone — ten rows each carrying a
+ * sentence is a page of prose pretending to be a table.
  */
 export function MeasuredRow({
   label,
   score,
   bar,
   attainment,
-  note,
   index = 0,
   muted = false,
 }: {
@@ -253,70 +289,62 @@ export function MeasuredRow({
   score: number;
   bar: number;
   attainment: number;
-  note?: string;
   index?: number;
   muted?: boolean;
 }) {
   const reduced = useReducedMotion();
   const at = score >= bar;
-  // Both the fill and the notch are drawn on a track that runs to 115% of the
-  // bar, so "past the bar" has somewhere to go and the notch never sits at the
-  // right-hand edge where it would be invisible.
+  // Both fill and notch are drawn on a track running to 115% of the bar, so
+  // "past the bar" has somewhere to go and the notch is never at the edge.
   const track = bar * 1.15;
   const fillPct = Math.max(0, Math.min(100, (score / track) * 100));
   const barPct = (bar / track) * 100;
 
   return (
-    <div className={cn("px-4 py-3 sm:px-5", muted && "opacity-55")}>
-      <div className="flex items-baseline justify-between gap-3">
-        <span className="min-w-0 truncate font-display text-[15px] font-semibold tracking-tight">
-          {label}
-        </span>
-        <span className="shrink-0">
-          {/* Clearing the bar is shown by the fill passing the notch. Colouring
-              the figure green as well says the same thing twice, in a hue this
-              page uses for nothing else. */}
-          <Figure size="sm" className="text-foreground">
-            {attainment}
-          </Figure>
-          <span className="ml-0.5 font-display text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            % of bar
-          </span>
-        </span>
-      </div>
+    <div
+      className={cn(
+        "grid grid-cols-[minmax(0,1fr)_minmax(4rem,7rem)_3rem] items-center gap-x-3 px-5 py-2.5 sm:gap-x-4 sm:px-6",
+        muted && "opacity-50"
+      )}
+    >
+      <span className="min-w-0 truncate font-cluely text-[14px] font-medium tracking-[-0.01em]">
+        {label}
+      </span>
 
-      <div className="relative mt-2 h-[6px] w-full bg-muted">
+      <div className="relative h-[5px] w-full overflow-hidden rounded-full bg-muted">
         <motion.div
           className={cn(
-            "absolute inset-y-0 left-0",
+            "absolute inset-y-0 left-0 rounded-full",
             at ? "bg-foreground" : score > 0 ? "bg-primary" : "bg-transparent"
           )}
           initial={reduced ? false : { width: 0 }}
           animate={{ width: `${fillPct}%` }}
           transition={{
-            duration: reduced ? 0 : 0.6,
-            delay: reduced ? 0 : Math.min(0.24, index * 0.03),
+            duration: reduced ? 0 : 0.55,
+            delay: reduced ? 0 : Math.min(0.2, index * 0.025),
             ease: EASE_OUT_EXPO,
           }}
         />
         <span
-          className="absolute -top-[3px] h-[12px] w-px bg-foreground/60"
+          className="absolute inset-y-0 w-px bg-foreground/45"
           style={{ left: `${barPct}%` }}
           aria-hidden
         />
       </div>
 
-      {note && (
-        <p className="mt-2 text-[13.5px] leading-snug text-muted-foreground">{note}</p>
-      )}
+      <span
+        className={cn(
+          "text-right font-cluely text-[13px] font-semibold tabular-nums tracking-[-0.01em]",
+          at ? "text-foreground" : "text-muted-foreground"
+        )}
+      >
+        {attainment}%
+      </span>
     </div>
   );
 }
 
-/**
- * A ruled stack. The hairlines are the grid's own gap showing the container
- * through, which is correct at any row count without per-row border rules.
- */
+/** A ruled stack. The hairlines are the grid's own gap showing through. */
 export function Ledger({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={cn("grid grid-cols-1 gap-px bg-border", className)}>{children}</div>;
 }

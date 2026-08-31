@@ -452,7 +452,7 @@ export default function Advisor() {
     setEnabled: setSkillEnabled,
   } = useAdvisorSkills();
   const [modelId, setModelId] = useState<string>(() => readStoredModel().id);
-  const { has: hasPlan } = usePlanTier();
+  const { tier: planTier, has: hasPlan } = usePlanTier();
 
   // Never leave a gated model selected (e.g. a lapsed subscription): fall back
   // to the best model the user can actually access.
@@ -1380,7 +1380,7 @@ export default function Advisor() {
             [
               `### Context window`,
               ``,
-              `**${usage.pct}% used** — ${formatContextTokens(usage.used)} of ${formatContextTokens(usage.window)}, ${formatContextTokens(usage.remaining)} left.`,
+              `**${formatContextTokens(usage.used)} used** of ${formatContextTokens(usage.window)} — ${formatContextTokens(usage.remaining)} left.`,
               ``,
               `- **This conversation** — ${formatContextTokens(usage.transcript)}`,
               `- **Instructions and your profile** — ${formatContextTokens(SYSTEM_OVERHEAD_TOKENS)}${skillLine}`,
@@ -1681,6 +1681,13 @@ export default function Advisor() {
     },
     skillCount: enabledSkillCount,
     artifactCount: artifacts.length,
+    user: {
+      name: profile?.full_name?.trim() || profile?.username?.trim() || 'Your account',
+      email: user?.email ?? null,
+      avatarUrl: profile?.avatar_url ?? null,
+      plan: `${planForTier(planTier).name} plan`,
+    },
+    onOpenProfile: () => navigate('/profile'),
   };
 
   return (
@@ -2196,7 +2203,7 @@ export default function Advisor() {
               onDragLeave={handleComposerDragLeave}
               onDrop={handleComposerDrop}
               className={cn(
-                'group relative isolate flex flex-col rounded-2xl border backdrop-blur-xl bg-card/70 shadow-lg transition-all',
+                'group relative isolate flex flex-col rounded-[1.75rem] border backdrop-blur-xl bg-card/70 shadow-lg transition-all',
                 'border-border/60 focus-within:border-accent/50 focus-within:shadow-xl',
                 isListening && 'border-destructive/50 ring-2 ring-destructive/20',
               )}
@@ -2206,10 +2213,10 @@ export default function Advisor() {
                   voice input, file drop and command palette all keep working.
                   Suppressed while recording so the destructive ring stays the
                   only thing the box is saying. */}
-              {!isListening && <PromptGlow radius="rounded-2xl" />}
+              {!isListening && <PromptGlow radius="rounded-[1.75rem]" />}
 
               {isDraggingFiles && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-accent/10 backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[1.75rem] border-2 border-dashed border-accent bg-accent/10 backdrop-blur-sm">
                   <span className="text-sm font-medium text-accent">Drop files to upload</span>
                 </div>
               )}

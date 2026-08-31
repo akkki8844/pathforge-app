@@ -16,7 +16,6 @@ import {
   type CourseworkReading,
   type ProofLine,
   type Reading,
-  type Runway,
   type ShapeReading,
   type SignalStanding,
 } from "@/lib/outcomesScoring";
@@ -52,25 +51,25 @@ export function SignalStandings({
   return (
     <Reveal delay={0.05}>
       <Panel flush>
-        <div className="flex flex-wrap items-start justify-between gap-4 p-5 pb-4 sm:p-6 sm:pb-4">
-          <PanelHead
-            eyebrow="Standings"
-            title="Every signal against the bar"
-            note={
-              <>
-                <Figure size="sm" className="text-foreground">
-                  {atBar}
-                </Figure>
-                <span className="ml-1 font-display text-[11px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-                  of {ranked.length} at bar
-                </span>
-              </>
-            }
-          />
-        </div>
-        <div className="flex items-center justify-between px-5 pb-2 sm:px-6">
+        <PanelHead
+          className="p-5 pb-4 sm:p-6 sm:pb-4"
+          eyebrow="Standings"
+          title="Every signal against the bar"
+          note={
+            <>
+              <Figure size="sm" className="text-foreground">
+                {atBar}
+              </Figure>
+              <span className="ml-1 font-cluely text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                of {ranked.length} at bar
+              </span>
+            </>
+          }
+        />
+        <div className="grid grid-cols-[minmax(0,1fr)_minmax(4rem,7rem)_3rem] items-center gap-x-3 px-5 pb-2 sm:gap-x-4 sm:px-6">
           <ColumnHead>Weakest first</ColumnHead>
-          <ColumnHead>{TIER_LABEL[tier]} standard</ColumnHead>
+          <ColumnHead className="text-center">{TIER_LABEL[tier]}</ColumnHead>
+          <ColumnHead className="text-right">Of bar</ColumnHead>
         </div>
         <Ledger className="border-t border-border">
           {ranked.map((s, i) => (
@@ -80,17 +79,15 @@ export function SignalStandings({
                 score={s.score}
                 bar={s.bar}
                 attainment={s.attainment}
-                note={s.reason}
                 index={i}
                 muted={!s.reported}
               />
             </LedgerCell>
           ))}
         </Ledger>
-        <p className="border-t border-border bg-card px-5 py-4 text-[12.5px] leading-relaxed text-muted-foreground sm:px-6">
-          The notch on each row is what this tier expects of that signal. A row can pass the
-          notch — clearing a bar by a distance is worth something, but it is capped, because
-          overshooting one signal does not repair a hole in another.
+        <p className="border-t border-border bg-card px-5 py-3 text-[12px] leading-relaxed text-muted-foreground sm:px-6">
+          The notch on each row is what this tier expects of that signal. Passing it is worth
+          something, but capped — overshooting one signal does not repair a hole in another.
         </p>
       </Panel>
     </Reveal>
@@ -132,7 +129,7 @@ export function PointsLedger({ reading }: { reading: Reading }) {
               <div className="grid grid-cols-[1fr_auto_auto] items-baseline gap-x-4">
                 <span
                   className={cn(
-                    "min-w-0 truncate font-display text-[15px] font-semibold tracking-tight",
+                    "min-w-0 truncate font-cluely text-[15px] font-semibold tracking-tight",
                     !c.counted && "text-muted-foreground"
                   )}
                 >
@@ -202,7 +199,7 @@ export function ProofLedger({ lines }: { lines: ProofLine[] }) {
             <Figure size="md" className="text-foreground">
               {verified}
             </Figure>
-            <span className="pb-1 font-display text-[12.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+            <span className="pb-1 font-cluely text-[12.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
               of {total} entries verified
             </span>
           </div>
@@ -214,8 +211,8 @@ export function ProofLedger({ lines }: { lines: ProofLine[] }) {
         </div>
 
         {total === 0 ? (
-          <p className="border-t border-border px-5 py-5 text-[15px] leading-relaxed text-muted-foreground sm:px-6">
-            Nothing on file yet. Every reading on this page starts from the record below.
+          <p className="border-t border-border px-5 py-5 text-[14px] leading-relaxed text-muted-foreground sm:px-6">
+            Nothing on file yet. Every reading on this page starts from your record.
           </p>
         ) : (
           <>
@@ -227,7 +224,7 @@ export function ProofLedger({ lines }: { lines: ProofLine[] }) {
               {lines.map((l) => (
                 <LedgerCell key={l.label} className="px-5 py-3 sm:px-6">
                   <div className="grid grid-cols-[1fr_auto] items-baseline gap-x-4">
-                    <span className="truncate font-display text-[15px] font-semibold tracking-tight">
+                    <span className="truncate font-cluely text-[15px] font-semibold tracking-tight">
                       {l.label}
                     </span>
                     <span className="shrink-0">
@@ -307,7 +304,7 @@ export function FileShape({ shape }: { shape: ShapeReading }) {
     <Reveal delay={0.05} className="h-full">
       <Panel className="flex h-full flex-col">
         <PanelHead eyebrow="Shape of the file" title={copy.title} />
-        <p className="mt-3 text-[15px] leading-relaxed text-muted-foreground">{copy.body}</p>
+        <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">{copy.body}</p>
         <div className="mt-auto grid grid-cols-2 gap-4 border-t border-border pt-5">
           <div>
             <div className="flex items-end gap-1.5">
@@ -381,7 +378,7 @@ export function CourseworkStanding({
           <Figure size="md" className={coursework.rce >= barRce ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}>
             {coursework.rce}
           </Figure>
-          <span className="pb-1 font-display text-[12.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
+          <span className="pb-1 font-cluely text-[12.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
             against {barRce} for {TIER_LABEL[tier]}
           </span>
         </div>
@@ -416,53 +413,10 @@ export function CourseworkStanding({
           </div>
         ) : (
           <p className="mt-auto border-t border-border pt-5 text-[13.5px] leading-relaxed text-muted-foreground">
-            No courses recorded. Add your timetable in the record below — it is the cheapest
+            No courses recorded. Add your timetable in your record — it is the cheapest
             evidence on the page to enter and it carries the largest single weight.
           </p>
         )}
-      </Panel>
-    </Reveal>
-  );
-}
-
-// ─── 6. Runway ───────────────────────────────────────────────────────────
-
-/**
- * Time left, reported and never scored.
- *
- * The old model made this a *signal* worth `monthsRemaining × 3` inside the
- * academics category, so a 9th grader with an empty file scored 100 on it. Age
- * is not evidence; it is the budget you have to produce some.
- */
-export function RunwayStanding({ runway }: { runway: Runway }) {
-  const terms = Math.max(0, Math.floor(runway.monthsLeft / 5));
-  return (
-    <Reveal delay={0.15} className="h-full">
-      <Panel className="flex h-full flex-col">
-        <PanelHead eyebrow="Runway" title="What you have left to build with" />
-
-        <div className="mt-4 flex items-end gap-2">
-          <Figure size="md" className="text-foreground">
-            {runway.monthsLeft}
-          </Figure>
-          <span className="pb-1 font-display text-[12.5px] font-bold uppercase tracking-[0.1em] text-muted-foreground">
-            months
-          </span>
-        </div>
-        <p className="mt-2 text-[15px] leading-relaxed text-muted-foreground">
-          Grade {runway.grade} now; applications close in autumn {runway.deadlineYear}. That is
-          about {terms} school {terms === 1 ? "term" : "terms"} of usable working time.
-        </p>
-
-        <p className="mt-auto border-t border-border pt-5 text-[13.5px] leading-relaxed text-muted-foreground">
-          {runway.monthsLeft >= 24
-            ? "Long enough to build something from nothing — a project, a role, a competition run, all of it. Depth is still available to you."
-            : runway.monthsLeft >= 12
-              ? "Enough for one sustained thing done properly, not four started. Choose now which one it is."
-              : runway.monthsLeft >= 5
-                ? "Too short to start something new that will read as sustained. Spend it proving what you have already done."
-                : "Applications are effectively here. Every hour is better spent on evidence and essays than on new activities."}
-        </p>
       </Panel>
     </Reveal>
   );

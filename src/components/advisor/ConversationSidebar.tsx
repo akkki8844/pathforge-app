@@ -17,6 +17,7 @@ import {
   Plus,
   Puzzle,
   Search,
+  Settings,
   Terminal,
   Trash2,
   X,
@@ -140,11 +141,109 @@ export interface ConversationSidebarProps {
   onOpenUsage: () => void;
   skillCount: number;
   artifactCount: number;
+  /** The footer identity block. Name is all that is required — everything
+   *  else degrades to initials and a plain "Account" line. */
+  user: {
+    name: string;
+    email?: string | null;
+    avatarUrl?: string | null;
+    plan?: string | null;
+  };
+  onOpenProfile: () => void;
   /** False renders the collapsed, icon-only rail (search/list/new-project
    *  hidden — a column of identical chat icons carries no information, so
    *  the rail only shows the parts that still mean something collapsed:
    *  "start a new chat" and the workspace icons below). */
   expanded?: boolean;
+}
+
+
+/**
+ * The identity block at the foot of the rail.
+ *
+ * The rail previously ended at the archive disclosure, so there was nothing in
+ * the advisor that said which account you were signed in as — you had to leave
+ * for /profile to find out. It also gives the two account destinations the
+ * "More" menu was carrying a permanent home, which is where anyone looks for
+ * them.
+ */
+function SidebarFooter({
+  user,
+  expanded,
+  onOpenProfile,
+  onOpenUsage,
+}: {
+  user: ConversationSidebarProps["user"];
+  expanded: boolean;
+  onOpenProfile: () => void;
+  onOpenUsage: () => void;
+}) {
+  const initials =
+    user.name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("") || "?";
+
+  const avatar = (
+    <span className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-full bg-secondary text-[11px] font-semibold text-foreground">
+      {user.avatarUrl ? (
+        <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </span>
+  );
+
+  return (
+    <div className="mt-auto border-t border-border p-2">
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            title={expanded ? undefined : user.name}
+            aria-label={`Account: ${user.name}`}
+            className={cn(
+              "flex w-full items-center rounded-lg py-1.5 transition-colors hover:bg-secondary/60",
+              expanded ? "gap-2.5 px-2 text-left" : "justify-center px-0",
+            )}
+          >
+            {avatar}
+            {expanded && (
+              <>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-medium">{user.name}</span>
+                  <span className="block truncate text-[11px] text-muted-foreground">
+                    {user.plan || "Account"}
+                  </span>
+                </span>
+                <MoreHorizontal className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              </>
+            )}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" side="top" className="w-56">
+          {user.email && (
+            <>
+              <div className="truncate px-2 py-1.5 text-[11px] text-muted-foreground">
+                {user.email}
+              </div>
+              <DropdownMenuSeparator />
+            </>
+          )}
+          <DropdownMenuItem onClick={onOpenProfile} className="gap-2 text-xs">
+            <Settings className="h-3.5 w-3.5" />
+            Profile &amp; settings
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onOpenUsage} className="gap-2 text-xs">
+            <Gauge className="h-3.5 w-3.5" />
+            Usage &amp; credits
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
 }
 
 export function ConversationSidebar(props: ConversationSidebarProps) {
@@ -172,6 +271,8 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
     onOpenUsage,
     skillCount,
     artifactCount,
+    user,
+    onOpenProfile,
   } = props;
 
   const [query, setQuery] = useState("");
@@ -470,6 +571,12 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
           <RailButton icon={Archive} label="Archived" onClick={() => setArchivedOpen(true)} expanded={false} />
           <RailButton icon={Gauge} label="Usage & credits" onClick={onOpenUsage} expanded={false} />
         </div>
+        <SidebarFooter
+          user={user}
+          expanded={false}
+          onOpenProfile={onOpenProfile}
+          onOpenUsage={onOpenUsage}
+        />
       </div>
     );
   }
@@ -789,6 +896,13 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
           </div>
         )}
       </ScrollArea>
+
+      <SidebarFooter
+        user={user}
+        expanded
+        onOpenProfile={onOpenProfile}
+        onOpenUsage={onOpenUsage}
+      />
     </>
   );
 }

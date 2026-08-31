@@ -11,11 +11,23 @@ import { formatContextTokens, type ContextUsage } from "@/lib/advisorContext";
  * news. This one counts down to `/compact`, which is a button, and which the
  * student can press.
  *
- * Deliberately a hairline rather than a filled bar. It shares a row with the
- * model and effort pickers — tracked-caps micro-labels — and the send button,
- * and a solid meter there reads as the most important control in the composer,
- * which it very much is not.
+ * The dial is Claude Code desktop's: a ring that fills clockwise from twelve
+ * o'clock as the window is consumed. A ring reads as a gauge at 14px, which a
+ * hairline bar does not — and it takes the width of a glyph rather than the
+ * width of a word, so it can sit in the composer's control row without
+ * competing with the send button.
+ *
+ * Every figure it states is in thousands. Percent answered "how full", which is
+ * the question the ring already answers by its shape; the number worth printing
+ * is how much room is actually left, and tokens are the unit that is.
  */
+
+/** Ring geometry. Stroke sits inside the box, so r + stroke/2 must clear it. */
+const SIZE = 16;
+const STROKE = 2.5;
+const R = (SIZE - STROKE) / 2;
+const CIRCUMFERENCE = 2 * Math.PI * R;
+
 export function ContextMeter({
   usage,
   onCompact,
@@ -28,6 +40,25 @@ export function ContextMeter({
 }) {
   const { pct, level, remaining, used, window: windowSize } = usage;
 
+  // A hair of fill at 0% so the ring never looks broken, and never a full
+  // circle short of actually full — an unclosed gap is the honest signal.
+  const filled = Math.max(0, Math.min(100, pct));
+  const offset = CIRCUMFERENCE * (1 - filled / 100);
+
+  const toneText =
+    level === "full"
+      ? "text-destructive"
+      : level === "warn"
+        ? "text-amber-600 dark:text-amber-500"
+        : "text-muted-foreground";
+
+  const toneRing =
+    level === "full"
+      ? "text-destructive"
+      : level === "warn"
+        ? "text-amber-500"
+        : "text-accent";
+
   return (
     <TooltipProvider delayDuration={200}>
       <Tooltip>
@@ -36,38 +67,52 @@ export function ContextMeter({
             type="button"
             onClick={onCompact}
             className={cn(
-              "group hidden select-none flex-col gap-1 rounded-md px-1 py-0.5 text-left sm:flex",
+              "group hidden select-none items-center gap-1.5 rounded-md px-1.5 py-1 text-left sm:inline-flex",
               "transition-colors hover:bg-muted/60",
               className,
             )}
-            aria-label={`Context window ${pct}% full. ${formatContextTokens(remaining)} tokens left. Compact the conversation.`}
+            aria-label={`Context window: ${formatContextTokens(used)} of ${formatContextTokens(
+              windowSize,
+            )} tokens used, ${formatContextTokens(remaining)} left. Compact the conversation.`}
           >
+            <svg
+              width={SIZE}
+              height={SIZE}
+              viewBox={`0 0 ${SIZE} ${SIZE}`}
+              className={cn("shrink-0 -rotate-90", toneRing)}
+              aria-hidden
+            >
+              <circle
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={R}
+                fill="none"
+                strokeWidth={STROKE}
+                className="stroke-foreground/15"
+              />
+              <circle
+                cx={SIZE / 2}
+                cy={SIZE / 2}
+                r={R}
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={STROKE}
+                strokeLinecap="round"
+                strokeDasharray={CIRCUMFERENCE}
+                strokeDashoffset={offset}
+                className="transition-[stroke-dashoffset,color] duration-500 ease-out"
+              />
+            </svg>
+
             <span
               className={cn(
                 "font-display text-[11px] font-bold uppercase leading-none tracking-[0.1em] tabular-nums transition-colors",
-                level === "full"
-                  ? "text-destructive"
-                  : level === "warn"
-                    ? "text-amber-600 dark:text-amber-500"
-                    : "text-muted-foreground",
+                toneText,
               )}
             >
               {/* Once it matters, say the thing to do rather than the number.
-                  "8% left" is a fact; "compact" is the instruction. */}
-              {level === "full" ? "Compact" : `${pct}% context`}
-            </span>
-            <span className="block h-px w-16 overflow-hidden rounded-full bg-foreground/15">
-              <span
-                className={cn(
-                  "block h-full rounded-full transition-[width,background-color] duration-500 ease-out",
-                  level === "full"
-                    ? "bg-destructive"
-                    : level === "warn"
-                      ? "bg-amber-500"
-                      : "bg-accent",
-                )}
-                style={{ width: `${pct}%` }}
-              />
+                  "4.2k left" is a fact; "compact" is the instruction. */}
+              {level === "full" ? "Compact" : `${formatContextTokens(remaining)} left`}
             </span>
           </button>
         </TooltipTrigger>

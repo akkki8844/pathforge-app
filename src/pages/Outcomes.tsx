@@ -1,10 +1,22 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2, Save } from "lucide-react";
+import { ChevronDown, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 import { EASE_OUT_EXPO } from "@/lib/motion";
-import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useOutcomesData,
   type EvidenceState,
@@ -22,54 +34,77 @@ import {
 import {
   computeReading,
   computeSignals,
+  generateGapTasks,
   proofLedger,
   rankSignals,
   readCoursework,
   readRunway,
   readShape,
   TIER_LABEL,
-  tierOf,
 } from "@/lib/outcomesScoring";
-import { listEntries, type RecordKind } from "@/lib/outcomesRecord";
-import { ColumnHead } from "@/components/outcomes/primitives";
+import { ColumnHead, Eyebrow, Title } from "@/components/outcomes/primitives";
 import { Verdict } from "@/components/outcomes/Verdict";
-import { SignalStandings } from "@/components/outcomes/Standings";
-import { SupportingDetail } from "@/components/outcomes/SupportingDetail";
-import { RecordEditor } from "@/components/outcomes/RecordEditor";
+import { GapWork } from "@/components/outcomes/GapWork";
 import {
-  FilterBar,
-  FilterSidebar,
-  type OutcomesFilters,
-  type RecordFilter,
-} from "@/components/outcomes/FilterSidebar";
+  CourseworkStanding,
+  FileShape,
+  PointsLedger,
+  ProofLedger,
+  SignalStandings,
+} from "@/components/outcomes/Standings";
+import { RecordEditor, type RecordFilter } from "@/components/outcomes/RecordEditor";
 
 /**
  * Outcomes.
  *
- * A student's evidence file, and the reading taken from it.
+ * Four blocks: the verdict, the work it implies, the signals behind it, and
+ * the record it is all computed from. The method is a fifth, closed.
  *
- * The page is split down the middle by the two questions it answers, and each
- * side only ever answers one of them. On the left, *what do I want to compare?*
- * — every control on the page, as labelled dropdowns in one panel. On the
- * right, *what is my result?* — the verdict, then what justifies it, and
- * nothing you can adjust.
+ * The version before this had eight — a verdict panel carrying its own
+ * calibration meter, the work, the standings, a "depth against breadth"
+ * reading, a runway reading, the record, and a method section holding three
+ * more — every one of them a full ruled card in Atlas cream with a serif
+ * headline, an explanatory paragraph and, in several cases, a second paragraph
+ * explaining why the first one is not a score. The information was right and
+ * the page was unusable: a student asking "am I on track, and what do I do"
+ * had to read about two thousand words of typeset argument to find out.
  *
- * The version before this had the two interleaved: the tier and grade selects
- * were buried inside the record editor, the record's own filter was a row of
- * eleven pills partway down the feed, and the reading arrived as seven panels
- * of figures competing for the same glance. A student wanting to re-read their
- * file against a different tier had to find a dropdown inside the thing they
- * were re-reading, and a student wanting their score had to identify it among
- * five other large numbers. Both problems were layout, not data: every
- * calculation here is the one that was here before.
+ * The cuts. Shape, runway and proof coverage were three panels stating one
+ * number each; they are three figures in a row inside the verdict now. The
+ * work printed every task fully open — objective, scope, four proof bullets,
+ * horizon, a status control — so its three-item shortlist ran to two screens;
+ * the tasks are one line each with the detail behind a chevron. Every signal
+ * row carried a sentence of explanation under its bar, which is a page of
+ * prose pretending to be a table. Nothing was removed from the model: every
+ * figure the old page computed is still computed and still shown.
+ *
+ * The look is Cluely's, using their own tokens and their own typeface — see
+ * `[data-cluely]` in `index.css` and `components/outcomes/primitives.tsx`.
+ * That attribute is on the wrapper below, which is the whole mechanism: every
+ * shadcn control inside this route inherits the palette, and nothing outside
+ * it changes.
  *
  * All scoring lives in `@/lib/outcomesScoring` — see that file for what each
  * scale is calibrated against and why.
  */
 
+const TIER_OPTIONS = [
+  { value: "ivy", label: "Ivy / Top 10" },
+  { value: "top-20", label: "Top 20" },
+  { value: "top-50", label: "Top 50" },
+  { value: "state", label: "State flagships" },
+];
+
 export default function Outcomes() {
   const reduced = useReducedMotion();
-  const { profile, loading, saving, updateProfile } = useOutcomesData();
+  const {
+    profile,
+    taskStates,
+    loading,
+    saving,
+    updateProfile,
+    updateTaskStates,
+  } = useOutcomesData();
   const { weights } = useScoringWeights();
   const {
     repos: githubRepos,
@@ -78,13 +113,8 @@ export default function Outcomes() {
     refresh: refreshGithub,
   } = useGitHubRepos();
   const [githubMerged, setGithubMerged] = useState(false);
-  // The page opens on the record, and the choice holds for the visit once they
-  // switch to the reading.
-  const [view, setView] = useState<"record" | "reading">("record");
   const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
-  // Mobile only: the sidebar as a drawer. Closed on every load — a filter panel
-  // that opens itself is a filter panel between you and your score.
-  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [methodOpen, setMethodOpen] = useState(false);
 
   // Pull GitHub repositories into the projects list, deduped by URL.
   const importGithubRepos = useCallback(
@@ -144,40 +174,18 @@ export default function Outcomes() {
   const shape = useMemo(() => readShape(signals, profile), [signals, profile]);
   const runway = useMemo(() => readRunway(profile.gradeLevel), [profile.gradeLevel]);
   const coursework = useMemo(() => readCoursework(profile), [profile]);
+  const tasks = useMemo(() => generateGapTasks(signals, reading), [signals, reading]);
   const academicsBar = reading.categories.find((c) => c.key === "academics")?.bar ?? 95;
-
-  // Counts per kind, for the record filter's options. Computed here rather than
-  // inside the editor because the control that needs them now lives elsewhere.
-  const entries = useMemo(() => listEntries(profile), [profile]);
-  const counts = useMemo(() => {
-    const map = new Map<RecordKind, number>();
-    for (const e of entries) map.set(e.spec.id, (map.get(e.spec.id) ?? 0) + 1);
-    return map;
-  }, [entries]);
 
   const update = useCallback(
     (updater: (prev: OutcomesProfile) => OutcomesProfile) => updateProfile(updater),
     [updateProfile]
   );
 
-  const filters: OutcomesFilters = {
-    view,
-    targetTier: profile.targetTier,
-    gradeLevel: profile.gradeLevel,
-    testType: profile.testType,
-    testScore: profile.testScore,
-    recordFilter,
-  };
-
-  const sidebar = (
-    <FilterSidebar
-      filters={filters}
-      counts={counts}
-      entryTotal={entries.length}
-      onView={setView}
-      onRecordFilter={setRecordFilter}
-      onProfile={update}
-    />
+  const setTaskState = useCallback(
+    (taskId: string, state: EvidenceState) =>
+      updateTaskStates((prev) => ({ ...prev, [taskId]: state })),
+    [updateTaskStates]
   );
 
   if (loading) {
@@ -196,142 +204,175 @@ export default function Outcomes() {
         path="/outcomes"
       />
 
-      {saving && (
-        <div className="fixed right-4 top-20 z-50 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-sm">
-          <Save className="h-3.5 w-3.5 animate-pulse text-primary" />
-          <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-            Saving
-          </span>
-        </div>
-      )}
-
-      {/* Matches the dashboard's measure — deliberately narrower than the app's
-          max-w-7xl, so long lines of reasoning stay readable. */}
-      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1180px] px-4 pb-24 pt-8 sm:px-6">
-        <motion.header
-          initial={reduced ? false : { opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
-          className="mb-6"
-        >
-          <h1 className="max-w-[16ch] text-balance font-serif text-[clamp(2rem,8vw,3.9rem)] leading-[0.95] tracking-[-0.035em]">
-            Your record, read honestly.
-          </h1>
-
-          <div className="dash-double-rule mt-5" aria-hidden />
-        </motion.header>
-
-        {/*
-         * The split.
-         *
-         * 12 columns, four to the controls and eight to the answer — the
-         * dashboard's bed and its ratio, so the two pages read as one product.
-         * Below `lg` there is no split at all: the controls collapse to a
-         * single summary bar and the answer takes the full width, because a
-         * stacked sidebar on a phone is just the old page with extra scrolling.
-         */}
-        <div className="lg:grid lg:grid-cols-12 lg:gap-[0.65rem]">
-          {/* ── Left: what do I want to compare? ──────────────────────── */}
-          <aside className="hidden lg:col-span-4 lg:block xl:col-span-3">
-            {/* Sticky under the app's own navigation so the controls stay
-                reachable while the answer is scrolled. */}
-            <div className="sticky top-[calc(env(safe-area-inset-top,0px)+5rem)]">{sidebar}</div>
-          </aside>
-
-          <div className="mb-3 lg:hidden">
-            <FilterBar filters={filters} onOpen={() => setFiltersOpen(true)} />
+      {/*
+       * `data-cluely` is the entire theming mechanism — see `index.css`.
+       *
+       * Custom properties inherit down the *DOM* tree, and Radix portals its
+       * popovers to `document.body`, which is outside this element. So the
+       * same token block is also published under `.cly-scope`, and every
+       * `SelectContent` on this route carries that class — without it a
+       * dropdown opened from a Cluely-white panel renders in the app's cream.
+       */}
+      <div data-cluely className="min-h-svh bg-background font-cluely">
+        {saving && (
+          <div className="fixed right-4 top-20 z-50 flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 shadow-sm">
+            <Save className="h-3.5 w-3.5 animate-pulse text-primary" />
+            <span className="font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
+              Saving
+            </span>
           </div>
+        )}
 
-          <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-            <SheetContent
-              side="left"
-              className="w-[min(22rem,88vw)] overflow-y-auto p-4"
-            >
-              <SheetTitle className="sr-only">Outcomes filters</SheetTitle>
-              {sidebar}
-            </SheetContent>
-          </Sheet>
+        <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1120px] px-4 pb-24 pt-8 sm:px-6">
+          <motion.header
+            initial={reduced ? false : { opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
+            className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-5"
+          >
+            <div className="min-w-0">
+              <Eyebrow>Outcomes</Eyebrow>
+              <h1 className="mt-2 max-w-[16ch] text-balance font-cluely text-[clamp(1.9rem,6.5vw,2.9rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
+                Your record, read honestly.
+              </h1>
+            </div>
 
-          {/* ── Right: what is my result? ─────────────────────────────── */}
-          <main className="min-w-0 lg:col-span-8 xl:col-span-9">
-            {view === "record" ? (
-              <div className="space-y-[0.65rem]">
-                <RecordEditor
-                  profile={profile}
-                  update={update}
-                  githubLoading={githubLoading}
-                  onSyncGithub={syncGithub}
-                  filter={recordFilter}
-                  onFilter={setRecordFilter}
-                />
-                <p className="px-1 pt-1 text-[13.5px] leading-relaxed text-muted-foreground">
-                  Everything saves as you type. Switch to{" "}
-                  <button
-                    type="button"
-                    onClick={() => setView("reading")}
-                    className="text-foreground underline underline-offset-2"
+            {/*
+             * The page's one control.
+             *
+             * Target tier is the only thing here that changes the answer
+             * without changing the student. It used to share a permanent
+             * left-hand panel with grade, test type, test score, a view
+             * switch, a record filter, a reset button and a row of state
+             * chips — eight controls for a page with one real setting.
+             */}
+            <div className="shrink-0">
+              <ColumnHead>Read against</ColumnHead>
+              <div className="mt-1.5">
+                <Select
+                  value={profile.targetTier}
+                  onValueChange={(v) => update((p) => ({ ...p, targetTier: v }))}
+                >
+                  <SelectTrigger
+                    aria-label="Target tier"
+                    className="h-10 w-[13.5rem] rounded-[0.625rem] font-cluely text-[14px] font-medium tracking-[-0.01em]"
                   >
-                    the reading
-                  </button>{" "}
-                  to see what this record scores against your target tier.
-                </p>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="cly-scope font-cluely">
+                    {TIER_OPTIONS.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            ) : (
-              <div className="space-y-[0.65rem]">
-                {/* The answer, and the confidence in it. Everything below this
-                    is subordinate to it by construction: one hero panel, then
-                    the standings, then one detail panel at a time. */}
-                <Verdict reading={reading} ranked={ranked} proof={proof} runway={runway} />
+            </div>
+          </motion.header>
 
-                <SignalStandings ranked={ranked} tier={reading.tier} />
+          {/*
+           * Four blocks, in argument order: what the file says, what to do
+           * about it, what is behind that, and the file itself. The method is
+           * last and closed.
+           */}
+          <div className="space-y-3">
+            <Verdict
+              reading={reading}
+              ranked={ranked}
+              proof={proof}
+              runway={runway}
+              shape={shape}
+            />
 
-                <div className="pt-1">
-                  <SupportingDetail
-                    reading={reading}
-                    proof={proof}
-                    shape={shape}
+            <GapWork tasks={tasks} states={taskStates} onStateChange={setTaskState} />
+
+            <SignalStandings ranked={ranked} tier={reading.tier} />
+
+            <div id="your-record" className="scroll-mt-24">
+              <RecordEditor
+                profile={profile}
+                update={update}
+                githubLoading={githubLoading}
+                onSyncGithub={syncGithub}
+                filter={recordFilter}
+                onFilter={setRecordFilter}
+              />
+            </div>
+
+            {/*
+             * The method, closed.
+             *
+             * Everything in here answers "how did you get that number", which
+             * a student asks once and then stops asking. Closed is not hidden:
+             * the trigger says exactly what is inside, and nothing in here is
+             * needed in order to act on the page.
+             */}
+            <Collapsible open={methodOpen} onOpenChange={setMethodOpen}>
+              <CollapsibleTrigger className="group flex w-full items-center justify-between gap-4 rounded-[0.875rem] border border-border bg-card px-5 py-4 text-left transition-colors hover:bg-muted/50 sm:px-6">
+                <span className="min-w-0">
+                  <Eyebrow>The method</Eyebrow>
+                  <Title className="mt-1.5">How this reading is calculated</Title>
+                  <span className="mt-1 block text-[13px] leading-snug text-muted-foreground">
+                    Where the points sit, what carries proof, your coursework, and what the bar
+                    actually is.
+                  </span>
+                </span>
+                <ChevronDown
+                  className={cn(
+                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                    methodOpen && "rotate-180"
+                  )}
+                  aria-hidden
+                />
+              </CollapsibleTrigger>
+
+              <CollapsibleContent className="space-y-3 pt-3">
+                <PointsLedger reading={reading} />
+
+                <div className="grid gap-3 lg:grid-cols-2">
+                  <ProofLedger lines={proof} />
+                  <CourseworkStanding
                     coursework={coursework}
-                    runway={runway}
-                    academicsBar={academicsBar}
+                    bar={academicsBar}
+                    tier={reading.tier}
                   />
                 </div>
 
-                {/*
-                 * How the reading is built. A student is entitled to know what
-                 * the number is doing before they act on it. Last on the page
-                 * and set as running prose rather than as a panel of figures,
-                 * because it is the footnote to everything above, not another
-                 * reading.
-                 */}
-                <div className="rounded-2xl border border-foreground/[0.14] bg-card/70 p-5 sm:p-6">
-                  <ColumnHead>How this is calculated</ColumnHead>
+                {/* Shape is named in the verdict as one word; this is the
+                    paragraph behind that word, which is advice rather than a
+                    reading and so belongs with the method. */}
+                <FileShape shape={shape} />
+
+                <div className="rounded-[0.875rem] border border-border bg-card p-5 sm:p-6">
+                  <ColumnHead>What the bar is</ColumnHead>
                   <div className="mt-4 grid gap-x-10 gap-y-4 sm:grid-cols-2">
-                    <p className="max-w-[46ch] text-[13.5px] leading-relaxed text-muted-foreground">
+                    <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">100 is the bar, not the maximum.</span>{" "}
                       Every figure is scored against the evidence profile Pathforge holds{" "}
-                      {TIER_LABEL[reading.tier]} applicants to. Change your target tier on the
-                      left and the bars move; your file does not.
+                      {TIER_LABEL[reading.tier]} applicants to. Change the tier at the top of the
+                      page and the bars move; your file does not.
                     </p>
-                    <p className="max-w-[46ch] text-[13.5px] leading-relaxed text-muted-foreground">
+                    <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">Nothing here is a percentile.</span>{" "}
                       Pathforge holds no admitted-student cohort, so it cannot rank you inside
                       one. The bars are a published standard and are named as such.
                     </p>
-                    <p className="max-w-[46ch] text-[13.5px] leading-relaxed text-muted-foreground">
+                    <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">Proof beats claims.</span> A verified
                       entry counts in full, submitted-but-unchecked proof at 40%, and a typed
                       claim at almost nothing — which is what calibration is reporting.
                     </p>
-                    <p className="max-w-[46ch] text-[13.5px] leading-relaxed text-muted-foreground">
+                    <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">Time is not a score.</span> Being in an
-                      earlier grade gives you runway, not readiness, so it is reported
-                      separately and never added to your reading.
+                      earlier grade gives you runway, not readiness, so it is reported separately
+                      and never added to your reading.
                     </p>
                   </div>
                 </div>
-              </div>
-            )}
-          </main>
+              </CollapsibleContent>
+            </Collapsible>
+          </div>
         </div>
       </div>
     </>

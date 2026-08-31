@@ -6,7 +6,7 @@ import { Seo } from "@/components/Seo";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useAuth } from "@/contexts/AuthContext";
 import SpecularLink from "@/components/ui/specular/SpecularLink";
-import { LayeredText } from "@/components/ui/layered-text";
+import MultiOrbitSemiCircle from "@/components/ui/multi-orbit-semi-circle";
 
 const MotionLink = motion.create(Link);
 const MotionSpecularLink = motion.create(SpecularLink);
@@ -304,14 +304,40 @@ export default function Index() {
           </motion.div>
         </section>
 
+        {/*
+          * What replaced "six rules we never break".
+          *
+          * The heading promised six rules and rendered an isometric word-stack
+          * reading INFINITE / PROGRESS / INNOVATION / FUTURE / DREAMS /
+          * ACHIEVEMENT instead — six words, no rules, and animated on
+          * mouse-enter only, so there was no keyboard or touch equivalent for
+          * the one interaction it had.
+          *
+          * What a student wants to know at this point on the page is whether
+          * their file will talk to the things they already use. That is
+          * checkable, so it is shown instead.
+          */}
         <section className="atlas-house atlas-wrap" aria-labelledby="house-title">
           <motion.div className="atlas-section-heading" {...reveal}>
-            <p>The House Style</p>
+            <p>Connected</p>
             <h2 id="house-title">
-              Six rules we <em>never</em> break.
+              Your file talks to <em>everything</em> else.
             </h2>
           </motion.div>
-          <LayeredText />
+
+          <motion.div className="atlas-orbit" {...reveal}>
+            <ul className="atlas-orbit-legend">
+              <li>
+                <i aria-hidden />
+                Available now
+              </li>
+              <li>
+                <i aria-hidden />
+                On the roadmap
+              </li>
+            </ul>
+            <MultiOrbitSemiCircle />
+          </motion.div>
         </section>
 
         <section className="atlas-sister atlas-wrap" aria-labelledby="sister-title">

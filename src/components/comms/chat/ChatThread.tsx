@@ -28,6 +28,7 @@ import {
   type ChatMessage,
 } from "@/hooks/comms/useMessages";
 import { useConversationMembers } from "@/hooks/comms/useConversations";
+import { AvatarCircles } from "@/components/ui/avatar-circles";
 import type { ConversationListItem } from "@/hooks/comms/useConversations";
 
 /**
@@ -100,6 +101,16 @@ export function ChatThread({
   const people = useMemo<PersonMap>(
     () => ({ ...listPeople, ...threadPeople }),
     [listPeople, threadPeople],
+  );
+
+  /** Member photos for the header stack, capped so it cannot wrap. */
+  const pictured = useMemo(
+    () =>
+      memberIds
+        .map((id) => people[id]?.avatar_url)
+        .filter((url): url is string => !!url)
+        .slice(0, 4),
+    [memberIds, people],
   );
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
@@ -286,6 +297,26 @@ export function ChatThread({
             {subtitle}
           </p>
         </div>
+        {/*
+         * Who is in here, at the far end of the header.
+         *
+         * Only members with a real photo are pictured; everyone else folds into
+         * the count, which is both the honest rendering and the reason the
+         * stack never degrades into a wall of identical initials. Hidden on a
+         * phone, where the header already carries a back button, an avatar, two
+         * lines of text and the info control.
+         */}
+        {conversation.kind !== "dm" && memberIds.length > 0 && (
+          <AvatarCircles
+            className="hidden shrink-0 md:flex"
+            size="sm"
+            avatarUrls={pictured}
+            numPeople={memberIds.length - pictured.length}
+            onMoreClick={onOpenDetails}
+            moreLabel={`${memberIds.length} members. Open conversation details.`}
+          />
+        )}
+
         {onOpenDetails && (
           <Button
             variant="ghost"

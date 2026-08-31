@@ -29,6 +29,10 @@ export default {
         // loaded anywhere in the app, so every `font-serif` figure and heading
         // was silently rendering as Georgia while claiming to be editorial.
         serif: ['"Fraunces Variable"', "Fraunces", "ui-serif", "Georgia", "serif"],
+        // Geist — Cluely's face, self-hosted from their desktop bundle and
+        // @font-face'd in index.css. Used by the Outcomes route only, which is
+        // why it is its own family rather than a change to `sans`/`display`.
+        cluely: ['"Geist Variable"', "Geist", "Inter", "system-ui", "sans-serif"],
         // The printed résumé wants a book serif, not a display one. Instrument
         // Serif is lazy-loaded by that route alone (see Resume.tsx).
         document: ['"Instrument Serif"', "ui-serif", "Georgia", "serif"],

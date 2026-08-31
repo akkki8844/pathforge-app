@@ -62,7 +62,7 @@ function FieldLabel({ children, htmlFor }: { children: string; htmlFor?: string 
   return (
     <Label
       htmlFor={htmlFor}
-      className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground"
+      className="font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground"
     >
       {children}
     </Label>
@@ -127,7 +127,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
           <SelectTrigger id={inputId} className={cn("mt-1.5 w-full min-w-0", FIELD)}>
             <SelectValue placeholder={field.placeholder} />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="cly-scope font-cluely">
             {(field.options ?? []).map((o) => (
               <SelectItem key={o.value} value={o.value}>
                 {o.label}
@@ -165,12 +165,12 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
     <article className={cn("bg-card px-5 py-5 sm:px-6", editing && "bg-muted/30")}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <ColumnHead>{spec.label}</ColumnHead>
-        <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+        <span className="font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
           {datelineOf(row)}
         </span>
       </div>
 
-      <h3 className="mt-2 text-balance font-display text-[16px] font-semibold leading-snug tracking-[-0.01em] sm:text-base">
+      <h3 className="mt-2 text-balance font-cluely text-[16px] font-semibold leading-snug tracking-[-0.01em] sm:text-base">
         {title || (
           <span className="text-muted-foreground">Untitled {spec.label.toLowerCase()}</span>
         )}
@@ -194,7 +194,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
       <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
         <span
           className={cn(
-            "font-display text-[11px] font-bold uppercase tracking-[0.14em]",
+            "font-cluely text-[11px] font-semibold uppercase tracking-[0.11em]",
             // One ink for proved, muted for everything short of it. Nothing here
             // is wrong, so nothing here is amber.
             state === "verified" ? "text-foreground" : "text-muted-foreground"
@@ -208,7 +208,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
             href={link}
             target="_blank"
             rel="noreferrer noopener"
-            className="group inline-flex items-center gap-1 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-primary"
+            className="group inline-flex items-center gap-1 font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-primary"
           >
             Open the evidence
             <ArrowUpRight className="h-3 w-3 transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
@@ -216,7 +216,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
         )}
 
         {fromPlan && (
-          <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
+          <span className="font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
             From your plan
           </span>
         )}
@@ -226,7 +226,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
           onClick={editing ? onClose : onOpen}
           aria-expanded={editing}
           aria-controls={`entry-${id}-fields`}
-          className="ml-auto font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
+          className="ml-auto font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground"
         >
           {editing ? "Done" : "Edit"}
         </button>
@@ -320,7 +320,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
                     <SelectTrigger id={`entry-${id}-proof`} className={cn("mt-1.5 w-full min-w-0", FIELD)}>
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="cly-scope font-cluely">
                       {EVIDENCE_ORDER.map((s) => (
                         <SelectItem key={s} value={s}>
                           {EVIDENCE_LABEL[s]}
@@ -335,7 +335,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-9 px-2 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground hover:text-destructive"
+                  className="h-9 px-2 font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground hover:text-destructive"
                   onClick={onRemove}
                 >
                   Remove this entry
