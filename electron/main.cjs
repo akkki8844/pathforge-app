@@ -315,6 +315,13 @@ if (!app.requestSingleInstanceLock()) {
   // it must not be handed a downloaded NSIS installer.
   const IS_PORTABLE = !!process.env.PORTABLE_EXECUTABLE_DIR;
 
+  // Electron sets this inside an MSIX/AppX package, which is how the Microsoft
+  // Store ships us. A Store install is updated by the Store: the package is
+  // immutable and its contents are signed by Microsoft, so electron-updater
+  // would download an NSIS installer that the container cannot apply and then
+  // report a failure the user can do nothing about.
+  const IS_WINDOWS_STORE = process.windowsStore === true;
+
   function setupAutoUpdater() {
     autoUpdater.autoDownload = true;
     // Fallback safety net: if the user never clicks "Restart to update", the
@@ -357,6 +364,7 @@ if (!app.requestSingleInstanceLock()) {
   }
 
   ipcMain.handle("pathforge:install-update", () => {
+    if (IS_WINDOWS_STORE) return;
     autoUpdater.quitAndInstall();
   });
 
@@ -389,7 +397,13 @@ if (!app.requestSingleInstanceLock()) {
     // builds a zip alongside the dmg — electron-updater applies the zip, not
     // the disk image). The portable Windows build is excluded because it has
     // no installation to replace.
-    if (app.isPackaged && !IS_PORTABLE) setupAutoUpdater();
+    if (app.isPackaged && !IS_PORTABLE && !IS_WINDOWS_STORE) {
+      setupAutoUpdater();
+    } else if (IS_WINDOWS_STORE) {
+      // Say so once the page is actually listening, so a renderer waiting on
+      // an update status is not left spinning on a check that will never run.
+      mainWindow.webContents.once("did-finish-load", () => forwardUpdateStatus("not-available"));
+    }
 
     app.on("activate", () => {
       if (BrowserWindow.getAllWindows().length === 0) mainWindow = createWindow(startUrl);

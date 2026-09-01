@@ -1,0 +1,63 @@
+name: Build Microsoft Store packages
+
+# Manual only. The Store packages are not part of the tagged release: they are
+# uploaded to Partner Center by hand, they carry no signature (Microsoft
+# re-signs them during certification), and publishing them to a GitHub Release
+# next to the NSIS installer would put a file nobody can install on the
+# download page.
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag or branch to build (defaults to the default branch)"
+        required: false
+
+jobs:
+  appx:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - run: npm ci
+
+      - name: Check the Partner Center identity is configured
+        shell: bash
+        run: |
+          # These come from Partner Center → Product management → Product
+          # identity. A missing one produces a package that builds fine and is
+          # then rejected at upload, so fail here with a useful message
+          # instead. scripts/build-appx.mjs checks too; this just fails before
+          # spending ten minutes on the build.
+          missing=""
+          for v in APPX_IDENTITY_NAME APPX_PUBLISHER APPX_PUBLISHER_DISPLAY_NAME; do
+            if [ -z "${!v}" ]; then missing="$missing $v"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "Missing repository secrets:$missing"
+            echo "Add them under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+        env:
+          APPX_IDENTITY_NAME: ${{ secrets.APPX_IDENTITY_NAME }}
+          APPX_PUBLISHER: ${{ secrets.APPX_PUBLISHER }}
+          APPX_PUBLISHER_DISPLAY_NAME: ${{ secrets.APPX_PUBLISHER_DISPLAY_NAME }}
+
+      - run: npm run dist:store
+        env:
+          APPX_IDENTITY_NAME: ${{ secrets.APPX_IDENTITY_NAME }}
+          APPX_PUBLISHER: ${{ secrets.APPX_PUBLISHER }}
+          APPX_PUBLISHER_DISPLAY_NAME: ${{ secrets.APPX_PUBLISHER_DISPLAY_NAME }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: store-packages
+          path: release/*.appx
+          if-no-files-found: error
+          retention-days: 14

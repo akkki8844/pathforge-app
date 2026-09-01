@@ -3,7 +3,7 @@
   "productName": "Pathforge",
   "private": true,
   "version": "1.0.5",
-  "description": "Pathforge desktop app — college application readiness, as a native desktop build for Windows and macOS.",
+  "description": "Pathforge desktop app \u2014 college application readiness, as a native desktop build for Windows and macOS.",
   "author": {
     "name": "Pathforge"
   },
@@ -21,7 +21,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "dist:mac": "npm run build:web && electron-builder --mac",
-    "dist:mac:dir": "npm run build:web && electron-builder --mac --dir"
+    "dist:mac:dir": "npm run build:web && electron-builder --mac --dir",
+    "appx:assets": "node scripts/generate-appx-assets.mjs",
+    "dist:store": "npm run build:web && node scripts/build-appx.mjs"
   },
   "build": {
     "appId": "tech.pathforge.desktop",
@@ -33,7 +35,9 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "package.json"
+      "package.json",
+      "!node_modules/**/*",
+      "node_modules/{argparse,builder-util-runtime,debug,electron-updater,fs-extra,graceful-fs,js-yaml,jsonfile,lazy-val,lodash.escaperegexp,lodash.isequal,ms,sax,semver,tiny-typed-emitter,universalify}/**/*"
     ],
     "publish": {
       "provider": "github",
@@ -77,6 +81,20 @@
     },
     "portable": {
       "artifactName": "Pathforge-Portable.${ext}"
+    },
+    "appx": {
+      "applicationId": "Pathforge",
+      "displayName": "Pathforge",
+      "backgroundColor": "#ffffff",
+      "languages": [
+        "en-US"
+      ],
+      "showNameOnTiles": false,
+      "setBuildNumber": false,
+      "electronUpdaterAware": false,
+      "minVersion": "10.0.17763.0",
+      "maxVersionTested": "10.0.26100.0",
+      "artifactName": "Pathforge-${version}-${arch}.${ext}"
     },
     "mac": {
       "icon": "build/icon.png",
@@ -218,6 +236,7 @@
     "eslint-plugin-react-refresh": "^0.4.20",
     "globals": "^15.15.0",
     "postcss": "^8.5.6",
+    "sharp": "^0.35.4",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
