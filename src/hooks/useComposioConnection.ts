@@ -9,8 +9,15 @@ export interface ComposioConnection {
   updated_at: string;
 }
 
-/** Composio-managed connectors this app currently knows how to offer. */
-export type ComposioToolkit = "gmail";
+/**
+ * Composio-managed connectors this app knows how to offer.
+ *
+ * The catalogue of everything except Gmail lives in
+ * `src/lib/connectors/composioApps.ts`; the same slugs are re-checked
+ * server-side in `composio-connect-init`, which is the list that actually
+ * decides what can be connected.
+ */
+export type ComposioToolkit = string;
 
 export function useComposioConnection(toolkit: ComposioToolkit = "gmail") {
   const [connection, setConnection] = useState<ComposioConnection | null>(null);

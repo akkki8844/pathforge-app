@@ -2,14 +2,185 @@
 // To take ownership, delete this banner line; the plugin then leaves the file alone.
 // supabase function: mcp
 // Bundled from src/lib/mcp/index.ts by @lovable.dev/mcp-js.
+// src/lib/mcp/client.ts
+import { createClient as createClient5 } from "npm:@supabase/supabase-js@^2.108.2";
+function supabaseKey5() {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
+function sb5(ctx) {
+  return createClient5(process.env.SUPABASE_URL, supabaseKey5(), {
+    global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
+    auth: { persistSession: false, autoRefreshToken: false }
+  });
+}
+function notAuthenticated() {
+  return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+}
+function failed(message) {
+  return { content: [{ type: "text", text: message }], isError: true };
+}
+function ok(payload) {
+  return {
+    content: [{ type: "text", text: JSON.stringify(payload, null, 2) }],
+    structuredContent: payload
+  };
+}
+
+// src/lib/mcp/tools/list-tasks.ts
+import { defineTool as defineTool5 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var list_tasks_default = defineTool5({
+  name: "list_tasks",
+  title: "List my tasks",
+  description: "List the signed-in student's open Routine tasks, soonest deadline first, with the overdue ones separated out. Use this before suggesting what they should work on so the advice matches what they have actually planned.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const { data, error } = await sb5(ctx).from("routine_tasks").select("id,title,description,category,priority,status,due_at,estimated_minutes,goal_id").eq("user_id", ctx.getUserId()).neq("status", "done").order("due_at", { ascending: true, nullsFirst: false }).limit(50);
+    if (error) return failed(error.message);
+    const now = Date.now();
+    const rows = data ?? [];
+    const overdue = rows.filter((t) => t.due_at && +new Date(t.due_at) < now);
+    const upcoming = rows.filter((t) => t.due_at && +new Date(t.due_at) >= now);
+    const undated = rows.filter((t) => !t.due_at);
+    return ok({ open_count: rows.length, overdue, upcoming, undated });
+  }
+});
+
+// src/lib/mcp/tools/get-schedule.ts
+import { defineTool as defineTool6 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+var get_schedule_default = defineTool6({
+  name: "get_schedule",
+  title: "Get my schedule",
+  description: "Fetch the signed-in student's weekly class timetable and their calendar events for the next fourteen days. Use it to know when they are actually free before proposing study time.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const client = sb5(ctx);
+    const userId = ctx.getUserId();
+    const now = new Date();
+    const horizon = new Date(now.getTime() + 14 * 864e5);
+    const [classesRes, eventsRes] = await Promise.all([
+      client.from("routine_classes").select("id,subject,teacher,location,days_of_week,start_time,end_time,notes").eq("user_id", userId).eq("is_active", true),
+      client.from("routine_events").select("id,title,description,category,location,starts_at,ends_at,all_day").eq("user_id", userId).gte("starts_at", now.toISOString()).lte("starts_at", horizon.toISOString()).order("starts_at", { ascending: true })
+    ]);
+    if (classesRes.error) return failed(classesRes.error.message);
+    if (eventsRes.error) return failed(eventsRes.error.message);
+    const classes = (classesRes.data ?? []).map((c) => ({
+      ...c,
+      days: (c.days_of_week ?? []).map((d) => DAYS[d] ?? String(d))
+    }));
+    const todayIndex = now.getDay();
+    return ok({
+      timezone_note: "Class times are stored as local wall-clock times; event times are ISO timestamps.",
+      classes,
+      classes_today: classes.filter((c) => (c.days_of_week ?? []).includes(todayIndex)),
+      events_next_14_days: eventsRes.data ?? []
+    });
+  }
+});
+
+// src/lib/mcp/tools/list-goals.ts
+import { defineTool as defineTool7 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var list_goals_default = defineTool7({
+  name: "list_goals",
+  title: "List my goals",
+  description: "List the signed-in student's Routine goals with their milestones, so advice can be tied to targets they have already set rather than new ones invented for them.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const client = sb5(ctx);
+    const { data: goals, error } = await client.from("routine_goals").select("id,title,description,category,priority,status,target_date,progress_override,completed_at").eq("user_id", ctx.getUserId()).order("target_date", { ascending: true, nullsFirst: false }).limit(50);
+    if (error) return failed(error.message);
+    const ids = (goals ?? []).map((g) => g.id);
+    let milestones = [];
+    if (ids.length > 0) {
+      const { data: ms, error: msErr } = await client.from("routine_goal_milestones").select("*").in("goal_id", ids);
+      if (msErr) return failed(msErr.message);
+      milestones = ms ?? [];
+    }
+    return ok({ goals: goals ?? [], milestones });
+  }
+});
+
+// src/lib/mcp/tools/list-applications.ts
+import { defineTool as defineTool8 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var list_applications_default = defineTool8({
+  name: "list_applications",
+  title: "List my applications and recommenders",
+  description: "Fetch the signed-in student's saved college applications and their recommender requests, with status and due dates. Report only what is returned here — do not estimate admission chances or state deadlines that are not in the data.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const client = sb5(ctx);
+    const userId = ctx.getUserId();
+    const [appsRes, recRes] = await Promise.all([
+      client.from("full_applications").select("id,university,status,updated_at").eq("user_id", userId).order("updated_at", { ascending: false }).limit(50),
+      client.from("recommenders").select("id,name,subject,status,due_date,submitted_at").eq("user_id", userId).order("due_date", { ascending: true, nullsFirst: false })
+    ]);
+    if (appsRes.error) return failed(appsRes.error.message);
+    if (recRes.error) return failed(recRes.error.message);
+    return ok({ applications: appsRes.data ?? [], recommenders: recRes.data ?? [] });
+  }
+});
+
+// src/lib/mcp/tools/get-weekly-checkin.ts
+import { defineTool as defineTool9 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var get_weekly_checkin_default = defineTool9({
+  name: "get_weekly_checkin",
+  title: "Get my recent weekly check-ins",
+  description: "Fetch the signed-in student's last eight weekly check-ins: morale, what they said they got done, and their own reflection. This is their account of the week in their own words — quote it rather than characterising their state from anywhere else.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const { data, error } = await sb5(ctx).from("weekly_checkins").select("week_start,morale,progress,reflection,updated_at").eq("user_id", ctx.getUserId()).order("week_start", { ascending: false }).limit(8);
+    if (error) return failed(error.message);
+    return ok({ checkins: data ?? [] });
+  }
+});
+
+// src/lib/mcp/tools/list-objectives.ts
+import { defineTool as defineTool10 } from "npm:@lovable.dev/mcp-js@0.20.0";
+var list_objectives_default = defineTool10({
+  name: "list_objectives",
+  title: "List objectives assigned to me",
+  description: "List the objectives the signed-in student owns or was assigned, with status, priority and due date. Objectives with status 'suggested' are detections awaiting the student's confirmation — never present those as commitments they have already made.",
+  inputSchema: {},
+  annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
+  handler: async (_input, ctx) => {
+    if (!ctx.isAuthenticated()) return notAuthenticated();
+    const userId = ctx.getUserId();
+    const { data, error } = await sb5(ctx).from("objectives").select("id,title,description,status,priority,due_at,team_id,source_type,routine_task_id,completed_at").or(`assignee_id.eq.${userId},created_by.eq.${userId}`).order("due_at", { ascending: true, nullsFirst: false }).limit(50);
+    if (error) return failed(error.message);
+    const rows = data ?? [];
+    return ok({
+      open: rows.filter((o) => o.status !== "done" && o.status !== "suggested"),
+      suggested: rows.filter((o) => o.status === "suggested"),
+      completed: rows.filter((o) => o.status === "done")
+    });
+  }
+});
+
 // src/lib/mcp/index.ts
 import { auth, defineMcp } from "npm:@lovable.dev/mcp-js@0.20.0";
 
 // src/lib/mcp/tools/get-profile.ts
 import { createClient } from "npm:@supabase/supabase-js@^2.108.2";
 import { defineTool } from "npm:@lovable.dev/mcp-js@0.20.0";
+function supabaseKey() {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
 function sb(ctx) {
-  return createClient(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  return createClient(process.env.SUPABASE_URL, supabaseKey(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -49,8 +220,13 @@ var get_profile_default = defineTool({
 // src/lib/mcp/tools/get-journey-score.ts
 import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.108.2";
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
+function supabaseKey2() {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
 function sb2(ctx) {
-  return createClient2(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  return createClient2(process.env.SUPABASE_URL, supabaseKey2(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -79,8 +255,13 @@ var get_journey_score_default = defineTool2({
 // src/lib/mcp/tools/get-subscription.ts
 import { createClient as createClient3 } from "npm:@supabase/supabase-js@^2.108.2";
 import { defineTool as defineTool3 } from "npm:@lovable.dev/mcp-js@0.20.0";
+function supabaseKey3() {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
 function sb3(ctx) {
-  return createClient3(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  return createClient3(process.env.SUPABASE_URL, supabaseKey3(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -109,8 +290,13 @@ var get_subscription_default = defineTool3({
 // src/lib/mcp/tools/list-recommendations.ts
 import { createClient as createClient4 } from "npm:@supabase/supabase-js@^2.108.2";
 import { defineTool as defineTool4 } from "npm:@lovable.dev/mcp-js@0.20.0";
+function supabaseKey4() {
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY ?? process.env.SUPABASE_ANON_KEY;
+  if (!key) throw new Error("SUPABASE_ANON_KEY (or SUPABASE_PUBLISHABLE_KEY) is not set");
+  return key;
+}
 function sb4(ctx) {
-  return createClient4(process.env.SUPABASE_URL, process.env.SUPABASE_PUBLISHABLE_KEY, {
+  return createClient4(process.env.SUPABASE_URL, supabaseKey4(), {
     global: { headers: { Authorization: `Bearer ${ctx.getToken()}` } },
     auth: { persistSession: false, autoRefreshToken: false }
   });
@@ -142,13 +328,24 @@ var projectRef = "aupymiiwhfnaoduvxyzt";
 var mcp_default = defineMcp({
   name: "pathforge-mcp",
   title: "Pathforge",
-  version: "0.1.0",
-  instructions: "Pathforge MCP exposes read-only access to the signed-in student's college-prep data: profile & onboarding info, journey score, subscription plan, and saved readiness reports. Use these tools to personalize advice about their college applications.",
+  version: "0.2.0",
+  instructions: "Pathforge MCP exposes read-only access to the signed-in student's college-prep data: profile and onboarding info, journey score, subscription plan, saved readiness reports, Routine tasks, class timetable and calendar, goals and milestones, college applications and recommenders, weekly check-ins, and objectives. Every tool runs as that student under row-level security, so it can only ever return their own rows. Use them to ground advice in what the student has actually recorded — never fill a gap with an estimate: if a tool returns nothing, say the data is not there.",
   auth: auth.oauth.issuer({
     issuer: `https://${projectRef}.supabase.co/auth/v1`,
     acceptedAudiences: "authenticated"
   }),
-  tools: [get_profile_default, get_journey_score_default, get_subscription_default, list_recommendations_default]
+  tools: [
+    get_profile_default,
+    get_journey_score_default,
+    get_subscription_default,
+    list_recommendations_default,
+    list_tasks_default,
+    get_schedule_default,
+    list_goals_default,
+    list_applications_default,
+    get_weekly_checkin_default,
+    list_objectives_default
+  ]
 });
 
 // lovable-mcp-supabase-entry.ts

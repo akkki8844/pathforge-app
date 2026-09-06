@@ -6,7 +6,7 @@ import { Seo } from "@/components/Seo";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useAuth } from "@/contexts/AuthContext";
 import SpecularLink from "@/components/ui/specular/SpecularLink";
-import MultiOrbitSemiCircle from "@/components/ui/multi-orbit-semi-circle";
+import IntegrationsDirectory from "@/components/ui/integrations-directory";
 
 const MotionLink = motion.create(Link);
 const MotionSpecularLink = motion.create(SpecularLink);
@@ -325,18 +325,8 @@ export default function Index() {
             </h2>
           </motion.div>
 
-          <motion.div className="atlas-orbit" {...reveal}>
-            <ul className="atlas-orbit-legend">
-              <li>
-                <i aria-hidden />
-                Available now
-              </li>
-              <li>
-                <i aria-hidden />
-                On the roadmap
-              </li>
-            </ul>
-            <MultiOrbitSemiCircle />
+          <motion.div className="atlas-integrations" {...reveal}>
+            <IntegrationsDirectory />
           </motion.div>
         </section>
 

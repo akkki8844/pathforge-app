@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, Zap, KeyRound, Pencil } from "lucide-react";
+import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, Zap, KeyRound, Pencil, Copy, Terminal } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,6 +16,7 @@ import { GoogleCalendarMark } from "@/components/GoogleCalendarCard";
 import { ImportLinkedInModal } from "@/components/ImportLinkedInModal";
 import { SettingsSection } from "../SettingsShell";
 import linkedinLogo from "@/assets/linkedin-logo.png";
+import { ComposioAppDirectory } from "./ComposioAppDirectory";
 import { planTierFromString, tierSatisfies } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
@@ -44,7 +45,7 @@ export function ConnectorsSection() {
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-semibold text-foreground">Connectors are a Pro feature</h3>
               <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                Here's what you'll unlock on Pro. Upgrade to connect LinkedIn, GitHub, Google Calendar, your Google account and email — your free plan still keeps full AI access for everything else.
+                Here's what you'll unlock on Pro: LinkedIn, GitHub, Google Calendar, your Google account, email, and the Composio apps below — Notion, Google Docs and Sheets, Drive, Todoist, Trello, Slack and the rest. Your free plan still keeps full AI access for everything else, and the Pathforge MCP server is free on every plan.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button asChild size="sm" className="btn-accent">
@@ -68,7 +69,10 @@ export function ConnectorsSection() {
         <GoogleAccountConnector locked={locked} />
         <ComposioGmailConnector locked={locked} />
         <EmailConnector locked={locked} />
+        <McpConnector />
       </div>
+
+      <ComposioAppDirectory locked={locked} />
     </SettingsSection>
   );
 }
@@ -637,5 +641,63 @@ function GoogleMark({ className = "" }: { className?: string }) {
       <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2c-2 1.4-4.5 2.4-7.2 2.4-5.4 0-9.7-3.5-11.3-8l-6.5 5C9.6 39.6 16.2 44 24 44z" />
       <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.3-2.3 4.3-4.2 5.6l6.2 5.2c-.4.4 6.7-4.9 6.7-14.8 0-1.3-.1-2.5-.4-3.5z" />
     </svg>
+  );
+}
+
+/**
+ * The other direction: Pathforge as an MCP server, so Claude, ChatGPT or any
+ * other MCP client can read this student's own Pathforge data when they ask
+ * it to.
+ *
+ * Read-only, and every tool runs as the signed-in student under row-level
+ * security, so a client can never reach another student's rows. Free on every
+ * plan and deliberately outside the Pro gate: it exposes only data the student
+ * already owns.
+ */
+function McpConnector() {
+  const { toast } = useToast();
+  const base = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+  const endpoint = base ? base.replace(/\/+$/, "") + "/functions/v1/mcp" : null;
+
+  const copy = async () => {
+    if (!endpoint) return;
+    try {
+      await navigator.clipboard.writeText(endpoint);
+      toast({ title: "MCP endpoint copied" });
+    } catch {
+      toast({
+        variant: "destructive",
+        title: "Couldn't copy",
+        description: "Select the URL above and copy it manually.",
+      });
+    }
+  };
+
+  return (
+    <ConnectorCard
+      icon={<Terminal className="h-5 w-5 text-foreground" />}
+      name="Pathforge MCP server"
+      description="Point Claude, ChatGPT or any MCP client at Pathforge and it can read your profile, journey score, tasks, timetable, goals, applications, check-ins and objectives — read-only, signed in as you, and nobody else's data. Free on every plan."
+      status="info"
+      meta={endpoint ?? "Endpoint unavailable in this build."}
+      actions={
+        <>
+          <Button onClick={copy} disabled={!endpoint} size="sm" variant="outline">
+            <Copy className="h-3.5 w-3.5 mr-2" />
+            Copy endpoint
+          </Button>
+          <Button asChild size="sm" variant="ghost">
+            <a
+              href="https://modelcontextprotocol.io/docs/tutorials/use-remote-mcp-server"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              How to connect
+              <ExternalLink className="h-3 w-3 ml-1.5" />
+            </a>
+          </Button>
+        </>
+      }
+    />
   );
 }

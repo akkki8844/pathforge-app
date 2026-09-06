@@ -645,6 +645,98 @@
 
 @layer base {
   /*
+   * Dashboard typography.
+   *
+   * The signed-in home is set in Inter, on its own, at four weights. The app
+   * pairs Sora with Fraunces because that pairing is the marketing voice, and
+   * a student who is already inside the product is not being sold anything.
+   *
+   * Scoped to [data-dash] so nothing else on the site moves. The two font
+   * utilities are re-pointed inside that subtree rather than removed from the
+   * markup, because a few nested components (the weekly check-in, the
+   * timetable views) are shared with pages that still want the app faces —
+   * this is the one place their classes should resolve to something else.
+   *
+   * cv05/cv11 give Inter the single-storey l and the straight-tailed a and
+   * g, which is what makes it read as the interface face rather than as the
+   * default web sans.
+   */
+  [data-dash],
+  [data-dash] .font-display,
+  [data-dash] .font-serif,
+  [data-dash] h1,
+  [data-dash] h2,
+  [data-dash] h3,
+  [data-dash] h4,
+  [data-dash] button,
+  [data-dash] input,
+  [data-dash] textarea,
+  [data-dash] select {
+    font-family: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", system-ui, sans-serif;
+    font-feature-settings: "cv05", "cv11";
+  }
+
+  /*
+   * Dashboard palette.
+   *
+   * The site palette is Atlas: warm cream paper, navy ink. That is right for
+   * a page selling itself, and wrong here — the app shell behind this route is
+   * flat white, so cream cards on it read as a colour mistake rather than as
+   * paper, and every hairline lands at about 2% contrast against its own fill.
+   *
+   * Inside [data-dash] the neutrals are re-declared cool and the tint is taken
+   * out of them entirely: white cards, one grey scale, one 9%-contrast
+   * hairline. Only the neutrals move. --primary is left alone, so the single
+   * accent on the page is still the brand blue and still means the one thing
+   * it means everywhere else.
+   */
+  [data-dash] {
+    --background: 0 0% 100%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --foreground: 222 24% 11%;
+    --card-foreground: 222 24% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 46%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+    --secondary: 220 14% 96%;
+    --secondary-foreground: 222 24% 11%;
+  }
+
+  .dark [data-dash] {
+    --background: 0 0% 0%;
+    --card: 0 0% 4.5%;
+    --popover: 0 0% 6%;
+    --foreground: 0 0% 97%;
+    --card-foreground: 0 0% 97%;
+    --muted: 0 0% 11%;
+    --muted-foreground: 0 0% 61%;
+    --border: 0 0% 17%;
+    --input: 0 0% 17%;
+    --secondary: 0 0% 11%;
+    --secondary-foreground: 0 0% 97%;
+  }
+
+  /*
+   * The weekly check-in is a shared component and still draws itself with the
+   * app-wide Panel: one radius step larger, translucent over the page, and with
+   * a shadow that grows on hover. Inside the dashboard it is pulled onto the
+   * deck card spec instead, so the two do not sit next to each other looking
+   * like two different products. Nothing outside [data-dash] is affected.
+   */
+  [data-dash] .card-motion {
+    border-radius: 22px;
+    background-color: hsl(var(--card));
+    box-shadow: none;
+  }
+
+  [data-dash] .card-motion:hover {
+    box-shadow: none;
+  }
+
+  /*
    * Cluely palette and type.
    *
    * Outcomes is the one page in this app that is a single verdict rather than
@@ -892,34 +984,34 @@
 
 /* The integrations orbit. Sits in `.atlas-house`, so it inherits the landing
    page's own palette rather than the Tailwind token set the app uses. */
-.atlas-orbit { display: flex; flex-direction: column; align-items: center; margin-top: clamp(2.4rem, 5vw, 4rem); }
-.atlas-orbit-legend { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.5rem 1.4rem; margin: 0 0 clamp(1.6rem, 3vw, 2.6rem); padding: 0; list-style: none; color: var(--ink-soft); font-size: var(--text-xs); font-weight: 640; letter-spacing: 0.06em; text-transform: uppercase; }
-.atlas-orbit-legend li { display: inline-flex; align-items: center; gap: 0.5rem; }
-.atlas-orbit-legend i { width: 0.6rem; height: 0.6rem; border-radius: 50%; background: var(--accent); }
-.atlas-orbit-legend li:last-child i { background: transparent; border: 1px dashed var(--line-strong); }
+.atlas-integrations { margin-top: clamp(2.6rem, 5vw, 4.2rem); }
+/* The integrations directory. Sits in `.atlas-house`, so it uses the landing
+   page's own palette and type rather than the Tailwind token set the app
+   uses. Deliberately undecorated: no glow, no motion, no gradient dots —
+   the logos are the only colour in the section. */
+.pfi { display: grid; gap: clamp(3rem, 6vw, 4.6rem); width: 100%; }
+.pfi-group { display: grid; gap: clamp(1.4rem, 2.6vw, 2rem); }
+.pfi-group-head { display: grid; gap: 0.5rem; }
+.pfi-group-head h3 { display: flex; align-items: baseline; gap: 0.6rem; margin: 0; color: var(--ink); font-family: var(--display); font-size: clamp(1.5rem, 2.2vw, 2rem); font-weight: 600; letter-spacing: -0.015em; }
+.pfi-group-head h3 b { color: var(--muted); font-family: var(--sans); font-size: var(--text-xs); font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.pfi-group-head p { max-width: 44rem; margin: 0; color: var(--ink-soft); font-size: var(--text-sm); line-height: var(--lh-body); }
 
-.pfo { position: relative; max-width: 100%; }
-.pfo-glow { position: absolute; left: 50%; top: 8%; width: 78%; aspect-ratio: 1; transform: translateX(-50%); border-radius: 50%; background: radial-gradient(circle at center, rgba(68, 101, 216, 0.18), transparent 68%); filter: blur(46px); pointer-events: none; }
-.pfo-arcs { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.pfo-arcs path { stroke: var(--line); stroke-width: 1; }
-.pfo-arcs path:last-child { stroke-dasharray: 4 6; }
+.pfi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr)); gap: 0.6rem; margin: 0; padding: 0; list-style: none; }
+.pfi-tile { display: grid; grid-template-columns: 2.6rem minmax(0, 1fr); gap: 0.9rem; align-items: center; padding: 0.95rem 1.05rem; border: 1px solid var(--line); border-radius: 0.85rem; background: var(--surface); transition: border-color var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
+.pfi-tile:hover { border-color: var(--line-strong); box-shadow: 0 8px 18px rgba(33, 48, 88, 0.06); }
+.pfi-mark { display: grid; width: 2.6rem; height: 2.6rem; place-items: center; border: 1px solid var(--line); border-radius: 0.6rem; background: #fff; }
+.pfi-mark img { width: 1.45rem; height: 1.45rem; object-fit: contain; }
+.pfi-copy { display: grid; gap: 0.18rem; min-width: 0; }
+.pfi-copy strong { color: var(--ink); font-size: 0.95rem; font-weight: 650; letter-spacing: -0.005em; }
+.pfi-copy span { color: var(--muted); font-size: 0.8rem; line-height: 1.45; }
 
-.pfo-node { position: absolute; z-index: 2; }
-.pfo-chip { display: flex; width: 100%; height: 100%; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%; background: var(--surface); color: var(--accent-deep); box-shadow: 0 4px 14px rgba(33, 48, 88, 0.07); transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out); }
-.pfo-chip:hover, .pfo-chip:focus-visible { transform: scale(1.1); border-color: var(--accent); box-shadow: 0 8px 20px rgba(33, 48, 88, 0.16); outline: none; }
-/* Dashed and unfilled, so a queued integration never reads as a live one even
-   before the tooltip is opened. */
-.pfo-chip-planned { border-style: dashed; background: transparent; color: var(--muted); box-shadow: none; }
-
-.pfo-tip { position: absolute; left: 50%; z-index: 6; display: none; width: 12.5rem; transform: translateX(-50%); padding: 0.55rem 0.7rem; border-radius: 0.6rem; background: var(--ink); color: #fff; font-size: 0.72rem; line-height: 1.35; text-align: center; text-transform: none; letter-spacing: normal; box-shadow: 0 10px 24px rgba(23, 32, 51, 0.25); }
-.pfo-tip strong { display: block; font-weight: 700; }
-.pfo-tip-above { bottom: calc(100% + 8px); }
-.pfo-tip-below { top: calc(100% + 8px); }
-.pfo-node:hover .pfo-tip, .pfo-node:focus-within .pfo-tip { display: block; }
+/* Queued work is drawn as an outline, so it never reads as shipped. */
+.pfi-tile-planned { border-style: dashed; background: transparent; }
+.pfi-tile-planned:hover { box-shadow: none; }
+.pfi-tile-planned .pfi-mark { background: transparent; border-style: dashed; }
+.pfi-tile-planned .pfi-mark img { opacity: 0.6; }
 
 @media (prefers-reduced-motion: reduce) {
-  .pfo-chip { transition: none; }
-  .pfo-chip:hover, .pfo-chip:focus-visible { transform: none; }
 }
 
 .atlas-sister { padding-bottom: clamp(6rem, 12vw, 11rem); }
@@ -961,7 +1053,6 @@
   .atlas-editorial-grid, .atlas-brief-grid { grid-template-columns: 1fr; gap: 1.5rem; }
   .atlas-editorial blockquote { max-width: 17ch; }
   .atlas-rules { grid-template-columns: 1fr; }
-  .pfo-tip { width: 10rem; }
   .atlas-rules article { min-height: auto; }
   .atlas-rules h3 { margin-top: 2.9rem; }
   .atlas-footer .atlas-wrap { grid-template-columns: 1fr; gap: 0.7rem; }
@@ -969,6 +1060,7 @@
 }
 
 @media (max-width: 640px) {
+  .pfi-grid { grid-template-columns: 1fr; }
   .atlas-wrap { width: min(100% - 2rem, 75rem); }
   .atlas-header { padding: 0.6rem 0.75rem; }
   .atlas-header-inner { padding-left: 0.6rem; border-radius: 0.85rem; }
