@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { planTierFromString, tierSatisfies, type PlanTier } from "@/lib/plans";
 
@@ -8,16 +8,16 @@ import { planTierFromString, tierSatisfies, type PlanTier } from "@/lib/plans";
  * plan, plus a helper to test access against a required tier.
  *
  * Source of truth is the server `plan` string returned by get_credits (surfaced
- * through useCredits). Admins are treated as top tier.
+ * through useUsage). Admins are treated as top tier.
  */
 export function usePlanTier() {
-  const { creditData } = useCredits();
+  const { usageData } = useUsage();
   const { isAdmin } = useAuth();
 
   const tier: PlanTier = useMemo(() => {
     if (isAdmin) return "max";
-    return planTierFromString(creditData?.plan);
-  }, [creditData?.plan, isAdmin]);
+    return planTierFromString(usageData?.plan);
+  }, [usageData?.plan, isAdmin]);
 
   const has = useMemo(
     () => (required: PlanTier) => tierSatisfies(tier, required),

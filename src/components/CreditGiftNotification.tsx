@@ -81,7 +81,7 @@ export function CreditGiftNotification() {
       .update({ seen: true, seen_at: new Date().toISOString() })
       .eq("id", id);
     // Refresh global credits so the meter ticks up
-    window.dispatchEvent(new CustomEvent("credit-consumed"));
+    window.dispatchEvent(new CustomEvent("usage-consumed"));
   };
 
   if (!user || isAdmin || isTeacher) return null;
@@ -125,13 +125,15 @@ export function CreditGiftNotification() {
                   </motion.span>
                 </div>
                 <div className="flex-1 min-w-0">
+                  {/* The gift row still carries an amount in the server's
+                      accounting units. Usage is reported as a percentage of the
+                      allowance everywhere else, so this says what changed
+                      rather than quoting a figure in a unit nothing else uses. */}
                   <p className="text-sm font-semibold text-foreground">
-                    You've been gifted{" "}
-                    <span className="text-primary">{current.amount}</span>{" "}
-                    credit{current.amount === 1 ? "" : "s"}
+                    Pathforge widened your usage allowance
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Credits have been added to your account by Pathforge.
+                    You have more room to use AI features this cycle.
                   </p>
                   {current.message && (
                     <p className="text-xs text-foreground/80 mt-2 italic border-l-2 border-border pl-2">

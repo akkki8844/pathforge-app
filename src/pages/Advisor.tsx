@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { notifyCreditConsumed } from '@/hooks/useCredits';
+import { notifyUsageConsumed } from '@/contexts/UsageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic,
@@ -124,7 +124,7 @@ import { transition } from '@/lib/motion';
 // remedies: tokens refill next month, credits are the app-wide pool artifact
 // generation still spends, and a rate limit clears on its own. Collapsing them
 // into one notice would send a user to the pricing page over a 30-second wait.
-type LimitKind = 'credits' | 'rate' | 'tokens' | null;
+type LimitKind = 'allowance' | 'rate' | 'tokens' | null;
 
 interface Message {
   id: string;
@@ -434,7 +434,7 @@ export default function Advisor() {
 
   const { settings: advisorSettings, loading: settingsLoading, save: saveAdvisorSettings } = useAdvisorSettings();
 
-  // The advisor's own monthly token pool. Separate from `useCredits`, which
+  // The advisor's own monthly token pool. Separate from `useUsage`, which
   // meters the rest of the app — see src/hooks/useAdvisorTokens.ts.
   const {
     status: tokenStatus,
@@ -1078,10 +1078,10 @@ export default function Advisor() {
           controller.signal,
         );
 
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         // The `done` frame carries the post-charge balance, so the meter moves
         // with the answer. Only artifact turns actually spend credits now, but
-        // notifyCreditConsumed() is cheap and this is the one place that knows
+        // notifyUsageConsumed() is cheap and this is the one place that knows
         // a turn finished.
         applyTokenBalance(result.tokens);
         const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -1131,7 +1131,7 @@ export default function Advisor() {
           // Stopping keeps what arrived. The tokens generated before the stop
           // are still charged server-side, but this client hung up before the
           // frame carrying the new balance, so the meter has to ask.
-          notifyCreditConsumed();
+          notifyUsageConsumed();
           void refreshTokens();
           const partialText = stripSuggestionMarker(textBuf.current).trim();
           const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
@@ -1153,7 +1153,7 @@ export default function Advisor() {
             if (savedId && !currentConversationId) setCurrentConversationId(savedId);
           }
         } else if (error instanceof AdvisorLimitError) {
-          notifyCreditConsumed();
+          notifyUsageConsumed();
           if (error.kind === 'tokens') void refreshTokens();
           setLimitHit(error.kind);
           // Drop the optimistic pair — an upgrade card replaces it.
@@ -2094,7 +2094,7 @@ export default function Advisor() {
                     <div className="text-sm font-semibold">
                       {limitHit === 'tokens'
                         ? "You've used your advisor tokens for this month."
-                        : limitHit === 'credits'
+                        : limitHit === 'allowance'
                           ? "You've run out of credits."
                           : "You've hit your usage limit."}
                     </div>
@@ -2103,7 +2103,7 @@ export default function Advisor() {
                         ? tokenStatus.resetsAt
                           ? `Chatting should be available again on ${tokenStatus.resetsAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}. A higher plan lifts the cap sooner.`
                           : 'Please try again shortly, or upgrade for higher limits.'
-                        : limitHit === 'credits'
+                        : limitHit === 'allowance'
                           ? 'Artifact generation still spends credits. Upgrade to keep generating documents.'
                           : 'Please wait a moment, or upgrade for higher limits.'}
                     </div>

@@ -59,7 +59,6 @@ const baseOtherGroups: NavGroup[] = [
     links: [
       { href: "/requirements", label: "Requirements", icon: BookOpen },
       { href: "/college-readiness", label: "Readiness", icon: GraduationCap },
-      { href: "/exemplar-essays", label: "Exemplar Essays", icon: Quote },
     ],
   },
   {
@@ -68,6 +67,7 @@ const baseOtherGroups: NavGroup[] = [
       { href: "/scholarships", label: "Scholarships", icon: Award },
       { href: "/past-admits", label: "Past Admits", icon: Trophy },
       { href: "/lor", label: "Professors", icon: FileSignature },
+      { href: "/exemplar-essays", label: "Exemplar Essays", icon: Quote },
     ],
   },
 ];

@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 /**
  * The advisor's monthly token budget.
  *
- * Separate from `useCredits` on purpose: the advisor spends tokens, everything
+ * Separate from `useUsage` on purpose: the advisor spends tokens, everything
  * else in the app spends credits, and conflating them in one hook is how a
  * meter ends up showing the wrong pool. See
  * `supabase/migrations/20260810120000_advisor_token_budget.sql` for the rates.

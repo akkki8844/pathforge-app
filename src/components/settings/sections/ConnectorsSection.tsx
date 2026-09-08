@@ -9,7 +9,7 @@ import { useGoogleCalendar } from "@/hooks/useGoogleCalendar";
 import { useComposioConnection } from "@/hooks/useComposioConnection";
 import { useServiceApiKey } from "@/hooks/useServiceApiKey";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleCalendarMark } from "@/components/GoogleCalendarCard";
@@ -21,15 +21,15 @@ import { planTierFromString, tierSatisfies } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 export function ConnectorsSection() {
-  const { creditData, loading: creditsLoading } = useCredits();
-  const plan = (creditData?.plan || "free").toLowerCase();
-  const hasAccess = creditData?.isAdmin || tierSatisfies(planTierFromString(plan), "pro");
+  const { usageData, loading: usageLoading } = useUsage();
+  const plan = (usageData?.plan || "free").toLowerCase();
+  const hasAccess = usageData?.isAdmin || tierSatisfies(planTierFromString(plan), "pro");
 
-  // While credits are in flight `creditData` is undefined, which read as
+  // While the plan is in flight `usageData` is undefined, which read as
   // plan="free" — so Pro and admin users watched the whole section render
   // locked behind an "upgrade" banner for a beat before it flipped. Treat
   // "not known yet" as neither locked nor unlocked.
-  const locked = !creditsLoading && !hasAccess;
+  const locked = !usageLoading && !hasAccess;
 
   return (
     <SettingsSection

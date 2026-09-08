@@ -83,9 +83,9 @@ export default function SupportChatbot() {
           toast.success(`Major updated to ${data.action.value}.`);
         }
         // Support chat is free — the support-chat function never calls
-        // consume_credit, so firing the credit-consumed event here only
-        // played the burn animation and made users think they'd been charged
-        // for asking for help.
+        // consume_credit, so firing the usage-consumed event here only moved the
+        // meter and made users think asking for help had cost them part of their
+        // allowance.
         setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       } else if (data?.error) {
         setMessages((prev) => [...prev, { role: "assistant", content: data.error }]);

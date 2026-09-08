@@ -52,7 +52,7 @@ function messageFromBody(body: string): string | null {
 
 const STATUS_FALLBACKS: Record<number, string> = {
   401: "Your session expired. Please sign in again.",
-  402: "You're out of AI credits. Upgrade your plan to continue.",
+  402: "You have used 100% of your allowance. Upgrade your plan to continue.",
   403: "You don't have access to this feature on your current plan.",
   429: "Too many requests right now. Try again in a moment.",
   500: "Something went wrong on our side. Please try again.",

@@ -66,6 +66,10 @@ export type SettingsDraft = {
   reduce_motion: boolean;
   auto_translate: boolean;
   email_weekly_digest: boolean;
+  /** Planner/activity reminders. Separate from notify_deadlines. */
+  notify_activities: boolean;
+  /** Which channel every reminder may use. Enforced server-side. */
+  reminder_channel: "email" | "in_app" | "both" | "off";
 
   /* -- public.advisor_settings -- */
   nickname: string;
@@ -131,6 +135,8 @@ const FIELD_META: Record<SettingsField, { group: SaveGroup; section: SectionKey 
   notify_weekly_summary: { group: "preferences", section: "notifications" },
   notify_marketing: { group: "preferences", section: "notifications" },
   email_weekly_digest: { group: "preferences", section: "notifications" },
+  notify_activities: { group: "preferences", section: "notifications" },
+  reminder_channel: { group: "preferences", section: "notifications" },
   ai_tone: { group: "preferences", section: "preferences" },
   rec_rigor: { group: "preferences", section: "preferences" },
   auto_sync_calendar: { group: "preferences", section: "preferences" },
@@ -183,6 +189,8 @@ const EMPTY_DRAFT: SettingsDraft = {
   reduce_motion: false,
   auto_translate: false,
   email_weekly_digest: false,
+  notify_activities: true,
+  reminder_channel: "both",
   nickname: "",
   occupation: "",
   traits: "",
@@ -227,6 +235,12 @@ const PREF_EXTENDED: SettingsField[] = [
   "reduce_motion",
   "auto_translate",
   "email_weekly_digest",
+  // Added by 20260908120000_reminder_delivery_preferences.sql. Listed as
+  // EXTENDED so the writer degrades to a core-only payload (and mirrors these
+  // to localStorage) on any project where that migration has not been applied
+  // yet, exactly as the columns above already do.
+  "notify_activities",
+  "reminder_channel",
 ];
 
 const localPrefsKey = (uid: string) => `pf_prefs_pending_${uid}`;

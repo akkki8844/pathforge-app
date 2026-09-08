@@ -11,7 +11,7 @@ const LOADING_PHRASES = [
   "Calibrating your advisor…",
   "Counting completed quests…",
   "Lining up your timetable…",
-  "Checking today's credits…",
+  "Checking your usage…",
   "Sharpening your essay drafts…",
   "Loading your college list…",
   "Reviewing your activities…",

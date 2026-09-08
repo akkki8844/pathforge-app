@@ -15,7 +15,7 @@ export function AiGenerationNotice({ active = false, className = "" }: AiGenerat
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
         )}
         <p className="leading-relaxed">
-          <strong>Keep this tab open and active during AI generation.</strong> Do not close the page or switch tabs; the process may halt. If generation fails, the credit is refunded automatically.
+          <strong>Keep this tab open and active during AI generation.</strong> Do not close the page or switch tabs; the process may halt. If generation fails, that usage is refunded automatically.
         </p>
       </div>
     </div>

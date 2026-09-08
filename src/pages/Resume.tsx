@@ -19,7 +19,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import type { ResumeOutput } from "@/lib/resumeExport";
-import { notifyCreditConsumed, useCredits } from "@/hooks/useCredits";
+import { notifyUsageConsumed, useUsage } from "@/contexts/UsageContext";
 import { planTierFromString, tierSatisfies } from "@/lib/plans";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
@@ -318,7 +318,7 @@ export default function Resume() {
 
       setOutput(data as ResumeOutput);
       setProgress(100);
-      notifyCreditConsumed();
+      notifyUsageConsumed();
       toast.success("Your resume is ready");
     } catch (e: any) {
       const msg = e?.message || "Generation failed";
@@ -907,9 +907,9 @@ type LinkedInPatch = {
 
 function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch) => void }) {
   const { user } = useAuth();
-  const { creditData } = useCredits();
-  const plan = (creditData?.plan || "free").toLowerCase();
-  const hasAccess = creditData?.isAdmin || tierSatisfies(planTierFromString(plan), "pro");
+  const { usageData } = useUsage();
+  const plan = (usageData?.plan || "free").toLowerCase();
+  const hasAccess = usageData?.isAdmin || tierSatisfies(planTierFromString(plan), "pro");
 
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);

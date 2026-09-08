@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLinkedInImport } from "@/hooks/useLinkedInImport";
 import { readEdgeError } from "@/lib/edgeFunctionError";
@@ -79,7 +79,7 @@ export default function LinkedInGrow() {
       const data = result.data as { plan?: GrowPlan } | null;
       if (data?.plan) {
         setPlan(data.plan);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         refetch();
         toast.success("Your personalized Grow plan is ready!");
       } else {
@@ -118,7 +118,7 @@ export default function LinkedInGrow() {
           Generate my Grow plan
         </Button>
         {/* The edge function calls consume_credits with amount: 2. */}
-        <p className="text-xs text-muted-foreground mt-3">Powered by an advanced reasoning model · Uses 2 credits</p>
+        <p className="text-xs text-muted-foreground mt-3">Powered by an advanced reasoning model · About twice a normal action</p>
       </div>
     );
   }

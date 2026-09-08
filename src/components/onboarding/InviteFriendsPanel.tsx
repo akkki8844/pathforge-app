@@ -44,10 +44,10 @@ export function InviteFriendsPanel() {
             <Users className="h-5 w-5 text-primary" />
           </div>
           <div className="min-w-0">
-            <h3 className="font-bold text-foreground">Invite friends, earn credits</h3>
+            <h3 className="font-bold text-foreground">Invite friends, earn extra usage</h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Create an account to get your personal invite link — <b>+1 credit</b> for every friend
-              who signs up, <b>+5 credits</b> for them.
+              Create an account to get your personal invite link — <b>extra usage</b> for every friend
+              who signs up — and a head start for them.
             </p>
           </div>
         </div>
@@ -74,7 +74,7 @@ export function InviteFriendsPanel() {
   const share = async () => {
     if (!inviteUrl) return;
     if (navigator.share) {
-      try { await navigator.share({ title: "Join me on Pathforge", text: "I'm using Pathforge for college prep — get +5 credits on signup.", url: inviteUrl }); } catch {}
+      try { await navigator.share({ title: "Join me on Pathforge", text: "I'm using Pathforge for college prep — get a head start on signup.", url: inviteUrl }); } catch {}
     } else copy();
   };
 
@@ -89,10 +89,10 @@ export function InviteFriendsPanel() {
           <Users className="h-5 w-5 text-primary" />
         </div>
         <div className="min-w-0">
-          <h3 className="font-bold text-foreground">Invite friends, earn credits</h3>
+          <h3 className="font-bold text-foreground">Invite friends, earn extra usage</h3>
           <p className="text-xs text-muted-foreground mt-0.5">
-            <Gem className="h-3 w-3 inline text-sky-500" /> <b>+1 credit</b> for every friend who signs up with your link &middot;
-            they get <b>+5 credits</b> instantly.
+            <Gem className="h-3 w-3 inline text-sky-500" /> <b>Extra usage</b> for every friend who signs up with your link &middot;
+            they get a head start instantly.
           </p>
         </div>
       </div>

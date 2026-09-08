@@ -61,7 +61,7 @@ export async function functionErrorMessage(
     return message;
   }
   if (status === 429) return "Rate limit exceeded. Please try again in a moment.";
-  if (status === 402) return "Daily credit limit reached. Please upgrade your plan.";
+  if (status === 402) return "You have used 100% of your allowance. Please upgrade your plan.";
   if (status === 401) return "Your session expired. Please sign in again.";
   if (status === 503) return "The writing model is unavailable right now. Please try again in a moment.";
   return fallback;

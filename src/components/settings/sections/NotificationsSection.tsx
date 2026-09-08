@@ -3,9 +3,12 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Bell, Mail, MessageSquare, Loader2, Laptop } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
 import { notifyTaskComplete } from "@/lib/notifyTask";
-import { useSettingsForm } from "../SettingsFormContext";
+import { useSettingsForm, type SettingsDraft } from "../SettingsFormContext";
 
 /**
  * All notification switches now live here.
@@ -83,6 +86,63 @@ export function NotificationsSection() {
         </SettingsRow>
       </SettingsCard>
 
+      {/*
+        Reminders are the one category that can arrive on two channels, so they
+        get their own card rather than being scattered between "in-app" and
+        "email". Before this existed each reminder sender picked a channel by
+        accident of how it was written — deadlines and planner nudges emailed
+        and never reached the bell, recommender nudges reached the bell and
+        never emailed — and the student had no say in either.
+      */}
+      <SettingsCard
+        title="Reminders"
+        description="Deadlines, planner activities and recommender follow-ups. Delivered in your own timezone, in the morning."
+      >
+        <SettingsRow
+          label="How to reach you"
+          description="Applies to every reminder below. Choose the bell, your inbox, or both."
+          dirty={isDirty("reminder_channel")}
+        >
+          <Select
+            value={draft.reminder_channel}
+            onValueChange={(v) => set("reminder_channel", v as SettingsDraft["reminder_channel"])}
+            disabled={loading}
+          >
+            <SelectTrigger className="w-[168px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="both">Email and in-app</SelectItem>
+              <SelectItem value="email">Email only</SelectItem>
+              <SelectItem value="in_app">In-app only</SelectItem>
+              <SelectItem value="off">Don't remind me</SelectItem>
+            </SelectContent>
+          </Select>
+        </SettingsRow>
+        <SettingsRow
+          label="Deadlines"
+          description="Routine deadlines, application dates and recommender due dates."
+          dirty={isDirty("notify_deadlines")}
+        >
+          <Switch
+            checked={draft.notify_deadlines}
+            onCheckedChange={(v) => set("notify_deadlines", v)}
+            disabled={loading || draft.reminder_channel === "off"}
+          />
+        </SettingsRow>
+        <SettingsRow
+          label="Planner activities"
+          description="A morning nudge for whatever you scheduled for the next day."
+          dirty={isDirty("notify_activities")}
+        >
+          <Switch
+            checked={draft.notify_activities}
+            onCheckedChange={(v) => set("notify_activities", v)}
+            disabled={loading || draft.reminder_channel === "off"}
+          />
+        </SettingsRow>
+      </SettingsCard>
+
       <SettingsCard title="Email" description="Choose what hits your inbox. These follow your account across devices.">
         <SettingsRow
           label="Weekly progress digest"
@@ -109,17 +169,10 @@ export function NotificationsSection() {
             disabled={loading}
           />
         </SettingsRow>
-        <SettingsRow
-          label="Deadline reminders"
-          description="Application and scholarship deadlines."
-          dirty={isDirty("notify_deadlines")}
-        >
-          <Switch
-            checked={draft.notify_deadlines}
-            onCheckedChange={(v) => set("notify_deadlines", v)}
-            disabled={loading}
-          />
-        </SettingsRow>
+        {/* "Deadline reminders" used to live here as well. It now lives in the
+            Reminders card above with its channel control — two switches bound
+            to one column is exactly the split-source-of-truth bug this file's
+            header describes. */}
         <SettingsRow
           label="Product announcements"
           description="New features, model upgrades, and meaningful platform changes."

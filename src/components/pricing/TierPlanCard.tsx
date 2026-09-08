@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { PlanConfig } from "@/lib/plans";
-import { creditLabel } from "@/lib/plans";
+import { usageLabel } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 interface TierPlanCardProps {
@@ -63,7 +63,7 @@ export function TierPlanCard({
       {note && <p className="mt-1 text-[11px] text-muted-foreground">{note}</p>}
 
       <p className="mt-3 pt-3 border-t border-border text-sm font-medium text-foreground">
-        {creditLabel(plan as PlanConfig)} <span className="text-muted-foreground">· {plan.advisorModel}</span>
+        {usageLabel(plan as PlanConfig)} <span className="text-muted-foreground">· {plan.advisorModel}</span>
       </p>
 
       <ul className="mt-4 flex-1 space-y-2">

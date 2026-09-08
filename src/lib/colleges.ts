@@ -755,3 +755,15 @@ export const colleges: College[] = (() => {
     return { ...c, id };
   });
 })();
+
+/**
+ * Look up a college by name, case-insensitively.
+ *
+ * A student's saved target-university name is free text that has been through
+ * a picker, so `colleges.find(c => c.name === name)` misses on nothing more
+ * than a stray capital or a trailing space.
+ */
+export function findCollegeByName(name: string): College | undefined {
+  const key = name.trim().toLowerCase();
+  return colleges.find((c) => c.name.trim().toLowerCase() === key);
+}

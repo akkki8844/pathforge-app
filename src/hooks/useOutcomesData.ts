@@ -270,6 +270,15 @@ export function useOutcomesData() {
     updateProfile,
     updateTaskStates,
     updateFollowPathforge,
+    /**
+     * Re-read the row from the server.
+     *
+     * Needed because `linkedin-extract` writes into `outcomes_data` itself,
+     * server-side, rather than handing rows back to the client — so after an
+     * import the local profile is stale and only a re-read will show what
+     * landed.
+     */
+    reload: loadData,
     isAuthenticated: !!user,
   };
 }

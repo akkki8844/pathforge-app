@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { transition } from "@/lib/motion";
 import {
   Calendar as CalendarIcon, Plus, ChevronLeft, ChevronRight, Clock, Target, TrendingUp, CheckCircle2, AlertCircle, Lightbulb, Edit3, Trash2, BookOpen, Trophy, Users, X, Loader2, RefreshCw, Unplug, CalendarDays } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,7 @@ import {
   generateSmartRecommendations,
 } from "@/lib/plannerStorage";
 import { Seo } from "@/components/Seo";
+import { Eyebrow } from "@/components/cluely/primitives";
 
 const categoryIcons: Record<ActivityCategory, React.ReactNode> = {
   academics: <BookOpen className="h-4 w-4" />,
@@ -47,11 +49,20 @@ const categoryIcons: Record<ActivityCategory, React.ReactNode> = {
   "personal-development": <CalendarDays className="h-4 w-4" />,
 };
 
+/**
+ * One flat chip for every category.
+ *
+ * These were four hues — blue, green, purple, amber — which is a colour key
+ * the reader has to learn before the grid means anything, and which spends the
+ * page's whole palette on a distinction the icons above already make. Each
+ * category keeps its own icon; the chip stays zinc so the single accent is
+ * free to mark the thing that is actually measured here, which is hours.
+ */
 const categoryColorClasses: Record<ActivityCategory, string> = {
-  academics: "bg-blue-500/10 text-blue-600 border-blue-200 dark:text-blue-400 dark:border-blue-800",
-  extracurriculars: "bg-green-500/10 text-green-600 border-green-200 dark:text-green-400 dark:border-green-800",
-  competitions: "bg-purple-500/10 text-purple-600 border-purple-200 dark:text-purple-400 dark:border-purple-800",
-  "personal-development": "bg-amber-500/10 text-amber-600 border-amber-200 dark:text-amber-400 dark:border-amber-800",
+  academics: "bg-muted text-foreground border-border",
+  extracurriculars: "bg-muted text-foreground border-border",
+  competitions: "bg-muted text-foreground border-border",
+  "personal-development": "bg-muted text-foreground border-border",
 };
 
 const MONTH_NAMES = [
@@ -481,25 +492,25 @@ export default function WeeklyPlanner() {
   }, [calendarLoading, googleConnection, handleGoogleSync]);
 
   return (
-    <div className="section-container py-8 sm:py-10 space-y-6">
-      <Seo title='Weekly Planner — Pathforge' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
+    <div data-cluely className="min-h-svh bg-background font-cluely">
+    {/* A seven-day grid is the widest thing this app draws. It was being run
+        inside the standard prose container, so each day column got roughly a
+        finger's width and the whole planner sat in a narrow slot. */}
+    <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1600px] space-y-6 px-4 pb-24 pt-8 sm:px-6 lg:px-8">
+      <Seo title='Calendar — Pathforge' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden rounded-2xl border border-border/70 bg-gradient-to-br from-card via-card to-muted/30 px-6 sm:px-8 py-6 sm:py-7 shadow-[0_1px_0_0_hsl(var(--border)/0.5)]"
+        transition={transition.slow}
       >
-        <div className="pointer-events-none absolute -top-12 -right-12 h-48 w-48 rounded-full bg-primary/10 blur-3xl" />
-        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-5">
+        <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-primary/80 mb-2">
-              Planner
-            </p>
-            <h1 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
-              Weekly Action Planner
+            <Eyebrow>Calendar</Eyebrow>
+            <h1 className="mt-2 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+              Weekly Calendar
             </h1>
-            <p className="mt-2 text-sm text-muted-foreground max-w-xl">
+            <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
               Plan your week visually, log actual hours, and let Pathforge surface intelligent adjustments.
             </p>
           </div>
@@ -521,18 +532,18 @@ export default function WeeklyPlanner() {
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.25 }}
-            className="rounded-2xl border border-amber-300/60 dark:border-amber-700/60 bg-amber-50/80 dark:bg-amber-950/30 px-5 py-4"
+            transition={transition.base}
+            className="rounded-[0.875rem] border border-primary/30 bg-primary/[0.06] px-5 py-4"
             role="status"
             aria-live="polite"
           >
             <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+              <AlertCircle className="mt-0.5 h-5 w-5 flex-shrink-0 text-primary" />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                <p className="font-cluely text-sm font-semibold text-foreground">
                   Coming up — don't forget to log these
                 </p>
-                <ul className="mt-1.5 space-y-0.5 text-sm text-amber-900/90 dark:text-amber-100/90">
+                <ul className="mt-1.5 space-y-0.5 text-sm text-foreground/90">
                   {upcomingActivities.map(({ date, activity }) => {
                     const isToday = isSameDay(date, today);
                     const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -542,7 +553,7 @@ export default function WeeklyPlanner() {
                       <li key={`${activity.id}-${dateKey(date)}`} className="flex items-center gap-2">
                         <span className="font-medium">{label}:</span>
                         <span className="truncate">{activity.name}</span>
-                        <span className="text-amber-700/80 dark:text-amber-300/80 text-xs">· {activity.plannedHours}h</span>
+                        <span className="text-xs tabular-nums text-muted-foreground">· {activity.plannedHours}h</span>
                       </li>
                     );
                   })}
@@ -609,11 +620,16 @@ export default function WeeklyPlanner() {
           transition={{ delay: 0.08, duration: 0.4 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4"
         >
+          {/* Four stat tiles used to each get their own icon color (blue/
+              green/purple/amber) — a rainbow that didn't mean anything since
+              none of these numbers are good or bad on their own. One flat
+              treatment now; the icon is still there for scannability, just
+              not doing double duty as a mood ring. */}
           {[
-            { icon: <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />, label: "Planned", value: `${stats.totalPlannedHours}h`, bg: "bg-blue-500/10" },
-            { icon: <Target className="h-5 w-5 text-green-600 dark:text-green-400" />, label: "Actual", value: `${stats.totalActualHours}h`, bg: "bg-green-500/10" },
-            { icon: <TrendingUp className="h-5 w-5 text-purple-600 dark:text-purple-400" />, label: "Completion", value: `${stats.completionRate}%`, bg: "bg-purple-500/10" },
-            { icon: <CheckCircle2 className="h-5 w-5 text-amber-600 dark:text-amber-400" />, label: "Activities", value: `${weeklyPlan?.activities.length || 0}`, bg: "bg-amber-500/10" },
+            { icon: <Clock className="h-5 w-5 text-muted-foreground" />, label: "Planned", value: `${stats.totalPlannedHours}h` },
+            { icon: <Target className="h-5 w-5 text-muted-foreground" />, label: "Actual", value: `${stats.totalActualHours}h` },
+            { icon: <TrendingUp className="h-5 w-5 text-muted-foreground" />, label: "Completion", value: `${stats.completionRate}%` },
+            { icon: <CheckCircle2 className="h-5 w-5 text-muted-foreground" />, label: "Activities", value: `${weeklyPlan?.activities.length || 0}` },
           ].map((stat, i) => (
             <motion.div
               key={stat.label}
@@ -624,7 +640,7 @@ export default function WeeklyPlanner() {
               <Card className="card-elevated">
                 <CardContent className="pt-4">
                   <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-lg ${stat.bg}`}>{stat.icon}</div>
+                    <div className="rounded-lg bg-muted p-2">{stat.icon}</div>
                     <div>
                       <p className="text-sm text-muted-foreground">{stat.label}</p>
                       <p className="text-2xl font-bold">{stat.value}</p>
@@ -774,7 +790,7 @@ export default function WeeklyPlanner() {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -20 }}
-                    transition={{ duration: 0.2 }}
+                    transition={transition.fast}
                     className={`p-3.5 rounded-xl border transition-colors ${activity.completed ? "bg-muted/50 border-muted" : "bg-card border-border hover:border-primary/20"}`}
                   >
                     <div className="flex items-start gap-3">
@@ -886,17 +902,17 @@ export default function WeeklyPlanner() {
                 </Card>
               )}
               {stats.balanceIndicators.length > 0 && (
-                <Card className="card-elevated border-amber-200 dark:border-amber-800">
+                <Card className="border-border">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-base flex items-center gap-2">
-                      <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" /> Balance Indicators
+                      <AlertCircle className="h-4 w-4 text-primary" /> Balance Indicators
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-1.5">
                       {stats.balanceIndicators.map((ind, i) => (
                         <li key={i} className="flex items-start gap-2 text-sm">
-                          <span className="text-amber-600 dark:text-amber-400 mt-0.5">•</span><span>{ind}</span>
+                          <span className="mt-0.5 text-primary">•</span><span>{ind}</span>
                         </li>
                       ))}
                     </ul>
@@ -1186,6 +1202,7 @@ export default function WeeklyPlanner() {
           </>
         )}
       </AnimatePresence>
+    </div>
     </div>
   );
 }

@@ -34,7 +34,7 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
           <div className="text-left">
             <div className="font-medium text-sm">Strategy</div>
             <div className="text-xs text-muted-foreground">
-              AI ranks your lineup and surfaces gaps. 1 credit per run.
+              AI ranks your lineup and surfaces gaps. Counts toward your usage.
             </div>
           </div>
         </div>

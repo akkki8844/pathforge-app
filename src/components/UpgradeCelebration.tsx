@@ -17,13 +17,15 @@ const STORAGE_KEY = "pf:lastCelebratedSub";
  * Keyed on the ids checkout actually sends — `${tier}_${monthly|annual}`, from
  * Pricing.tsx. It used to be keyed on `pro_<credits>_monthly` price ids that no
  * longer exist, so every real subscriber fell through to the generic fallback
- * and was congratulated on "more daily credits" they were not getting.
+ * and was congratulated on "more daily credits" they were not getting. It now
+ * states the allowance the way the rest of the product does — as a multiple of
+ * the free tier, never as a count of a unit nothing else mentions.
  */
-const PLAN_META: Record<string, { name: string; credits: string; icon: typeof Zap; tagline: string }> = {
-  pro_monthly: { name: "Pro", credits: "250/mo", icon: Zap, tagline: "Pro unlocked. Build relentlessly." },
-  pro_annual: { name: "Pro", credits: "250/mo", icon: Rocket, tagline: "Pro, for the year. Build relentlessly." },
-  max_monthly: { name: "Max", credits: "750/mo", icon: Crown, tagline: "Top-tier access. No throttling." },
-  max_annual: { name: "Max", credits: "750/mo", icon: Crown, tagline: "Max, for the year. The whole platform is yours." },
+const PLAN_META: Record<string, { name: string; allowance: string; icon: typeof Zap; tagline: string }> = {
+  pro_monthly: { name: "Pro", allowance: "3×", icon: Zap, tagline: "Pro unlocked. Build relentlessly." },
+  pro_annual: { name: "Pro", allowance: "3×", icon: Rocket, tagline: "Pro, for the year. Build relentlessly." },
+  max_monthly: { name: "Max", allowance: "8×", icon: Crown, tagline: "Top-tier access. No throttling." },
+  max_annual: { name: "Max", allowance: "8×", icon: Crown, tagline: "Max, for the year. The whole platform is yours." },
 };
 
 export function UpgradeCelebration() {
@@ -46,7 +48,7 @@ export function UpgradeCelebration() {
   }, [user, subscription, isActive]);
 
   if (!subscription) return null;
-  const meta = PLAN_META[subscription.price_id] || { name: "Pro", credits: "More daily credits", icon: PartyPopper, tagline: "Welcome to the next chapter." };
+  const meta = PLAN_META[subscription.price_id] || { name: "Pro", allowance: "More", icon: PartyPopper, tagline: "Welcome to the next chapter." };
   const Icon = meta.icon;
 
   return (
@@ -112,7 +114,7 @@ export function UpgradeCelebration() {
 
               <div className="grid grid-cols-3 gap-3 pt-2">
                 {[
-                  { label: meta.credits, sub: "credits" },
+                  { label: meta.allowance, sub: "the free allowance" },
                   { label: "Full AI", sub: "no throttling" },
                   { label: "Priority", sub: "support" },
                 ].map((stat) => (

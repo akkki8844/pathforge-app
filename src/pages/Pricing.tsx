@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Button as MotionButton } from "@/components/ui/be-ui-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -19,7 +19,7 @@ import { useSubscription } from "@/hooks/useSubscription";
 import { Seo } from "@/components/Seo";
 import { CouponSuccessModal } from "@/components/CouponSuccessModal";
 import { TierPlanCard } from "@/components/pricing/TierPlanCard";
-import { PLANS, PLAN_RANK, planTierFromString, discountPercent, creditLabel, type PlanConfig } from "@/lib/plans";
+import { PLANS, PLAN_RANK, planTierFromString, discountPercent, usageLabel, type PlanConfig } from "@/lib/plans";
 
 const ANNUAL_DISCOUNT = 0.35;
 
@@ -29,7 +29,7 @@ const USD_TO_INR = 83;
 
 const ENTERPRISE_FEATURES = [
   "Everything in Max",
-  "Custom credit pool per institution",
+  "Custom usage allowance per institution",
   "Student & counsellor dashboards",
   "Bulk class onboarding",
   "Role-based access control (RBAC)",
@@ -40,7 +40,7 @@ const ENTERPRISE_FEATURES = [
 ];
 
 export default function Pricing() {
-  const { creditData, claimFreePlan, switchPlan, redeemCoupon } = useCredits();
+  const { usageData, claimFreePlan, switchPlan, redeemCoupon } = useUsage();
   const { user } = useAuth();
   const [claiming, setClaiming] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
@@ -55,8 +55,8 @@ export default function Pricing() {
   const [couponCode, setCouponCode] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponSuccess, setCouponSuccess] = useState<{
-    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null;
-    creditsGranted: number; planActive: boolean;
+    code: string; planName: string | null; planTier: string | null; planAllowanceLabel: string | null;
+    allowanceIncreased: boolean; planActive: boolean;
   } | null>(null);
 
   const handleRedeemCoupon = async () => {
@@ -92,8 +92,8 @@ export default function Pricing() {
         code: result.code || couponCode.trim().toUpperCase(),
         planName: unlockedPlan?.name || result.planTier || null,
         planTier: result.planTier,
-        planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
-        creditsGranted: result.creditsGranted,
+        planAllowanceLabel: unlockedPlan ? usageLabel(unlockedPlan) : null,
+        allowanceIncreased: result.allowanceIncreased,
         planActive: result.planActivated,
       });
     } catch (e: any) {
@@ -248,7 +248,7 @@ export default function Pricing() {
     <div className="min-h-[100svh] relative overflow-hidden">
       <Seo
         title='Pricing — Pathforge'
-        description='Free forever with 3 credits a day. Pro is $20/mo for 250 credits a month, Max is $75/mo for 750. Enterprise plans for schools and counselling teams.'
+        description='Free forever with a daily usage allowance. Pro is $20/mo for about 3× that allowance monthly, Max is $75/mo for about 8×. Enterprise plans for schools and counselling teams.'
         path='/pricing'
         jsonLd={{
           "@context": "https://schema.org",
@@ -281,7 +281,7 @@ export default function Pricing() {
               name: p.name,
               price: String(p.priceUSD),
               priceCurrency: "USD",
-              description: `${p.advisorModel} advisor model — ${creditLabel(p)}`,
+              description: `${p.advisorModel} advisor model — ${usageLabel(p)}`,
               url: "https://pathforge.co.in/pricing",
               availability: "https://schema.org/InStock",
             })),
@@ -317,7 +317,7 @@ export default function Pricing() {
             transition={{ delay: 0.1 }}
             className="text-muted-foreground text-base max-w-xl mx-auto"
           >
-            Every AI interaction is 1 credit. Free gives you 3 a day forever — paid plans give you a monthly pool and a deeper advisor model.
+            Every AI interaction draws on your usage allowance, shown as a percentage. Free refills daily, forever — paid plans give you a much larger monthly allowance and a deeper advisor model.
           </motion.p>
 
           {/* Monthly / Annual toggle */}
@@ -352,12 +352,12 @@ export default function Pricing() {
         {/* Plan grid — rendered from src/lib/plans.ts, the same source the
             in-app billing settings use, so the two can never disagree. */}
         <h2 className="text-2xl sm:text-3xl font-bold text-foreground tracking-tight text-center mb-6">
-          Plans and credits
+          Plans and usage
         </h2>
         {/* pt-4 leaves room for the overhanging "Most Popular" badge. */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12 pt-4">
           {PLANS.map((plan, i) => {
-            const isFreeUnlock = creditData?.freePlanGrant === plan.tier;
+            const isFreeUnlock = usageData?.freePlanGrant === plan.tier;
             const price = isFreeUnlock
               ? { displayUSD: "0", displayINR: 0, totalUSD: 0 }
               : priceFor(plan);
@@ -367,16 +367,16 @@ export default function Pricing() {
                exact match against "pro" told a paying subscriber that they were
                on no plan at all. planTierFromString is the same normaliser the
                downgrade check on the next line already used. */
-            const currentTier = planTierFromString(creditData?.plan);
+            const currentTier = planTierFromString(usageData?.plan);
             const planActive =
               currentTier === plan.tier &&
-              (!creditData?.planExpiresAt || new Date(creditData.planExpiresAt) > new Date());
+              (!usageData?.planExpiresAt || new Date(usageData.planExpiresAt) > new Date());
             const isCurrent = isFreeUnlock ? false : currentTier === plan.tier;
             const isPaid = plan.priceUSD > 0;
             const isDowngradeTarget =
-              !!creditData &&
+              !!usageData &&
               !isFreeUnlock &&
-              PLAN_RANK[planTierFromString(creditData.plan)] > PLAN_RANK[plan.tier];
+              PLAN_RANK[planTierFromString(usageData.plan)] > PLAN_RANK[plan.tier];
             const badge = isFreeUnlock
               ? "Unlocked by coupon"
               : plan.highlighted
@@ -492,7 +492,7 @@ export default function Pricing() {
               <p className="mt-1 text-xs text-muted-foreground">For schools & counselling teams</p>
               <p className="mt-4 text-3xl font-bold text-foreground">Custom</p>
               <p className="mt-3 pt-3 border-t border-border text-sm font-medium text-foreground">
-                Custom credit pool <span className="text-muted-foreground">· PFA 7</span>
+                Custom usage allowance <span className="text-muted-foreground">· PFA 7</span>
               </p>
               <ul className="mt-4 flex-1 space-y-2">
                 {ENTERPRISE_FEATURES.map((f) => (
@@ -520,7 +520,7 @@ export default function Pricing() {
         >
           <h3 className="text-sm font-semibold text-foreground mb-3" id="coupon-heading">Have a coupon code?</h3>
           <p className="text-xs text-muted-foreground mb-3">
-            Redeem a promo code for bonus credits or a free plan unlock — no payment required.
+            Redeem a promo code to widen your usage allowance, or unlock a plan for free — no payment required.
           </p>
           <div className="flex gap-2">
             <Input
@@ -546,7 +546,7 @@ export default function Pricing() {
 
         {/* Reassurance row */}
         <div className="text-center text-xs text-muted-foreground">
-          Cancel anytime · Free resets 3 credits every 24 hours · Paid plans refill their monthly bucket at billing renewal · Unused credits don't carry over
+          Cancel anytime · Free refills its allowance every 24 hours · Paid plans refill monthly at billing renewal · Unused allowance doesn't carry over
         </div>
       </div>
 
@@ -724,8 +724,8 @@ export default function Pricing() {
         onClose={() => setCouponSuccess(null)}
         code={couponSuccess?.code || ""}
         planName={couponSuccess?.planName}
-        planCreditLabel={couponSuccess?.planCreditLabel}
-        creditsGranted={couponSuccess?.creditsGranted}
+        planAllowanceLabel={couponSuccess?.planAllowanceLabel}
+        allowanceIncreased={couponSuccess?.allowanceIncreased}
         planActive={couponSuccess?.planActive}
         onActivatePlan={
           couponSuccess?.planTier && !couponSuccess.planActive

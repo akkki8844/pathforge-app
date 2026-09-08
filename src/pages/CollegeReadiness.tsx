@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useDraftPersistence } from "@/hooks/useDraftPersistence";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   FileText, Upload, Target, Sparkles, GraduationCap, Loader2, X, ChevronDown, History, Trash2, Clock, Pencil, Check } from "lucide-react";
@@ -115,7 +115,7 @@ export default function CollegeReadiness() {
 
       if (data.extractedText) {
         setPdfText(data.extractedText);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Report card uploaded successfully!");
       } else {
         throw new Error("Could not extract text from PDF");
@@ -152,7 +152,7 @@ export default function CollegeReadiness() {
 
       if (data.analysis) {
         setAnalysis(data.analysis);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Analysis complete!");
         
         // Save to history if user is logged in

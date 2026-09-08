@@ -1,3 +1,6 @@
+// Loaded here, not app-wide: Outcomes is its own chunk and Dashboard already
+// pays for this font in its own. See the [data-cluely] typography note below.
+import "@fontsource-variable/inter";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, Loader2, Save } from "lucide-react";
@@ -52,7 +55,8 @@ import {
   ProofLedger,
   SignalStandings,
 } from "@/components/outcomes/Standings";
-import { RecordEditor, type RecordFilter } from "@/components/outcomes/RecordEditor";
+import { RecordEditor } from "@/components/outcomes/RecordEditor";
+import { ImportLinkedInModal } from "@/components/ImportLinkedInModal";
 
 /**
  * Outcomes.
@@ -104,6 +108,7 @@ export default function Outcomes() {
     saving,
     updateProfile,
     updateTaskStates,
+    reload,
   } = useOutcomesData();
   const { weights } = useScoringWeights();
   const {
@@ -113,8 +118,9 @@ export default function Outcomes() {
     refresh: refreshGithub,
   } = useGitHubRepos();
   const [githubMerged, setGithubMerged] = useState(false);
-  const [recordFilter, setRecordFilter] = useState<RecordFilter>("all");
   const [methodOpen, setMethodOpen] = useState(false);
+  const [linkedinOpen, setLinkedinOpen] = useState(false);
+  const [linkedinLoading, setLinkedinLoading] = useState(false);
 
   // Pull GitHub repositories into the projects list, deduped by URL.
   const importGithubRepos = useCallback(
@@ -162,6 +168,26 @@ export default function Outcomes() {
     const list = await refreshGithub();
     importGithubRepos(list, false);
   }, [refreshGithub, importGithubRepos]);
+
+  /**
+   * LinkedIn import.
+   *
+   * `linkedin-extract` parses an exported profile and writes the entries into
+   * `outcomes_data` itself under the service role, so there is nothing to merge
+   * client-side — the page just has to re-read the row once the modal reports
+   * it finished. The spinner runs across that re-read rather than stopping at
+   * the modal's close, otherwise the button goes idle while the record is still
+   * the old one.
+   */
+  const onLinkedInImported = useCallback(async () => {
+    setLinkedinLoading(true);
+    try {
+      await reload();
+      toast.success("Imported from LinkedIn — check each section and add what it missed.");
+    } finally {
+      setLinkedinLoading(false);
+    }
+  }, [reload]);
 
   // ── The reading ────────────────────────────────────────────────────────
   const signals = useMemo(() => computeSignals(profile), [profile]);
@@ -223,7 +249,16 @@ export default function Outcomes() {
           </div>
         )}
 
-        <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1120px] px-4 pb-24 pt-8 sm:px-6">
+        {/*
+         * The page takes the width it is given.
+         *
+         * It used to be capped at 1120px, which on a laptop left a third of the
+         * screen as empty margin either side of a record the student is meant to
+         * scan. The cap is now the point where a line of body copy stops being
+         * readable rather than an arbitrary column, and the individual blocks
+         * still constrain their own prose with max-ch.
+         */}
+        <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1600px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
           <motion.header
             initial={reduced ? false : { opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -285,18 +320,33 @@ export default function Outcomes() {
               shape={shape}
             />
 
-            <GapWork tasks={tasks} states={taskStates} onStateChange={setTaskState} />
-
-            <SignalStandings ranked={ranked} tier={reading.tier} />
+            {/*
+             * Do next and the standings, side by side.
+             *
+             * Dashboard runs Today and the college list the same way — the
+             * thing you act on next to the thing you read for context, sharing
+             * one row instead of two full-width blocks stacked top to bottom.
+             * Do next is the wider of the pair for the same reason Timetable
+             * is: it is what you act on, not just consult.
+             */}
+            <div className="grid gap-3 lg:grid-cols-12 lg:items-start">
+              <div className="lg:col-span-7">
+                <GapWork tasks={tasks} states={taskStates} onStateChange={setTaskState} />
+              </div>
+              <div className="lg:col-span-5">
+                <SignalStandings ranked={ranked} tier={reading.tier} />
+              </div>
+            </div>
 
             <div id="your-record" className="scroll-mt-24">
               <RecordEditor
                 profile={profile}
                 update={update}
+                ranked={ranked}
                 githubLoading={githubLoading}
                 onSyncGithub={syncGithub}
-                filter={recordFilter}
-                onFilter={setRecordFilter}
+                linkedinLoading={linkedinLoading}
+                onImportLinkedIn={() => setLinkedinOpen(true)}
               />
             </div>
 
@@ -375,6 +425,12 @@ export default function Outcomes() {
           </div>
         </div>
       </div>
+
+      <ImportLinkedInModal
+        open={linkedinOpen}
+        onOpenChange={setLinkedinOpen}
+        onImported={onLinkedInImported}
+      />
     </>
   );
 }

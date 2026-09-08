@@ -42,7 +42,7 @@ import { ThemeProvider } from "next-themes";
 import { MotionConfig } from "framer-motion";
 
 import { AuthProvider } from "@/contexts/AuthContext";
-import { CreditsProvider } from "@/contexts/CreditsContext";
+import { UsageProvider } from "@/contexts/UsageContext";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout/Layout";
 
@@ -101,7 +101,7 @@ export function render(url: string): RenderResult {
         <QueryClientProvider client={queryClient}>
           <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
             <AuthProvider>
-              <CreditsProvider>
+              <UsageProvider>
                 <TooltipProvider>
                   <StaticRouter location={url}>
                     {/* Matches App.tsx's desktop branch. `useIsMobile` returns
@@ -112,7 +112,7 @@ export function render(url: string): RenderResult {
                     </MotionConfig>
                   </StaticRouter>
                 </TooltipProvider>
-              </CreditsProvider>
+              </UsageProvider>
             </AuthProvider>
           </ThemeProvider>
         </QueryClientProvider>

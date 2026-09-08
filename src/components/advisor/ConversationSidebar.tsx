@@ -238,7 +238,7 @@ function SidebarFooter({
           </DropdownMenuItem>
           <DropdownMenuItem onClick={onOpenUsage} className="gap-2 text-xs">
             <Gauge className="h-3.5 w-3.5" />
-            Usage &amp; credits
+            Usage
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -569,7 +569,7 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
             }}
           />
           <RailButton icon={Archive} label="Archived" onClick={() => setArchivedOpen(true)} expanded={false} />
-          <RailButton icon={Gauge} label="Usage & credits" onClick={onOpenUsage} expanded={false} />
+          <RailButton icon={Gauge} label="Usage" onClick={onOpenUsage} expanded={false} />
         </div>
         <SidebarFooter
           user={user}
@@ -659,7 +659,7 @@ export function ConversationSidebar(props: ConversationSidebarProps) {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={onOpenUsage} className="gap-2 text-xs">
               <Gauge className="h-3.5 w-3.5" />
-              Usage &amp; credits
+              Usage
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

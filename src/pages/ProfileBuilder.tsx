@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
   Check, Copy, Sparkles, ChevronRight, Eye, Upload, X, Image as ImageIcon, BarChart3, Loader2, Lock, TrendingUp, UserRound } from "lucide-react";
@@ -90,7 +90,7 @@ export default function ProfileBuilder() {
       }
       if (data?.refined) {
         setLiOutputs((p) => ({ ...p, [sectionId]: data.refined }));
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Text refined successfully!");
         void notifyTaskComplete({
           title: "Profile section refined",

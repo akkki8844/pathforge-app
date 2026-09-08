@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import {
   applicationSections,
   applicationPlatforms,
@@ -128,7 +128,7 @@ export default function ApplicationBuilder() {
       if (refined) {
         setOutputs((p) => ({ ...p, [section.id]: refined }));
         persist(section.id, { refined_text: refined });
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Polished. Ready to paste.");
       } else if ((data as { error?: string } | null)?.error) {
         toast.error((data as { error?: string }).error!);

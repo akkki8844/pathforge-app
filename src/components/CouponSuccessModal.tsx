@@ -4,12 +4,18 @@ import { Button } from "@/components/ui/button";
 interface CouponSuccessModalProps {
   open: boolean;
   onClose: () => void;
-  /** Plan display name if a plan was unlocked, e.g. "Pro". Omit for a credits-only redemption. */
+  /** Plan display name if a plan was unlocked, e.g. "Pro". Omit for an allowance-only redemption. */
   planName?: string | null;
-  /** e.g. "250 credits / month" — the unlocked plan's ongoing allotment, shown instead of a
-   * misleading "0 credits granted" when the coupon itself carries no bonus credits. */
-  planCreditLabel?: string | null;
-  creditsGranted?: number;
+  /** e.g. "Full monthly allowance" — what the unlocked plan grants on an ongoing basis. */
+  planAllowanceLabel?: string | null;
+  /**
+   * True when the code widened the usage allowance.
+   *
+   * Deliberately a boolean, not a figure: usage is stated as a percentage of the
+   * allowance everywhere else, so printing a raw grant number here would be the
+   * one place in the product that still speaks in credits.
+   */
+  allowanceIncreased?: boolean;
   code: string;
   /** Shown as a call-to-action when a plan still needs to be activated. */
   onActivatePlan?: () => void;
@@ -33,8 +39,8 @@ export function CouponSuccessModal({
   open,
   onClose,
   planName,
-  planCreditLabel,
-  creditsGranted,
+  planAllowanceLabel,
+  allowanceIncreased,
   code,
   onActivatePlan,
   planActive = false,
@@ -70,7 +76,7 @@ export function CouponSuccessModal({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 220, damping: 16, delay: 0.1 }}
-                className="mx-auto h-20 w-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center shadow-xl"
+                className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-emerald-600"
               >
                 <motion.span
                   initial={{ scale: 0, rotate: -20 }}
@@ -92,12 +98,12 @@ export function CouponSuccessModal({
                 <h2 className="text-2xl font-bold text-foreground">Congratulations</h2>
                 <p className="text-muted-foreground">
                   {planName
-                    ? `${planName} is ${planActive ? "active on your account" : "unlocked"} at no charge${planCreditLabel ? ` — ${planCreditLabel}` : ""}.`
-                    : `${creditsGranted ?? 0} bonus credits have been added to your account.`}
+                    ? `${planName} is ${planActive ? "active on your account" : "unlocked"} at no charge${planAllowanceLabel ? ` — ${planAllowanceLabel}` : ""}.`
+                    : "Your usage allowance has been widened."}
                 </p>
-                {planName && creditsGranted != null && creditsGranted > 0 && (
+                {planName && allowanceIncreased && (
                   <p className="text-sm text-muted-foreground">
-                    Plus {creditsGranted.toLocaleString()} bonus credits added to your account.
+                    Your usage allowance was widened on top of the plan.
                   </p>
                 )}
                 {planName && (

@@ -7,13 +7,15 @@ import { Sparkles, Zap, Crown } from "lucide-react";
  * Three self-serve tiers (free / pro / max) plus a contact-sales Enterprise
  * plan that is shown as a full-width bar rather than a comparison card. Both
  * the public /pricing page and the in-app billing settings render from this
- * file; nothing hard-codes a price or a credit figure of its own.
+ * file; nothing hard-codes a price or an allowance of its own.
  *
- * Credit cadence differs by tier and that is deliberate:
- *   - Free bills DAILY (3/day) so a casual user always has something to try.
- *   - Paid tiers bill MONTHLY so a heavy week isn't capped artificially.
+ * Allowance cadence differs by tier and that is deliberate:
+ *   - Free refills DAILY so a casual user always has something to try.
+ *   - Paid tiers refill MONTHLY so a heavy week isn't capped artificially.
  * These numbers mirror `monthly_credit_allowance()` and
  * `effective_daily_credit_limit()` in the database, which do the enforcing.
+ * Those server functions keep their historical names; nothing student-facing
+ * says "credit" any more — usage is reported as a percentage of the allowance.
  */
 export type PlanTier = "free" | "pro" | "max";
 
@@ -66,17 +68,23 @@ export interface PlanConfig {
   priceUSD: number;
   /** List price before the launch discount. Omit on tiers that aren't on sale. */
   originalPriceUSD?: number;
-  /** Credit allotment, in the cadence given by `creditPeriod`. */
-  credits: number;
-  creditPeriod: "day" | "month";
+  /**
+   * The plan's usage allowance in the server's internal accounting units, in
+   * the cadence given by `allowancePeriod`. Never rendered — usage is stated to
+   * students as a percentage of this, and tiers are compared as multiples of
+   * the free allowance. It lives here only so those two can be derived, and so
+   * the figures stay pinned to `monthly_credit_allowance()` in the database.
+   */
+  allowanceUnits: number;
+  allowancePeriod: "day" | "month";
   icon: LucideIcon;
   /** Tailwind gradient classes for the plan accent. */
   accent: string;
   highlighted?: boolean;
   features: string[];
   /**
-   * Monthly advisor token pool. Separate from `credits`: the advisor is metered
-   * in tokens, everything else in the app spends credits. Mirrors
+   * Monthly advisor token pool. Separate from `allowanceUnits`: the advisor is
+   * metered in tokens, everything else draws on the usage allowance. Mirrors
    * `advisor_token_allowance()` in the database, which does the enforcing.
    */
   advisorTokens: number;
@@ -92,9 +100,29 @@ export function discountPercent(plan: PlanConfig): number | null {
   return Math.round((1 - plan.priceUSD / plan.originalPriceUSD) * 100);
 }
 
-/** "3 credits / day" or "250 credits / month". */
-export function creditLabel(plan: PlanConfig): string {
-  return `${plan.credits.toLocaleString()} credits / ${plan.creditPeriod}`;
+/** Everything on one cadence, so two tiers can actually be compared. */
+function monthlyEquivalent(plan: PlanConfig): number {
+  return plan.allowancePeriod === "day" ? plan.allowanceUnits * 30 : plan.allowanceUnits;
+}
+
+/**
+ * What a tier gets you, in the only unit the product still speaks: the
+ * allowance, and how much bigger it is than the free one.
+ *
+ * This replaced "250 credits / month". A credit figure asked the student to
+ * learn a currency, hold an exchange rate for what each feature costs, and then
+ * do the division themselves — for a number that meant something different on
+ * a daily plan than on a monthly one. A multiple of the tier everybody starts
+ * on needs none of that.
+ */
+export function usageLabel(plan: PlanConfig): string {
+  if (plan.allowancePeriod === "day") {
+    return "Full daily allowance, resets every 24 h";
+  }
+  const free = PLANS.find((p) => p.tier === "free");
+  const ratio = free ? monthlyEquivalent(plan) / monthlyEquivalent(free) : 0;
+  if (!Number.isFinite(ratio) || ratio <= 1) return "Monthly allowance";
+  return `About ${Math.round(ratio)}× the free allowance, monthly`;
 }
 
 /** "25,000 advisor tokens / month". */
@@ -108,8 +136,8 @@ export const PLANS: PlanConfig[] = [
     name: "Free",
     tagline: "Everything you need to start forging your path.",
     priceUSD: 0,
-    credits: 3,
-    creditPeriod: "day",
+    allowanceUnits: 3,
+    allowancePeriod: "day",
     advisorTokens: 25000,
     icon: Sparkles,
     accent: "from-slate-400 to-slate-500",
@@ -119,7 +147,7 @@ export const PLANS: PlanConfig[] = [
       "The full 300-quest Journey",
       "PFA 5.5 advisor model",
       "Activities, essays & resume builders",
-      "3 credits / day",
+      "Full daily allowance, resets every 24 h",
       "25,000 advisor tokens / month",
       "Community support",
     ],
@@ -130,8 +158,8 @@ export const PLANS: PlanConfig[] = [
     tagline: "Deeper analysis and room to move fast.",
     priceUSD: 20,
     originalPriceUSD: 25,
-    credits: 250,
-    creditPeriod: "month",
+    allowanceUnits: 250,
+    allowancePeriod: "month",
     advisorTokens: 100000,
     icon: Zap,
     accent: "from-indigo-500 to-violet-600",
@@ -142,7 +170,7 @@ export const PLANS: PlanConfig[] = [
     features: [
       "Everything in Free",
       "PFA 6.5 advisor model",
-      "250 credits / month",
+      "About 3× the free allowance",
       "100,000 advisor tokens / month",
       "Priority screenshot verification",
       "All application & LinkedIn builders",
@@ -155,8 +183,8 @@ export const PLANS: PlanConfig[] = [
     tagline: "The deepest reasoning for the highest-stakes decisions.",
     priceUSD: 75,
     originalPriceUSD: 100,
-    credits: 750,
-    creditPeriod: "month",
+    allowanceUnits: 750,
+    allowancePeriod: "month",
     advisorTokens: 250000,
     icon: Crown,
     accent: "from-amber-400 via-orange-500 to-rose-500",
@@ -166,7 +194,7 @@ export const PLANS: PlanConfig[] = [
     features: [
       "Everything in Pro",
       "PFA 7 advisor model",
-      "750 credits / month",
+      "About 8× the free allowance",
       "250,000 advisor tokens / month",
       "Fastest verification queue",
       "1:1 priority support",

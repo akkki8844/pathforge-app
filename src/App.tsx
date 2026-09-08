@@ -10,7 +10,7 @@ import { TopLoadingBar } from "@/components/TopLoadingBar";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
-import { CreditsProvider } from "@/contexts/CreditsContext";
+import { UsageProvider } from "@/contexts/UsageContext";
 import { Layout } from "@/components/layout/Layout";
 import { RouteActivityLogger } from "@/components/RouteActivityLogger";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -132,7 +132,7 @@ function consumeSafePendingOAuthRedirect() {
   return value.startsWith("/") && !value.startsWith("//") ? value : null;
 }
 
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { LogoSpinner } from "@/components/LogoSpinner";
 
 const RouteFallback = () => <LogoSpinner />;
@@ -347,7 +347,7 @@ function PublicGuestRoute({ children }: { children: ReactNode }) {
 }
 
 function AppRoutes() {
-  const { showUpgradeModal, setShowUpgradeModal } = useCredits();
+  const { showUpgradeModal, setShowUpgradeModal } = useUsage();
   const { user } = useAuth();
   const location = useLocation();
 
@@ -949,7 +949,7 @@ const App = () => {
     <Provider {...(providerProps as any)}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem={false}>
         <AuthProvider>
-          <CreditsProvider>
+          <UsageProvider>
           <TooltipProvider>
             <Toaster />
             <Sonner />
@@ -962,7 +962,7 @@ const App = () => {
               </MobileMotionGate>
             </BrowserRouter>
           </TooltipProvider>
-          </CreditsProvider>
+          </UsageProvider>
         </AuthProvider>
       </ThemeProvider>
     </Provider>

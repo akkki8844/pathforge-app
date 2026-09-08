@@ -31,6 +31,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveWebSearch } from "@/components/LiveWebSearch";
 import { Seo } from "@/components/Seo";
+import { ColumnHead, Eyebrow, Figure, Panel, Title } from "@/components/cluely/primitives";
+import { fadeUp, transition } from "@/lib/motion";
 
 const TIP_ICONS: Record<ScholarshipTipIcon, (p: FlatIconProps) => JSX.Element> = {
   clock: ClockIcon,
@@ -331,49 +333,56 @@ export default function Scholarships() {
 
   const checklistItems = ["Essay written", "Transcript requested", "Recommendation letter", "Financial documents", "Application submitted"];
 
-  const typeBadgeColor = (type: Scholarship["type"]) => {
-    const map: Record<string, string> = {
-      merit: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-      "need-based": "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-      research: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-      competition: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-      community: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
-      diversity: "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20",
-    };
-    return map[type] || "";
-  };
+  // Every scholarship type used to get its own color (blue/green/purple/
+  // orange/pink/teal) — a badge rainbow that told you nothing except "these
+  // are different." One flat neutral style now; amount, deadline, and match
+  // score are the only badges that still carry color, because those are the
+  // ones actually worth a second look.
+  const typeBadgeColor = (_type: Scholarship["type"]) => "bg-muted text-muted-foreground border-border";
 
   return (
-    <div className="py-8 sm:py-12">
+    <div data-cluely className="min-h-svh bg-background font-cluely">
       <Seo title='Scholarships — Pathforge' description='Browse a curated, regional database of scholarships matched to your major, region, and grade.' path='/scholarships' />
-      <div className="section-container max-w-7xl">
+      {/* A searchable database of a few hundred rows wants the whole table,
+          not a centred column with paper down both sides. */}
+      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1440px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <CertificateIcon className="h-9 w-9" />
+          <Eyebrow>Funding</Eyebrow>
+          <h1 className="mt-2 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
             Scholarships
           </h1>
-          <p className="mt-2 text-muted-foreground">Discover opportunities tailored to your profile — with match scores, deadlines, and application tracking</p>
+          <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
+            Matched to your major, region and grade — with match scores, deadlines and application tracking.
+          </p>
         </div>
 
         {/* ===== STATS DASHBOARD ===== */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Four readings, drawn as readings: tabular figures on a flat card,
+            with the caption under the number rather than a coloured chip
+            beside it. */}
+        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            { label: "Total Scholarships", value: scholarships.length, icon: GraduationCap, suffix: "" },
-            { label: "Currently Open", value: openCount, icon: CheckCircle2, suffix: "" },
-            { label: "Combined Value", value: Math.round(totalValue / 1000), icon: DollarSign, suffix: "K+", prefix: "$" },
-            { label: "Closing Soon", value: closingSoon.length, icon: AlertTriangle, suffix: "" },
+            { label: "Total Scholarships", value: scholarships.length, suffix: "" },
+            { label: "Currently Open", value: openCount, suffix: "" },
+            { label: "Combined Value", value: Math.round(totalValue / 1000), suffix: "K+", prefix: "$" },
+            { label: "Closing Soon", value: closingSoon.length, suffix: "" },
           ].map((stat, i) => (
-            <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
-              <Card className="border-border/50 bg-gradient-to-br from-muted/30 to-background">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-accent/10"><stat.icon className="h-5 w-5 text-accent" /></div>
-                  <div>
-                    <p className="text-2xl font-bold text-foreground"><AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} /></p>
-                    <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  </div>
-                </CardContent>
-              </Card>
+            <motion.div
+              key={stat.label}
+              variants={fadeUp}
+              initial="hidden"
+              animate="visible"
+              transition={{ ...transition.base, delay: Math.min(0.2, i * 0.04) }}
+            >
+              <Panel className="p-4">
+                <ColumnHead>{stat.label}</ColumnHead>
+                <p className="mt-1.5">
+                  <Figure size="sm" className="text-[1.6rem]">
+                    <AnimatedCounter target={stat.value} suffix={stat.suffix} prefix={stat.prefix} />
+                  </Figure>
+                </p>
+              </Panel>
             </motion.div>
           ))}
         </div>
@@ -381,10 +390,10 @@ export default function Scholarships() {
         {/* ===== FEATURED CAROUSEL ===== */}
         {featuredScholarships.length > 0 && (
           <div className="mb-8 relative">
-            <h2 className="text-lg font-semibold text-foreground mb-3 flex items-center gap-2">
-              <Award className="h-5 w-5 text-accent" /> Featured Scholarships
-            </h2>
-            <div className="relative overflow-hidden rounded-xl border border-accent/20 bg-gradient-to-r from-accent/5 via-background to-accent/5">
+            <Title className="mb-3 flex items-center gap-2">
+              <Award className="h-4 w-4 text-primary" /> Featured Scholarships
+            </Title>
+            <div className="cly-lead relative overflow-hidden rounded-[0.875rem] border">
               <AnimatePresence mode="wait">
                 {featuredScholarships[carouselIndex] && (
                   <motion.div
@@ -438,7 +447,7 @@ export default function Scholarships() {
         {/* ===== DEADLINES APPROACHING ===== */}
         {closingSoon.length > 0 && (
           <motion.div
-            className="mb-8 p-5 rounded-xl border border-amber-500/30 bg-amber-500/5"
+            className="mb-8 rounded-[0.875rem] border border-destructive/30 bg-destructive/5 p-5"
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
@@ -448,7 +457,7 @@ export default function Scholarships() {
                 animate={{ scale: [1, 1.15, 1] }}
                 transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
               >
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
+                <AlertTriangle className="h-5 w-5 text-destructive" />
               </motion.div>
               Deadlines Approaching
             </h2>
@@ -468,7 +477,7 @@ export default function Scholarships() {
                   >
                     <p className="font-medium text-foreground text-sm line-clamp-1">{s.name}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <Badge variant="outline" className="text-xs bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20">
+                      <Badge variant="outline" className="border-destructive/25 bg-destructive/10 text-[11px] text-destructive">
                         <Clock className="h-3 w-3 mr-1" />{days}d left
                       </Badge>
                       <span className="text-xs text-muted-foreground">{s.amount}</span>
@@ -622,7 +631,7 @@ export default function Scholarships() {
                       {/* Badges row */}
                       <div className="flex flex-wrap gap-1 mt-2">
                         <Badge variant="outline" className={`text-[10px] capitalize ${typeBadgeColor(s.type)}`}>{s.type.replace("-"," ")}</Badge>
-                        {isTrending && <Badge variant="outline" className="text-[10px] bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20"><TrendingUp className="h-3 w-3 mr-0.5" />Trending</Badge>}
+                        {isTrending && <Badge variant="outline" className="text-[10px] bg-muted text-muted-foreground border-border"><TrendingUp className="h-3 w-3 mr-0.5" />Trending</Badge>}
                         {matchScore !== null && matchScore >= 80 && <Badge variant="outline" className="text-[10px] bg-accent/10 text-accent border-accent/30">{matchScore}% Match</Badge>}
                         {s.eligibility.fieldOfStudy.map(f => (
                           <Badge key={f} variant="outline" className="text-[10px] gap-0.5"><CategoryIcon field={f} />{f}</Badge>
@@ -635,9 +644,9 @@ export default function Scholarships() {
                         <div className="flex items-center gap-2 text-sm"><MapPin className="h-4 w-4 text-muted-foreground shrink-0" /><span className="text-muted-foreground">{s.country}{s.region ? ` · ${s.region}` : ""}</span></div>
                         <div className="flex items-center gap-2 text-sm">
                           <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className={status === "closing-soon" ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"}>
+                          <span className={status === "closing-soon" ? "font-medium text-destructive" : "text-muted-foreground"}>
                             {new Date(s.deadline).toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"})}
-                            {s.deadlineNote && <span className="ml-1 font-medium text-amber-600 dark:text-amber-400">(estimated)</span>}
+                            {s.deadlineNote && <span className="ml-1 font-medium text-muted-foreground">(estimated)</span>}
                             {status === "closing-soon" && ` (${days}d left)`}
                           </span>
                         </div>
@@ -686,7 +695,7 @@ export default function Scholarships() {
                           <span className="font-medium text-sm text-foreground line-clamp-1">{s.name}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={`text-xs ${status === "closing-soon" ? "bg-amber-500/10 text-amber-600 border-amber-500/20" : ""}`}>
+                          <Badge variant="outline" className={`text-[11px] ${status === "closing-soon" ? "border-destructive/25 bg-destructive/10 text-destructive" : ""}`}>
                             {new Date(s.deadline).toLocaleDateString("en-US",{month:"short",day:"numeric"})} · {days}d left
                           </Badge>
                           <span className="text-xs text-muted-foreground">{s.amount}</span>
@@ -757,8 +766,8 @@ export default function Scholarships() {
               status === "closed"
                 ? "border-destructive/30 bg-destructive/5 text-destructive"
                 : status === "closing-soon"
-                ? "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-400"
-                : "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-400";
+                ? "border-destructive/30 bg-destructive/5 text-destructive"
+                : "border-border bg-muted/40 text-foreground";
             const deadlineLabel =
               status === "closed" ? "Closed" : status === "closing-soon" ? `${days} days left` : `${days} days left · Open`;
 
@@ -780,7 +789,7 @@ export default function Scholarships() {
                           <Badge variant="outline" className="text-xs bg-accent/10 text-accent border-accent/30">{matchScore}% Match</Badge>
                         )}
                         {(s.popularity || 0) >= 80 && (
-                          <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/20">
+                          <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-border">
                             <TrendingUp className="h-3 w-3 mr-1" />Popular
                           </Badge>
                         )}
@@ -838,7 +847,7 @@ export default function Scholarships() {
                       <ul className="space-y-1.5 text-sm text-foreground/90">
                         <li className="flex gap-2"><span className="text-muted-foreground shrink-0">Grades</span><span className="ml-auto text-right">{s.eligibility.grades.join(", ")}</span></li>
                         {s.studyLevel === "postgraduate" && (
-                          <li className="flex gap-2 text-amber-700 dark:text-amber-500">
+                          <li className="flex gap-2 text-destructive">
                             <span className="shrink-0">Study level</span>
                             <span className="ml-auto text-right font-medium">Postgraduate — requires a completed bachelor&apos;s degree</span>
                           </li>

@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 
 export interface DraftedEmail {
   subject: string;
@@ -22,7 +22,7 @@ export function useRequestEmail() {
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      notifyCreditConsumed();
+      notifyUsageConsumed();
       return data as DraftedEmail;
     },
     onError: (e: any) =>

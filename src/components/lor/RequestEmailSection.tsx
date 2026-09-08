@@ -80,7 +80,7 @@ export function RequestEmailSection({ recommender }: { recommender: Recommender 
           <Sparkles className="h-3.5 w-3.5 mr-1.5" />
         )}
         {hasDraft ? "Re-draft email" : "Draft email"}
-        <span className="ml-2 text-[10px] text-muted-foreground">1 credit</span>
+        <span className="ml-2 text-[10px] text-muted-foreground">Uses AI</span>
       </Button>
 
       {hasDraft && (

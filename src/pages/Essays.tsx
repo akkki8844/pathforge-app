@@ -23,7 +23,7 @@ import { essayTypes } from "@/lib/data";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { notifyTaskComplete } from "@/lib/notifyTask";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { Seo } from "@/components/Seo";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
@@ -134,7 +134,7 @@ export default function Essays() {
           sug.push("Paragraph structure adjusted — verify the new flow matches your intended arc.");
         sug.push("Read the refined version aloud to confirm it still sounds like you.");
         setSuggestions(sug);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Essay refined.");
         void notifyTaskComplete({
           title: "Essay refinement complete",
@@ -168,7 +168,7 @@ export default function Essays() {
       }
       if (data?.analysis) {
         setAnalysis(data.analysis);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         toast.success("Analysis complete.");
         void notifyTaskComplete({
           title: "Essay analysis ready",

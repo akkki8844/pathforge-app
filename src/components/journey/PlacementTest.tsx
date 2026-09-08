@@ -9,7 +9,7 @@ import {
   PlacementAnswers, placeUserAtLevel, getLevelById,
   type Tier, type YesNoNA,
 } from "@/lib/journeyLevels";
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { toast } from "sonner";
 
 interface Props {
@@ -450,7 +450,7 @@ const DEFAULTS: PlacementAnswers = {
 };
 
 export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace }: Props) {
-  const { consumeCredit } = useCredits();
+  const { consumeUsage } = useUsage();
   const [sectionIdx, setSectionIdx] = useState(0);
   const [answers, setAnswers] = useState<PlacementAnswers>(DEFAULTS);
   const [touched, setTouched] = useState<Set<string>>(new Set());
@@ -483,10 +483,10 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    const ok = await consumeCredit();
+    const ok = await consumeUsage();
     if (!ok) {
       setSubmitting(false);
-      toast.error("Out of credits — running placement test costs 1 credit.");
+      toast.error("You have used 100% of your allowance — the placement test needs some left.");
       return;
     }
     const lvl = placeUserAtLevel(answers, grade, overallScore);
@@ -523,7 +523,7 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
               Place Me on the Journey
             </DialogTitle>
             <DialogDescription>
-              35 detailed questions across 5 sections — about 4 minutes. The deeper your answers, the more accurately we place you on the path. <span className="text-foreground font-medium">Costs 1 credit when submitted.</span>
+              35 detailed questions across 5 sections — about 4 minutes. The deeper your answers, the more accurately we place you on the path. <span className="text-foreground font-medium">Counts toward your usage when submitted.</span>
             </DialogDescription>
           </DialogHeader>
 
@@ -656,7 +656,7 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
                   className="gap-2"
                 >
                   {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : sectionIdx === totalSections - 1 ? <Check className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
-                  {sectionIdx === totalSections - 1 ? "Calculate Level (1 credit)" : "Next Section"}
+                  {sectionIdx === totalSections - 1 ? "Calculate Level" : "Next Section"}
                 </Button>
               </div>
             </div>

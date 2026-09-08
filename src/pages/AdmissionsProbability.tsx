@@ -27,7 +27,7 @@ import { CollegeLogo } from "@/components/CollegeLogo";
 import { AnimatedCounter } from "@/components/animations/AnimatedCounter";
 import { fadeUp, staggerParent } from "@/lib/motion";
 import { useToast } from "@/hooks/use-toast";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { useAdmissionsData, type AdmissionsFormData, defaultFormData } from "@/hooks/useAdmissionsData";
 import { useOutcomesData } from "@/hooks/useOutcomesData";
 import {
@@ -309,7 +309,7 @@ export default function AdmissionsProbability() {
       if (data?.results) {
         setResults(data.results);
         setShowResults(true);
-        notifyCreditConsumed();
+        notifyUsageConsumed();
         if (isAuthenticated) saveAnalysis(formData, data.results);
       }
     } catch (err: any) {

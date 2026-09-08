@@ -9,7 +9,7 @@ import { GuestModeBanner } from "@/components/GuestModeBanner";
 import { FeedbackWidget } from "@/components/FeedbackWidget";
 import { AnnouncementBanner } from "@/components/AnnouncementBanner";
 import { EmailVerificationBanner } from "@/components/EmailVerificationBanner";
-import { CreditLimitBanner } from "@/components/CreditLimitBanner";
+import { UsageLimitBanner } from "@/components/UsageLimitBanner";
 import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 import { UpgradeCelebration } from "@/components/UpgradeCelebration";
 import { useAuth } from "@/contexts/AuthContext";
@@ -51,7 +51,7 @@ export function Layout({ children }: LayoutProps) {
         {!useGuestNav && (isMarketingPage ? <BackNav /> : user ? <Navbar /> : <GuestNavbar />)}
         {!useGuestNav && <AnnouncementBanner />}
         {!useGuestNav && <EmailVerificationBanner />}
-        {!useGuestNav && <CreditLimitBanner />}
+        {!useGuestNav && <UsageLimitBanner />}
         {!useGuestNav && <GuestModeBanner />}
         <main className="flex-1 min-w-0">
           <PageTransition>{children}</PageTransition>

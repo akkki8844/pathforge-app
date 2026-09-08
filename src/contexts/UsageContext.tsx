@@ -3,21 +3,30 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface CreditData {
+/**
+ * Plan usage, stated as a percentage of the allowance.
+ *
+ * This replaces the credit system. Credits were a currency the student had to
+ * learn before they could answer the only question they ever actually asked —
+ * "how much have I got left?" — and the answer changed units depending on where
+ * you stood: a daily bucket on free, a monthly one on paid, plus a bonus wallet
+ * that lived outside both. A percentage is the same answer in one unit that
+ * needs no explanation and does not drift between plans.
+ *
+ * The server still meters in discrete units, because 16 edge functions and the
+ * billing webhooks are built on `consume_credit` / `get_credits` and those are
+ * the accounting substrate. Nothing below exposes that unit. `used` and
+ * `capacity` are kept internal precisely so no surface can start printing them
+ * again — every consumer reads a percentage.
+ */
+
+interface UsageData {
   plan: string;
   /** Admins only — every real plan (free, Pro, Max) is metered. */
   unlimited: boolean;
-  creditsUsed: number;
-  maxCredits: number;
-  bonusCredits: number;
-  /**
-   * Bonus credits spent inside the CURRENT window, from the server.
-   *
-   * Without this the meter cannot be drawn: `bonusCredits` is a live balance,
-   * so it cancels out of `capacity - remaining` and the ratio collapses to the
-   * plan bucket alone. See 20260808120400_bonus_credit_accounting.sql.
-   */
-  bonusCreditsUsed: number;
+  /** Internal accounting units. Never rendered — percentages are the contract. */
+  used: number;
+  capacity: number;
   lastResetAt: string;
   /** Which bucket governs this account: free bills daily, paid plans monthly. */
   period: "day" | "month";
@@ -36,7 +45,8 @@ export interface RedeemCouponResult {
   success: boolean;
   error?: string;
   code?: string;
-  creditsGranted: number;
+  /** True when the code widened the allowance (the old "credits granted"). */
+  allowanceIncreased: boolean;
   /** True when this code put the user on a (new or extended) paid plan. */
   planActivated: boolean;
   /** The plan tier now active because of this code, if any. */
@@ -49,32 +59,37 @@ export interface RedeemCouponResult {
   planKept: string | null;
 }
 
-// Global event for credit consumption — any page can dispatch this
-export function notifyCreditConsumed() {
-  window.dispatchEvent(new CustomEvent("credit-consumed"));
+/** Global event — any page can announce that it just spent some allowance. */
+export function notifyUsageConsumed() {
+  window.dispatchEvent(new CustomEvent("usage-consumed"));
 }
 
-interface CreditsContextValue {
-  creditData: CreditData | null;
+interface UsageContextValue {
+  usageData: UsageData | null;
   loading: boolean;
   /** True for admins only. Nothing below it is a limit. */
   unlimited: boolean;
-  creditsRemaining: number;
-  /** Credits left in the governing plan bucket (excludes the bonus wallet). */
-  dailyRemaining: number;
-  totalCapacity: number;
-  totalUsed: number;
-  usagePercent: number;
+  /** 0–100. The single number every usage surface renders. */
+  percentUsed: number;
+  /** 0–100. What is left of the allowance. */
+  percentRemaining: number;
+  /** False once the allowance is spent — the gate every feature checks. */
+  hasAllowance: boolean;
   /** "day" | "month" — which bucket the numbers above describe. */
   period: "day" | "month";
   /** Ready-made adjective for that bucket: "daily" or "monthly". */
   periodLabel: "daily" | "monthly";
-  useCredit: () => Promise<boolean>;
-  consumeCredit: () => Promise<boolean>;
+  /** Cheap client-side gate. Opens the upgrade modal when nothing is left. */
+  checkAllowance: () => Promise<boolean>;
+  /** Server-authoritative spend. */
+  consumeUsage: () => Promise<boolean>;
+  /** Countdown to the refill, e.g. "3h 20m" or "12d". */
   getResetTime: () => string;
+  /** Absolute refill moment, e.g. "Resets Fri 6:30 AM". */
+  getResetLabel: () => string;
   showUpgradeModal: boolean;
   setShowUpgradeModal: (v: boolean) => void;
-  refreshCredits: () => Promise<void>;
+  refreshUsage: () => Promise<void>;
   /** Redeem a coupon code and reflect the result immediately. */
   redeemCoupon: (code: string) => Promise<RedeemCouponResult>;
   /** Activates a coupon-unlocked plan for $0. No payment gateway involved. */
@@ -83,10 +98,10 @@ interface CreditsContextValue {
   switchPlan: (target: "free" | "pro" | "max") => Promise<{ success: boolean; error?: string; plan?: string }>;
 }
 
-const CreditsContext = createContext<CreditsContextValue | null>(null);
+const UsageContext = createContext<UsageContextValue | null>(null);
 
-/** Shape of the `get_credits` RPC payload. */
-type CreditsRpcRow = {
+/** Shape of the `get_credits` RPC payload — the server's accounting units. */
+type UsageRpcRow = {
   plan: string;
   credits_used_today: number;
   max_daily_credits: number;
@@ -102,14 +117,32 @@ type CreditsRpcRow = {
   free_plan_grant_days?: number | null;
 };
 
-function toCreditData(d: CreditsRpcRow): CreditData {
+/**
+ * Collapse the server's three buckets (plan allowance, plan spend, bonus
+ * wallet) into one used/capacity pair.
+ *
+ * Capacity has to be stated as "what you have spent plus what you have left",
+ * not "allowance minus remaining": the bonus wallet is a live balance, so it
+ * cancels out of the subtraction and the ratio silently collapses to the plan
+ * bucket alone. That is the bug that made the meter read 0% for someone
+ * burning through a coupon and then lurch the moment the plan bucket was
+ * finally touched. See 20260808120400_bonus_credit_accounting.sql.
+ */
+function toUsageData(d: UsageRpcRow): UsageData {
+  const planAllowance = d.max_daily_credits ?? 0;
+  const planSpent = Math.min(d.credits_used_today ?? 0, planAllowance);
+  const planLeft = Math.max(0, planAllowance - (d.credits_used_today ?? 0));
+  const bonusLeft = d.bonus_credits ?? 0;
+  const bonusSpent = Math.max(0, d.bonus_credits_used ?? 0);
+
+  const used = planSpent + bonusSpent;
+  const capacity = used + bonusLeft + planLeft;
+
   return {
     plan: d.plan,
     unlimited: d.unlimited === true || d.is_admin === true,
-    creditsUsed: d.credits_used_today,
-    maxCredits: d.max_daily_credits,
-    bonusCredits: d.bonus_credits ?? 0,
-    bonusCreditsUsed: Math.max(0, d.bonus_credits_used ?? 0),
+    used,
+    capacity,
     lastResetAt: d.last_reset_at,
     period: d.period ?? "day",
     periodResetAt:
@@ -123,11 +156,11 @@ function toCreditData(d: CreditsRpcRow): CreditData {
 }
 
 // Single shared fetch + realtime subscription for the whole app, instead of
-// every consumer (CreditMeter, Resume, Pricing, PlacementTest, etc.) opening
-// its own Supabase channel and firing its own get_credits round-trip.
-export function CreditsProvider({ children }: { children: ReactNode }) {
+// every consumer (the settings meter, Resume, Pricing, PlacementTest, ...)
+// opening its own Supabase channel and firing its own round-trip.
+export function UsageProvider({ children }: { children: ReactNode }) {
   const { user, isAdmin } = useAuth();
-  const [creditData, setCreditData] = useState<CreditData | null>(null);
+  const [usageData, setUsageData] = useState<UsageData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -137,21 +170,19 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
    */
   const autoClaimedRef = useRef<string | null>(null);
 
-  const fetchCredits = useCallback(async () => {
+  const fetchUsage = useCallback(async () => {
     if (!user) {
-      setCreditData(null);
+      setUsageData(null);
       setLoading(false);
       return;
     }
-    // Admins skip credits entirely — no fetch, no UI.
+    // Admins are unmetered — no fetch, no meter.
     if (isAdmin) {
-      setCreditData({
+      setUsageData({
         plan: "admin",
         unlimited: true,
-        creditsUsed: 0,
-        maxCredits: 999999,
-        bonusCredits: 0,
-        bonusCreditsUsed: 0,
+        used: 0,
+        capacity: 0,
         lastResetAt: new Date().toISOString(),
         period: "month",
         periodResetAt: new Date(Date.now() + 30 * 864e5).toISOString(),
@@ -166,15 +197,12 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.rpc("get_credits");
       if (error) {
-        console.error("Error fetching credits:", error);
+        console.error("Error fetching usage:", error);
         setLoading(false);
         return;
       }
       if (data) {
-        // credits_used_today / max_daily_credits are the generic "used /
-        // capacity" pair — for paid plans the server fills them from the
-        // monthly bucket. `period` says which one you're actually looking at.
-        let row = data as CreditsRpcRow;
+        let row = data as UsageRpcRow;
 
         /*
          * Self-healing for the old two-step redemption flow.
@@ -192,29 +220,29 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           const { data: claimed, error: claimError } = await supabase.rpc("claim_free_plan");
           if (!claimError && (claimed as { success?: boolean } | null)?.success) {
             const { data: fresh } = await supabase.rpc("get_credits");
-            if (fresh) row = fresh as CreditsRpcRow;
+            if (fresh) row = fresh as UsageRpcRow;
           }
         }
 
-        setCreditData(toCreditData(row));
+        setUsageData(toUsageData(row));
       }
     } catch (error) {
-      console.warn("Credits unavailable:", error);
+      console.warn("Usage unavailable:", error);
       setLoading(false);
       return;
     }
     setLoading(false);
   }, [user, isAdmin]);
 
-  useEffect(() => { fetchCredits(); }, [fetchCredits]);
+  useEffect(() => { fetchUsage(); }, [fetchUsage]);
 
   useEffect(() => {
-    const handler = () => { setTimeout(fetchCredits, 500); };
-    window.addEventListener("credit-consumed", handler);
-    return () => window.removeEventListener("credit-consumed", handler);
-  }, [fetchCredits]);
+    const handler = () => { setTimeout(fetchUsage, 500); };
+    window.addEventListener("usage-consumed", handler);
+    return () => window.removeEventListener("usage-consumed", handler);
+  }, [fetchUsage]);
 
-  // Realtime: refresh immediately when admins adjust this user's credits/plan.
+  // Realtime: refresh immediately when admins adjust this user's allowance/plan.
   useEffect(() => {
     if (!user || isAdmin) return;
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -230,86 +258,72 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
           : `${Date.now()}-${Math.random()}`;
 
       channel = supabase
-        .channel(`user_credits:${user.id}:${suffix}`)
+        .channel(`user_usage:${user.id}:${suffix}`)
         .on(
           "postgres_changes",
           { event: "*", schema: "public", table: "user_credits", filter: `user_id=eq.${user.id}` },
-          () => { fetchCredits(); }
+          () => { fetchUsage(); }
         )
         .subscribe();
     } catch (error) {
-      console.warn("Credit realtime disabled:", error);
+      console.warn("Usage realtime disabled:", error);
     }
 
     return () => {
       if (channel) void supabase.removeChannel(channel);
     };
-  }, [user, isAdmin, fetchCredits]);
+  }, [user, isAdmin, fetchUsage]);
 
-  /*
-   * Meter arithmetic.
-   *
-   * The previous version computed `totalUsed = totalCapacity - creditsRemaining`,
-   * which algebraically cancels `bonusCredits` out of both sides and reduces to
-   * `min(creditsUsed, maxCredits)`. Spending a bonus credit therefore shrank the
-   * denominator while the numerator stood still: the ring read 0% for a user
-   * burning through a 500-credit coupon, then lurched the instant the plan
-   * bucket was finally touched.
-   *
-   * The server now reports how much of the bonus wallet was spent in this
-   * window, so capacity can be stated the only way that stays self-consistent:
-   * what you have spent, plus what you have left.
-   */
-  const planRemaining = creditData ? Math.max(0, creditData.maxCredits - creditData.creditsUsed) : 0;
-  const bonusUsed = creditData ? Math.max(0, creditData.bonusCreditsUsed) : 0;
-  const creditsRemaining = creditData ? creditData.bonusCredits + planRemaining : 0;
-  const totalUsed = creditData ? Math.min(creditData.creditsUsed, creditData.maxCredits) + bonusUsed : 0;
-  const totalCapacity = creditData ? totalUsed + creditsRemaining : 0;
-  const unlimited = creditData?.unlimited === true;
+  const unlimited = usageData?.unlimited === true;
   // An unmetered account has no ratio to draw. Reporting 0 rather than a live
-  // percentage keeps every "running low" / "out of credits" branch downstream
+  // percentage keeps every "running low" / "out of allowance" branch downstream
   // from firing on a plan that cannot run out.
-  const usagePercent = unlimited ? 0 : totalCapacity > 0 ? (totalUsed / totalCapacity) * 100 : 0;
+  const percentUsed =
+    unlimited || !usageData || usageData.capacity <= 0
+      ? 0
+      : Math.min(100, (usageData.used / usageData.capacity) * 100);
+  const percentRemaining = unlimited ? 100 : Math.max(0, 100 - percentUsed);
+  const hasAllowance = unlimited || !usageData ? true : usageData.used < usageData.capacity;
 
-  const period = creditData?.period ?? "day";
+  const period = usageData?.period ?? "day";
   const periodLabel: "daily" | "monthly" = period === "month" ? "monthly" : "daily";
 
-  const useCredit = useCallback(async (): Promise<boolean> => {
+  const checkAllowance = useCallback(async (): Promise<boolean> => {
     if (isAdmin) return true;
-    if (!user || !creditData) return false;
-    if (creditsRemaining <= 0) {
+    if (!user || !usageData) return false;
+    if (!hasAllowance) {
       setShowUpgradeModal(true);
       return false;
     }
     return true;
-  }, [user, creditData, creditsRemaining, isAdmin]);
+  }, [user, usageData, hasAllowance, isAdmin]);
 
   /**
-   * Server-authoritative credit consumption. Admins bypass entirely.
+   * Server-authoritative spend. Admins bypass entirely.
    */
-  const consumeCredit = useCallback(async (): Promise<boolean> => {
+  const consumeUsage = useCallback(async (): Promise<boolean> => {
     if (isAdmin) return true;
     if (!user) return false;
-    if (creditsRemaining <= 0) {
+    if (!hasAllowance) {
       setShowUpgradeModal(true);
       return false;
     }
     const { data, error } = await supabase.rpc("consume_credit", { _feature_type: "placement_test" });
     if (error) {
-      // A genuine RPC/database failure, not a considered "you have no credits"
-      // answer from the function itself — don't show the upgrade modal for this.
-      console.error("consume_credit error:", error);
+      // A genuine RPC/database failure, not a considered "you have nothing
+      // left" answer from the function itself — don't show the upgrade modal.
+      console.error("usage spend error:", error);
       toast.error("Something went wrong — please try again.");
       return false;
     }
     if (data === false) {
       setShowUpgradeModal(true);
-      await fetchCredits();
+      await fetchUsage();
       return false;
     }
-    await fetchCredits();
+    await fetchUsage();
     return true;
-  }, [user, creditsRemaining, fetchCredits, isAdmin]);
+  }, [user, hasAllowance, fetchUsage, isAdmin]);
 
   /**
    * One redemption path for both /pricing and Settings > Billing, so the two
@@ -317,7 +331,7 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
    */
   const redeemCoupon = useCallback(async (code: string): Promise<RedeemCouponResult> => {
     const empty: RedeemCouponResult = {
-      success: false, creditsGranted: 0, planActivated: false, planTier: null,
+      success: false, allowanceIncreased: false, planActivated: false, planTier: null,
       planExpiresAt: null, planKept: null,
     };
     if (!user) return { ...empty, error: "Please sign in to redeem a coupon." };
@@ -337,12 +351,14 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
 
     if (!res?.success) return { ...empty, error: res?.error || "That code couldn't be redeemed." };
 
-    await fetchCredits();
+    await fetchUsage();
 
     return {
       success: true,
       code: res.code || trimmed.toUpperCase(),
-      creditsGranted: res.credits_granted ?? 0,
+      // The server still answers in accounting units; the UI only needs to know
+      // that the allowance got wider, never by how many of a unit nobody sees.
+      allowanceIncreased: (res.credits_granted ?? 0) > 0,
       // `plan_activated` is the new, explicit flag; fall back to the presence
       // of `plan_unlocked` so a not-yet-migrated database still behaves.
       planActivated: res.plan_activated ?? !!res.plan_unlocked,
@@ -350,68 +366,86 @@ export function CreditsProvider({ children }: { children: ReactNode }) {
       planExpiresAt: res.plan_expires_at ?? null,
       planKept: res.plan_kept ?? null,
     };
-  }, [user, fetchCredits]);
+  }, [user, fetchUsage]);
 
   const claimFreePlan = useCallback(async () => {
     if (!user) return { success: false, error: "Not signed in" };
     const { data, error } = await supabase.rpc("claim_free_plan");
     if (error) return { success: false, error: error.message };
     const result = data as { success: boolean; error?: string; plan?: string };
-    if (result?.success) await fetchCredits();
+    if (result?.success) await fetchUsage();
     return result;
-  }, [user, fetchCredits]);
+  }, [user, fetchUsage]);
 
   const switchPlan = useCallback(async (target: "free" | "pro" | "max") => {
     if (!user) return { success: false, error: "Not signed in" };
     const { data, error } = await supabase.rpc("switch_plan", { _target_plan: target });
     if (error) return { success: false, error: error.message };
     const result = data as { success: boolean; error?: string; plan?: string };
-    if (result?.success) await fetchCredits();
+    if (result?.success) await fetchUsage();
     return result;
-  }, [user, fetchCredits]);
+  }, [user, fetchUsage]);
 
   const getResetTime = useCallback(() => {
-    if (!creditData) return "";
-    const diff = new Date(creditData.periodResetAt).getTime() - Date.now();
+    if (!usageData) return "";
+    const diff = new Date(usageData.periodResetAt).getTime() - Date.now();
     if (diff <= 0) return "Resetting...";
     // A monthly bucket counted in hours reads as noise ("718h 4m"), so paid
     // plans get days and free plans keep the precise hour/minute countdown.
-    if (creditData.period === "month") {
+    if (usageData.period === "month") {
       const days = Math.ceil(diff / 864e5);
       return `${days}d`;
     }
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     return `${hours}h ${minutes}m`;
-  }, [creditData]);
+  }, [usageData]);
 
-  const value: CreditsContextValue = {
-    creditData,
+  /**
+   * The absolute moment rather than the countdown. A countdown answers "how
+   * long", which is the wrong question when you are deciding whether to wait —
+   * "Resets Fri 6:30 AM" is something you can plan around.
+   */
+  const getResetLabel = useCallback(() => {
+    if (!usageData) return "";
+    const at = new Date(usageData.periodResetAt);
+    if (Number.isNaN(at.getTime())) return "";
+    const soon = at.getTime() - Date.now() < 36 * 60 * 60 * 1000;
+    return `Resets ${at.toLocaleString(undefined, {
+      weekday: soon ? "short" : undefined,
+      month: soon ? undefined : "short",
+      day: soon ? undefined : "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    })}`;
+  }, [usageData]);
+
+  const value: UsageContextValue = {
+    usageData,
     loading,
     unlimited,
-    creditsRemaining,
-    dailyRemaining: planRemaining,
-    totalCapacity,
-    totalUsed,
-    usagePercent,
+    percentUsed,
+    percentRemaining,
+    hasAllowance,
     period,
     periodLabel,
-    useCredit,
-    consumeCredit,
+    checkAllowance,
+    consumeUsage,
     getResetTime,
+    getResetLabel,
     showUpgradeModal,
     setShowUpgradeModal,
-    refreshCredits: fetchCredits,
+    refreshUsage: fetchUsage,
     redeemCoupon,
     claimFreePlan,
     switchPlan,
   };
 
-  return <CreditsContext.Provider value={value}>{children}</CreditsContext.Provider>;
+  return <UsageContext.Provider value={value}>{children}</UsageContext.Provider>;
 }
 
-export function useCredits() {
-  const ctx = useContext(CreditsContext);
-  if (!ctx) throw new Error("useCredits must be used within a CreditsProvider");
+export function useUsage() {
+  const ctx = useContext(UsageContext);
+  if (!ctx) throw new Error("useUsage must be used within a UsageProvider");
   return ctx;
 }

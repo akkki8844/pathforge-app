@@ -46,9 +46,9 @@ const STEPS = [
   },
   {
     icon: Zap,
-    title: "Your credits",
+    title: "Your usage",
     description:
-      "AI actions use credits from the meter in the corner. Free renews daily; paid plans renew monthly. Nothing here is a surprise charge.",
+      "AI actions draw on your plan allowance, shown as a percentage in Settings › Usage. Free refills daily; paid plans refill monthly. Nothing here is a surprise charge.",
   },
 ];
 

@@ -56,7 +56,7 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
                 <Zap className="h-8 w-8 text-primary-foreground" />
               </motion.div>
 
-              <h2 className="text-2xl font-bold text-foreground">You've used all your credits</h2>
+              <h2 className="text-2xl font-bold text-foreground">You've used 100% of your allowance</h2>
               <p className="text-muted-foreground text-sm">
                 Upgrade to Pro to keep building. Pick your monthly credit volume — pay only for what you use.
               </p>

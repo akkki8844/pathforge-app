@@ -91,9 +91,9 @@ export function useProofSubmissions() {
     }
     if (ok === false) {
       window.dispatchEvent(new CustomEvent("credit-exhausted"));
-      return { error: "Out of credits — upgrade to keep submitting evidence." };
+      return { error: "You have used 100% of your allowance — upgrade to keep submitting evidence." };
     }
-    window.dispatchEvent(new CustomEvent("credit-consumed"));
+    window.dispatchEvent(new CustomEvent("usage-consumed"));
 
     let filePath: string | null = null;
     let fileType: string | null = null;

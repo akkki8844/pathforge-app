@@ -17,12 +17,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 /**
- * "tokens" is the advisor's own monthly token budget; "credits" is the app-wide
+ * "tokens" is the advisor's own monthly token budget; "allowance" is the app-wide
  * pool that artifact generation still draws on. They are different pools and
  * the notice a user sees has to say which one ran out, so they stay separate
  * here rather than collapsing into one "limit" case.
  */
-export type AdvisorLimitKind = "credits" | "rate" | "tokens";
+export type AdvisorLimitKind = "allowance" | "rate" | "tokens";
 
 export class AdvisorLimitError extends Error {
   kind: AdvisorLimitKind;
@@ -178,7 +178,7 @@ export async function streamAdvisor(
     // OUT_OF_CREDITS is the pre-token-budget code. A deployment where the page
     // is newer than the edge function still needs to say something true.
     if (code === "OUT_OF_CREDITS" || res.status === 402) {
-      throw new AdvisorLimitError("credits", message || "You've run out of credits.");
+      throw new AdvisorLimitError("allowance", message || "You have used 100% of your allowance.");
     }
     if (code === "RATE_LIMITED" || res.status === 429) {
       throw new AdvisorLimitError("rate", message || "You've hit your usage limit.");

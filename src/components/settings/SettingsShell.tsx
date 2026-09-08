@@ -54,7 +54,7 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
       { id: "account", label: "Account", icon: UserCircle2, hint: "Email & security" },
       { id: "privacy", label: "Privacy", icon: ShieldCheck, hint: "Data & visibility" },
       { id: "billing", label: "Billing", icon: CreditCard, hint: "Plan & invoices" },
-      { id: "usage", label: "Usage", icon: Activity, hint: "Credits & limits" },
+      { id: "usage", label: "Usage", icon: Activity, hint: "Allowance & limits" },
     ],
   },
 ];

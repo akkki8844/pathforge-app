@@ -17,9 +17,12 @@ import { formatContextTokens, type ContextUsage } from "@/lib/advisorContext";
  * width of a word, so it can sit in the composer's control row without
  * competing with the send button.
  *
- * Every figure it states is in thousands. Percent answered "how full", which is
- * the question the ring already answers by its shape; the number worth printing
- * is how much room is actually left, and tokens are the unit that is.
+ * The ring carries no printed label. A standing "60.7K LEFT" next to it stated
+ * in words what the ring already states by its shape, and it was the widest
+ * thing in a control row that also holds the model picker and the send button —
+ * so the row wrapped and looked broken. The figures moved into the tooltip,
+ * where both units live together: percent for "how full", tokens for "how much
+ * room", because neither answers the other's question.
  */
 
 /** Ring geometry. Stroke sits inside the box, so r + stroke/2 must clear it. */
@@ -67,13 +70,15 @@ export function ContextMeter({
             type="button"
             onClick={onCompact}
             className={cn(
-              "group hidden select-none items-center gap-1.5 rounded-md px-1.5 py-1 text-left sm:inline-flex",
+              "group hidden select-none items-center justify-center rounded-md p-1.5 sm:inline-flex",
               "transition-colors hover:bg-muted/60",
               className,
             )}
-            aria-label={`Context window: ${formatContextTokens(used)} of ${formatContextTokens(
-              windowSize,
-            )} tokens used, ${formatContextTokens(remaining)} left. Compact the conversation.`}
+            aria-label={`Context window ${Math.round(filled)}% full: ${formatContextTokens(
+              used,
+            )} of ${formatContextTokens(windowSize)} tokens used, ${formatContextTokens(
+              remaining,
+            )} left. Compact the conversation.`}
           >
             <svg
               width={SIZE}
@@ -103,32 +108,24 @@ export function ContextMeter({
                 className="transition-[stroke-dashoffset,color] duration-500 ease-out"
               />
             </svg>
-
-            <span
-              className={cn(
-                "font-display text-[11px] font-bold uppercase leading-none tracking-[0.1em] tabular-nums transition-colors",
-                toneText,
-              )}
-            >
-              {/* Once it matters, say the thing to do rather than the number.
-                  "4.2k left" is a fact; "compact" is the instruction. */}
-              {level === "full" ? "Compact" : `${formatContextTokens(remaining)} left`}
-            </span>
           </button>
         </TooltipTrigger>
         <TooltipContent side="top" className="max-w-[16rem]">
           <p className="font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-            Context window
+            Context remaining
           </p>
-          <p className="mt-1 text-xs tabular-nums">
-            {formatContextTokens(used)} of {formatContextTokens(windowSize)} used ·{" "}
-            {formatContextTokens(remaining)} left
+          {/* Both units, because they answer different questions: the percentage
+              is how full the window is, the tokens are how much room is left. */}
+          <p className={cn("mt-1 text-sm font-semibold tabular-nums", toneText)}>
+            {Math.max(0, 100 - Math.round(filled))}% · {formatContextTokens(remaining)} tokens
+          </p>
+          <p className="mt-1 text-[11px] tabular-nums text-muted-foreground">
+            {formatContextTokens(used)} of {formatContextTokens(windowSize)} used
           </p>
           <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
             This is how much of the conversation the advisor can still see — not your
-            account balance. Nothing here spends credits. Run{" "}
-            <span className="text-foreground">/compact</span> to replace the transcript with
-            a summary and keep going.
+            plan usage. Run <span className="text-foreground">/compact</span> to replace
+            the transcript with a summary and keep going.
           </p>
         </TooltipContent>
       </Tooltip>

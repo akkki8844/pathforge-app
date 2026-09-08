@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { notifyCreditConsumed } from "@/hooks/useCredits";
+import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -412,7 +412,7 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
 
       if (!normalized) throw new Error("No analysis received");
 
-      notifyCreditConsumed();
+      notifyUsageConsumed();
       setAnalysis(normalized);
       setAnalyzedAt(new Date().toISOString());
       setShowUploader(false);

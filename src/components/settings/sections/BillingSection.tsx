@@ -4,10 +4,10 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAuth } from "@/contexts/AuthContext";
-import { useCredits } from "@/hooks/useCredits";
+import { useUsage } from "@/contexts/UsageContext";
 import { useSubscription } from "@/hooks/useSubscription";
 import { usePlanTier } from "@/hooks/usePlanTier";
-import { PLANS, PLAN_RANK, discountPercent, creditLabel, planDisplayName } from "@/lib/plans";
+import { PLANS, PLAN_RANK, discountPercent, usageLabel, planDisplayName } from "@/lib/plans";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { CouponSuccessModal } from "@/components/CouponSuccessModal";
@@ -17,9 +17,9 @@ import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
 export function BillingSection() {
   const { user } = useAuth();
   const {
-    creditData, creditsRemaining, totalCapacity, periodLabel, unlimited,
+    usageData, percentUsed, periodLabel, unlimited,
     claimFreePlan, redeemCoupon,
-  } = useCredits();
+  } = useUsage();
   const { subscription, isActive } = useSubscription();
   const { tier: currentTier } = usePlanTier();
   const { toast } = useToast();
@@ -28,8 +28,8 @@ export function BillingSection() {
   const [claiming, setClaiming] = useState(false);
   const [history, setHistory] = useState<{ code: string; credits_granted: number; redeemed_at: string }[]>([]);
   const [couponSuccess, setCouponSuccess] = useState<{
-    code: string; planName: string | null; planTier: string | null; planCreditLabel: string | null;
-    creditsGranted: number; planActive: boolean;
+    code: string; planName: string | null; planTier: string | null; planAllowanceLabel: string | null;
+    allowanceIncreased: boolean; planActive: boolean;
   } | null>(null);
 
   const loadHistory = async () => {
@@ -50,7 +50,7 @@ export function BillingSection() {
     if (!code.trim()) return;
     setRedeeming(true);
     try {
-      // Shared with /pricing via the credits context, which also refreshes the
+      // Shared with /pricing via the usage context, which also refreshes the
       // plan so the cards below re-render as "Current plan" straight away.
       const result = await redeemCoupon(code);
       if (!result.success) {
@@ -74,8 +74,8 @@ export function BillingSection() {
         code: result.code || code.trim().toUpperCase(),
         planName: unlockedPlan?.name || result.planTier || null,
         planTier: result.planTier,
-        planCreditLabel: unlockedPlan ? creditLabel(unlockedPlan) : null,
-        creditsGranted: result.creditsGranted,
+        planAllowanceLabel: unlockedPlan ? usageLabel(unlockedPlan) : null,
+        allowanceIncreased: result.allowanceIncreased,
         planActive: result.planActivated,
       });
     } finally {
@@ -99,20 +99,20 @@ export function BillingSection() {
 
   // The local label map this replaced was keyed on exact plan strings, so a
   // Paddle subscriber whose plan reads `pro_monthly` was shown that raw id.
-  const planLabel = planDisplayName(creditData?.plan);
+  const planLabel = planDisplayName(usageData?.plan);
 
   return (
-    <SettingsSection title="Billing" description="Your plan, credits, and coupon redemptions.">
+    <SettingsSection title="Billing" description="Your plan, usage allowance, and coupon redemptions.">
       <SettingsCard title="Current plan">
         <div className="flex items-start justify-between gap-6 flex-wrap">
           <div>
             <p className="text-base font-semibold text-foreground">{planLabel}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {unlimited
-                ? "Unlimited credits and advisor tokens"
-                : `${creditsRemaining} of ${totalCapacity} ${periodLabel} credits available`}
-              {creditData?.planExpiresAt && !subscription && (
-                <> · until {new Date(creditData.planExpiresAt).toLocaleDateString()}</>
+                ? "Unmetered — no usage limit"
+                : `${Math.round(percentUsed)}% of your ${periodLabel} allowance used`}
+              {usageData?.planExpiresAt && !subscription && (
+                <> · until {new Date(usageData.planExpiresAt).toLocaleDateString()}</>
               )}
               {subscription?.current_period_end && isActive && (
                 <> · renews {new Date(subscription.current_period_end).toLocaleDateString()}</>
@@ -127,11 +127,11 @@ export function BillingSection() {
 
       <SettingsCard
         title="Plans"
-        description="Free gets 3 credits a day, reset every 24 hours. Paid plans get a larger monthly pool of credits and advisor tokens."
+        description="Free refills a daily allowance every 24 hours. Paid plans get a larger monthly allowance and a bigger advisor token pool."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {PLANS.map((plan) => {
-            const isFreeUnlock = creditData?.freePlanGrant === plan.tier;
+            const isFreeUnlock = usageData?.freePlanGrant === plan.tier;
             const isCurrent = !isFreeUnlock && plan.tier === currentTier;
             const isUpgrade = PLAN_RANK[plan.tier] > PLAN_RANK[currentTier];
             const off = discountPercent(plan);
@@ -183,7 +183,7 @@ export function BillingSection() {
         </div>
       </SettingsCard>
 
-      <SettingsCard title="Redeem coupon" description="Got a code? Apply it to add bonus credits, or unlock a paid plan tier, at no charge.">
+      <SettingsCard title="Redeem coupon" description="Got a code? Apply it to widen your usage allowance, or unlock a paid plan tier, at no charge.">
         <div className="flex flex-wrap gap-2">
           <Input
             value={code}
@@ -211,8 +211,12 @@ export function BillingSection() {
                     {new Date(h.redeemed_at).toLocaleString()}
                   </p>
                 </div>
+                {/* The redemption row still records a grant in the server's
+                    accounting units; what the student needs from a history
+                    line is whether it widened the allowance, not by how much
+                    of a unit nothing else in the product mentions. */}
                 <span className="text-sm font-medium text-emerald-600 dark:text-emerald-400">
-                  {h.credits_granted > 0 ? `+${h.credits_granted}` : "Applied"}
+                  {h.credits_granted > 0 ? "Allowance widened" : "Applied"}
                 </span>
               </div>
             ))}
@@ -236,8 +240,8 @@ export function BillingSection() {
         onClose={() => setCouponSuccess(null)}
         code={couponSuccess?.code || ""}
         planName={couponSuccess?.planName}
-        planCreditLabel={couponSuccess?.planCreditLabel}
-        creditsGranted={couponSuccess?.creditsGranted}
+        planAllowanceLabel={couponSuccess?.planAllowanceLabel}
+        allowanceIncreased={couponSuccess?.allowanceIncreased}
         planActive={couponSuccess?.planActive}
         onActivatePlan={
           couponSuccess?.planTier && !couponSuccess.planActive
