@@ -74,10 +74,10 @@ export function ConversationDetails({
                 person={
                   conversation.other_user_id ? people[conversation.other_user_id] : undefined
                 }
-                size="lg"
+                size="xl"
               />
             ) : (
-              <GroupAvatar title={title} accentName={conversation.accent} size="lg" />
+              <GroupAvatar title={title} accentName={conversation.accent} size="xl" />
             )}
             <h2 className="mt-3 font-display text-base font-bold text-foreground">
               {title}

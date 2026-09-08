@@ -375,6 +375,10 @@ export function useMessages(conversationId: string | undefined) {
       if (row.body.trim()) {
         void supabase.functions
           .invoke("extract-objectives", { body: { messageId: row.id } })
+          // The function writes any suggestion itself, so the thread only has
+          // to re-read once it has finished. Nothing is assumed about the
+          // outcome — if it detected nothing, the refetch returns nothing.
+          .then(() => qc.invalidateQueries({ queryKey: ["comms", "objectives"] }))
           .catch(() => {});
       }
     },
@@ -473,6 +477,57 @@ export function useMessages(conversationId: string | undefined) {
     remove,
     toggleReaction,
   };
+}
+
+// ── Forwarding ───────────────────────────────────────────────────────────
+
+/**
+ * Send an existing message's text on to another conversation.
+ *
+ * A forward is a new message, not a pointer at the old one — which is what
+ * every messenger does and what the RLS model requires anyway: the recipient
+ * of the forward is very often not a member of the conversation it came from,
+ * so a reference would render as a hole they cannot read. Attachments are not
+ * carried across for the same reason (the storage policy is per-conversation),
+ * so a message that is only a file forwards as its filename rather than
+ * silently arriving empty.
+ */
+export function useForwardMessage() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: { message: ChatMessage; toConversationIds: string[] }) => {
+      if (!user?.id) throw new Error("not signed in");
+      const attachmentNames = input.message.message_attachments
+        .map((a) => a.file_name)
+        .join(", ");
+      const body =
+        input.message.body.trim() ||
+        (attachmentNames ? `Forwarded attachment: ${attachmentNames}` : "");
+      if (!body) throw new Error("nothing to forward");
+
+      const { error } = await commsDb.from("messages").insert(
+        input.toConversationIds.map((conversation_id) => ({
+          conversation_id,
+          sender_id: user.id,
+          body,
+          reply_to_id: null,
+          mentions: [],
+          edited_at: null,
+          deleted_at: null,
+        })),
+      );
+      if (error) throw error;
+      return input.toConversationIds;
+    },
+    onSuccess: (ids) => {
+      for (const id of ids) {
+        void qc.invalidateQueries({ queryKey: commsKeys.messages(id) });
+      }
+      void qc.invalidateQueries({ queryKey: commsKeys.conversations(user?.id) });
+    },
+  });
 }
 
 // ── Pins ─────────────────────────────────────────────────────────────────

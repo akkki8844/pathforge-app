@@ -31,6 +31,7 @@ export function CommsShell({
   path,
   actions,
   fill = false,
+  bare = false,
   children,
 }: {
   title: string;
@@ -47,6 +48,17 @@ export function CommsShell({
    * scrolling region; the page itself does not scroll.
    */
   fill?: boolean;
+  /**
+   * Drop the page title block entirely.
+   *
+   * For the surfaces that *are* an application rather than a document about
+   * one. Chats already says "Chats" in its own list header, above a pane that
+   * has to fit a conversation header, a scrolling thread and a composer; a
+   * second title above all that costs a sixth of the viewport and tells the
+   * reader nothing the page doesn't already say. The sub-nav stays either way,
+   * because it is how you leave.
+   */
+  bare?: boolean;
   children: ReactNode;
 }) {
   useCommsRealtime();
@@ -62,11 +74,20 @@ export function CommsShell({
       <div
         className={cn(
           "section-container",
-          fill ? "flex min-h-0 flex-col py-4 sm:py-6" : "py-6 sm:py-8",
+          fill
+            // Exactly viewport-height minus the sticky navbar and this
+            // container's own padding, so the pane's composer sits on the fold
+            // and the thread — not the page — is what scrolls. `svh` rather
+            // than `vh` for the same reason the app shell uses it: on iOS
+            // Safari `vh` is the *largest* viewport, which runs the composer
+            // under the browser chrome.
+            ? "flex h-[calc(100svh-8.5rem)] min-h-[30rem] flex-col py-4"
+            : "py-6 sm:py-8",
         )}
       >
         <CommsSubNav />
 
+        {!bare && (
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
@@ -88,8 +109,15 @@ export function CommsShell({
             <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
           )}
         </motion.header>
+        )}
 
-        <div className={cn(fill ? "mt-4 flex min-h-0 flex-1 flex-col" : "mt-6 sm:mt-8")}>
+        <div
+          className={cn(
+            fill ? "flex min-h-0 flex-1 flex-col" : "mt-6 sm:mt-8",
+            fill && !bare && "mt-4",
+            fill && bare && "mt-3",
+          )}
+        >
           {children}
         </div>
       </div>

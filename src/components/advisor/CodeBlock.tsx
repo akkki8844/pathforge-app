@@ -122,6 +122,23 @@ export const CodeBlock = memo(function CodeBlock({
  * block would sit inside a second, unstyled `<pre>`.
  */
 export const markdownCodeComponents = {
+  // Links inside AI- or user-authored markdown. react-markdown v9 already
+  // strips anything outside its safe-protocol list (so `javascript:` never
+  // reaches the DOM) and does not render raw HTML without rehype-raw, which
+  // is not installed. What it does not do is decide how a link opens: without
+  // this, a link in a chat reply navigates the app away in the same tab, and
+  // the destination gets a `window.opener` handle back into the session.
+  a: ({ href, children, ...props }: { href?: string; children?: ReactNode }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer nofollow"
+      className="underline underline-offset-2"
+      {...props}
+    >
+      {children}
+    </a>
+  ),
   pre: ({ children }: { children?: ReactNode }) => <>{children}</>,
   code: ({ className, children, ...props }: any) => {
     const raw = String(children ?? "");

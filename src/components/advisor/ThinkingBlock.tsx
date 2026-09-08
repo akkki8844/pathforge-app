@@ -1,14 +1,19 @@
-import { useLayoutEffect, useRef, useState } from "react";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
 import { ChevronRight, Loader2, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { transition } from "@/lib/motion";
 import { StreamingText } from "@/components/ui/streaming-text";
+import { ChatReasoning } from "@/components/ui/chat-reasoning";
 
 /**
  * The advisor's reasoning, shown the way Claude shows it: a collapsible block
  * that sits above the answer, streams live while the model thinks, and settles
  * into a one-line summary once the answer starts.
+ *
+ * Inside, the trace is drawn as steps on a rail rather than as one paragraph —
+ * a turn that thinks, reconsiders, then concludes reads as three moves instead
+ * of a wall. The steps are the model's own paragraph breaks; nothing is
+ * summarised, relabelled or invented on the way through.
  *
  * The glowing keyword is deliberately kept from the previous implementation —
  * it is the part of this screen with the most personality. It only ever glows
@@ -72,6 +77,17 @@ export function ThinkingBlock({
   const auto = streaming && !hasAnswer;
   const open = manual ?? auto;
 
+  // The model's own paragraph breaks are the steps. Splitting anywhere else
+  // would be this component inventing structure the model did not produce.
+  const steps = useMemo(
+    () =>
+      reasoning
+        .split(/\n{2,}/)
+        .map((s) => s.trim())
+        .filter(Boolean),
+    [reasoning],
+  );
+
   const scrollRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (!open || !streaming) return;
@@ -85,90 +101,68 @@ export function ThinkingBlock({
       ? `Thought for ${seconds}s`
       : `Answered in ${seconds}s`;
 
+  const trigger = (
+    <span className="flex flex-1 items-baseline gap-2">
+      {/* Real turn status, not a decorative spinner: it mirrors `streaming` /
+          `hasAnswer` exactly, the same booleans the summary line below reads. */}
+      {streaming ? (
+        <Loader2 className="h-3.5 w-3.5 shrink-0 translate-y-[2px] animate-spin text-accent" />
+      ) : hasReasoning ? (
+        <Check className="h-3.5 w-3.5 shrink-0 translate-y-[2px] text-accent" />
+      ) : (
+        <ChevronRight className="h-3.5 w-3.5 shrink-0 translate-y-[2px] text-muted-foreground opacity-0" />
+      )}
+      {streaming ? (
+        <>
+          {/* Glowing accent keyword, Claude-CLI style. Tuned twice: softer on
+              the cream light background, brighter on dark navy. */}
+          <motion.span
+            className={cn(
+              "text-sm font-medium text-accent",
+              "[text-shadow:0_0_10px_hsl(var(--accent)_/_0.40),0_0_24px_hsl(var(--accent)_/_0.18)]",
+              "dark:[text-shadow:0_0_10px_hsl(var(--accent)_/_0.60),0_0_26px_hsl(var(--accent)_/_0.32)]",
+            )}
+            animate={prefersReducedMotion ? undefined : { opacity: [1, 0.6, 1] }}
+            transition={
+              prefersReducedMotion
+                ? undefined
+                : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
+            }
+          >
+            {keyword}
+          </motion.span>
+          <span className="text-xs text-muted-foreground">
+            ({seconds}s ·{" "}
+            <StreamingText text={status || `thinking with ${effortLabel}`} active />)
+          </span>
+        </>
+      ) : (
+        <span className="text-xs font-medium text-muted-foreground">{summary}</span>
+      )}
+    </span>
+  );
+
   return (
     <div className="mb-2 rounded-xl border border-border/70 bg-card/60">
-      <button
-        type="button"
-        onClick={() => setManual(!open)}
-        disabled={!hasReasoning && !streaming}
-        className={cn(
-          "flex w-full items-baseline gap-2 rounded-xl px-3 py-2 text-left",
-          (hasReasoning || streaming) && "hover:bg-secondary/40 transition-colors",
-        )}
-        aria-expanded={open}
-      >
-        {/* Real turn status, not a decorative spinner: it mirrors `streaming` /
-            `hasAnswer` exactly, the same booleans the summary line below reads. */}
-        {streaming ? (
-          <Loader2 className="h-3.5 w-3.5 shrink-0 translate-y-[2px] animate-spin text-accent" />
-        ) : hasReasoning ? (
-          <Check className="h-3.5 w-3.5 shrink-0 translate-y-[2px] text-accent" />
-        ) : (
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 translate-y-[2px] text-muted-foreground opacity-0" />
-        )}
-        <ChevronRight
-          className={cn(
-            "h-3.5 w-3.5 shrink-0 translate-y-[2px] text-muted-foreground transition-transform duration-200",
-            open && "rotate-90",
-            !hasReasoning && !streaming && "opacity-0",
+      <div ref={scrollRef} className="max-h-72 overflow-y-auto">
+        <ChatReasoning
+          parts={steps}
+          renderPart={(step) => (
+            <p className="whitespace-pre-wrap py-1 text-[12.5px] leading-relaxed text-muted-foreground">
+              {step}
+            </p>
           )}
+          summary={trigger}
+          open={open}
+          onOpenChange={(next) => setManual(next)}
+          disabled={!hasReasoning && !streaming}
+          emptyText={
+            streaming
+              ? "No reasoning yet for this turn."
+              : "No reasoning trace for this turn — this model answers directly."
+          }
         />
-        {streaming ? (
-          <>
-            {/* Glowing accent keyword, Claude-CLI style. Tuned twice: softer on
-                the cream light background, brighter on dark navy. */}
-            <motion.span
-              className={cn(
-                "text-sm font-medium text-accent",
-                "[text-shadow:0_0_10px_hsl(var(--accent)_/_0.40),0_0_24px_hsl(var(--accent)_/_0.18)]",
-                "dark:[text-shadow:0_0_10px_hsl(var(--accent)_/_0.60),0_0_26px_hsl(var(--accent)_/_0.32)]",
-              )}
-              animate={prefersReducedMotion ? undefined : { opacity: [1, 0.6, 1] }}
-              transition={
-                prefersReducedMotion
-                  ? undefined
-                  : { duration: 2.6, repeat: Infinity, ease: "easeInOut" }
-              }
-            >
-              {keyword}
-            </motion.span>
-            <span className="text-xs text-muted-foreground">
-              ({seconds}s ·{" "}
-              <StreamingText text={status || `thinking with ${effortLabel}`} active />)
-            </span>
-          </>
-        ) : (
-          <span className="text-xs font-medium text-muted-foreground">{summary}</span>
-        )}
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (hasReasoning || streaming) && (
-          <motion.div
-            key="reasoning"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={transition.fast}
-            className="overflow-hidden"
-          >
-            <div
-              ref={scrollRef}
-              className="mx-3 mb-3 max-h-64 overflow-y-auto border-l border-border pl-3"
-            >
-              {hasReasoning ? (
-                <p className="whitespace-pre-wrap text-[12.5px] leading-relaxed text-muted-foreground">
-                  {reasoning}
-                </p>
-              ) : (
-                <p className="text-[12.5px] italic leading-relaxed text-muted-foreground/70">
-                  No reasoning trace for this turn — this model answers directly.
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

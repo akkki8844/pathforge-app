@@ -1,8 +1,32 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { ArrowDown, ArrowLeft, ChevronUp, Info, Loader2, MessageSquare } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import {
+  ArrowDown,
+  ArrowLeft,
+  Bell,
+  BellOff,
+  ChevronUp,
+  Info,
+  Loader2,
+  LogOut,
+  MessageSquare,
+  MoreVertical,
+  Pin,
+  PinOff,
+  Search,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,18 +41,23 @@ import { CommsEmpty } from "@/components/comms/CommsShell";
 import { useAuth } from "@/contexts/AuthContext";
 import { GroupAvatar, PersonAvatar } from "./PersonAvatar";
 import { Composer } from "./Composer";
-import { MessageBubble } from "./MessageBubble";
+import { ForwardDialog } from "./ForwardDialog";
+import { MessageBubble, type DeliveryState } from "./MessageBubble";
+import { ObjectiveSuggestion } from "./ObjectiveSuggestion";
+import { useMessageSuggestions } from "@/hooks/comms/useMessageSuggestions";
 import { TypingDots } from "./TypingDots";
-import { continuesFrom, crossesDay, dayLabel } from "@/lib/comms/format";
-import { displayName, usePeople, type PersonMap } from "@/hooks/comms/usePeople";
+import { continuesFrom, crossesDay, dayLabel, messageTime, preview } from "@/lib/comms/format";
+import { displayName, initials, usePeople, type PersonMap } from "@/hooks/comms/usePeople";
 import {
   useMessages,
+  useMessageSearch,
   usePins,
   useTypingIndicator,
   type ChatMessage,
 } from "@/hooks/comms/useMessages";
 import { useConversationMembers } from "@/hooks/comms/useConversations";
-import { AvatarCircles } from "@/components/ui/avatar-circles";
+import { ChatBubble } from "@/components/ui/chat-bubble";
+import { DURATION, EASE_OUT_EXPO, transition } from "@/lib/motion";
 import type { ConversationListItem } from "@/hooks/comms/useConversations";
 
 /**
@@ -57,6 +86,10 @@ import type { ConversationListItem } from "@/hooks/comms/useConversations";
  * - **Older messages load on scroll.** The button stays, because it is the
  *   keyboard- and screen-reader-reachable path and because it is the fallback
  *   when a fetch fails, but reaching the top of the list is itself the request.
+ *
+ * The rest of the header — search, pinned banner, the overflow menu — exists
+ * because a conversation you cannot search or pin inside is a conversation you
+ * have to scroll to use.
  */
 export function ChatThread({
   conversation,
@@ -66,6 +99,9 @@ export function ChatThread({
   showBackButton,
   jumpToMessageId,
   onJumpHandled,
+  onTogglePin,
+  onToggleMute,
+  onLeave,
 }: {
   conversation: ConversationListItem;
   /** People already resolved by the list, so the header renders instantly. */
@@ -76,6 +112,10 @@ export function ChatThread({
   showBackButton: boolean;
   jumpToMessageId?: string | null;
   onJumpHandled?: () => void;
+  /** Conversation-level actions, surfaced in the header's overflow menu. */
+  onTogglePin?: () => void;
+  onToggleMute?: () => void;
+  onLeave?: () => void;
 }) {
   const {
     messages,
@@ -89,9 +129,10 @@ export function ChatThread({
     remove,
     toggleReaction,
   } = useMessages(conversation.id);
-  const { memberIds } = useConversationMembers(conversation.id);
-  const { pinnedIds, toggle: togglePin } = usePins(conversation.id);
+  const { members, memberIds } = useConversationMembers(conversation.id);
+  const { pins, pinnedIds, toggle: togglePinnedMessage } = usePins(conversation.id);
   const { typingIds, onlineIds, notifyTyping } = useTypingIndicator(conversation.id);
+  const reduced = useReducedMotion();
 
   const { people: threadPeople } = usePeople([
     ...referencedUserIds,
@@ -103,18 +144,42 @@ export function ChatThread({
     [listPeople, threadPeople],
   );
 
-  /** Member photos for the header stack, capped so it cannot wrap. */
-  const pictured = useMemo(
+  const { user } = useAuth();
+  const currentUserId = user?.id;
+
+  /**
+   * The header stack, as people rather than as URLs.
+   *
+   * Every field is real: membership comes from `conversation_members`, names
+   * and photos from the directory RPC, `online` from this conversation's
+   * presence channel and `typing` from its broadcast channel. Someone the
+   * directory has not resolved yet still appears — as initials from the
+   * fallback name — rather than being dropped from a count of who is here.
+   */
+  const participants = useMemo(
     () =>
-      memberIds
-        .map((id) => people[id]?.avatar_url)
-        .filter((url): url is string => !!url)
-        .slice(0, 4),
-    [memberIds, people],
+      memberIds.map((id) => {
+        const person = people[id];
+        return {
+          id,
+          name: displayName(person),
+          avatarUrl: person?.avatar_url ?? null,
+          initials: initials(person),
+          online: onlineIds.includes(id),
+          typing: typingIds.includes(id),
+          isYou: id === currentUserId,
+        };
+      }),
+    [memberIds, people, onlineIds, typingIds, currentUserId],
   );
 
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
   const [pendingDelete, setPendingDelete] = useState<ChatMessage | null>(null);
+  const [forwarding, setForwarding] = useState<ChatMessage | null>(null);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [term, setTerm] = useState("");
+  const [highlighted, setHighlighted] = useState<string | null>(null);
+  const [pinIndex, setPinIndex] = useState(0);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -122,8 +187,8 @@ export function ChatThread({
   const prevHeightRef = useRef(0);
   const prevCountRef = useRef(0);
   const newestIdRef = useRef<string | null>(null);
-  const { user } = useAuth();
-  const currentUserId = user?.id;
+
+  const search = useMessageSearch(conversation.id, searchOpen ? term : "");
 
   /** How many messages arrived while the reader was scrolled away from the bottom. */
   const [unseen, setUnseen] = useState(0);
@@ -147,8 +212,7 @@ export function ChatThread({
     const cutoff = new Date(mark).getTime();
     if (Number.isNaN(cutoff)) return null;
     const found = messages.find(
-      (m) =>
-        m.sender_id !== currentUserId && new Date(m.created_at).getTime() > cutoff,
+      (m) => m.sender_id !== currentUserId && new Date(m.created_at).getTime() > cutoff,
     );
     return found?.id ?? null;
   }, [messages, currentUserId]);
@@ -158,6 +222,44 @@ export function ChatThread({
     for (const m of messages) map.set(m.id, m);
     return map;
   }, [messages]);
+
+  /**
+   * Everyone else's read high-water mark, newest first.
+   *
+   * This is what makes the ticks real rather than decorative: the schema
+   * already stores `last_read_at` per member for unread counting, so "has this
+   * been read" is a comparison, not a new table. `others[0]` is the most recent
+   * reader and `others[others.length - 1]` the least — so a message is read by
+   * *everyone* once it is older than the laggard's mark.
+   */
+  const otherReadMarks = useMemo(
+    () =>
+      members
+        .filter((m) => m.user_id !== currentUserId)
+        .map((m) => (m.last_read_at ? new Date(m.last_read_at).getTime() : 0))
+        .sort((a, b) => b - a),
+    [members, currentUserId],
+  );
+
+  const deliveryFor = useCallback(
+    (m: ChatMessage): DeliveryState | undefined => {
+      if (m.sender_id !== currentUserId) return undefined;
+      if (m.failed) return "failed";
+      if (m.pending) return "sending";
+      if (otherReadMarks.length === 0) return "sent";
+      const at = new Date(m.created_at).getTime();
+      return otherReadMarks[otherReadMarks.length - 1] >= at ? "read" : "sent";
+    },
+    [currentUserId, otherReadMarks],
+  );
+
+  const readCountFor = useCallback(
+    (m: ChatMessage) => {
+      const at = new Date(m.created_at).getTime();
+      return otherReadMarks.filter((mark) => mark >= at).length;
+    },
+    [otherReadMarks],
+  );
 
   // Track how close to the bottom the reader is, so an arriving message only
   // yanks the view down when they were already reading the newest.
@@ -177,8 +279,33 @@ export function ChatThread({
     nearBottomRef.current = true;
     setAtBottom(true);
     setUnseen(0);
-    bottomRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+    bottomRef.current?.scrollIntoView({
+      block: "end",
+      behavior: reduced ? "auto" : "smooth",
+    });
   };
+
+  /**
+   * Scroll to a message and flash it.
+   *
+   * The highlight is not decoration: after a jump out of search or the pinned
+   * banner, the thread looks identical to any other position in the thread, and
+   * without a marker the reader has to re-find the line they asked for.
+   */
+  const jumpTo = useCallback(
+    (id: string) => {
+      const el = document.getElementById(`message-${id}`);
+      if (!el) {
+        toast.info("That message is further back — loading earlier messages.");
+        if (hasOlder) void loadOlder();
+        return;
+      }
+      el.scrollIntoView({ block: "center", behavior: reduced ? "auto" : "smooth" });
+      setHighlighted(id);
+      window.setTimeout(() => setHighlighted((v) => (v === id ? null : v)), 1800);
+    },
+    [hasOlder, loadOlder, reduced],
+  );
 
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -225,6 +352,9 @@ export function ChatThread({
     setAtBottom(true);
     setUnseen(0);
     setReplyTo(null);
+    setSearchOpen(false);
+    setTerm("");
+    setPinIndex(0);
     // `last_read_at` is deliberately not a dependency: it moves to "now" the
     // instant the page marks this conversation read, and re-running then would
     // erase the divider the user opened the conversation to find.
@@ -233,19 +363,16 @@ export function ChatThread({
 
   useEffect(() => {
     if (!jumpToMessageId) return;
-    const el = document.getElementById(`message-${jumpToMessageId}`);
-    if (el) {
-      el.scrollIntoView({ block: "center", behavior: "smooth" });
-      onJumpHandled?.();
-    }
-  }, [jumpToMessageId, messages.length, onJumpHandled]);
+    jumpTo(jumpToMessageId);
+    onJumpHandled?.();
+  }, [jumpToMessageId, messages.length, onJumpHandled, jumpTo]);
 
   const title =
     conversation.kind === "dm"
       ? displayName(
           conversation.other_user_id ? people[conversation.other_user_id] : undefined,
         )
-      : conversation.title ?? "Untitled";
+      : (conversation.title ?? "Untitled");
 
   const subtitle = (() => {
     if (typingIds.length > 0) {
@@ -259,190 +386,475 @@ export function ChatThread({
         ? "Online now"
         : "Direct message";
     }
-    return `${conversation.member_count} member${conversation.member_count === 1 ? "" : "s"}`;
+    const online = memberIds.filter((id) => id !== currentUserId && onlineIds.includes(id));
+    const base = `${conversation.member_count} member${conversation.member_count === 1 ? "" : "s"}`;
+    return online.length > 0 ? `${base} · ${online.length} online` : base;
   })();
 
-  return (
-    <div className="flex h-full min-h-0 flex-col">
-      {/* Header ------------------------------------------------------------ */}
-      <header className="flex shrink-0 items-center gap-3 border-b border-border/70 bg-card/80 px-4 py-3 backdrop-blur-sm">
-        {showBackButton && (
-          <Button variant="ghost" size="sm" onClick={onBack} className="-ml-1.5 shrink-0">
-            <ArrowLeft className="mr-1.5 h-4 w-4" />
-            Chats
-          </Button>
-        )}
-        {conversation.kind === "dm" ? (
-          <PersonAvatar
-            person={conversation.other_user_id ? people[conversation.other_user_id] : undefined}
-            size="md"
-            online={
-              conversation.other_user_id
-                ? onlineIds.includes(conversation.other_user_id)
-                : undefined
-            }
-          />
-        ) : (
-          <GroupAvatar title={title} accentName={conversation.accent} size="md" />
-        )}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[0.95rem] font-semibold tracking-tight text-foreground">{title}</p>
-          <p
-            className={cn(
-              "flex items-center gap-1.5 truncate text-xs",
-              typingIds.length > 0 ? "text-accent" : "text-muted-foreground",
-            )}
-          >
-            {typingIds.length > 0 && <TypingDots />}
-            {subtitle}
-          </p>
-        </div>
-        {/*
-         * Who is in here, at the far end of the header.
-         *
-         * Only members with a real photo are pictured; everyone else folds into
-         * the count, which is both the honest rendering and the reason the
-         * stack never degrades into a wall of identical initials. Hidden on a
-         * phone, where the header already carries a back button, an avatar, two
-         * lines of text and the info control.
-         */}
-        {conversation.kind !== "dm" && memberIds.length > 0 && (
-          <AvatarCircles
-            className="hidden shrink-0 md:flex"
-            size="sm"
-            avatarUrls={pictured}
-            numPeople={memberIds.length - pictured.length}
-            onMoreClick={onOpenDetails}
-            moreLabel={`${memberIds.length} members. Open conversation details.`}
-          />
-        )}
+  /** The pinned messages that are actually loaded, newest pin first. */
+  // Detected objectives for the messages currently on screen. These are rows
+  // `extract-objectives` already wrote, read back so the decision can be made
+  // under the sentence that caused it rather than only in the Detected inbox.
+  const messageIds = useMemo(() => messages.map((m) => m.id), [messages]);
+  const { byMessageId: suggestionsByMessage } = useMessageSuggestions(
+    conversation?.id,
+    messageIds,
+  );
 
-        {onOpenDetails && (
+  const pinnedMessages = useMemo(
+    () => pins.map((p) => byId.get(p.message_id)).filter((m): m is ChatMessage => !!m),
+    [pins, byId],
+  );
+  const shownPin = pinnedMessages[pinIndex % Math.max(pinnedMessages.length, 1)];
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-chat-canvas">
+      {/* Header ------------------------------------------------------------ */}
+      <header className="flex shrink-0 items-center gap-3 border-b border-border/60 bg-card/90 px-3 py-3 backdrop-blur-md sm:px-5 sm:py-3.5">
+        {showBackButton && (
           <Button
             variant="ghost"
             size="icon"
-            onClick={onOpenDetails}
-            aria-label="Conversation details"
-            className="shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            onClick={onBack}
+            aria-label="Back to chats"
+            className="-ml-1 h-9 w-9 shrink-0 rounded-full"
           >
-            <Info className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         )}
+
+        <button
+          type="button"
+          onClick={onOpenDetails}
+          disabled={!onOpenDetails}
+          className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-1 py-0.5 text-left transition-colors enabled:hover:bg-muted/60 disabled:cursor-default"
+        >
+          {conversation.kind === "dm" ? (
+            <PersonAvatar
+              person={
+                conversation.other_user_id ? people[conversation.other_user_id] : undefined
+              }
+              size="md"
+              online={
+                conversation.other_user_id
+                  ? onlineIds.includes(conversation.other_user_id)
+                  : undefined
+              }
+            />
+          ) : (
+            <GroupAvatar title={title} accentName={conversation.accent} size="md" />
+          )}
+          <span className="min-w-0 flex-1">
+            <span className="flex items-center gap-1.5">
+              <span className="truncate text-[0.975rem] font-semibold tracking-tight text-foreground">
+                {title}
+              </span>
+              {conversation.pinned && (
+                <Pin className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Pinned" />
+              )}
+              {conversation.muted && (
+                <BellOff className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Muted" />
+              )}
+            </span>
+            <span
+              className={cn(
+                "flex items-center gap-1.5 truncate text-xs",
+                typingIds.length > 0 ? "text-accent" : "text-muted-foreground",
+              )}
+            >
+              {typingIds.length > 0 && <TypingDots />}
+              {subtitle}
+            </span>
+          </span>
+        </button>
+
+        {/*
+         * Who is in here, at the far end of the header.
+         *
+         * The stack is the hover target: resting, it is the same cluster of
+         * faces it always was; under the pointer — or under focus, or a tap —
+         * it opens onto the full membership with who is connected and who is
+         * typing, and a way through to the details pane.
+         */}
+        {conversation.kind !== "dm" && participants.length > 0 && (
+          <ChatBubble
+            className="hidden lg:inline-flex"
+            participants={participants}
+            title={title}
+            actionLabel={onOpenDetails ? "Conversation details" : undefined}
+            onAction={onOpenDetails}
+            actionHint={onOpenDetails ? "Members, shared files and pinned messages." : undefined}
+          />
+        )}
+
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => {
+            setSearchOpen((v) => !v);
+            setTerm("");
+          }}
+          aria-label={searchOpen ? "Close search" : "Search in this conversation"}
+          aria-pressed={searchOpen}
+          className={cn(
+            "h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground",
+            searchOpen && "bg-accent/10 text-accent",
+          )}
+        >
+          <Search className="h-4 w-4" />
+        </Button>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Conversation options"
+              className="h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            {onOpenDetails && (
+              <DropdownMenuItem onSelect={onOpenDetails}>
+                <Info className="mr-2 h-4 w-4" />
+                {conversation.kind === "dm" ? "Contact info" : "Group info"}
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuItem
+              onSelect={() => {
+                setSearchOpen(true);
+                setTerm("");
+              }}
+            >
+              <Search className="mr-2 h-4 w-4" /> Search in conversation
+            </DropdownMenuItem>
+            {onTogglePin && (
+              <DropdownMenuItem onSelect={onTogglePin}>
+                {conversation.pinned ? (
+                  <>
+                    <PinOff className="mr-2 h-4 w-4" /> Unpin chat
+                  </>
+                ) : (
+                  <>
+                    <Pin className="mr-2 h-4 w-4" /> Pin chat
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            {onToggleMute && (
+              <DropdownMenuItem onSelect={onToggleMute}>
+                {conversation.muted ? (
+                  <>
+                    <Bell className="mr-2 h-4 w-4" /> Unmute
+                  </>
+                ) : (
+                  <>
+                    <BellOff className="mr-2 h-4 w-4" /> Mute notifications
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
+            {onLeave && conversation.kind === "group" && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onSelect={onLeave}
+                >
+                  <LogOut className="mr-2 h-4 w-4" /> Leave group
+                </DropdownMenuItem>
+              </>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </header>
+
+      {/* Search ------------------------------------------------------------ */}
+      <AnimatePresence initial={false}>
+        {searchOpen && (
+          <motion.div
+            initial={reduced ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={transition.base}
+            className="shrink-0 overflow-hidden border-b border-border/60 bg-card/80 backdrop-blur"
+          >
+            <div className="p-3 sm:px-5">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  autoFocus
+                  value={term}
+                  onChange={(e) => setTerm(e.target.value)}
+                  onKeyDown={(e) => e.key === "Escape" && setSearchOpen(false)}
+                  placeholder={`Search in ${title}`}
+                  aria-label="Search in this conversation"
+                  className="h-10 rounded-full border-transparent bg-muted/60 pl-10 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setSearchOpen(false)}
+                  aria-label="Close search"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full p-1 text-muted-foreground hover:bg-background hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+
+              {term.trim().length > 0 && (
+                <div className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-border bg-card">
+                  {search.tooShort ? (
+                    <p className="px-3 py-4 text-xs text-muted-foreground">
+                      Type at least two characters.
+                    </p>
+                  ) : search.isSearching ? (
+                    <p className="flex items-center gap-2 px-3 py-4 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Searching…
+                    </p>
+                  ) : search.isEmpty ? (
+                    <p className="px-3 py-4 text-xs text-muted-foreground">
+                      No message in this conversation contains “{term.trim()}”.
+                    </p>
+                  ) : (
+                    <ul className="divide-y divide-border/60">
+                      {search.results.map((r) => (
+                        <li key={r.id}>
+                          <button
+                            type="button"
+                            onClick={() => jumpTo(r.id)}
+                            className="flex w-full items-baseline gap-2 px-3 py-2 text-left transition-colors hover:bg-muted/60"
+                          >
+                            <span className="shrink-0 text-[0.6875rem] font-semibold text-accent">
+                              {r.sender_id === currentUserId
+                                ? "You"
+                                : displayName(people[r.sender_id]).split(" ")[0]}
+                            </span>
+                            <span className="min-w-0 flex-1 truncate text-xs text-foreground">
+                              {preview(r.body, 90)}
+                            </span>
+                            <span className="shrink-0 text-[0.625rem] tabular-nums text-muted-foreground">
+                              {messageTime(r.created_at)}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Pinned banner ------------------------------------------------------ */}
+      <AnimatePresence initial={false}>
+        {shownPin && !searchOpen && (
+          <motion.div
+            initial={reduced ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={transition.base}
+            className="shrink-0 overflow-hidden border-b border-border/60 bg-accent/[0.06]"
+          >
+            <div className="flex items-center gap-2.5 px-3 py-2 sm:px-5">
+              <Pin className="h-3.5 w-3.5 shrink-0 text-accent" />
+              <button
+                type="button"
+                onClick={() => jumpTo(shownPin.id)}
+                className="min-w-0 flex-1 truncate text-left text-xs text-foreground/85 hover:underline"
+              >
+                <span className="font-semibold">
+                  {shownPin.sender_id === currentUserId
+                    ? "You"
+                    : displayName(people[shownPin.sender_id]).split(" ")[0]}
+                  :
+                </span>{" "}
+                {preview(shownPin.body, 90) || "Attachment"}
+              </button>
+              {pinnedMessages.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => setPinIndex((i) => (i + 1) % pinnedMessages.length)}
+                  className="shrink-0 rounded-full border border-border bg-card px-2 py-0.5 text-[0.625rem] font-semibold tabular-nums text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  {(pinIndex % pinnedMessages.length) + 1}/{pinnedMessages.length}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => togglePinnedMessage.mutate(shownPin.id)}
+                aria-label="Unpin this message"
+                className="shrink-0 rounded-full p-1 text-muted-foreground transition-colors hover:bg-card hover:text-foreground"
+              >
+                <PinOff className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Messages ---------------------------------------------------------- */}
       <div className="relative flex min-h-0 flex-1 flex-col">
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        className="min-h-0 flex-1 overflow-y-auto px-2 py-3 sm:px-4"
-      >
-        {isLoading ? (
-          <div className="flex h-full items-center justify-center">
-            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-          </div>
-        ) : messages.length === 0 ? (
-          <CommsEmpty
-            icon={MessageSquare}
-            title="No messages yet"
-            description={
-              conversation.kind === "dm"
-                ? `Say hello to ${title}.`
-                : "Start the conversation — everyone in this group will see it."
-            }
-          />
-        ) : (
-          <>
-            {hasOlder && (
-              <div className="mb-3 flex justify-center">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void loadOlder()}
-                  disabled={isLoadingOlder}
-                >
-                  {isLoadingOlder ? (
-                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <ChevronUp className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Load earlier messages
-                </Button>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              {messages.map((m, i) => {
-                const prev = messages[i - 1];
-                const newDay = crossesDay(prev?.created_at, m.created_at);
-                return (
-                  <div key={m.id}>
-                    {m.id === firstUnreadId && (
-                      <div className="my-4 flex items-center gap-3" aria-label="New messages">
-                        <span className="h-px flex-1 bg-accent/50" />
-                        <span className="rounded-full bg-accent px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-accent-foreground">
-                          New
-                        </span>
-                        <span className="h-px flex-1 bg-accent/50" />
-                      </div>
-                    )}
-                    {newDay && (
-                      <div className="my-4 flex items-center gap-3">
-                        <span className="h-px flex-1 bg-border" />
-                        <span className="rounded-full border border-border bg-card px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                          {dayLabel(m.created_at)}
-                        </span>
-                        <span className="h-px flex-1 bg-border" />
-                      </div>
-                    )}
-                    <MessageBubble
-                      message={m}
-                      people={people}
-                      isOwn={m.sender_id === currentUserId}
-                      showAuthor={newDay || !continuesFrom(prev, m)}
-                      replyTo={m.reply_to_id ? byId.get(m.reply_to_id) : undefined}
-                      isPinned={pinnedIds.has(m.id)}
-                      canPin={conversation.kind !== "dm"}
-                      currentUserId={currentUserId}
-                      onReply={setReplyTo}
-                      onEdit={(id, body) =>
-                        edit.mutate(
-                          { id, body },
-                          { onError: () => toast.error("Could not save that edit.") },
-                        )
-                      }
-                      onDelete={setPendingDelete}
-                      onTogglePin={(id) => togglePin.mutate(id)}
-                      onToggleReaction={(messageId, emoji) =>
-                        toggleReaction.mutate({ messageId, emoji })
-                      }
-                    />
-                  </div>
-                );
-              })}
+        <div
+          ref={scrollRef}
+          onScroll={handleScroll}
+          className="min-h-0 flex-1 overflow-y-auto px-3 py-6 sm:px-7 lg:px-10"
+        >
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-            <div ref={bottomRef} />
-          </>
-        )}
-      </div>
+          ) : messages.length === 0 ? (
+            <CommsEmpty
+              icon={MessageSquare}
+              title="No messages yet"
+              description={
+                conversation.kind === "dm"
+                  ? `Say hello to ${title.split(" ")[0]}.`
+                  : "Start the conversation — everyone in this group will see it."
+              }
+            />
+          ) : (
+            <>
+              {hasOlder && (
+                <div className="mb-5 flex justify-center">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => void loadOlder()}
+                    disabled={isLoadingOlder}
+                    className="rounded-full"
+                  >
+                    {isLoadingOlder ? (
+                      <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <ChevronUp className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Load earlier messages
+                  </Button>
+                </div>
+              )}
+
+              <div className="mx-auto w-full max-w-[62rem]">
+                {messages.map((m, i) => {
+                  const prev = messages[i - 1];
+                  const next = messages[i + 1];
+                  const newDay = crossesDay(prev?.created_at, m.created_at);
+                  const startsRun = newDay || !continuesFrom(prev, m);
+                  const endsRun = !next || !continuesFrom(m, next) || crossesDay(m.created_at, next.created_at);
+                  return (
+                    <div
+                      key={m.id}
+                      // A new turn gets air; a continuation stays tight to the
+                      // line above it. That single rule is most of what makes a
+                      // thread readable at a glance.
+                      className={startsRun && i > 0 ? "mt-4" : "mt-0.5"}
+                    >
+                      {m.id === firstUnreadId && (
+                        <Divider tone="accent" label="Unread messages" />
+                      )}
+                      {newDay && <Divider label={dayLabel(m.created_at)} />}
+                      <MessageBubble
+                        message={m}
+                        people={people}
+                        isOwn={m.sender_id === currentUserId}
+                        showAuthor={startsRun && conversation.kind !== "dm"}
+                        isRunEnd={endsRun}
+                        replyTo={m.reply_to_id ? byId.get(m.reply_to_id) : undefined}
+                        isPinned={pinnedIds.has(m.id)}
+                        canPin={conversation.kind !== "dm"}
+                        delivery={deliveryFor(m)}
+                        readByCount={readCountFor(m)}
+                        memberCount={conversation.member_count}
+                        currentUserId={currentUserId}
+                        highlighted={highlighted === m.id}
+                        onReply={setReplyTo}
+                        onForward={setForwarding}
+                        onJumpToMessage={jumpTo}
+                        onEdit={(id, body) =>
+                          edit.mutate(
+                            { id, body },
+                            { onError: () => toast.error("Could not save that edit.") },
+                          )
+                        }
+                        onDelete={setPendingDelete}
+                        onTogglePin={(id) => togglePinnedMessage.mutate(id)}
+                        onToggleReaction={(messageId, emoji) =>
+                          toggleReaction.mutate({ messageId, emoji })
+                        }
+                      />
+
+                      {(suggestionsByMessage.get(m.id) ?? []).map((o) => (
+                        <ObjectiveSuggestion
+                          key={o.id}
+                          objective={o}
+                          people={people}
+                          currentUserId={currentUserId}
+                          className={m.sender_id === currentUserId
+                            ? "ml-auto mt-1.5 max-w-[min(34rem,85%)]"
+                            : "mt-1.5 max-w-[min(34rem,85%)] sm:ml-11"}
+                        />
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Someone is mid-sentence: show it where the message will land,
+                  not only in the header, which is where the eye already is. */}
+              <AnimatePresence>
+                {typingIds.length > 0 && (
+                  <motion.div
+                    initial={reduced ? false : { opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 6 }}
+                    transition={transition.base}
+                    className="mx-auto mt-4 flex w-full max-w-[62rem] items-end gap-2.5 px-1"
+                  >
+                    <PersonAvatar person={people[typingIds[0]]} size="sm" />
+                    <span className="rounded-[1.35rem] rounded-bl-md border border-border/60 bg-card px-4 py-3">
+                      <TypingDots />
+                    </span>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div ref={bottomRef} className="h-1" />
+            </>
+          )}
+        </div>
 
         {/*
          * Jump to latest. Shown whenever the reader is away from the bottom, so
          * it is also just a "back to now" control, and labelled with a count
          * when something actually arrived while they were up there.
          */}
-        {!atBottom && messages.length > 0 && (
-          <button
-            type="button"
-            onClick={jumpToLatest}
-            className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground shadow-md transition-colors hover:bg-muted"
-          >
-            <ArrowDown className="h-3.5 w-3.5" />
-            {unseen > 0
-              ? `${unseen > 99 ? "99+" : unseen} new message${unseen === 1 ? "" : "s"}`
-              : "Jump to latest"}
-          </button>
-        )}
+        <AnimatePresence>
+          {!atBottom && messages.length > 0 && (
+            <motion.button
+              type="button"
+              onClick={jumpToLatest}
+              initial={reduced ? false : { opacity: 0, y: 12, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.9 }}
+              transition={transition.spring}
+              className={cn(
+                "absolute bottom-4 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full border px-3.5 py-2 text-xs font-semibold shadow-lg",
+                unseen > 0
+                  ? "border-transparent bg-accent text-accent-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted",
+              )}
+            >
+              <ArrowDown className="h-3.5 w-3.5" />
+              {unseen > 0
+                ? `${unseen > 99 ? "99+" : unseen} new message${unseen === 1 ? "" : "s"}`
+                : "Jump to latest"}
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Composer ---------------------------------------------------------- */}
@@ -453,7 +865,11 @@ export function ChatThread({
         onCancelReply={() => setReplyTo(null)}
         isSending={send.isPending}
         onTyping={notifyTyping}
-        placeholder={`Message ${title.split(" ")[0]}…`}
+        placeholder={
+          conversation.kind === "dm"
+            ? `Message ${title.split(" ")[0]}…`
+            : `Message ${title}…`
+        }
         onSend={(payload) => {
           nearBottomRef.current = true;
           send.mutate(
@@ -471,6 +887,12 @@ export function ChatThread({
             },
           );
         }}
+      />
+
+      <ForwardDialog
+        message={forwarding}
+        fromConversationId={conversation.id}
+        onClose={() => setForwarding(null)}
       />
 
       {/* Delete confirmation ----------------------------------------------- */}
@@ -505,6 +927,29 @@ export function ChatThread({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/** A day break or the unread mark: a centred pill on a hairline. */
+function Divider({ label, tone }: { label: string; tone?: "accent" }) {
+  return (
+    <div className="my-5 flex items-center gap-3" aria-label={label}>
+      <span className={cn("h-px flex-1", tone === "accent" ? "bg-accent/40" : "bg-border")} />
+      <motion.span
+        initial={{ opacity: 0, scale: 0.94 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: DURATION.base, ease: EASE_OUT_EXPO }}
+        className={cn(
+          "rounded-full px-3 py-1 text-[0.625rem] font-bold uppercase tracking-[0.1em] shadow-sm",
+          tone === "accent"
+            ? "bg-accent text-accent-foreground"
+            : "border border-border bg-card text-muted-foreground",
+        )}
+      >
+        {label}
+      </motion.span>
+      <span className={cn("h-px flex-1", tone === "accent" ? "bg-accent/40" : "bg-border")} />
     </div>
   );
 }

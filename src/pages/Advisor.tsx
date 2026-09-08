@@ -63,12 +63,13 @@ import { FileUploadButton } from '@/components/advisor/FileUploadButton';
 import { AttachmentChips, type Attachment } from '@/components/advisor/AttachmentChips';
 import { ArtifactsPanel } from '@/components/advisor/ArtifactsPanel';
 import { ArtifactInlineCard } from '@/components/advisor/ArtifactInlineCard';
-import { ConversationSidebar } from '@/components/advisor/ConversationSidebar';
+import { SessionNavBar } from '@/components/advisor/SessionNavBar';
 import { ThinkingBlock, nextThinkingKeyword } from '@/components/advisor/ThinkingBlock';
 import { SkillsPanel } from '@/components/advisor/SkillsPanel';
 import { ContextMeter } from '@/components/advisor/ContextMeter';
 import { CommandPalette } from '@/components/advisor/CommandPalette';
 import { ToolActionCard } from '@/components/advisor/ToolActionCard';
+import { ToolCallsSection, type ToolCallEntry } from '@/components/ui/tool-calls-section';
 import { markdownCodeComponents } from '@/components/advisor/CodeBlock';
 import type { AdvisorArtifact } from '@/hooks/useAdvisorArtifacts';
 import { ingestFile } from '@/lib/advisorUploads';
@@ -87,6 +88,7 @@ import {
 } from '@/lib/advisorModels';
 import {
   validateToolCall,
+  describeCall,
   TOOL_SPECS,
   TOOL_NAMES,
   type AdvisorToolCall,
@@ -388,15 +390,15 @@ export default function Advisor() {
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const [sidebarOpen, setSidebarOpen] = useState(() => typeof window !== 'undefined' && window.innerWidth >= 768);
+  // Mobile only: the rail renders as a left drawer under md. Starts closed —
+  // on desktop the rail is always docked and this never applies.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   // Desktop rail: collapses to an icon-only strip and expands on hover
   // (mirrors a Notion/Vercel-style docked sidebar). `pinned` overrides hover
   // so a user who wants it permanently open doesn't have to keep their mouse
   // there — the header toggle button flips this on desktop, and flips the
-  // mobile overlay (`sidebarOpen`) on small screens instead.
+  // mobile drawer (`sidebarOpen`) on small screens instead.
   const [sidebarPinned, setSidebarPinned] = useState(false);
-  const [sidebarHovered, setSidebarHovered] = useState(false);
-  const sidebarExpanded = sidebarPinned || sidebarHovered;
   const [limitHit, setLimitHit] = useState<LimitKind>(null);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
@@ -1385,7 +1387,7 @@ export default function Advisor() {
               `- **This conversation** — ${formatContextTokens(usage.transcript)}`,
               `- **Instructions and your profile** — ${formatContextTokens(SYSTEM_OVERHEAD_TOKENS)}${skillLine}`,
               ``,
-              `The window is how much of the conversation the advisor can still see. It is not a balance and it does not spend credits. When it fills, run \`/compact\`.`,
+              `The window is how much of the conversation the advisor can still see. It is not a balance and it does not draw on your allowance. When it fills, run \`/compact\`.`,
               ``,
               `You are on **${activeModel.label}**, which holds ${formatContextTokens(usage.window)}.`,
             ].join('\n'),
@@ -1643,9 +1645,9 @@ export default function Advisor() {
     (textInput.trim().length > 0 || attachments.some((a) => a.status === 'ready')) &&
     !attachments.some((a) => a.status === 'uploading' || a.status === 'processing');
 
-  // Shared between the mobile overlay and the desktop rail below — same
-  // sidebar, two different chrome/animation treatments around it.
-  const conversationSidebarProps = {
+  // Everything the session rail needs. The rail itself owns its collapsed /
+  // expanded chrome and its own mobile drawer.
+  const sessionNavProps = {
     conversations,
     archivedConversations,
     projects,
@@ -1682,10 +1684,13 @@ export default function Advisor() {
     skillCount: enabledSkillCount,
     artifactCount: artifacts.length,
     user: {
-      name: profile?.full_name?.trim() || profile?.full_name?.trim() || 'Your account',
-      email: user?.email ?? null,
+      id: user?.id ?? null,
+      name: profile?.full_name?.trim() || 'Your account',
+      email: profile?.email ?? user?.email ?? null,
+      // Passed through verbatim: it is either a `pf:face:palette` token or a
+      // legacy uploaded-photo URL, and PathforgeAvatar resolves both.
       avatarUrl: profile?.avatar_url ?? null,
-      plan: `${planForTier(planTier).name} plan`,
+      plan: planForTier(planTier).name,
     },
     onOpenProfile: () => navigate('/profile'),
   };
@@ -1698,54 +1703,17 @@ export default function Advisor() {
         path="/advisor"
       />
 
-      {/* Mobile backdrop */}
-      <AnimatePresence>
-        {sidebarOpen && (
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={() => setSidebarOpen(false)}
-            className="md:hidden fixed inset-0 top-16 z-30 bg-background/60 backdrop-blur-sm"
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Sidebar — mobile: full-width overlay, click-toggled (unchanged).
-          Desktop: an always-docked rail, see below. */}
-      <AnimatePresence initial={false}>
-        {sidebarOpen && (
-          <motion.aside
-            initial={{ x: -288, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: -288, opacity: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="md:hidden flex w-72 flex-col border-r border-border bg-card/60 backdrop-blur-md fixed top-16 bottom-0 left-0 z-40"
-          >
-            <ConversationSidebar {...conversationSidebarProps} expanded />
-          </motion.aside>
-        )}
-      </AnimatePresence>
-
       {/*
-       * Desktop rail: always mounted (no unmount/remount on toggle — that's
-       * what `sidebarOpen` used to gate, which fought with hover). Collapses
-       * to an icon-only strip and expands on hover or when pinned, matching
-       * a Notion/Vercel-style docked sidebar rather than the old binary
-       * show/hide. Width is animated, not overlaid, so it pushes the chat
-       * pane rather than covering it.
+       * Session rail. Collapsed to an icon strip, expanding to the full
+       * sidebar on hover (or staying open when pinned from the top bar); on
+       * small screens it renders itself as a left drawer instead.
        */}
-      <motion.aside
-        animate={{ width: sidebarExpanded ? 288 : 56 }}
-        transition={{ duration: 0.18, ease: 'easeOut' }}
-        onMouseEnter={() => setSidebarHovered(true)}
-        onMouseLeave={() => setSidebarHovered(false)}
-        className="hidden md:flex flex-col border-r border-border bg-card/60 backdrop-blur-md overflow-hidden shrink-0"
-      >
-        <ConversationSidebar {...conversationSidebarProps} expanded={sidebarExpanded} />
-      </motion.aside>
+      <SessionNavBar
+        {...sessionNavProps}
+        pinned={sidebarPinned}
+        mobileOpen={sidebarOpen}
+        onMobileOpenChange={setSidebarOpen}
+      />
 
       {/* Main chat area */}
       <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -1843,7 +1811,7 @@ export default function Advisor() {
                 >
                   <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40 pb-1">
                     {(() => {
-                      const first = (profile?.full_name?.split(' ')[0] || profile?.full_name || '').trim();
+                      const first = (profile?.full_name?.split(' ')[0] || '').trim();
                       if (!first) return 'How can I help today?';
                       // Daily-rotating greeting: same template all day, changes tomorrow.
                       const templates = [
@@ -1918,7 +1886,7 @@ export default function Advisor() {
                           </span>
                         </div>
                         <div className="prose prose-sm dark:prose-invert mt-2 max-w-none break-words prose-p:my-1.5 prose-ul:my-1.5 prose-headings:mb-1.5 prose-headings:mt-3 prose-headings:text-sm">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.text}</ReactMarkdown>
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeComponents}>{msg.text}</ReactMarkdown>
                         </div>
                         {isSummary && (
                           <p className="mt-2.5 border-t border-border pt-2.5 text-[11px] leading-relaxed text-muted-foreground">
@@ -2016,14 +1984,33 @@ export default function Advisor() {
                             </div>
                           )}
 
-                          {(msg.toolCalls || []).map((t) => (
-                            <ToolActionCard
-                              key={t.id}
-                              call={t}
-                              onConfirm={(id) => confirmToolCall(msg.id, id)}
-                              onDismiss={(id) => dismissToolCall(msg.id, id)}
-                            />
-                          ))}
+                          {/* A call the user still has to decide on, or one
+                              that failed, keeps its own card — those need to be
+                              read. Everything that ran and finished collapses
+                              into one receipt line, openable for the arguments
+                              and the result. */}
+                          {(msg.toolCalls || [])
+                            .filter((t) => t.status !== 'done')
+                            .map((t) => (
+                              <ToolActionCard
+                                key={t.id}
+                                call={t}
+                                onConfirm={(id) => confirmToolCall(msg.id, id)}
+                                onDismiss={(id) => dismissToolCall(msg.id, id)}
+                              />
+                            ))}
+
+                          {(() => {
+                            const settled = (msg.toolCalls || []).filter((t) => t.status === 'done');
+                            if (settled.length === 0) return null;
+                            const entries: ToolCallEntry[] = settled.map((t) => ({
+                              toolName: t.name,
+                              message: t.summary || describeCall(t.call),
+                              inputs: t.call.args as unknown as Record<string, unknown>,
+                              output: t.error || null,
+                            }));
+                            return <ToolCallsSection calls={entries} className="mt-1.5" />;
+                          })()}
 
                           {msg.artifact && (
                             <ArtifactInlineCard
@@ -2095,7 +2082,7 @@ export default function Advisor() {
                       {limitHit === 'tokens'
                         ? "You've used your advisor tokens for this month."
                         : limitHit === 'allowance'
-                          ? "You've run out of credits."
+                          ? "You have used 100% of your allowance."
                           : "You've hit your usage limit."}
                     </div>
                     <div className="text-xs text-muted-foreground">
@@ -2104,7 +2091,7 @@ export default function Advisor() {
                           ? `Chatting should be available again on ${tokenStatus.resetsAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}. A higher plan lifts the cap sooner.`
                           : 'Please try again shortly, or upgrade for higher limits.'
                         : limitHit === 'allowance'
-                          ? 'Artifact generation still spends credits. Upgrade to keep generating documents.'
+                          ? 'Artifact generation still draws on your allowance. Upgrade to keep generating documents.'
                           : 'Please wait a moment, or upgrade for higher limits.'}
                     </div>
                   </div>
@@ -2245,8 +2232,13 @@ export default function Advisor() {
                 }
                 className="w-full min-h-[44px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 pt-3 pb-1.5 max-h-[320px] text-sm shadow-none"
               />
-              <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
-                <ContextMeter usage={usage} onCompact={runCompaction} className="mr-1" />
+              {/* One row on a real screen. `flex-wrap` let the controls spill
+                  onto a second line the moment the effort slider opened, which
+                  is what made this strip look broken — the send button ended up
+                  stranded under the model picker. It still wraps on a phone,
+                  where the meter and the model label are hidden anyway. */}
+              <div className="flex flex-wrap items-center gap-1 px-2 pb-2 sm:flex-nowrap">
+                <ContextMeter usage={usage} onCompact={runCompaction} className="shrink-0" />
                 <FileUploadButton onFiles={handleFilesSelected} disabled={isProcessing} />
 
                 {/* Model and effort sit alongside the attachment button rather
@@ -2319,7 +2311,7 @@ export default function Advisor() {
                   }
                 />
 
-                <div className="ml-auto flex items-center gap-1">
+                <div className="ml-auto flex shrink-0 items-center gap-1">
                 <Button
                   type="button"
                   size="icon"

@@ -1,18 +1,23 @@
 /**
- * The eight Routine destinations, declared once.
+ * The seven Routine destinations, declared once.
  *
- * The navbar dropdown, the mobile drawer, the Routine sub-nav and every page
- * header read this list, so a route can't exist in one place and be missing from
- * another. Order is the intended reading order of the product, not alphabetical:
- * what's happening now, then the two things that fill a day, then the wide view,
- * then the things you act on, then the things you build over time.
+ * The navbar dropdown, the mobile drawer, and every page header read this
+ * list, so a route can't exist in one place and be missing from another.
+ * Order is the intended reading order of the product, not alphabetical:
+ * what's happening now, then the two things that fill a day, then the wide
+ * view, then the things you act on, then the things you build over time.
+ *
+ * Tasks and Habits used to be separate pages here. Both were dedicated
+ * browse/manage views over data that already surfaces elsewhere — every task
+ * is on Today's agenda, and Quick Add (press Q) creates a task or habit
+ * inline without a page — so the pages were redundant chrome and were
+ * removed rather than kept as a second way to see the same thing.
  */
 import {
   CalendarRange,
-  CheckSquare,
+  CalendarDays,
   Bell,
   Timer,
-  Repeat,
   Flag,
   Sun,
   BookOpenCheck,
@@ -46,10 +51,10 @@ export const ROUTINE_DESTINATIONS: RoutineDestination[] = [
     icon: BookOpenCheck,
   },
   {
-    href: "/routine/tasks",
-    label: "Tasks",
-    description: "Everything that needs doing",
-    icon: CheckSquare,
+    href: "/routine/calendar",
+    label: "Calendar",
+    description: "Everything scheduled, on one grid you can drag",
+    icon: CalendarDays,
   },
   {
     href: "/routine/reminders",
@@ -62,12 +67,6 @@ export const ROUTINE_DESTINATIONS: RoutineDestination[] = [
     label: "Focus",
     description: "Timed sessions for real work",
     icon: Timer,
-  },
-  {
-    href: "/routine/habits",
-    label: "Habits",
-    description: "Routines you keep, and your streaks",
-    icon: Repeat,
   },
   {
     href: "/routine/goals",

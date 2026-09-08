@@ -1,25 +1,29 @@
 import { type ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 import { DURATION, EASE_OUT_EXPO, transition } from "@/lib/motion";
-import { ROUTINE_DESTINATIONS } from "@/lib/routine/nav";
-import { useRoutineRealtime, useRoutineTasks } from "@/hooks/routine/useRoutineData";
-import { overdueTasks } from "@/lib/routine/derive";
+import { useRoutineRealtime } from "@/hooks/routine/useRoutineData";
 import { QuickAddButton } from "@/components/routine/QuickAdd";
 
 /**
  * The frame every Routine page renders inside.
  *
- * It exists so the nine pages agree on the things a user reads as "this is one
- * product area": the same sub-nav, the same header rhythm, the same place the
- * primary action sits, and one realtime subscription rather than nine. A page
- * supplies its own title, purpose line and actions, then its content — nothing
- * else about the chrome is a per-page decision.
+ * It exists so the six pages agree on the things a user reads as "this is one
+ * product area": the same header rhythm, the same place the primary action
+ * sits, and one realtime subscription rather than six. A page supplies its
+ * own title, purpose line and actions, then its content — nothing else about
+ * the chrome is a per-page decision.
  *
- * `useRoutineRealtime` is mounted here, once, for the same reason: nine
- * subscriptions to the same ten tables would be nine sockets doing identical
+ * There used to be a second navigation surface here too — a row of pills
+ * repeating every Routine page, on every Routine page. The Navbar's Routine
+ * dropdown and the mobile drawer already read the same `ROUTINE_DESTINATIONS`
+ * list, so the pill row was a second, always-visible copy of navigation the
+ * user already had one click away — chrome for chrome's sake. It's gone;
+ * Quick Add now lives in the header instead of at the end of that row.
+ *
+ * `useRoutineRealtime` is mounted here, once, for the same reason: six
+ * subscriptions to the same ten tables would be six sockets doing identical
  * work, and the invalidations they trigger are already global to the query cache.
  */
 export function RoutineShell({
@@ -30,6 +34,7 @@ export function RoutineShell({
   seoDescription,
   path,
   actions,
+  wide = false,
   children,
 }: {
   title: string;
@@ -41,6 +46,12 @@ export function RoutineShell({
   path: string;
   /** Page-level controls: view switchers, primary create button. */
   actions?: ReactNode;
+  /**
+   * Drops the 7xl reading measure. Only for pages whose content *is* a grid
+   * that gets better the wider it gets — the calendar's month view. Prose and
+   * cards stay inside the measure, where a line length is still readable.
+   */
+  wide?: boolean;
   children: ReactNode;
 }) {
   useRoutineRealtime();
@@ -53,14 +64,17 @@ export function RoutineShell({
         path={path}
         noindex
       />
-      <div className="section-container py-6 sm:py-8">
-        <RoutineSubNav />
-
+      <div
+        className={cn(
+          "py-6 sm:py-8",
+          wide ? "w-full px-3 sm:px-5 lg:px-6" : "section-container",
+        )}
+      >
         <motion.header
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: DURATION.base, ease: EASE_OUT_EXPO }}
-          className="mt-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
+          className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between"
         >
           <div className="flex min-w-0 items-start gap-3">
             <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border bg-card">
@@ -73,86 +87,15 @@ export function RoutineShell({
               <p className="mt-1 text-sm text-muted-foreground">{purpose}</p>
             </div>
           </div>
-          {actions && (
-            <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>
-          )}
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            {actions}
+            <QuickAddButton />
+          </div>
         </motion.header>
 
         <div className="mt-6 sm:mt-8">{children}</div>
       </div>
     </>
-  );
-}
-
-/**
- * The nine destinations as a scrollable rail.
- *
- * Horizontal scroll rather than a wrapped grid: nine pills wrapped onto three
- * rows pushes the page heading below the fold on a phone, and the rail keeps the
- * whole section reachable from any page in it without a menu round trip. The
- * active pill is marked by fill *and* weight, so it survives a colour-blind
- * reading.
- *
- * Today carries a count of what is already late. Overdue work is the one thing
- * in Routine that gets worse by being unseen, and until now it was only visible
- * once you were standing on the page that shows it — so a student on Habits or
- * Goals had no way to learn that three deadlines had passed. The task list is
- * the same cached query the pages themselves read, so on eight of the nine
- * pages this costs no extra request at all.
- */
-function RoutineSubNav() {
-  const location = useLocation();
-  const { tasks } = useRoutineTasks();
-  const overdueCount = overdueTasks(tasks).length;
-
-  return (
-    <nav
-      aria-label="Routine sections"
-      className="-mx-4 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mx-0 sm:px-0"
-    >
-      <ul className="flex w-max items-center gap-1.5 sm:w-auto sm:flex-wrap">
-        {ROUTINE_DESTINATIONS.map((d) => {
-          const active = location.pathname === d.href;
-          const Icon = d.icon;
-          const overdue = d.href === "/routine/today" ? overdueCount : 0;
-          return (
-            <li key={d.href}>
-              <Link
-                to={d.href}
-                aria-current={active ? "page" : undefined}
-                className={cn(
-                  "inline-flex min-h-[36px] items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs transition-colors",
-                  active
-                    ? "border-accent bg-accent/10 font-semibold text-accent"
-                    : "border-border text-muted-foreground hover:border-accent/50 hover:text-foreground",
-                )}
-              >
-                <Icon className="h-3.5 w-3.5 shrink-0" />
-                {d.label}
-                {overdue > 0 && (
-                  <span
-                    className={cn(
-                      "inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[10px] font-bold tabular-nums",
-                      // Late work is a warning, not an accent-coloured nicety —
-                      // it should not look like the count of unread messages.
-                      active
-                        ? "bg-destructive/20 text-destructive"
-                        : "bg-destructive text-destructive-foreground",
-                    )}
-                  >
-                    <span aria-hidden="true">{overdue > 99 ? "99+" : overdue}</span>
-                    <span className="sr-only">{overdue} overdue</span>
-                  </span>
-                )}
-              </Link>
-            </li>
-          );
-        })}
-        <li className="pl-1">
-          <QuickAddButton />
-        </li>
-      </ul>
-    </nav>
   );
 }
 

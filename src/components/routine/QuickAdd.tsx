@@ -59,10 +59,13 @@ export function QuickAddDialog({
   onOpenChange,
   /** Pre-selects a kind — used when opened from a page that owns one entity. */
   initialKind,
+  /** Pre-fills the goal link — used when opened from a specific goal on Goals. */
+  goalId,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialKind?: QuickAddKind;
+  goalId?: string;
 }) {
   const [text, setText] = useState("");
   const [override, setOverride] = useState<QuickAddKind | null>(initialKind ?? null);
@@ -106,7 +109,7 @@ export function QuickAddDialog({
             status: "todo",
             estimated_minutes: draft.durationMinutes,
             recurrence: draft.repeat === "none" ? "none" : draft.repeat === "yearly" ? "monthly" : (draft.repeat === "weekdays" ? "daily" : draft.repeat),
-            goal_id: null,
+            goal_id: goalId ?? null,
             completed_at: null,
           });
           break;
@@ -135,7 +138,7 @@ export function QuickAddDialog({
             scheduled_date: draft.day ?? new Date().toISOString().slice(0, 10),
             scheduled_start: draft.timeStated && draft.at ? toTimeString(draft.at) : null,
             status: "planned",
-            goal_id: null,
+            goal_id: goalId ?? null,
             completed_at: null,
           });
           break;
@@ -199,6 +202,11 @@ export function QuickAddDialog({
             Quick add
           </DialogTitle>
         </DialogHeader>
+        {goalId && (kind === "task" || kind === "study") && (
+          <p className="-mt-2 text-xs text-muted-foreground">
+            This {kind === "task" ? "task" : "study block"} will be linked to this goal's progress.
+          </p>
+        )}
 
         <div className="space-y-4">
           <Input

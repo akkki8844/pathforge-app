@@ -18,7 +18,7 @@ export function PersonAvatar({
   className,
 }: {
   person: Person | undefined;
-  size?: "xs" | "sm" | "md" | "lg";
+  size?: "xs" | "sm" | "md" | "lg" | "xl";
   /** Renders a presence dot. Omit entirely where presence isn't tracked. */
   online?: boolean;
   className?: string;
@@ -29,7 +29,11 @@ export function PersonAvatar({
     xs: "h-6 w-6 text-[10px]",
     sm: "h-8 w-8 text-xs",
     md: "h-10 w-10 text-sm",
-    lg: "h-14 w-14 text-base",
+    // The conversation-list size. Every messenger lands within a pixel or two
+    // of 48px here: smaller and a face is not recognisable at a glance, larger
+    // and the row stops fitting a preview line beside it.
+    lg: "h-12 w-12 text-sm",
+    xl: "h-16 w-16 text-lg",
   }[size];
 
   return (
@@ -71,14 +75,15 @@ export function GroupAvatar({
 }: {
   title: string;
   accentName?: string | null;
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "xl";
   className?: string;
 }) {
   const tint = accent(accentName ?? accentForName(title));
   const dim = {
     sm: "h-8 w-8 text-xs rounded-lg",
     md: "h-10 w-10 text-sm rounded-xl",
-    lg: "h-14 w-14 text-base rounded-2xl",
+    lg: "h-12 w-12 text-sm rounded-2xl",
+    xl: "h-16 w-16 text-lg rounded-2xl",
   }[size];
 
   return (

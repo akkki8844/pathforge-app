@@ -67,10 +67,9 @@ const WeeklyPlanner = lazyWithRetry(() => import("./pages/WeeklyPlanner"));
 const RoutineToday = lazyWithRetry(() => import("./pages/routine/Today"));
 const RoutineTimetable = lazyWithRetry(() => import("./pages/routine/Timetable"));
 const RoutineStudyPlanner = lazyWithRetry(() => import("./pages/routine/StudyPlanner"));
-const RoutineTasks = lazyWithRetry(() => import("./pages/routine/Tasks"));
+const RoutineCalendar = lazyWithRetry(() => import("./pages/routine/Calendar"));
 const RoutineReminders = lazyWithRetry(() => import("./pages/routine/Reminders"));
 const RoutineFocus = lazyWithRetry(() => import("./pages/routine/Focus"));
-const RoutineHabits = lazyWithRetry(() => import("./pages/routine/Habits"));
 const RoutineGoals = lazyWithRetry(() => import("./pages/routine/Goals"));
 const CommsChats = lazyWithRetry(() => import("./pages/communications/Chats"));
 const CommsTeams = lazyWithRetry(() => import("./pages/communications/Teams"));
@@ -627,18 +626,22 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        {/* Calendar merged into Study Planner as a second tab; old links redirect. */}
-        <Route path="/routine/calendar" element={<Navigate to="/routine/study-planner" replace />} />
+        {/* The calendar is its own page again: a full-width grid over every
+            source, not a tab inside the study plan. */}
         <Route
-          path="/routine/tasks"
+          path="/routine/calendar"
           element={
             <ProtectedRoute>
               <Layout>
-                <RoutineTasks />
+                <RoutineCalendar />
               </Layout>
             </ProtectedRoute>
           }
         />
+        {/* Tasks page removed — every task already surfaces on Today's agenda,
+            and Quick Add (press Q anywhere in Routine) creates one without a
+            dedicated page. Old links redirect there instead of 404ing. */}
+        <Route path="/routine/tasks" element={<Navigate to="/routine/today" replace />} />
         <Route
           path="/routine/reminders"
           element={
@@ -659,16 +662,9 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/routine/habits"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <RoutineHabits />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+        {/* Habits page removed — habit completion still shows on Today's day
+            progress, and Quick Add still creates a habit inline. */}
+        <Route path="/routine/habits" element={<Navigate to="/routine/today" replace />} />
         <Route
           path="/routine/goals"
           element={

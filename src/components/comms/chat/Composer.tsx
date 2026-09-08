@@ -1,9 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ImageIcon, Loader2, Paperclip, Send, X } from "lucide-react";
+import { ImageIcon, Loader2, Paperclip, Send, Smile, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { motion, useReducedMotion } from "framer-motion";
+import { transition } from "@/lib/motion";
+import { EmojiPicker } from "./EmojiPicker";
 import { PersonAvatar } from "./PersonAvatar";
 import { fileSize } from "@/lib/comms/format";
 import { displayName, type Person, type PersonMap } from "@/hooks/comms/usePeople";
@@ -57,6 +61,7 @@ export function Composer({
   const [text, setText] = useState("");
   const [files, setFiles] = useState<File[]>([]);
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -69,9 +74,7 @@ export function Composer({
       .filter((p): p is Person => !!p)
       .filter(
         (p) =>
-          q === "" ||
-          displayName(p).toLowerCase().includes(q) ||
-          (p.full_name ?? "").toLowerCase().includes(q),
+          q === "" || displayName(p).toLowerCase().includes(q),
       )
       .slice(0, 6);
   }, [mentionQuery, members, people]);
@@ -124,7 +127,7 @@ export function Composer({
     for (const id of members) {
       const p = people[id];
       if (!p) continue;
-      const forms = [displayName(p), p.full_name].filter(Boolean) as string[];
+      const forms = [displayName(p)].filter(Boolean) as string[];
       for (const form of forms) {
         const escaped = form.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         if (new RegExp(`(^|\\s)@${escaped}(\\b|$)`, "i").test(value)) {
@@ -172,10 +175,62 @@ export function Composer({
   const isTouch =
     typeof window !== "undefined" && window.matchMedia?.("(pointer: coarse)").matches;
 
+  const reduced = useReducedMotion();
+
+  /**
+   * Drop text in at the caret rather than appending it.
+   *
+   * Appending is what makes an emoji picker feel like a toy: you go back to fix
+   * a word, pick a 🎉, and it lands at the end of the paragraph instead of
+   * where you were looking.
+   */
+  const insertAtCaret = (value: string) => {
+    const el = textareaRef.current;
+    const start = el?.selectionStart ?? text.length;
+    const end = el?.selectionEnd ?? start;
+    const next = text.slice(0, start) + value + text.slice(end);
+    setText(next);
+    onTyping();
+    requestAnimationFrame(() => {
+      el?.focus();
+      const pos = start + value.length;
+      el?.setSelectionRange(pos, pos);
+    });
+  };
+
   return (
-    <div className="border-t border-border/70 bg-card/80 p-3 backdrop-blur-sm">
+    <div
+      // Dropping a file on the composer is how every desktop messenger takes an
+      // attachment, and it is the gesture people try first. `dragging` is
+      // counted off `dragleave` on the container only, so moving the pointer
+      // over a child element does not flicker the highlight off and on.
+      onDragOver={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        setDragging(true);
+      }}
+      onDragLeave={(e) => {
+        if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+        setDragging(false);
+      }}
+      onDrop={(e) => {
+        if (disabled) return;
+        e.preventDefault();
+        setDragging(false);
+        addFiles(e.dataTransfer?.files ?? null);
+      }}
+      className={cn(
+        "relative shrink-0 border-t border-border/60 bg-card/90 px-3 py-3 backdrop-blur-md transition-colors sm:px-5 sm:py-4",
+        dragging && "bg-accent/[0.08]",
+      )}
+    >
+      {dragging && (
+        <div className="pointer-events-none absolute inset-2 z-10 flex items-center justify-center rounded-2xl border-2 border-dashed border-accent bg-card/80 text-sm font-semibold text-accent">
+          Drop to attach
+        </div>
+      )}
       {replyTo && (
-        <div className="mb-2 flex items-start gap-2 rounded-xl border-l-2 border-accent bg-muted/50 px-3 py-2">
+        <div className="mx-auto mb-2 flex w-full max-w-[62rem] items-start gap-2 rounded-xl border-l-[3px] border-accent bg-accent/[0.07] px-3 py-2">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-semibold text-accent">
               Replying to {displayName(people[replyTo.sender_id])}
@@ -196,7 +251,7 @@ export function Composer({
       )}
 
       {files.length > 0 && (
-        <ul className="mb-2 flex flex-wrap gap-1.5">
+        <ul className="mx-auto mb-2 flex w-full max-w-[62rem] flex-wrap gap-1.5">
           {files.map((f, i) => (
             <li
               key={`${f.name}-${i}`}
@@ -245,7 +300,7 @@ export function Composer({
           </ul>
         )}
 
-        <div className="flex items-end gap-1.5 rounded-[1.4rem] border border-border/70 bg-muted/40 px-2 py-1.5 transition-colors focus-within:border-accent/40 focus-within:bg-card">
+        <div className="mx-auto flex w-full max-w-[62rem] items-end gap-1 rounded-[1.6rem] border border-border/70 bg-muted/40 px-2 py-2 shadow-sm transition-colors focus-within:border-accent/45 focus-within:bg-card focus-within:shadow-md">
           <input
             ref={fileInputRef}
             type="file"
@@ -257,6 +312,29 @@ export function Composer({
               e.target.value = "";
             }}
           />
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Insert an emoji"
+                disabled={disabled}
+                className="mb-0.5 h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+              >
+                <Smile className="h-[1.15rem] w-[1.15rem]" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent
+              side="top"
+              align="start"
+              className="w-auto p-0"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
+              <EmojiPicker onPick={insertAtCaret} />
+            </PopoverContent>
+          </Popover>
+
           <Button
             type="button"
             variant="ghost"
@@ -264,7 +342,7 @@ export function Composer({
             aria-label="Attach a file"
             disabled={disabled || files.length >= 5}
             onClick={() => fileInputRef.current?.click()}
-            className="mb-0.5 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+            className="mb-0.5 h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
           >
             <Paperclip className="h-4 w-4" />
           </Button>
@@ -275,7 +353,7 @@ export function Composer({
             aria-label="Attach an image"
             disabled={disabled || files.length >= 5}
             onClick={() => fileInputRef.current?.click()}
-            className="mb-0.5 h-8 w-8 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
+            className="mb-0.5 h-9 w-9 shrink-0 rounded-full text-muted-foreground hover:bg-background hover:text-foreground"
           >
             <ImageIcon className="h-4 w-4" />
           </Button>
@@ -284,6 +362,16 @@ export function Composer({
             ref={textareaRef}
             value={text}
             onChange={(e) => updateText(e.target.value)}
+            // A screenshot in the clipboard is an attachment, not text. Only
+            // intercepted when the paste actually carries files, so pasting a
+            // copied message still pastes as text.
+            onPaste={(e) => {
+              const files = e.clipboardData?.files;
+              if (files && files.length > 0) {
+                e.preventDefault();
+                addFiles(files);
+              }
+            }}
             onKeyDown={(e) => {
               if (candidates.length > 0) {
                 if (e.key === "ArrowDown") {
@@ -325,30 +413,40 @@ export function Composer({
             disabled={disabled}
             placeholder={placeholder}
             aria-label="Message"
-            className="min-h-[36px] resize-none border-0 bg-transparent py-2 shadow-none focus-visible:ring-0"
+            className="min-h-[40px] resize-none border-0 bg-transparent px-2 py-2.5 text-[0.9375rem] shadow-none placeholder:text-muted-foreground/70 focus-visible:ring-0"
           />
 
-          <Button
+          {/* The send button grows into its colour the moment there is
+              something to send, which is the one bit of feedback that tells you
+              Enter will do anything. */}
+          <motion.button
             type="button"
-            size="icon"
             onClick={submit}
             disabled={!canSend}
             aria-label="Send message"
-            className="mb-0.5 h-9 w-9 shrink-0 rounded-full bg-foreground text-background transition-transform hover:bg-foreground/90 hover:scale-105 disabled:bg-muted disabled:text-muted-foreground disabled:hover:scale-100"
+            animate={reduced ? undefined : { scale: canSend ? 1 : 0.88 }}
+            whileTap={canSend && !reduced ? { scale: 0.9 } : undefined}
+            transition={transition.spring}
+            className={cn(
+              "mb-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors",
+              canSend
+                ? "bg-accent text-accent-foreground shadow-md hover:bg-accent/90"
+                : "cursor-not-allowed bg-muted text-muted-foreground",
+            )}
           >
             {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-[1.15rem] w-[1.15rem] animate-spin" />
             ) : (
-              <Send className="h-4 w-4" />
+              <Send className="h-[1.15rem] w-[1.15rem]" />
             )}
-          </Button>
+          </motion.button>
         </div>
       </div>
 
-      <p className="mt-1.5 px-2 text-[10px] text-muted-foreground">
+      <p className="mx-auto mt-2 w-full max-w-[62rem] px-3 text-[0.625rem] text-muted-foreground/80">
         {isTouch
-          ? "Use @ to mention someone in this conversation."
-          : "Enter to send · Shift + Enter for a new line · @ to mention"}
+          ? "Use @ to mention someone · swipe a message right to reply"
+          : "Enter to send · Shift + Enter for a new line · @ to mention · double-click a message to reply"}
       </p>
     </div>
   );

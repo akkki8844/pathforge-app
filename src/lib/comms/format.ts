@@ -76,3 +76,45 @@ export function preview(body: string | null, limit = 90): string {
   const flat = body.replace(/\s+/g, " ").trim();
   return flat.length > limit ? `${flat.slice(0, limit - 1)}…` : flat;
 }
+
+/**
+ * A single emoji, including the multi-code-point ones.
+ *
+ * An emoji can be a base glyph plus a variation selector (U+FE0F), plus a skin
+ * tone modifier, plus further glyphs joined by ZWJ (U+200D) — 👨‍👩‍👧 is four
+ * code points and one emoji. Counting code units instead would call that four.
+ */
+const EMOJI_GLYPH =
+  /\p{Extended_Pictographic}️?\p{Emoji_Modifier}?(?:‍\p{Extended_Pictographic}️?\p{Emoji_Modifier}?)*/gu;
+
+/**
+ * How many emoji a body consists of, or 0 if it is not emoji-only.
+ *
+ * Every messenger renders a bare "👍" or "🎉🎉" larger and without a bubble,
+ * because at body-text size a lone emoji reads as a typo rather than a reply.
+ * The cap is three: past that it is a string of emoji, which is a message.
+ */
+export function emojiOnlyCount(body: string | null | undefined): number {
+  if (!body) return 0;
+  const trimmed = body.trim();
+  if (!trimmed || trimmed.length > 24) return 0;
+
+  // `lastIndex` is shared state on a /g regex, so it is reset before each use
+  // rather than left wherever the previous call stopped.
+  EMOJI_GLYPH.lastIndex = 0;
+  const count = [...trimmed.matchAll(EMOJI_GLYPH)].length;
+  if (count === 0 || count > 3) return 0;
+
+  // Anything left once the emoji are removed means this is a normal message
+  // that happens to contain one.
+  EMOJI_GLYPH.lastIndex = 0;
+  return trimmed.replace(EMOJI_GLYPH, "").trim().length === 0 ? count : 0;
+}
+
+/** `Today at 14:32` — the long form, for a message-info panel. */
+export function fullTimestamp(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const day = isToday(d) ? "Today" : isYesterday(d) ? "Yesterday" : format(d, "d MMM yyyy");
+  return `${day} at ${format(d, "HH:mm")}`;
+}
