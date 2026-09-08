@@ -25,7 +25,7 @@ import { StudentDeepDive } from "@/components/teacher/StudentDeepDive";
 
 interface StudentSnapshot {
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   grade: string | null;
   intended_major: string | null;
   high_school_name: string | null;
@@ -76,7 +76,7 @@ export default function StudentDetail() {
         supabase.from("onboarding_data")
           .select("grade,intended_major,high_school_name,country,curriculum,gpa,application_year,target_universities,standardized_test_score")
           .eq("user_id", id).maybeSingle(),
-        supabase.from("profiles").select("email,username").eq("user_id", id).maybeSingle(),
+        supabase.from("profiles").select("email, full_name").eq("user_id", id).maybeSingle(),
         supabase.from("journey_scores")
           .select("overall_score,academics_score,activities_score,leadership_score,competitions_score,test_prep_score")
           .eq("user_id", id).maybeSingle(),
@@ -87,7 +87,7 @@ export default function StudentDetail() {
       if (cancelled) return;
       setSnap({
         email: pr?.email ?? null,
-        username: pr?.username ?? null,
+        full_name: pr?.full_name ?? null,
         grade: ob?.grade ?? null,
         intended_major: ob?.intended_major ?? null,
         high_school_name: ob?.high_school_name ?? null,
@@ -141,7 +141,7 @@ export default function StudentDetail() {
     [scores, outcomes, snap],
   );
 
-  const initials = (snap?.username || snap?.email || "S").slice(0, 2).toUpperCase();
+  const initials = (snap?.full_name || snap?.email || "S").slice(0, 2).toUpperCase();
 
   return (
     <TeacherLayout>
@@ -172,7 +172,7 @@ export default function StudentDetail() {
                     Student profile
                   </div>
                   <h1 className="text-[1.875rem] lg:text-[2.25rem] font-semibold tracking-tight text-foreground truncate leading-[1.05]">
-                    {snap.username || snap.email || "Student"}
+                    {snap.full_name || snap.email || "Student"}
                   </h1>
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
                     <span className="text-foreground font-medium">
@@ -212,7 +212,7 @@ export default function StudentDetail() {
                     if (!snap || !id) return;
                     const { downloadStudentReport } = await import("@/lib/counsellorReport");
                     downloadStudentReport({
-                      studentName: snap.username || snap.email || "Student",
+                      studentName: snap.full_name || snap.email || "Student",
                       studentEmail: snap.email,
                       grade: snap.grade,
                       major: snap.intended_major,

@@ -105,11 +105,6 @@ export function MembersTab({ teamId, ownerId }: { teamId: string; ownerId: strin
                       </span>
                     )}
                   </p>
-                  {person?.username && (
-                    <p className="truncate text-xs text-muted-foreground">
-                      @{person.username}
-                    </p>
-                  )}
                 </div>
 
                 <RoleBadge role={m.role} />
@@ -320,7 +315,7 @@ function InviteDialog({
           <Input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search by name or username"
+            placeholder="Search by name"
             className="pl-9"
             autoComplete="off"
             aria-label="Search people to invite"
@@ -357,11 +352,6 @@ function InviteDialog({
                       <span className="block truncate text-sm font-medium text-foreground">
                         {displayName(p)}
                       </span>
-                      {p.username && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          @{p.username}
-                        </span>
-                      )}
                     </span>
                     {already ? (
                       <span className="shrink-0 text-xs text-muted-foreground">

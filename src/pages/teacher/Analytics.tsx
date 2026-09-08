@@ -16,7 +16,7 @@ export default function TeacherAnalytics() {
   const { students, loading } = useTeacherRoster();
   const studentIds = useMemo(() => students.map((s) => s.user_id), [students]);
   const nameMap = useMemo(
-    () => new Map(students.map((s) => [s.user_id, s.username || s.email || "Student"])),
+    () => new Map(students.map((s) => [s.user_id, s.full_name || s.email || "Student"])),
     [students],
   );
   const scoreMap = useMemo(

@@ -1682,7 +1682,7 @@ export default function Advisor() {
     skillCount: enabledSkillCount,
     artifactCount: artifacts.length,
     user: {
-      name: profile?.full_name?.trim() || profile?.username?.trim() || 'Your account',
+      name: profile?.full_name?.trim() || profile?.full_name?.trim() || 'Your account',
       email: user?.email ?? null,
       avatarUrl: profile?.avatar_url ?? null,
       plan: `${planForTier(planTier).name} plan`,
@@ -1843,7 +1843,7 @@ export default function Advisor() {
                 >
                   <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40 pb-1">
                     {(() => {
-                      const first = (profile?.full_name?.split(' ')[0] || profile?.username || '').trim();
+                      const first = (profile?.full_name?.split(' ')[0] || profile?.full_name || '').trim();
                       if (!first) return 'How can I help today?';
                       // Daily-rotating greeting: same template all day, changes tomorrow.
                       const templates = [

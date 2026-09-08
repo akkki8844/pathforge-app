@@ -28,7 +28,6 @@ import { commsKeys } from "./keys";
 export interface Person {
   user_id: string;
   full_name: string | null;
-  username: string | null;
   avatar_url: string | null;
 }
 
@@ -37,12 +36,12 @@ export type PersonMap = Record<string, Person>;
 /**
  * What to call someone.
  *
- * Falls back through full name → username → "Someone" rather than showing a
+ * Falls back through full name → "Someone" rather than showing a
  * raw UUID, which is what a missing directory entry would otherwise surface.
  */
 export function displayName(p: Person | undefined | null): string {
   if (!p) return "Someone";
-  const name = p.full_name?.trim() || p.username?.trim();
+  const name = p.full_name?.trim();
   return name && name.length > 0 ? name : "Someone";
 }
 

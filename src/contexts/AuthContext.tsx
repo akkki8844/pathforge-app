@@ -40,7 +40,6 @@ interface ProfileData {
   id: string;
   user_id: string;
   email: string | null;
-  username: string | null;
   full_name: string | null;
   /**
    * Either a Pathforge avatar token (`pf:face:palette`) or, for accounts that
@@ -81,7 +80,7 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   refreshOnboardingData: () => Promise<void>;
   refreshTeacherStatus: () => Promise<void>;
-  updateUsername: (username: string) => Promise<{ error: Error | null }>;
+  refreshProfile: () => Promise<void>;
   resendVerificationEmail: () => Promise<{ error: Error | null }>;
   checkAdminStatus: () => Promise<boolean>;
 }
@@ -380,13 +379,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  const updateUsername = async (username: string) => {
-    if (!user) return { error: new Error('Not authenticated') };
-    const { data: available } = await supabase.rpc('is_username_available', { check_username: username });
-    if (!available) return { error: new Error('Username is already taken') };
-    const { error } = await supabase.from('profiles').update({ username }).eq('user_id', user.id);
-    if (!error) await fetchProfile(user.id);
-    return { error: error as Error | null };
+  // Re-reads the profiles row into context. Settings calls this after saving a
+  // new avatar or name so the navbar updates without a page reload.
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
   };
 
   const signOut = async () => {
@@ -433,7 +429,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user, session, loading, roleLoading, isGuest, isAdmin, isTeacher, isEmailVerified, teacherProfile,
     profile, onboardingData, onboardingCompleted,
     signUp, signIn, signInAsGuest, convertGuestToUser, signOut,
-    refreshOnboardingData, refreshTeacherStatus, updateUsername, resendVerificationEmail, checkAdminStatus,
+    refreshOnboardingData, refreshTeacherStatus, refreshProfile, resendVerificationEmail, checkAdminStatus,
   }), [
     user, session, loading, roleLoading, isGuest, isAdmin, isTeacher, isEmailVerified,
     teacherProfile, profile, onboardingData, onboardingCompleted,

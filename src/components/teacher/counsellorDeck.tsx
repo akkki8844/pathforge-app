@@ -53,8 +53,8 @@ function initial(name: string): string {
   return (name.trim()[0] ?? "S").toUpperCase();
 }
 
-function displayName(s: { username: string | null; email: string | null }): string {
-  return s.username || s.email || "Student";
+function displayName(s: { full_name: string | null; email: string | null }): string {
+  return s.full_name || s.email || "Student";
 }
 
 // ── Today ─────────────────────────────────────────────────────────────
@@ -703,7 +703,7 @@ export function ColleaguesCard() {
           ) : (
             <ul className="-mx-3 space-y-px">
               {items.map((c) => {
-                const name = c.username || c.email?.split("@")[0] || "Counsellor";
+                const name = c.full_name || c.email?.split("@")[0] || "Counsellor";
                 const role = c.school_role || c.title || "Counsellor";
                 return (
                   <li key={c.user_id} className="flex items-start gap-3 rounded-xl px-3 py-2.5">
@@ -760,7 +760,7 @@ export function RosterCard({
     const q = search.trim().toLowerCase();
     const list = students.filter((s) => {
       if (q) {
-        const hay = `${s.username ?? ""} ${s.email ?? ""} ${s.intended_major ?? ""}`.toLowerCase();
+        const hay = `${s.full_name ?? ""} ${s.email ?? ""} ${s.intended_major ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (priorityFilter === "high") return s.status === "behind";

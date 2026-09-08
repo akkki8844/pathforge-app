@@ -8,7 +8,7 @@ export interface FellowCounsellor {
   school_role: string | null;
   subject: string | null;
   years_experience: string | null;
-  username: string | null;
+  full_name: string | null;
   email: string | null;
   school_name: string | null;
   created_at: string;

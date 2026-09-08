@@ -50,7 +50,7 @@ export default function Privacy() {
         <h2>3. Personal Data We Collect</h2>
         <ul>
           <li>
-            <strong>Account data:</strong> name, email address, username, avatar, password (stored
+            <strong>Account data:</strong> name, email address, avatar, password (stored
             only as a salted hash), and the identifier returned by Google or GitHub if you sign in
             that way.
           </li>

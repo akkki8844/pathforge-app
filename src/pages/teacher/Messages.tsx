@@ -56,7 +56,7 @@ export default function TeacherMessages() {
     const q = search.trim().toLowerCase();
     if (!q) return students;
     return students.filter((s) =>
-      `${s.username ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q),
+      `${s.full_name ?? ""} ${s.email ?? ""}`.toLowerCase().includes(q),
     );
   }, [students, search]);
 
@@ -116,7 +116,7 @@ export default function TeacherMessages() {
                 filteredStudents.map((s) => {
                   const dm = dmByStudent.get(s.user_id);
                   const isOpen = !!dm && dm.id === openConversationId;
-                  const label = s.username || s.email || "Student";
+                  const label = s.full_name || s.email || "Student";
                   return (
                     <button
                       key={s.user_id}

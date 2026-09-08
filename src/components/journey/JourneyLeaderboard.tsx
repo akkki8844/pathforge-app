@@ -15,7 +15,7 @@ import { cn } from "@/lib/utils";
 
 /**
  * The non-PII fallback handle the backend assigns when a student has set
- * neither a username nor a full name.
+ * no full name.
  *
  * This regex was already here, with a comment claiming `get_journey_leaderboard`
  * produced that shape. It did not — the live function fell back to the local

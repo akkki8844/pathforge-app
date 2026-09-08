@@ -26,7 +26,7 @@ interface School {
 interface UserOption {
   user_id: string;
   email: string;
-  username: string | null;
+  full_name: string | null;
   grade?: string | null;
   high_school_name?: string | null;
   school_name?: string | null;
@@ -265,7 +265,7 @@ export function BroadcastComposer({ senderRole, onSent }: BroadcastComposerProps
                     variant="secondary"
                     className="gap-1 pr-1"
                   >
-                    {u.username || u.email}
+                    {u.full_name || u.email}
                     <button
                       type="button"
                       onClick={() => toggleUser(u)}
@@ -305,10 +305,10 @@ export function BroadcastComposer({ senderRole, onSent }: BroadcastComposerProps
                           >
                             <span className="min-w-0 flex-1">
                               <span className="font-medium block truncate">
-                                {u.username || u.email}
+                                {u.full_name || u.email}
                               </span>
                               <span className="text-xs text-muted-foreground block truncate">
-                                {u.username ? `${u.email} · ` : ""}
+                                {u.full_name ? `${u.email} · ` : ""}
                                 {u.school_name || u.high_school_name || "No school"}
                                 {u.grade ? ` · Gr ${u.grade}` : ""}
                               </span>

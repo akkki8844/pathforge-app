@@ -69,7 +69,6 @@ interface Redemption {
   redeemed_at: string;
   email: string | null;
   full_name: string | null;
-  username: string | null;
   plan_grant: string | null;
   plan_grant_duration_days: number | null;
   current_plan: string | null;
@@ -117,7 +116,7 @@ function toDateTimeLocal(iso: string | null): string {
 }
 
 function personLabel(r: Redemption): string {
-  return r.full_name || r.username || r.email || "Unknown user";
+  return r.full_name || r.full_name || r.email || "Unknown user";
 }
 
 /** What a coupon actually hands over, in one line. */

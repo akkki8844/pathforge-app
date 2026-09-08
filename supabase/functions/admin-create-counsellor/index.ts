@@ -150,11 +150,11 @@ Deno.serve(async (req) => {
       console.warn("teacher_profiles insert warning:", profErr.message);
     }
 
-    // If a username can be derived from the display name, set it (best-effort).
+    // Record the counsellor's display name on their profile (best-effort).
     if (displayName) {
       await admin
         .from("profiles")
-        .update({ username: displayName })
+        .update({ full_name: displayName })
         .eq("user_id", newUserId);
     }
 

@@ -204,11 +204,6 @@ export function ConversationDetails({
                     <span className="block truncate text-sm text-foreground">
                       {displayName(people[id])}
                     </span>
-                    {people[id]?.username && (
-                      <span className="block truncate text-xs text-muted-foreground">
-                        @{people[id]?.username}
-                      </span>
-                    )}
                   </span>
                 </li>
               ))}

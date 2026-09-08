@@ -25,7 +25,7 @@ interface FlaggedPrompt {
   id: string;
   user_id: string | null;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   feature: string;
   prompt: string;
   severity: "low" | "medium" | "high";
@@ -180,8 +180,8 @@ export function AdminModeration() {
 
                       <div className="text-sm mb-2">
                         <span className="text-muted-foreground">User: </span>
-                        <span className="font-medium">{p.username || p.email || "Unknown"}</span>
-                        {p.email && p.username && <span className="text-muted-foreground"> · {p.email}</span>}
+                        <span className="font-medium">{p.full_name || p.email || "Unknown"}</span>
+                        {p.email && p.full_name && <span className="text-muted-foreground"> · {p.email}</span>}
                         {p.user_id && <span className="text-muted-foreground font-mono text-xs ml-2">{p.user_id.slice(0, 8)}…</span>}
                       </div>
 

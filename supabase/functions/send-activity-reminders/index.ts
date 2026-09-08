@@ -102,7 +102,7 @@ Deno.serve(async (req) => {
 
     const { data: profile } = await admin
       .from("profiles")
-      .select("email, username")
+      .select("email, full_name")
       .eq("user_id", row.user_id)
       .maybeSingle();
 
@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       .map((a) => `<li style="margin:4px 0"><strong>${escapeHtml(a.name)}</strong> · ${escapeHtml(a.plannedHours)}h</li>`)
       .join("");
     const itemsText = tomorrowActs.map((a) => `• ${a.name} (${a.plannedHours}h)`).join("\n");
-    const greeting = profile?.username ? `Hi ${escapeHtml(profile.username)},` : "Hi,";
+    const greeting = profile?.full_name ? `Hi ${escapeHtml(profile.full_name)},` : "Hi,";
 
     const html = `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#f5f5f7;padding:24px">
       <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;padding:28px;border:1px solid #e5e7eb">

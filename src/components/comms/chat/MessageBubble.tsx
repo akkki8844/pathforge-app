@@ -368,7 +368,7 @@ function MentionText({
     for (const id of mentions ?? []) {
       const n = people[id];
       if (n) set.add(displayName(n).toLowerCase());
-      if (n?.username) set.add(n.username.toLowerCase());
+      if (n?.full_name) set.add(n.full_name.toLowerCase());
     }
     return set;
   }, [mentions, people]);

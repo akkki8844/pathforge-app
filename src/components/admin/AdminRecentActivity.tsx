@@ -10,7 +10,7 @@ import { Activity, LogIn, UserPlus, Eye, CircleDollarSign, MousePointerClick, Lo
 type ActivityRow = {
   id: string;
   user_id: string;
-  username: string | null;
+  full_name: string | null;
   email: string | null;
   action_type: string;
   page_path: string | null;
@@ -97,7 +97,7 @@ export function AdminRecentActivity() {
               {items.map((it) => {
                 const Icon = ICON_MAP[it.action_type] ?? Activity;
                 const tone = TONE[it.action_type] ?? "text-muted-foreground";
-                const who = it.username || it.email || it.user_id.slice(0, 8);
+                const who = it.full_name || it.email || it.user_id.slice(0, 8);
                 return (
                   <li key={it.id} className="py-2.5 flex items-start gap-3">
                     <span className={`mt-0.5 flex h-7 w-7 items-center justify-center rounded-md bg-muted ${tone}`}>

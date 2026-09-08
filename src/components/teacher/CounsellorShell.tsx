@@ -236,7 +236,7 @@ function CounsellorTopbar() {
   )?.[1] ?? "Counsellor";
 
   const initials =
-    (profile?.full_name || profile?.username || profile?.email || "C")
+    (profile?.full_name || profile?.full_name || profile?.email || "C")
       .trim()
       .slice(0, 1)
       .toUpperCase();

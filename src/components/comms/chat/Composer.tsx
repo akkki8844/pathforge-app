@@ -71,7 +71,7 @@ export function Composer({
         (p) =>
           q === "" ||
           displayName(p).toLowerCase().includes(q) ||
-          (p.username ?? "").toLowerCase().includes(q),
+          (p.full_name ?? "").toLowerCase().includes(q),
       )
       .slice(0, 6);
   }, [mentionQuery, members, people]);
@@ -124,7 +124,7 @@ export function Composer({
     for (const id of members) {
       const p = people[id];
       if (!p) continue;
-      const forms = [displayName(p), p.username].filter(Boolean) as string[];
+      const forms = [displayName(p), p.full_name].filter(Boolean) as string[];
       for (const form of forms) {
         const escaped = form.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         if (new RegExp(`(^|\\s)@${escaped}(\\b|$)`, "i").test(value)) {

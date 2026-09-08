@@ -46,7 +46,7 @@ export default function TeacherEssayReview() {
   const [comment, setComment] = useState("");
 
   const nameMap = useMemo(
-    () => new Map(students.map((s) => [s.user_id, s.username || s.email || "Student"])),
+    () => new Map(students.map((s) => [s.user_id, s.full_name || s.email || "Student"])),
     [students],
   );
 

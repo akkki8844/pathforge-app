@@ -101,7 +101,7 @@ export default function TeacherAssignments() {
                     <SelectContent>
                       {targetType === "class"
                         ? classes.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)
-                        : students.map((s) => <SelectItem key={s.user_id} value={s.user_id}>{s.username || s.email || s.user_id.slice(0, 8)}</SelectItem>)}
+                        : students.map((s) => <SelectItem key={s.user_id} value={s.user_id}>{s.full_name || s.email || s.user_id.slice(0, 8)}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

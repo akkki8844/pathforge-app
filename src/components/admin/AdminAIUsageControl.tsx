@@ -17,7 +17,7 @@ interface PlanLimit {
 interface UserUsage {
   user_id: string;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   plan: string | null;
   max_daily_credits: number | null;
   credits_used_today: number | null;
@@ -191,7 +191,7 @@ export function AdminAIUsageControl() {
             <div className="relative flex-1">
               <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search by email or username..."
+                placeholder="Search by email or name..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && loadUsers(search)}
@@ -226,7 +226,7 @@ export function AdminAIUsageControl() {
                     <TableRow key={u.user_id}>
                       <TableCell className="max-w-[220px]">
                         <div className="text-sm font-medium truncate">{u.email || "—"}</div>
-                        <div className="text-xs text-muted-foreground truncate">{u.username || u.user_id.slice(0, 8)}</div>
+                        <div className="text-xs text-muted-foreground truncate">{u.full_name || u.user_id.slice(0, 8)}</div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">{u.plan || "free"}</Badge>

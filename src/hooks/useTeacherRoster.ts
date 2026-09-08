@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 export interface RosterStudent {
   user_id: string;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   grade: string | null;
   intended_major: string | null;
   high_school_name: string | null;

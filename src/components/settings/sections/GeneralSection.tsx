@@ -59,25 +59,19 @@ export function GeneralSection() {
       <SettingsCard title="Identity">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field
-            label="Display name"
-            hint="Shown on the Journey leaderboard instead of an auto-generated handle."
-            dirty={isDirty("username")}
+            label="Full name"
+            hint="This is the name shown everywhere in Pathforge — the navbar, the leaderboard and anything you share."
+            dirty={isDirty("full_name")}
           >
-            <Input
-              value={draft.username}
-              onChange={(e) => set("username", e.target.value)}
-              placeholder="Pick a display name"
-              maxLength={24}
-              disabled={loading}
-            />
-          </Field>
-          <Field label="Full name" dirty={isDirty("full_name")}>
             <Input
               value={draft.full_name}
               onChange={(e) => set("full_name", e.target.value)}
               placeholder="Your name"
               disabled={loading}
             />
+          </Field>
+          <Field label="Email" hint="Your sign-in address. Contact support to change it.">
+            <Input value={user?.email ?? ""} readOnly disabled />
           </Field>
         </div>
       </SettingsCard>

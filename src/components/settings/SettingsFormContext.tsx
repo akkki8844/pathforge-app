@@ -39,7 +39,6 @@ import type { SchoolRow } from "@/components/SchoolPicker";
 export type SettingsDraft = {
   /* -- public.profiles -- */
   full_name: string;
-  username: string;
   avatar_url: string | null;
 
   /* -- public.onboarding_data -- */
@@ -116,7 +115,6 @@ export type SectionKey =
 
 const FIELD_META: Record<SettingsField, { group: SaveGroup; section: SectionKey }> = {
   full_name: { group: "profile", section: "general" },
-  username: { group: "profile", section: "general" },
   avatar_url: { group: "profile", section: "general" },
 
   grade: { group: "academics", section: "general" },
@@ -166,7 +164,6 @@ const ALL_FIELDS = Object.keys(FIELD_META) as SettingsField[];
 
 const EMPTY_DRAFT: SettingsDraft = {
   full_name: "",
-  username: "",
   avatar_url: null,
   grade: "",
   intended_major: "",
@@ -327,7 +324,7 @@ export function useSettingsField<K extends SettingsField>(key: K) {
 }
 
 export function SettingsFormProvider({ children }: { children: ReactNode }) {
-  const { user, onboardingData, refreshOnboardingData, updateUsername } = useAuth();
+  const { user, onboardingData, refreshOnboardingData, refreshProfile } = useAuth();
 
   const [baseline, setBaseline] = useState<SettingsDraft>(EMPTY_DRAFT);
   const [draft, setDraft] = useState<SettingsDraft>(EMPTY_DRAFT);
@@ -351,7 +348,7 @@ export function SettingsFormProvider({ children }: { children: ReactNode }) {
       const [profileRes, prefsRes, advisorRes] = await Promise.all([
         supabase
           .from("profiles")
-          .select("full_name, avatar_url, username")
+          .select("full_name, avatar_url")
           .eq("user_id", user.id)
           .maybeSingle(),
         supabase
@@ -395,7 +392,6 @@ export function SettingsFormProvider({ children }: { children: ReactNode }) {
         ...EMPTY_DRAFT,
 
         full_name: (profileRow.full_name as string) ?? "",
-        username: (profileRow.username as string) ?? "",
         avatar_url: (profileRow.avatar_url as string | null) ?? null,
 
         grade: (ob.grade as string) ?? "",
@@ -583,13 +579,13 @@ export function SettingsFormProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      if (!error && !sameValue(draft.username, baseline.username)) {
-        const trimmed = draft.username.trim();
-        if (!trimmed) {
-          error = "Display name can't be empty.";
-        } else {
-          const { error: uErr } = await updateUsername(trimmed);
-          if (uErr) error = uErr.message;
+      // Push the new name/avatar back into AuthContext so the navbar and every
+      // other consumer update immediately instead of on the next page load.
+      if (!error) {
+        try {
+          await refreshProfile();
+        } catch {
+          /* the write landed; a stale context refresh is not a save failure */
         }
       }
 
@@ -701,7 +697,7 @@ export function SettingsFormProvider({ children }: { children: ReactNode }) {
     setSaving(false);
     setLastResults(results);
     return results;
-  }, [user, draft, baseline, school, updateUsername, refreshOnboardingData]);
+  }, [user, draft, baseline, school, refreshOnboardingData, refreshProfile]);
 
   /* ------------------------------------------------- unsaved-changes guard *
    * The guard itself lives in `useUnsavedChangesGuard` and is mounted by

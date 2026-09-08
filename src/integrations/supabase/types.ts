@@ -2736,7 +2736,6 @@ export type Database = {
           is_vc: boolean
           updated_at: string
           user_id: string
-          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -2749,7 +2748,6 @@ export type Database = {
           is_vc?: boolean
           updated_at?: string
           user_id: string
-          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -2762,7 +2760,6 @@ export type Database = {
           is_vc?: boolean
           updated_at?: string
           user_id?: string
-          username?: string | null
         }
         Relationships: []
       }
@@ -4760,7 +4757,7 @@ export type Database = {
         Args: {
           _role?: Database["public"]["Enums"]["app_role"]
           _target_user_id: string
-          _username?: string
+          _full_name?: string
         }
         Returns: Json
       }
@@ -4864,7 +4861,6 @@ export type Database = {
           avatar_url: string
           full_name: string
           user_id: string
-          username: string
         }[]
       }
       comms_mark_read: {
@@ -4877,7 +4873,6 @@ export type Database = {
           avatar_url: string
           full_name: string
           user_id: string
-          username: string
         }[]
       }
       comms_unread_total: { Args: never; Returns: number }
@@ -4974,10 +4969,6 @@ export type Database = {
       is_teacher: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: {
         Args: { _team_id: string; _uid?: string }
-        Returns: boolean
-      }
-      is_username_available: {
-        Args: { check_username: string }
         Returns: boolean
       }
       is_vc_user: { Args: { _uid?: string }; Returns: boolean }
@@ -5099,7 +5090,7 @@ export type Database = {
           status: string
           target_universities: string[]
           user_id: string
-          username: string
+          full_name: string
         }[]
       }
       teacher_school_id: { Args: { _user_id: string }; Returns: string }

@@ -129,7 +129,7 @@ export function NewChatDialog({
             <PeopleSearchField
               value={dmQuery}
               onChange={setDmQuery}
-              placeholder="Search by name, username or email"
+              placeholder="Search by name or email"
               label="Find someone"
             />
             <PeopleResults
@@ -199,7 +199,7 @@ export function NewChatDialog({
             <PeopleSearchField
               value={groupQuery}
               onChange={setGroupQuery}
-              placeholder="Search by name, username or email"
+              placeholder="Search by name or email"
               label="Add members"
             />
             <PeopleResults
@@ -280,7 +280,7 @@ function PeopleResults({
   if (state.isEmpty) {
     return (
       <Hint>
-        No one matched by that name, username or email. You can only message
+        No one matched by that name or email. You can only message
         people you share a school, class or team with.
       </Hint>
     );
@@ -308,11 +308,6 @@ function PeopleResults({
                   <span className="block truncate text-sm font-medium text-foreground">
                     {displayName(p)}
                   </span>
-                  {p.username && (
-                    <span className="block truncate text-xs text-muted-foreground">
-                      {`@${p.username}`}
-                    </span>
-                  )}
                 </span>
                 {isSelected && (
                   <span className="shrink-0 text-xs font-semibold text-accent">

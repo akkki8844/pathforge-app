@@ -31,7 +31,6 @@ import { useStepBackNavigation } from "@/hooks/useStepBackNavigation";
 import { getMajorNames } from "@/lib/majors";
 import { Search, X } from "lucide-react";
 import pathforgeLogo from "@/assets/pathforge-logo.webp";
-import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 
 const ROLES = ["School Counselor", "College Counselor", "Teacher", "Dean", "Head of School", "Independent Counselor", "Consultant", "Other"];
 const YEARS = ["0-2", "3-5", "6-10", "10+"];
@@ -134,11 +133,11 @@ export default function TeacherCounselorOnboarding() {
         })
         .eq("user_id", user.id);
 
-      // Save full name into profile (username acts as display name)
+      // Save the counsellor's name onto their profile.
       if (fullName.trim()) {
         await supabase
           .from("profiles")
-          .update({ username: fullName.trim() })
+          .update({ full_name: fullName.trim() })
           .eq("user_id", user.id);
       }
 
@@ -197,7 +196,6 @@ export default function TeacherCounselorOnboarding() {
 
   return (
     <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur-md flex items-start justify-center p-4 overflow-y-auto">
-      <AuroraBackdrop />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.98 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

@@ -97,11 +97,11 @@ export default function CounsellorSettings() {
 
     supabase
       .from("profiles")
-      .select("username, avatar_url")
+      .select("full_name, avatar_url")
       .eq("user_id", user.id)
       .maybeSingle()
       .then(({ data }) => {
-        setFullName(data?.username || "");
+        setFullName(data?.full_name || "");
         setAvatarUrl((data as any)?.avatar_url || null);
       });
   }, [user]);
@@ -150,7 +150,7 @@ export default function CounsellorSettings() {
       if (fullName.trim()) {
         const { error: pErr } = await supabase
           .from("profiles")
-          .update({ username: fullName.trim() })
+          .update({ full_name: fullName.trim() })
           .eq("user_id", user.id);
         if (pErr) throw pErr;
       }

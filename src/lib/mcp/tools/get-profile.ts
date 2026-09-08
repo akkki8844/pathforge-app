@@ -22,7 +22,7 @@ export default defineTool({
   name: "get_profile",
   title: "Get my Pathforge profile",
   description:
-    "Fetch the signed-in user's Pathforge profile: name/username/email plus onboarding data (grade, school, country, curriculum, GPA, intended major, target universities, application year).",
+    "Fetch the signed-in user's Pathforge profile: name/email plus onboarding data (grade, school, country, curriculum, GPA, intended major, target universities, application year).",
   inputSchema: {},
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
@@ -32,7 +32,7 @@ export default defineTool({
     const client = sb(ctx);
     const userId = ctx.getUserId();
     const [{ data: profile, error: pe }, { data: onboarding, error: oe }] = await Promise.all([
-      client.from("profiles").select("username,full_name,email").eq("user_id", userId).maybeSingle(),
+      client.from("profiles").select("full_name, email").eq("user_id", userId).maybeSingle(),
       client
         .from("onboarding_data")
         .select(

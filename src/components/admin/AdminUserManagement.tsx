@@ -30,7 +30,7 @@ import { CountryCombobox } from "@/components/CountryCombobox";
 interface UserSearchResult {
   user_id: string;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   created_at: string;
   grade: string | null;
   country: string | null;
@@ -106,7 +106,7 @@ export function AdminUserManagement() {
   const [loadingDetails, setLoadingDetails] = useState(false);
 
   // Edit form
-  const [editUsername, setEditUsername] = useState("");
+  const [editFullName, setEditFullName] = useState("");
   const [editRole, setEditRole] = useState<string>("");
   const [creditDelta, setCreditDelta] = useState("");
   const [creditReason, setCreditReason] = useState("");
@@ -153,7 +153,7 @@ export function AdminUserManagement() {
       if (error) throw error;
       const d = data as unknown as UserDetails;
       setUserDetails(d);
-      setEditUsername(d?.profile?.username || "");
+      setEditFullName(d?.profile?.full_name || "");
       setEditRole(d?.role || "student");
       const normalizedPlan = normalizeAdminPlan(d?.credits?.plan);
       setPlanChange(normalizedPlan);
@@ -290,7 +290,7 @@ export function AdminUserManagement() {
     try {
       const { error } = await supabase.rpc("admin_update_user_profile", {
         _target_user_id: detailUserId,
-        _username: editUsername.trim() || null,
+        _full_name: editFullName.trim() || null,
         _role: editRole as any,
       } as any);
       if (error) throw error;
@@ -419,7 +419,7 @@ export function AdminUserManagement() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by email, username, or school..."
+                placeholder="Search by email, name, or school..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
@@ -510,9 +510,6 @@ export function AdminUserManagement() {
                           {user.is_flagged && <Flag className="h-4 w-4 text-destructive" />}
                           <div>
                             <div className="font-medium">{user.email || "N/A"}</div>
-                            {user.username && (
-                              <div className="text-xs text-muted-foreground">@{user.username}</div>
-                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -637,7 +634,7 @@ export function AdminUserManagement() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Row label="Email" value={userDetails.profile?.email || detailEmail} />
-                      <Row label="Username" value={userDetails.profile?.username || "Not set"} />
+                      <Row label="Username" value={userDetails.profile?.full_name || "Not set"} />
                       <Row label="Joined"
                         value={userDetails.profile?.created_at
                           ? format(new Date(userDetails.profile.created_at), "MMM d, yyyy")
@@ -808,8 +805,8 @@ export function AdminUserManagement() {
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <Label>Username</Label>
-                        <Input value={editUsername} onChange={(e) => setEditUsername(e.target.value)} />
+                        <Label>Full name</Label>
+                        <Input value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
                       </div>
                       <div>
                         <Label>Role</Label>

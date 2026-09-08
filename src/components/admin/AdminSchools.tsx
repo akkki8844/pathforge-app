@@ -28,7 +28,7 @@ interface SchoolRow {
 interface Counsellor {
   user_id: string;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   title: string | null;
   school_id: string | null;
   school_name: string | null;
@@ -351,7 +351,7 @@ export function AdminSchools() {
                     <SelectContent>
                       {counsellors.map((c) => (
                         <SelectItem key={c.user_id} value={c.user_id}>
-                          {c.username || c.email} {c.school_name ? `(${c.school_name})` : ""}
+                          {c.full_name || c.email} {c.school_name ? `(${c.school_name})` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -495,7 +495,7 @@ export function AdminSchools() {
                   const accepted = c.invite_status === "accepted";
                   return (
                     <TableRow key={c.user_id}>
-                      <TableCell>{c.username || "—"}</TableCell>
+                      <TableCell>{c.full_name || "—"}</TableCell>
                       <TableCell className="text-sm">{c.email}</TableCell>
                       <TableCell>{c.school_name || <span className="text-muted-foreground">Unassigned</span>}</TableCell>
                       <TableCell>
@@ -528,7 +528,7 @@ export function AdminSchools() {
                           size="icon"
                           variant="ghost"
                           title="Generate new temporary password"
-                          onClick={() => resetCounsellorPassword(c.user_id, c.username || c.email || c.user_id)}
+                          onClick={() => resetCounsellorPassword(c.user_id, c.full_name || c.email || c.user_id)}
                         >
                           <KeyRound className="h-4 w-4" />
                         </Button>
@@ -536,7 +536,7 @@ export function AdminSchools() {
                           size="icon"
                           variant="ghost"
                           title="Delete counsellor"
-                          onClick={() => removeCounsellor(c.user_id, c.username || c.email || c.user_id)}
+                          onClick={() => removeCounsellor(c.user_id, c.full_name || c.email || c.user_id)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>

@@ -73,7 +73,7 @@ function extractMajorChange(message: string): string | null {
 async function buildUserContext(client: any, userId: string): Promise<string> {
   try {
     const [profileRes, onboardingRes, journeyRes, creditsRes, proofsRes, admissionsRes] = await Promise.all([
-      client.from("profiles").select("full_name,username").eq("user_id", userId).maybeSingle(),
+      client.from("profiles").select("full_name").eq("user_id", userId).maybeSingle(),
       client.from("onboarding_data").select("grade,curriculum,country,intended_major,target_universities,application_year,gpa,gpa_range,standardized_test_score,standardized_test_type,extracurricular_level,weekly_hours_available,biggest_constraint,biggest_fear,career_direction").eq("user_id", userId).maybeSingle(),
       client.from("journey_scores").select("overall_score,academics_score,activities_score,leadership_score,competitions_score,test_prep_score,journey_started,completed_milestones").eq("user_id", userId).maybeSingle(),
       client.rpc("get_credits"),

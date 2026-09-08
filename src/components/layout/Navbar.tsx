@@ -405,7 +405,7 @@ export function Navbar() {
             )}
             {user && (
               <DropdownMenu>
-                <NavPopout label={profile?.username ? `@${profile.username}` : "Account"} align="right">
+                <NavPopout label={profile?.full_name ? `@${profile.full_name}` : "Account"} align="right">
                 <DropdownMenuTrigger asChild>
                   {/* Deliberately NOT <Button>: buttonVariants carries
                       `[&_svg]:size-4`, a descendant selector that outranks any

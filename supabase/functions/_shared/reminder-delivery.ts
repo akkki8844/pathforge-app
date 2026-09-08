@@ -30,7 +30,7 @@ export type ReminderChannel = "email" | "in_app" | "both" | "off";
 export interface ReminderRecipient {
   userId: string;
   email: string | null;
-  /** First name / username, for greeting. */
+  /** First name, for greeting. */
   name?: string;
   /** IANA zone, already validated by the caller. */
   timezone: string;
@@ -158,7 +158,7 @@ export async function loadRecipients(
 
     const { data: profiles, error: profileErr } = await admin
       .from("profiles")
-      .select("user_id, email, username, full_name")
+      .select("user_id, email, full_name")
       .in("user_id", slice);
     if (profileErr) throw new Error(profileErr.message);
 
@@ -185,7 +185,7 @@ export async function loadRecipients(
     const prefByUser = new Map(prefRows.map((p) => [p.user_id as string, p]));
 
     for (const p of profiles ?? []) {
-      const row = p as { user_id: string; email?: string; username?: string; full_name?: string };
+      const row = p as { user_id: string; email?: string; full_name?: string };
       const pref = prefByUser.get(row.user_id) ?? {};
       const channelRaw = (pref as { reminder_channel?: string }).reminder_channel;
       const channel: ReminderChannel =
@@ -199,7 +199,7 @@ export async function loadRecipients(
       out.set(row.user_id, {
         userId: row.user_id,
         email: row.email ?? null,
-        name: (row.full_name || "").trim().split(/\s+/)[0] || row.username || undefined,
+        name: (row.full_name || "").trim().split(/\s+/)[0] || undefined,
         timezone: safeZone((pref as { timezone?: string }).timezone),
         channel,
         enabled,

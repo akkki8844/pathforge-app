@@ -37,7 +37,7 @@ const ALLOWANCE_PLANS = PLAN_OPTIONS.map((p) => p.value);
 interface UserRow {
   user_id: string;
   email: string | null;
-  username: string | null;
+  full_name: string | null;
   plan: string;
   credits_used_today: number;
   credits_used_month: number;
@@ -87,7 +87,7 @@ export function AdminCreditsControl() {
     // Pull profiles + credits
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, email, username")
+      .select("user_id, email, full_name")
       .order("created_at", { ascending: false })
       .limit(100);
     const ids = (profiles || []).map((p) => p.user_id);
@@ -100,7 +100,7 @@ export function AdminCreditsControl() {
       (profiles || []).map((p) => ({
         user_id: p.user_id,
         email: p.email,
-        username: p.username,
+        full_name: p.full_name,
         plan: map.get(p.user_id)?.plan || "free",
         credits_used_today: map.get(p.user_id)?.credits_used_today || 0,
         credits_used_month: map.get(p.user_id)?.credits_used_month || 0,
@@ -193,7 +193,7 @@ export function AdminCreditsControl() {
     (u) =>
       !search ||
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
-      u.username?.toLowerCase().includes(search.toLowerCase()),
+      u.full_name?.toLowerCase().includes(search.toLowerCase()),
   );
 
   return (
@@ -214,7 +214,7 @@ export function AdminCreditsControl() {
             <div className="relative w-72">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search email or username"
+                placeholder="Search email or name"
                 className="pl-8"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -250,7 +250,7 @@ export function AdminCreditsControl() {
                   return (
                     <TableRow key={u.user_id}>
                       <TableCell>
-                        <div className="font-medium">{u.username || "—"}</div>
+                        <div className="font-medium">{u.full_name || "—"}</div>
                         <div className="text-xs text-muted-foreground">{u.email}</div>
                       </TableCell>
                       <TableCell>

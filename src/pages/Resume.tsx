@@ -187,11 +187,11 @@ export default function Resume() {
       if (!user) return;
       // profile
       const { data: pData } = await supabase
-        .from("profiles").select("username, email").eq("user_id", user.id).maybeSingle();
+        .from("profiles").select("full_name, email").eq("user_id", user.id).maybeSingle();
       if (pData) {
         setHeader((h) => ({
           ...h,
-          name: h.name || pData.username || (pData.email?.split("@")[0] ?? ""),
+          name: h.name || pData.full_name || (pData.email?.split("@")[0] ?? ""),
           email: h.email || pData.email || "",
         }));
       }

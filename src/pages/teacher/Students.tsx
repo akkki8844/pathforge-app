@@ -49,7 +49,7 @@ export default function TeacherStudents() {
     const q = search.trim().toLowerCase();
     let list = students.filter((s) => {
       if (q) {
-        const hay = `${s.username ?? ""} ${s.email ?? ""} ${s.intended_major ?? ""} ${s.high_school_name ?? ""}`.toLowerCase();
+        const hay = `${s.full_name ?? ""} ${s.email ?? ""} ${s.intended_major ?? ""} ${s.high_school_name ?? ""}`.toLowerCase();
         if (!hay.includes(q)) return false;
       }
       if (gradeFilter !== "all" && s.grade !== gradeFilter) return false;
@@ -62,7 +62,7 @@ export default function TeacherStudents() {
 
     list = [...list].sort((a, b) => {
       let cmp = 0;
-      if (sortField === "name") cmp = (a.username || a.email || "").localeCompare(b.username || b.email || "");
+      if (sortField === "name") cmp = (a.full_name || a.email || "").localeCompare(b.full_name || b.email || "");
       else if (sortField === "score") cmp = a.overall_score - b.overall_score;
       else if (sortField === "grade") cmp = (a.grade || "").localeCompare(b.grade || "");
       else if (sortField === "status") cmp = priorityRank(a.status) - priorityRank(b.status);
@@ -232,15 +232,12 @@ export default function TeacherStudents() {
                         <td className="p-3">
                           <Link to={`/teacher/students/${s.user_id}`} className="flex items-center gap-3 group">
                             <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold shrink-0">
-                              {(s.username || s.email || "?")[0].toUpperCase()}
+                              {(s.full_name || s.email || "?")[0].toUpperCase()}
                             </div>
                             <div>
                               <p className="font-medium text-foreground group-hover:text-accent transition-colors">
-                                {s.username || s.email || "Student"}
+                                {s.full_name || s.email || "Student"}
                               </p>
-                              {s.email && s.username && (
-                                <p className="text-xs text-muted-foreground">{s.email}</p>
-                              )}
                             </div>
                           </Link>
                         </td>

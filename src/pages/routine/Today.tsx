@@ -32,12 +32,10 @@ import { QuickActions } from "@/components/routine/today/QuickActions";
 /** First name from the fullest source available, degrading gracefully. */
 function firstName(
   full: string | null | undefined,
-  username: string | null | undefined,
   email: string | null | undefined,
 ): string {
   const n = (full || "").trim().split(/\s+/)[0];
   if (n) return n;
-  if (username && username.trim()) return username.trim();
   const e = (email || "").split("@")[0];
   return e ? e.charAt(0).toUpperCase() + e.slice(1) : "there";
 }
@@ -87,7 +85,7 @@ export default function Today() {
   const focusItem = live[0] ?? next;
   const focusMode: "now" | "next" = live.length > 0 ? "now" : "next";
 
-  const name = firstName(profile?.full_name, profile?.username, profile?.email || user?.email);
+  const name = firstName(profile?.full_name, profile?.email || user?.email);
 
   const hasAnyData =
     (sources.classes?.length ?? 0) +
