@@ -59,7 +59,7 @@ export function RoutineShell({
   return (
     <>
       <Seo
-        title={seoTitle ?? `${title} · Routine · Pathforge`}
+        title={seoTitle ?? title}
         description={seoDescription ?? purpose}
         path={path}
         noindex

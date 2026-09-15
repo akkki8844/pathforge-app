@@ -442,7 +442,7 @@ export function ChatThread({
               }
             />
           ) : (
-            <GroupAvatar title={title} accentName={conversation.accent} size="md" />
+            <GroupAvatar title={title} accentName={conversation.accent} imagePath={conversation.image_path} size="md" />
           )}
           <span className="min-w-0 flex-1">
             <span className="flex items-center gap-1.5">
@@ -878,6 +878,7 @@ export function ChatThread({
               mentions: payload.mentions,
               files: payload.files,
               replyToId: payload.replyToId,
+              poll: payload.poll,
             },
             {
               onError: (e) =>

@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.1"
+    PostgrestVersion: "14.5"
   }
   public: {
     Tables: {
@@ -816,6 +816,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      college_news: {
+        Row: {
+          fetched_at: string
+          id: string
+          image_url: string | null
+          published_at: string | null
+          source: string
+          summary: string | null
+          title: string
+          url: string
+        }
+        Insert: {
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          published_at?: string | null
+          source: string
+          summary?: string | null
+          title: string
+          url: string
+        }
+        Update: {
+          fetched_at?: string
+          id?: string
+          image_url?: string | null
+          published_at?: string | null
+          source?: string
+          summary?: string | null
+          title?: string
+          url?: string
+        }
+        Relationships: []
       }
       composio_oauth_states: {
         Row: {
@@ -2155,6 +2188,109 @@ export type Database = {
           },
         ]
       }
+      message_poll_options: {
+        Row: {
+          id: string
+          label: string
+          poll_id: string
+          position: number
+        }
+        Insert: {
+          id?: string
+          label: string
+          poll_id: string
+          position?: number
+        }
+        Update: {
+          id?: string
+          label?: string
+          poll_id?: string
+          position?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_poll_options_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "message_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_poll_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_id: string
+          poll_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_id?: string
+          poll_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_poll_votes_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "message_poll_options"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "message_poll_votes_poll_id_fkey"
+            columns: ["poll_id"]
+            isOneToOne: false
+            referencedRelation: "message_polls"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      message_polls: {
+        Row: {
+          allow_multiple: boolean
+          created_at: string
+          created_by: string
+          id: string
+          message_id: string
+          question: string
+        }
+        Insert: {
+          allow_multiple?: boolean
+          created_at?: string
+          created_by: string
+          id?: string
+          message_id: string
+          question: string
+        }
+        Update: {
+          allow_multiple?: boolean
+          created_at?: string
+          created_by?: string
+          id?: string
+          message_id?: string
+          question?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "message_polls_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: true
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       message_reactions: {
         Row: {
           created_at: string
@@ -2736,6 +2872,7 @@ export type Database = {
           is_vc: boolean
           updated_at: string
           user_id: string
+          username: string | null
         }
         Insert: {
           avatar_url?: string | null
@@ -2748,6 +2885,7 @@ export type Database = {
           is_vc?: boolean
           updated_at?: string
           user_id: string
+          username?: string | null
         }
         Update: {
           avatar_url?: string | null
@@ -2760,6 +2898,7 @@ export type Database = {
           is_vc?: boolean
           updated_at?: string
           user_id?: string
+          username?: string | null
         }
         Relationships: []
       }
@@ -3034,6 +3173,33 @@ export type Database = {
           referred_email?: string | null
           referred_user_id?: string | null
           referrer_user_id?: string
+        }
+        Relationships: []
+      }
+      reminder_deliveries: {
+        Row: {
+          channels: string[]
+          created_at: string
+          dedup_key: string
+          id: string
+          reminder_type: string
+          user_id: string
+        }
+        Insert: {
+          channels?: string[]
+          created_at?: string
+          dedup_key: string
+          id?: string
+          reminder_type: string
+          user_id: string
+        }
+        Update: {
+          channels?: string[]
+          created_at?: string
+          dedup_key?: string
+          id?: string
+          reminder_type?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -4416,6 +4582,7 @@ export type Database = {
           deadline_lead_days: number[]
           email_weekly_digest: boolean
           focus_home_airport: string | null
+          notify_activities: boolean
           notify_deadlines: boolean
           notify_marketing: boolean
           notify_product_updates: boolean
@@ -4423,6 +4590,7 @@ export type Database = {
           profile_visibility: string
           rec_rigor: string
           reduce_motion: boolean
+          reminder_channel: string
           show_tips: boolean
           timezone: string
           updated_at: string
@@ -4438,6 +4606,7 @@ export type Database = {
           deadline_lead_days?: number[]
           email_weekly_digest?: boolean
           focus_home_airport?: string | null
+          notify_activities?: boolean
           notify_deadlines?: boolean
           notify_marketing?: boolean
           notify_product_updates?: boolean
@@ -4445,6 +4614,7 @@ export type Database = {
           profile_visibility?: string
           rec_rigor?: string
           reduce_motion?: boolean
+          reminder_channel?: string
           show_tips?: boolean
           timezone?: string
           updated_at?: string
@@ -4460,6 +4630,7 @@ export type Database = {
           deadline_lead_days?: number[]
           email_weekly_digest?: boolean
           focus_home_airport?: string | null
+          notify_activities?: boolean
           notify_deadlines?: boolean
           notify_marketing?: boolean
           notify_product_updates?: boolean
@@ -4467,6 +4638,7 @@ export type Database = {
           profile_visibility?: string
           rec_rigor?: string
           reduce_motion?: boolean
+          reminder_channel?: string
           show_tips?: boolean
           timezone?: string
           updated_at?: string
@@ -4757,7 +4929,7 @@ export type Database = {
         Args: {
           _role?: Database["public"]["Enums"]["app_role"]
           _target_user_id: string
-          _full_name?: string
+          _username?: string
         }
         Returns: Json
       }
@@ -4861,6 +5033,7 @@ export type Database = {
           avatar_url: string
           full_name: string
           user_id: string
+          username: string
         }[]
       }
       comms_mark_read: {
@@ -4873,6 +5046,7 @@ export type Database = {
           avatar_url: string
           full_name: string
           user_id: string
+          username: string
         }[]
       }
       comms_unread_total: { Args: never; Returns: number }
@@ -4899,21 +5073,12 @@ export type Database = {
         }
         Returns: string
       }
-      delete_email: {
-        Args: { message_id: number; queue_name: string }
-        Returns: boolean
-      }
       effective_daily_credit_limit: {
         Args: { _plan: string; _stored_limit: number; _user_id: string }
         Returns: number
       }
       email_infra_healthcheck: { Args: never; Returns: Json }
       email_is_verified: { Args: { _user_id: string }; Returns: boolean }
-      email_queue_dispatch: { Args: never; Returns: undefined }
-      enqueue_email: {
-        Args: { payload: Json; queue_name: string }
-        Returns: number
-      }
       evaluate_feature_flag: { Args: { flag_name: string }; Returns: boolean }
       get_admin_stats: { Args: never; Returns: Json }
       get_class_invite_code: { Args: { _class_id: string }; Returns: string }
@@ -4951,6 +5116,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      invite_event_guest_by_email: {
+        Args: { _email: string; _event_id: string }
+        Returns: boolean
+      }
       is_admin: { Args: never; Returns: boolean }
       is_class_member: { Args: { _class_id: string }; Returns: boolean }
       is_class_teacher: { Args: { _class_id: string }; Returns: boolean }
@@ -4969,6 +5138,10 @@ export type Database = {
       is_teacher: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: {
         Args: { _team_id: string; _uid?: string }
+        Returns: boolean
+      }
+      is_username_available: {
+        Args: { check_username: string }
         Returns: boolean
       }
       is_vc_user: { Args: { _uid?: string }; Returns: boolean }
@@ -4996,27 +5169,11 @@ export type Database = {
       }
       mark_all_notifications_read: { Args: never; Returns: number }
       monthly_credit_allowance: { Args: { _plan: string }; Returns: number }
-      move_to_dlq: {
-        Args: {
-          dlq_name: string
-          message_id: number
-          payload: Json
-          source_queue: string
-        }
-        Returns: number
-      }
       normalize_plan: { Args: { _plan: string }; Returns: string }
       normalized_school_name: { Args: { _name: string }; Returns: string }
       plan_is_unlimited: { Args: { _plan: string }; Returns: boolean }
       plan_rank: { Args: { _plan: string }; Returns: number }
-      read_email_batch: {
-        Args: { batch_size: number; queue_name: string; vt: number }
-        Returns: {
-          message: Json
-          msg_id: number
-          read_ct: number
-        }[]
-      }
+      prune_reminder_deliveries: { Args: never; Returns: number }
       redeem_coupon: { Args: { _code: string }; Returns: Json }
       refund_credit: { Args: never; Returns: boolean }
       revert_all_expired_subscriptions: { Args: never; Returns: number }
@@ -5090,7 +5247,7 @@ export type Database = {
           status: string
           target_universities: string[]
           user_id: string
-          full_name: string
+          username: string
         }[]
       }
       teacher_school_id: { Args: { _user_id: string }; Returns: string }
@@ -5113,12 +5270,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5142,11 +5299,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5167,11 +5324,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5192,11 +5349,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -5209,11 +5366,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

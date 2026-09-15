@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays } from "lucide-react";
+import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FlowButton } from "@/components/ui/flow-button";
@@ -17,6 +17,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { preloadRoute } from "@/lib/routePreload";
 import { ROUTINE_DESTINATIONS } from "@/lib/routine/nav";
 import { COMMUNICATIONS_DESTINATIONS, isCommsPath } from "@/lib/comms/nav";
+import { TEST_PREP_TESTS, isTestPrepPath } from "@/lib/testprep/nav";
 import { useCommsBadges } from "@/hooks/comms/useCommsBadges";
 import { DURATION, EASE_OUT_EXPO, transition } from "@/lib/motion";
 import pathforgeLogo from "@/assets/pathforge-logo.webp";
@@ -25,20 +26,34 @@ import { VariableFontHover } from "@/components/ui/variable-font-hover";
 import { NavPopout } from "@/components/layout/NavPopout";
 
 type NavIcon = React.ComponentType<{ className?: string }>;
-type NavItem = { href: string; label: string; icon: NavIcon; badge?: number };
+export type NavItem = {
+  href: string;
+  label: string;
+  icon: NavIcon;
+  badge?: number;
+  /** Listed in the menu but not yet openable — see the Test Prep group below. */
+  disabled?: boolean;
+};
 type NavGroup = { title: string; links: NavItem[] };
 
 // The whole top-level bar, in the exact order requested: Journey, Advisor,
-// Activities, Outcomes, Application Builder, Admissions, Planner. Everything
-// else lives one level down, in the single "Other" dropdown below.
-const mainLinks: NavItem[] = [
+// Outcomes, Professors, Chats, Activities, Calendar. Everything else lives one
+// level down, in the single "Other" dropdown below.
+//
+// Exported because the product tour walks exactly these pages and nothing
+// else. Deriving its stops from this array rather than restating them is what
+// keeps "the tour covers the nav bar" true after the next reshuffle.
+export const NAVBAR_MAIN_LINKS: NavItem[] = [
   { href: "/journey", label: "Journey", icon: Map },
   { href: "/advisor", label: "Advisor", icon: Mic },
-  { href: "/activities", label: "Activities", icon: Compass },
   { href: "/outcomes", label: "Outcomes", icon: Briefcase },
-  { href: "/application-builder", label: "Application Builder", icon: FileSignature },
-  { href: "/admissions-probability", label: "Admissions", icon: Target },
-  { href: "/weekly-planner", label: "Planner", icon: CalendarDays },
+  { href: "/lor", label: "Professors", icon: FileSignature },
+  { href: "/communications/chats", label: "Chats", icon: MessageSquare },
+  { href: "/activities", label: "Activities", icon: Compass },
+  // Renamed from "Planner" so it stops reading as the same thing as Routine's
+  // Study Planner — this page is the calendar/scheduling view, not the
+  // subject-priority planner.
+  { href: "/weekly-planner", label: "Calendar", icon: CalendarDays },
 ];
 
 // Everything that isn't a top-seven link, folded into the one "Other"
@@ -49,6 +64,7 @@ const baseOtherGroups: NavGroup[] = [
   {
     title: "Builders",
     links: [
+      { href: "/application-builder", label: "Application Builder", icon: FileSignature },
       { href: "/profile-builder", label: "LinkedIn Builder", icon: Linkedin },
       { href: "/resume", label: "Resume Builder", icon: FileText },
       { href: "/essays", label: "Essay Builder", icon: PenLine },
@@ -57,6 +73,7 @@ const baseOtherGroups: NavGroup[] = [
   {
     title: "Preparation",
     links: [
+      { href: "/admissions-probability", label: "Admissions", icon: Target },
       { href: "/requirements", label: "Requirements", icon: BookOpen },
       { href: "/college-readiness", label: "Readiness", icon: GraduationCap },
     ],
@@ -66,7 +83,6 @@ const baseOtherGroups: NavGroup[] = [
     links: [
       { href: "/scholarships", label: "Scholarships", icon: Award },
       { href: "/past-admits", label: "Past Admits", icon: Trophy },
-      { href: "/lor", label: "Professors", icon: FileSignature },
       { href: "/exemplar-essays", label: "Exemplar Essays", icon: Quote },
     ],
   },
@@ -79,6 +95,21 @@ const baseOtherGroups: NavGroup[] = [
 const routineGroup: NavGroup = {
   title: "Routine",
   links: ROUTINE_DESTINATIONS.map((d) => ({ href: d.href, label: d.label, icon: d.icon })),
+};
+
+// Test Prep, as a department of "Other" — not a top-level bar item. Five tests
+// are listed because five are the shape of the section, but only the SAT has
+// content; the rest render as present-but-unavailable rather than being hidden,
+// so a student can see what the section will hold without being walked into an
+// empty page.
+const testPrepGroup: NavGroup = {
+  title: "Test Prep",
+  links: TEST_PREP_TESTS.map((t) => ({
+    href: t.href,
+    label: t.label,
+    icon: GraduationCap,
+    disabled: !t.available,
+  })),
 };
 
 // Communications, folded into "Other" as its own department — same treatment
@@ -100,7 +131,9 @@ function buildCommsGroup(badges: {
   };
   return {
     title: "Communications",
-    links: COMMUNICATIONS_DESTINATIONS.map((d) => ({
+    // Chats is excluded here — it's a top-level nav item now, so listing it
+    // again under Other would just be the same page twice.
+    links: COMMUNICATIONS_DESTINATIONS.filter((d) => d.href !== "/communications/chats").map((d) => ({
       href: d.href,
       label: d.label,
       icon: d.icon,
@@ -109,6 +142,7 @@ function buildCommsGroup(badges: {
   };
 }
 
+const mainLinks = NAVBAR_MAIN_LINKS;
 const navLinks: NavItem[] = mainLinks;
 
 /** The sliding underline shared by every top-level nav item. */
@@ -168,7 +202,7 @@ function NavDropdown({
       className="relative"
       onMouseEnter={() => {
         setOpen(true);
-        groups.forEach((g) => g.links.forEach((l) => preloadRoute(l.href)));
+        groups.forEach((g) => g.links.forEach((l) => !l.disabled && preloadRoute(l.href)));
       }}
       onMouseLeave={() => setOpen(false)}
     >
@@ -224,6 +258,24 @@ function NavDropdown({
                   <div className="space-y-0.5">
                     {group.links.map((l) => {
                       const itemActive = location.pathname === l.href;
+                      // Present, and plainly not yet openable. A greyed row that
+                      // still navigated would be worse than one that doesn't,
+                      // and hiding it altogether would hide the roadmap.
+                      if (l.disabled) {
+                        return (
+                          <motion.div key={l.href} variants={menuItem}>
+                            <span
+                              aria-disabled="true"
+                              className="flex cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-sm leading-tight text-muted-foreground/60"
+                            >
+                              <span className="truncate">{l.label}</span>
+                              <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide">
+                                Soon
+                              </span>
+                            </span>
+                          </motion.div>
+                        );
+                      }
                       return (
                         <motion.div key={l.href} variants={menuItem}>
                           <Link
@@ -315,10 +367,15 @@ export function Navbar() {
   // in — their routes are all behind ProtectedRoute, so there's nothing there
   // for a guest.
   const otherGroups: NavGroup[] = user
-    ? [buildCommsGroup(commsBadges), routineGroup, ...baseOtherGroups]
+    ? [buildCommsGroup(commsBadges), routineGroup, testPrepGroup, ...baseOtherGroups]
     : baseOtherGroups;
   const otherLinks: NavItem[] = otherGroups.flatMap((g) => g.links);
-  const isOthersActive = otherLinks.some((l) => location.pathname === l.href) || isCommsPath(location.pathname);
+  // Chats now has its own top-level indicator, so Other should only light up
+  // for the comms pages that still live inside it (Teams, Objectives, Announcements).
+  const isOthersActive =
+    otherLinks.some((l) => location.pathname === l.href) ||
+    (isCommsPath(location.pathname) && location.pathname !== "/communications/chats") ||
+    isTestPrepPath(location.pathname);
 
   // The mobile drawer is a flat list of departments — same groups as desktop's
   // "Other" menu, Communications included since it's no longer a separate
@@ -359,6 +416,7 @@ export function Navbar() {
                 <Link
                   key={link.href}
                   to={link.href}
+                  data-tour={`nav:${link.href}`}
                   onMouseEnter={() => preloadRoute(link.href)}
                   onFocus={() => preloadRoute(link.href)}
                   className={`group relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
@@ -405,7 +463,7 @@ export function Navbar() {
             )}
             {user && (
               <DropdownMenu>
-                <NavPopout label={profile?.full_name ? `@${profile.full_name}` : "Account"} align="right">
+                <NavPopout label={profile?.full_name?.trim() || "Account"} align="right">
                 <DropdownMenuTrigger asChild>
                   {/* Deliberately NOT <Button>: buttonVariants carries
                       `[&_svg]:size-4`, a descendant selector that outranks any
@@ -523,16 +581,27 @@ export function Navbar() {
                     >
                       {group.title}
                     </motion.div>
-                    {group.links.map((o) => (
-                      <MobileNavLink
-                        key={o.href}
-                        to={o.href}
-                        label={o.label}
-                        badge={o.badge}
-                        isActive={location.pathname === o.href}
-                        onClick={() => setIsOpen(false)}
-                      />
-                    ))}
+                    {group.links.map((o) =>
+                      o.disabled ? (
+                        <div
+                          key={o.href}
+                          aria-disabled="true"
+                          className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground/60"
+                        >
+                          {o.label}
+                          <span className="ml-auto text-[10px] uppercase tracking-wide">Soon</span>
+                        </div>
+                      ) : (
+                        <MobileNavLink
+                          key={o.href}
+                          to={o.href}
+                          label={o.label}
+                          badge={o.badge}
+                          isActive={location.pathname === o.href}
+                          onClick={() => setIsOpen(false)}
+                        />
+                      ),
+                    )}
                   </div>
                 ))}
 

@@ -5,11 +5,11 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 export default function Privacy() {
   return (
     <div className="min-h-[100svh] bg-background">
-      <Seo title='Privacy Policy — Pathforge' description='How Pathforge collects, uses, and protects student data across our college guidance platform.' path='/privacy' />
+      <Seo title='Privacy Policy' description='How Pathforge collects, uses, and protects student data across our college guidance platform.' path='/privacy' />
       <div className="section-container max-w-3xl py-12 prose prose-sm dark:prose-invert">
         <ScrollReveal>
           <h1 className="text-3xl font-bold mb-2">Privacy Notice</h1>
-          <p className="text-muted-foreground text-sm mb-8">Last updated: August 12, 2026</p>
+          <p className="text-muted-foreground text-sm mb-8">Last updated: September 8, 2026</p>
         </ScrollReveal>
 
         <p>
@@ -70,8 +70,14 @@ export default function Privacy() {
             recording of your voice.
           </li>
           <li>
-            <strong>Progress data:</strong> Journey and quest progress, streaks, scores, planner
-            entries, reflections, and evaluation history.
+            <strong>Progress data:</strong> Journey and quest progress, streaks, scores, your study
+            planner and Routine entries (tasks, study blocks, reminders, habits, goals, timetable),
+            reflections, and evaluation history.
+          </li>
+          <li>
+            <strong>Communications data:</strong> direct messages, group and team chat content,
+            reactions, pins, and files you send through Chats or Teams, plus the objectives and
+            announcements created there.
           </li>
           <li>
             <strong>Recommender &amp; counsellor data:</strong> the names and email addresses of
@@ -221,6 +227,13 @@ export default function Privacy() {
             <strong>Your counsellor or teacher</strong> — if you connect to one, or join a class
             they administer, they can see your profile, progress, and submitted work. You can
             disconnect at any time.
+          </li>
+          <li>
+            <strong>Other students you message or team up with</strong> — direct messages and team
+            chats are visible to the other people in that conversation, by design. A counsellor
+            connected to your team can see the team's metadata and an AI-generated activity summary,
+            but has no way to read message content — there is no policy in our database that grants
+            it, by design, not merely by convention.
           </li>
           <li>
             <strong>Recommenders you nominate</strong> — receive only the context needed to write

@@ -1146,12 +1146,18 @@ export function curriculaForGrade(grade: string | null | undefined): CurriculumK
 
 // ─── GPA scales ────────────────────────────────────────────────────────
 
-export type GpaSystem = "gpa-4" | "gpa-10" | "percentage";
+export type GpaSystem = "gpa-4" | "gpa-10" | "percentage" | "ib-45" | "ib-7";
 
 export const GPA_SYSTEMS: { value: GpaSystem; label: string; min: number; max: number; step: number; suffix?: string }[] = [
   { value: "gpa-4", label: "GPA (4.0 scale)", min: 0, max: 4, step: 0.01 },
   { value: "gpa-10", label: "GPA (10.0 scale)", min: 0, max: 10, step: 0.01 },
   { value: "percentage", label: "Percentage (0–100%)", min: 0, max: 100, step: 0.1, suffix: "%" },
+  // DP's diploma score is the number every student and admissions office
+  // actually quotes — 6 subjects at 1-7 plus up to 3 TOK/EE core points.
+  { value: "ib-45", label: "IB Diploma (out of 45)", min: 1, max: 45, step: 1 },
+  // MYP has no diploma-style total; students report a subject-grade average
+  // on the same 1-7 band every IB subject (DP included) is graded on.
+  { value: "ib-7", label: "IB grade average (1–7 scale)", min: 1, max: 7, step: 0.1 },
 ];
 
 /** Recommend default GPA system from curriculum */
@@ -1160,6 +1166,11 @@ export function defaultGpaSystem(curriculum: string | null | undefined): GpaSyst
     case "AP":
     case "US":
       return "gpa-4";
+    case "IB-DP":
+      return "ib-45";
+    case "IB-MYP":
+    case "IB-CP":
+      return "ib-7";
     default:
       return "percentage";
   }

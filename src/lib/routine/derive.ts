@@ -26,8 +26,10 @@ import {
   timeToMinutes,
 } from "./dates";
 import { KIND_COLOR, colorForSubject } from "./colors";
+import { AP_EXAM_SCHEDULE_2027, STANDARDIZED_TEST_DATES, apSubjectsForMajor } from "./standardizedTests";
 import type {
   AgendaItem,
+  EventRecurrence,
   RoutineClass,
   RoutineEvent,
   RoutineFocusSession,
@@ -40,6 +42,29 @@ import type {
   RoutineTask,
   Weekday,
 } from "./types";
+
+/**
+ * Whether a recurring event's fixed pattern lands on `day`, replayed forward
+ * from its own `anchor` (the row's original `starts_at`). Five named
+ * patterns, each plain date arithmetic — no RRULE parser, no per-occurrence
+ * exception table. `monthly` on the 31st simply has no occurrence in a
+ * shorter month rather than shifting to another date, the same way most
+ * calendar apps skip an impossible date instead of guessing a replacement.
+ */
+function recurrenceOccursOn(rule: EventRecurrence, anchor: Date, day: Date): boolean {
+  switch (rule) {
+    case "daily":
+      return true;
+    case "weekdays":
+      return day.getDay() >= 1 && day.getDay() <= 5;
+    case "weekly":
+      return daysBetween(anchor, day) % 7 === 0;
+    case "monthly":
+      return day.getDate() === anchor.getDate();
+    case "yearly":
+      return day.getMonth() === anchor.getMonth() && day.getDate() === anchor.getDate();
+  }
+}
 
 /** Everything the agenda builder can draw from. All fields optional. */
 export interface RoutineSources {
@@ -59,6 +84,8 @@ export interface AgendaOptions {
   kinds?: AgendaItem["kind"][];
   /** Treated as "now" for overdue/countdown decisions. Injectable for tests. */
   now?: Date;
+  /** The student's free-text intended major, for AP subject matching. */
+  intendedMajor?: string | null;
 }
 
 // ── Timetable occurrences ────────────────────────────────────────────────
@@ -367,11 +394,29 @@ export function buildAgenda(
 
   if (wants("event")) {
     for (const e of sources.events ?? []) {
-      const start = new Date(e.starts_at);
-      const end = e.ends_at ? new Date(e.ends_at) : undefined;
-      // A multi-day event should appear on every day it spans, not only day one.
-      const spansDay = start <= dayEnd && (end ?? start) >= dayStart;
-      if (!spansDay) continue;
+      const anchorStart = new Date(e.starts_at);
+      const anchorEnd = e.ends_at ? new Date(e.ends_at) : undefined;
+      let start = anchorStart;
+      let end = anchorEnd;
+
+      if (e.recurrence) {
+        if (startOfDay(day) < startOfDay(anchorStart)) continue;
+        if (e.recurrence_end && startOfDay(day) > startOfDay(new Date(e.recurrence_end))) continue;
+        if (!recurrenceOccursOn(e.recurrence, anchorStart, day)) continue;
+        // Same time of day and duration as the anchor row, replayed onto
+        // `day` — there is no per-occurrence record to read a different time
+        // from, so every occurrence is the anchor shifted by whole days.
+        start = new Date(day);
+        start.setHours(anchorStart.getHours(), anchorStart.getMinutes(), 0, 0);
+        end = anchorEnd
+          ? new Date(start.getTime() + (anchorEnd.getTime() - anchorStart.getTime()))
+          : undefined;
+      } else {
+        // A multi-day event should appear on every day it spans, not only day one.
+        const spansDay = start <= dayEnd && (end ?? start) >= dayStart;
+        if (!spansDay) continue;
+      }
+
       items.push({
         key: `event:${e.id}:${dateKey(day)}`,
         kind: "event",
@@ -446,6 +491,58 @@ export function buildAgenda(
         overdue: dayEnd < now,
         color: KIND_COLOR.goal,
       });
+    }
+  }
+
+  if (wants("testdate")) {
+    for (const t of STANDARDIZED_TEST_DATES) {
+      if (parseDateKey(t.date).getTime() !== dayStart.getTime()) continue;
+      items.push({
+        key: `testdate:${t.id}`,
+        kind: "testdate",
+        sourceId: t.id,
+        title: t.label,
+        subtitle: t.note ?? "National test date",
+        start: dayStart,
+        allDay: true,
+        done: dayEnd < now,
+        overdue: false,
+        color: KIND_COLOR.testdate,
+      });
+      const deadline = t.regularDeadline;
+      if (deadline && parseDateKey(deadline).getTime() === dayStart.getTime()) {
+        items.push({
+          key: `testdate-deadline:${t.id}`,
+          kind: "testdate",
+          sourceId: t.id,
+          title: `${t.label} registration deadline`,
+          subtitle: `Regular registration for the ${new Date(t.date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })} test closes today`,
+          start: dayStart,
+          allDay: true,
+          done: dayEnd < now,
+          overdue: false,
+          color: KIND_COLOR.testdate,
+        });
+      }
+    }
+    const apSubjects = new Set(apSubjectsForMajor(options.intendedMajor));
+    if (apSubjects.size > 0) {
+      for (const ap of AP_EXAM_SCHEDULE_2027) {
+        if (!apSubjects.has(ap.subject)) continue;
+        if (parseDateKey(ap.date).getTime() !== dayStart.getTime()) continue;
+        items.push({
+          key: `testdate:ap:${ap.subject}:${ap.date}`,
+          kind: "testdate",
+          sourceId: `ap:${ap.subject}`,
+          title: ap.subject,
+          subtitle: ap.note ?? "AP exam, based on your intended major",
+          start: dayStart,
+          allDay: true,
+          done: dayEnd < now,
+          overdue: false,
+          color: KIND_COLOR.testdate,
+        });
+      }
     }
   }
 

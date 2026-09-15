@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { majors } from '@/lib/data';
-import { getCollegeNamesByCountry } from '@/lib/colleges';
+import { getCollegeNamesByCountry, collegeMatchesQuery } from '@/lib/colleges';
 import { searchSchools, type School as SchoolType } from '@/lib/schools';
 import {
   GPA_SYSTEMS, defaultGpaSystem, type GpaSystem,
@@ -36,6 +36,7 @@ import { FlowButton } from '@/components/ui/flow-button';
 import { SubjectSelector, type SelectedSubject } from '@/components/onboarding/SubjectSelector';
 import { fadeUp, staggerParent, staggerStep, transition } from '@/lib/motion';
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 const grades = ['9th Grade', '10th Grade', '11th Grade', '12th Grade'];
 // Curated top 30 destinations — full ISO list lives in profile settings.
 const countries = TOP_COUNTRY_NAMES;
@@ -237,9 +238,9 @@ export function OnboardingSurvey() {
   // College selection grid: search filter
   const [collegeQuery, setCollegeQuery] = useState('');
   const filteredColleges = useMemo(() => {
-    const q = collegeQuery.trim().toLowerCase();
+    const q = collegeQuery.trim();
     if (!q) return collegeOptions;
-    return collegeOptions.filter((c) => c.toLowerCase().includes(q));
+    return collegeOptions.filter((c) => collegeMatchesQuery(c, q));
   }, [collegeOptions, collegeQuery]);
 
   // Country-of-Study chip search (full ISO list is too long for raw chip rendering)
@@ -306,32 +307,58 @@ export function OnboardingSurvey() {
     return v >= gpaConfig.min && v <= gpaConfig.max;
   }, [formData.gpaValue, gpaConfig]);
 
-  const canProceed = () => {
+  /**
+   * What this step is still waiting on, labelled the way the fields are.
+   *
+   * The steps are taller than the viewport, so a required field is often below
+   * the fold — on Direction, "Primary reason for this major" sits under the
+   * confidence slider. A Continue button that is simply dead gives the student
+   * nothing to act on and no reason to scroll. Naming the gaps is also why this
+   * doubles as the gate: deriving `canProceed` from the same list keeps the
+   * button and the explanation from ever disagreeing.
+   */
+  const missingForStep = (): string[] => {
     switch (step) {
       case 0:
-        return (
-          formData.fullName.trim().length >= 2 &&
-          formData.highSchoolName.trim().length >= 2 &&
-          !!formData.country &&
-          formData.studyDestinations.length > 0 &&
-          !!formData.applicationYear &&
-          formData.targetUniversities.length > 0 &&
-          validGpa
-        );
+        return [
+          formData.fullName.trim().length >= 2 ? null : 'Full name',
+          formData.highSchoolName.trim().length >= 2 ? null : 'High school name',
+          formData.country ? null : 'Country of residence',
+          formData.studyDestinations.length > 0 ? null : 'Country of study',
+          formData.applicationYear ? null : 'Application year',
+          formData.targetUniversities.length > 0 ? null : 'Target universities',
+          validGpa ? null : 'Grading system & score',
+        ].filter(Boolean) as string[];
       case 1:
-        return !!formData.grade && !!formData.curriculum;
+        return [
+          formData.grade ? null : 'Current grade',
+          formData.curriculum ? null : 'Curriculum programme',
+        ].filter(Boolean) as string[];
       case 2:
-        return formData.subjects.length >= 2;
+        return formData.subjects.length >= 2 ? [] : ['At least 2 subjects'];
       case 3:
-        return !!formData.weeklyHoursAvailable && formData.preferredWorkTypes.length > 0 && !!formData.biggestConstraint;
+        return [
+          formData.weeklyHoursAvailable ? null : 'Weekly time available',
+          formData.preferredWorkTypes.length > 0 ? null : 'Preferred work types',
+          formData.biggestConstraint ? null : 'Biggest current constraint',
+        ].filter(Boolean) as string[];
       case 4:
-        return !!formData.intendedMajor && !!formData.majorReason;
+        return [
+          formData.intendedMajor ? null : 'Intended major',
+          formData.majorReason ? null : 'Primary reason for this major',
+        ].filter(Boolean) as string[];
       case 5:
-        return !!formData.primaryMotivation && !!formData.biggestFear;
+        return [
+          formData.primaryMotivation ? null : 'Primary motivation',
+          formData.biggestFear ? null : 'Biggest fear about applications',
+        ].filter(Boolean) as string[];
       default:
-        return false;
+        return ['Unknown step'];
     }
   };
+
+  const missing = missingForStep();
+  const canProceed = () => missing.length === 0;
 
   const handleNext = () => {
     if (step === 1 && formData.curriculum) {
@@ -424,6 +451,12 @@ export function OnboardingSurvey() {
       // rather than something a later revisit could re-trigger.
       try {
         sessionStorage.setItem('pf:justOnboarded', '1');
+        // Separate, durable marker for the seven-page product tour Bloub gives.
+        // sessionStorage would be gone the moment the student closes the tab
+        // between finishing onboarding and reaching a nav-bar page, and the
+        // point of this flag is that ONLY an account that just signed up is
+        // offered the tour — everyone already using the product is left alone.
+        localStorage.setItem('pf_product_tour_pending', '1');
       } catch { /* private browsing / storage disabled — tour just won't show */ }
       navigate('/recommendations');
     } catch (error) {
@@ -756,7 +789,8 @@ export function OnboardingSurvey() {
                             {formData.targetUniversities.length > 0 && (
                               <div className="mb-2 flex flex-wrap gap-1.5">
                                 {formData.targetUniversities.map((u) => (
-                                  <Badge key={u} variant="secondary" className="gap-1">
+                                  <Badge key={u} variant="secondary" className="gap-1.5">
+                                    <CollegeLogo name={u} size={14} className="rounded-[3px]" />
                                     {u}
                                     <button type="button" onClick={() => toggleUniversity(u)} className="hover:text-destructive" aria-label={`Remove ${u}`}>
                                       <X className="h-3 w-3" />
@@ -797,8 +831,9 @@ export function OnboardingSurvey() {
                                             : 'border-border bg-card text-muted-foreground hover:border-accent/60 hover:text-foreground'
                                       }`}
                                     >
-                                      <div className="flex items-center justify-between gap-2">
-                                        <span className="truncate">{c}</span>
+                                      <div className="flex items-center gap-2">
+                                        <CollegeLogo name={c} size={16} className="rounded-[3px]" />
+                                        <span className="min-w-0 flex-1 truncate">{c}</span>
                                         {selected && <Check className="h-3.5 w-3.5 shrink-0 text-accent" />}
                                       </div>
                                     </button>
@@ -1146,6 +1181,16 @@ export function OnboardingSurvey() {
               <ArrowLeft className="h-4 w-4" />
               Back
             </Button>
+
+            {missing.length > 0 && (
+              <p
+                className="min-w-0 flex-1 text-right text-xs leading-snug text-muted-foreground sm:text-left"
+                aria-live="polite"
+              >
+                <span className="font-medium text-foreground">Still needed:</span>{' '}
+                {missing.join(', ')}
+              </p>
+            )}
 
             {step < TOTAL_STEPS - 1 ? (
               <Button onClick={handleNext} disabled={!canProceed()} className="gap-2 btn-accent">

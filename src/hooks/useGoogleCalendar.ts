@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionError";
+import { isTrustedOAuthMessage } from "@/lib/oauthPopupMessage";
 
 export interface GoogleConnection {
   google_email: string | null;
@@ -59,7 +60,8 @@ export function useGoogleCalendar() {
   useEffect(() => {
     const onFocus = () => refresh();
     const onMessage = (e: MessageEvent) => {
-      if (e?.data && (e.data as any).type === "google-oauth-complete") refresh();
+      if (!isTrustedOAuthMessage(e)) return;
+      if (e?.data && (e.data as { type?: string }).type === "google-oauth-complete") refresh();
     };
     window.addEventListener("focus", onFocus);
     window.addEventListener("message", onMessage);

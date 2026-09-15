@@ -58,6 +58,13 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+// CSS identifiers, and colour values: hex, rgb()/hsl()/oklch(), var(), or a
+// bare keyword. Deliberately narrow — anything outside this is dropped
+// rather than escaped, because there is no legitimate chart colour that
+// needs a brace, a semicolon, or an angle bracket in it.
+const CSS_SAFE_KEY = /^[a-zA-Z0-9_-]+$/;
+const CSS_SAFE_VALUE = /^[a-zA-Z0-9#%.,()\s/_-]+$/;
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -75,7 +82,14 @@ ${prefix} [data-chart=${id}] {
 ${colorConfig
   .map(([key, itemConfig]) => {
     const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
+    // These land in a <style dangerouslySetInnerHTML> block. Every caller
+    // today passes a literal from its own module, but nothing in the type
+    // stops a config being assembled from fetched data, and a value
+    // containing "}" or "</style>" would break out of the rule and out of the
+    // element. Keys and colours are therefore restricted to what can appear
+    // in a CSS custom property name and value.
+    if (!CSS_SAFE_KEY.test(key) || !color || !CSS_SAFE_VALUE.test(color)) return null;
+    return `  --color-${key}: ${color};`;
   })
   .join("\n")}
 }

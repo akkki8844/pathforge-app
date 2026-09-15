@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Card, CardHead, Rise } from "@/components/dashboard/deck";
+import { CollegeLogo } from "@/components/CollegeLogo";
 import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -16,8 +17,10 @@ import { toast } from "sonner";
 import { useCounselorDailyFocus } from "@/hooks/useCounselorDailyFocus";
 import { useCounselorFollowups, type Followup } from "@/hooks/useCounselorFollowups";
 import { useFellowCounsellors } from "@/hooks/useFellowCounsellors";
+import { useAuth } from "@/contexts/AuthContext";
 import type { RosterStudent } from "@/hooks/useTeacherRoster";
 import type { RecentSignal } from "@/hooks/useCounselorActivity";
+import type { PendingEssay } from "@/hooks/useCounsellorQueue";
 
 /**
  * The counsellor deck.
@@ -57,6 +60,86 @@ function displayName(s: { full_name: string | null; email: string | null }): str
   return s.full_name || s.email || "Student";
 }
 
+// ── Masthead ──────────────────────────────────────────────────────────
+
+/**
+ * Who is signed in, what day it is, and the four places a counsellor goes
+ * without being sent.
+ *
+ * The page used to open straight onto a card, which is fine for a student
+ * checking their own timetable and wrong for somebody who arrives at this
+ * screen holding a question about someone else. Naming the day and the size of
+ * the list is the cheapest possible orientation.
+ */
+export function Masthead({
+  students,
+  loading,
+}: {
+  students: RosterStudent[];
+  loading: boolean;
+}) {
+  const { profile, teacherProfile } = useAuth();
+
+  const name =
+    profile?.full_name?.trim().split(/\s+/)[0] ||
+    profile?.full_name ||
+    null;
+
+  const hour = new Date().getHours();
+  const part = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+
+  const today = new Date().toLocaleDateString(undefined, {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+
+  const behind = students.filter((s) => s.status === "behind").length;
+
+  // Deliberately not a claim about the day when there is no roster to make a
+  // claim about. An unverified counsellor sees the reason, not a zero.
+  const line = !teacherProfile?.verified
+    ? "Your school link is still being verified, so no student data is loaded yet."
+    : loading
+      ? "Loading your roster…"
+      : students.length === 0
+        ? "No students are linked to you yet."
+        : behind === 0
+          ? `${students.length} students linked. Nobody is flagged as behind.`
+          : `${students.length} students linked, ${behind} flagged as behind.`;
+
+  return (
+    <Rise>
+      <div className="flex flex-col gap-5 pb-2 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className={cn("text-muted-foreground", T.note)}>{today}</p>
+          <h1 className="mt-1.5 text-[clamp(1.75rem,3.4vw,2.5rem)] font-semibold leading-[1.05] tracking-[-0.035em] text-foreground">
+            {name ? `${part}, ${name}.` : `${part}.`}
+          </h1>
+          <p className={cn("mt-2 max-w-[52ch] text-muted-foreground", T.body)}>{line}</p>
+        </div>
+
+        <nav className="flex flex-wrap gap-2" aria-label="Counsellor shortcuts">
+          {[
+            { href: "/teacher/students", label: "Students" },
+            { href: "/teacher/meetings", label: "Meetings" },
+            { href: "/teacher/announcements", label: "Announcements" },
+            { href: "/teacher/copilot", label: "Copilot" },
+          ].map((a) => (
+            <Link
+              key={a.href}
+              to={a.href}
+              className="inline-flex min-h-[40px] items-center rounded-full border border-border bg-card px-4 text-[13px] font-medium text-foreground transition-colors hover:border-foreground/25 hover:bg-muted/50"
+            >
+              {a.label}
+            </Link>
+          ))}
+        </nav>
+      </div>
+    </Rise>
+  );
+}
+
 // ── Today ─────────────────────────────────────────────────────────────
 
 /**
@@ -69,10 +152,13 @@ export function TodayCard({
   students,
   followups,
   inactive,
+  essays = [],
 }: {
   students: RosterStudent[];
   followups: Followup[];
   inactive: Array<{ user_id: string; display_name: string; daysInactive: number }>;
+  /** Drafts still waiting on a read. Oldest first. */
+  essays?: PendingEssay[];
 }) {
   const { items, add, toggle, remove } = useCounselorDailyFocus();
   const [draft, setDraft] = useState("");
@@ -85,6 +171,17 @@ export function TodayCard({
 
   const signals = useMemo(() => {
     const out: Array<{ id: string; label: string; href: string; urgent: boolean }> = [];
+
+    // A submitted draft is the one item on this list where a student is
+    // sitting waiting on this counsellor specifically, so it leads.
+    essays.slice(0, 3).forEach((e) => {
+      out.push({
+        id: `e-${e.id}`,
+        label: `Read ${nameMap.get(e.student_id) ?? "a student"}'s draft — ${e.title}`,
+        href: "/teacher/essays",
+        urgent: e.waitingDays >= 7,
+      });
+    });
 
     followups
       .filter((f) => f.status === "open" && f.due_date <= today)
@@ -120,7 +217,7 @@ export function TodayCard({
     });
 
     return out;
-  }, [followups, students, inactive, nameMap, today]);
+  }, [followups, students, inactive, essays, nameMap, today]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -150,7 +247,8 @@ export function TodayCard({
             </p>
             {signals.length === 0 ? (
               <p className={cn("mt-3 text-white/70", T.body)}>
-                No overdue follow-ups, nobody below thirty, nobody quiet for a week.
+                No drafts waiting, no overdue follow-ups, nobody below thirty, nobody quiet for a
+                week.
               </p>
             ) : (
               <ul className="mt-3 space-y-px">
@@ -253,6 +351,54 @@ export function TodayCard({
 // ── The cohort ────────────────────────────────────────────────────────
 
 /**
+ * A student's target universities as their own marks, overlapped.
+ *
+ * A name in a list is read; a logo in a list is recognised, and a counsellor
+ * scanning thirty rows for "who is the Oxford one" is doing recognition, not
+ * reading. Renders nothing at all when a student has set no targets — an empty
+ * row is the truth there, and placeholder crests would not be.
+ */
+function TargetMarks({
+  names,
+  max = 3,
+  size = 20,
+}: {
+  names: string[] | null;
+  max?: number;
+  size?: number;
+}) {
+  const list = (names ?? []).map((n) => (n ?? "").trim()).filter(Boolean);
+  if (list.length === 0) return null;
+  const shown = list.slice(0, max);
+  const rest = list.length - shown.length;
+
+  return (
+    <span
+      className="flex shrink-0 items-center -space-x-1.5"
+      title={list.join(", ")}
+      aria-label={`Targets: ${list.join(", ")}`}
+    >
+      {shown.map((n) => (
+        <CollegeLogo
+          key={n}
+          name={n}
+          size={size}
+          className="rounded-[5px] bg-background ring-1 ring-border"
+        />
+      ))}
+      {rest > 0 && (
+        <span
+          style={{ width: size, height: size }}
+          className="inline-flex items-center justify-center rounded-[5px] bg-muted text-[9px] font-semibold tabular-nums text-muted-foreground ring-1 ring-border"
+        >
+          +{rest}
+        </span>
+      )}
+    </span>
+  );
+}
+
+/**
  * The counsellor's equivalent of the student's college list: the short,
  * ordered answer to "who am I responsible for, and who first".
  */
@@ -314,6 +460,7 @@ export function CohortCard({
                         {s.overall_score > 0 ? `${s.overall_score}/100` : "not scored yet"}
                       </span>
                     </span>
+                    <TargetMarks names={s.target_universities} />
                     {s.status === "behind" && (
                       <span className={cn("shrink-0 text-destructive", T.note)}>Priority</span>
                     )}
@@ -548,12 +695,10 @@ function since(iso: string): string {
 
 export function SignalsCard({
   recent,
-  deadlines,
   inactive,
   loading,
 }: {
   recent: RecentSignal[];
-  deadlines: Array<{ id: string; student_id: string; college_name: string; display_name: string; stage: string; daysAway: number }>;
   inactive: Array<{ user_id: string; display_name: string; daysInactive: number; overall_score: number }>;
   loading: boolean;
 }) {
@@ -562,10 +707,10 @@ export function SignalsCard({
       <Card>
         <CardHead
           title="Signals"
-          sub="Everything the platform noticed on its own: what students did, what is due, and who has gone quiet."
+          sub="What the platform noticed on its own: what students have been doing, and who has stopped."
         />
 
-        <div className="mt-7 grid gap-8 lg:grid-cols-3">
+        <div className="mt-7 grid gap-8 lg:grid-cols-2">
           <SignalColumn title="Activity" meta="last 14 days" loading={loading} empty={recent.length === 0}
             emptyText="Nothing in two weeks. A note from a student's profile is the fastest way to restart a conversation.">
             <ul className="-mx-3 space-y-px">
@@ -589,36 +734,6 @@ export function SignalsCard({
                   </li>
                 );
               })}
-            </ul>
-          </SignalColumn>
-
-          <SignalColumn title="Deadlines" meta="next 60 days" loading={loading} empty={deadlines.length === 0}
-            emptyText="No dated applications yet. Deadlines appear once a student adds a target college with a date.">
-            <ul className="-mx-3 space-y-px">
-              {deadlines.slice(0, 6).map((d) => (
-                <li key={d.id}>
-                  <Link
-                    to={`/teacher/students/${d.student_id}`}
-                    className="flex items-baseline gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-muted/50"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className={cn("block truncate text-foreground", T.row)}>{d.college_name}</span>
-                      <span className={cn("block truncate text-muted-foreground", T.note)}>
-                        {d.display_name} · {d.stage}
-                      </span>
-                    </span>
-                    <span
-                      className={cn(
-                        "shrink-0 tabular-nums",
-                        T.note,
-                        d.daysAway < 0 || d.daysAway <= 7 ? "text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {d.daysAway < 0 ? "overdue" : `${d.daysAway}d`}
-                    </span>
-                  </Link>
-                </li>
-              ))}
             </ul>
           </SignalColumn>
 
@@ -843,7 +958,7 @@ export function RosterCard({
                     to={`/teacher/students/${s.user_id}`}
                     className="grid grid-cols-12 items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-muted/50"
                   >
-                    <span className="col-span-12 flex min-w-0 items-center gap-3 md:col-span-5">
+                    <span className="col-span-12 flex min-w-0 items-center gap-3 md:col-span-4">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border text-[13px] font-semibold text-foreground">
                         {initial(displayName(s))}
                       </span>
@@ -856,7 +971,7 @@ export function RosterCard({
                         </span>
                       </span>
                     </span>
-                    <span className="col-span-8 md:col-span-4">
+                    <span className="col-span-8 md:col-span-3">
                       <span className="flex items-center gap-3">
                         <span className="h-1 flex-1 overflow-hidden rounded-full bg-muted">
                           <span
@@ -869,7 +984,10 @@ export function RosterCard({
                         </span>
                       </span>
                     </span>
-                    <span className={cn("col-span-4 text-right md:col-span-3", T.note)}>
+                    <span className="col-span-6 hidden md:col-span-3 md:flex md:items-center">
+                      <TargetMarks names={s.target_universities} max={4} />
+                    </span>
+                    <span className={cn("col-span-4 text-right md:col-span-2", T.note)}>
                       {s.status === "behind" ? (
                         <span className="text-destructive">Priority</span>
                       ) : s.status === "top" ? (
@@ -896,7 +1014,16 @@ export function RosterCard({
  * the roster; when there is no roster they read "—" rather than zero, because
  * zero is a measurement and this is an absence of one.
  */
-export function CohortSummary({ students, inactiveCount }: { students: RosterStudent[]; inactiveCount: number }) {
+export function CohortSummary({
+  students,
+  inactiveCount,
+  essayCount,
+}: {
+  students: RosterStudent[];
+  inactiveCount: number;
+  /** Drafts submitted and not yet reviewed. */
+  essayCount: number;
+}) {
   const scored = students.filter((s) => s.overall_score > 0);
   const avg = scored.length
     ? Math.round(scored.reduce((a, s) => a + s.overall_score, 0) / scored.length)
@@ -908,12 +1035,13 @@ export function CohortSummary({ students, inactiveCount }: { students: RosterStu
     { label: "Average score", value: avg === null ? "—" : `${avg}/100` },
     { label: "On track", value: total === 0 ? "—" : String(students.filter((s) => s.status === "top").length) },
     { label: "Quiet 7 days+", value: total === 0 ? "—" : String(inactiveCount) },
+    { label: "Drafts to read", value: total === 0 ? "—" : String(essayCount) },
   ];
 
   return (
     <Rise>
       <Card>
-        <dl className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+        <dl className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-5">
           {stats.map((s) => (
             <div key={s.label}>
               <dt className={cn("text-muted-foreground", T.note)}>{s.label}</dt>

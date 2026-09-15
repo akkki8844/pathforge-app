@@ -10,6 +10,7 @@ import { useCounsellorRoadmap, getFocusAreaOptions, type RoadmapDraft } from "@/
 import type { CounsellorInsight } from "@/lib/counsellorInsights";
 import { supabase } from "@/integrations/supabase/client";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 interface AINextAction {
   title: string;
   why: string;
@@ -82,7 +83,7 @@ export function StudentStrategyView({ studentId, insight, academicSummary, ecSum
       if (data?.error) throw new Error(data.error);
       setAiDiagnosis(data?.diagnosis ?? "");
       setAiActions(Array.isArray(data?.nextActions) ? data.nextActions : []);
-      toast({ title: "AI strategy generated", description: "1 credit used" });
+      toast({ title: "AI strategy generated", description: "Counted toward your usage" });
     } catch (e) {
       const msg = e instanceof Error ? e.message : "AI strategy failed";
       setAiError(msg);
@@ -247,9 +248,12 @@ export function StudentStrategyView({ studentId, insight, academicSummary, ecSum
           {(academicSummary.targetUniversities ?? []).length === 0 ? (
             <p className="text-xs text-muted-foreground">No targets set yet — agree on a balanced list (reach / match / safety).</p>
           ) : (
-            <ul className="space-y-1 text-sm text-foreground">
+            <ul className="space-y-1.5 text-sm text-foreground">
               {academicSummary.targetUniversities!.map((u, i) => (
-                <li key={i} className="truncate">• {u}</li>
+                <li key={i} className="flex items-center gap-2">
+                  <CollegeLogo name={u} size={18} className="rounded-[3px]" />
+                  <span className="truncate">{u}</span>
+                </li>
               ))}
             </ul>
           )}

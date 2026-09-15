@@ -14,6 +14,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { CountryCombobox } from "@/components/CountryCombobox";
 import { formatDistanceToNow } from "date-fns";
 
+import { BrandLogo } from "@/components/BrandLogo";
+import { CollegeLogo } from "@/components/CollegeLogo";
 interface SchoolRow {
   id: string;
   name: string;
@@ -57,6 +59,11 @@ export function AdminSchools() {
   const [invitedPassword, setInvitedPassword] = useState<string | null>(null);
   const [invitedEmail, setInvitedEmail] = useState<string | null>(null);
   const [emailDelivered, setEmailDelivered] = useState(true);
+  // The dialog's second panel used to be gated on `invitedPassword` being set.
+  // A password reset now normally emails the credential and returns nothing,
+  // so "there is a result to show" and "there is a password to show" are two
+  // different questions and need two different flags.
+  const [showResult, setShowResult] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -123,11 +130,19 @@ export function AdminSchools() {
       toast.error(error?.message || (data as any)?.error || "Failed to reset password");
       return;
     }
+    const sent = (data as any).email_sent !== false;
     setInvitedEmail((data as any).email);
-    setInvitedPassword((data as any).temporary_password);
-    setEmailDelivered(false); // Make it explicit: this was an admin-initiated reset, not an emailed invite.
+    // Present only when delivery failed — the function deliberately withholds
+    // the counsellor's password from the response otherwise.
+    setInvitedPassword((data as any).temporary_password ?? null);
+    setEmailDelivered(sent);
+    setShowResult(true);
     setInviteOpen(true);
-    toast.success("New temporary password generated");
+    toast.success(
+      sent
+        ? "New password generated and emailed to the counsellor"
+        : "New password generated — email delivery failed",
+    );
   };
 
   const removeCounsellor = async (userId: string, label: string) => {
@@ -199,6 +214,7 @@ export function AdminSchools() {
       setInvitedEmail(email);
       setInvitedPassword(password ?? null);
       setEmailDelivered(sent);
+      setShowResult(true);
 
       toast.success(
         sent
@@ -221,6 +237,7 @@ export function AdminSchools() {
       setInvitedPassword(null);
       setInvitedEmail(null);
       setEmailDelivered(true);
+      setShowResult(false);
     }, 300);
   };
 
@@ -245,11 +262,11 @@ export function AdminSchools() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>
-                  {invitedPassword ? "Counsellor account created" : "Invite a counsellor"}
+                  {showResult ? "Counsellor account updated" : "Invite a counsellor"}
                 </DialogTitle>
               </DialogHeader>
 
-              {!invitedPassword ? (
+              {!showResult ? (
                 <div className="space-y-3">
                   <div>
                     <Label>Full name (optional)</Label>
@@ -299,27 +316,34 @@ export function AdminSchools() {
                   <div className="rounded-md border border-border bg-muted/40 p-3 text-sm">
                     <div className="text-xs text-muted-foreground mb-1">Email</div>
                     <div className="font-medium">{invitedEmail}</div>
-                    <div className="text-xs text-muted-foreground mt-3 mb-1">Temporary password</div>
-                    <div className="flex items-center gap-2">
-                      <code className="font-mono px-2 py-1 rounded bg-background border border-border text-foreground">
-                        {invitedPassword}
-                      </code>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => {
-                          navigator.clipboard.writeText(invitedPassword);
-                          toast.success("Password copied");
-                        }}
-                      >
-                        <Copy className="h-3.5 w-3.5 mr-1" /> Copy
-                      </Button>
-                    </div>
+                    {invitedPassword && (
+                      <>
+                        <div className="text-xs text-muted-foreground mt-3 mb-1">Temporary password</div>
+                        <div className="flex items-center gap-2">
+                          <code className="font-mono px-2 py-1 rounded bg-background border border-border text-foreground">
+                            {invitedPassword}
+                          </code>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              navigator.clipboard.writeText(invitedPassword);
+                              toast.success("Password copied");
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5 mr-1" /> Copy
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                   {emailDelivered ? (
                     <p className="text-xs text-muted-foreground">
-                      A welcome email with these credentials has been queued for
-                      delivery. Share this password securely as a backup if needed.
+                      An email with these credentials has been queued for
+                      delivery to the counsellor.
+                      {invitedPassword
+                        ? " Share this password securely as a backup if needed."
+                        : " The password is not shown here — it went straight to them."}
                     </p>
                   ) : (
                     <p className="text-xs text-destructive">
@@ -440,7 +464,14 @@ export function AdminSchools() {
               <TableBody>
                 {schools.map((s) => (
                   <TableRow key={s.id}>
-                    <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-2.5">
+                        {/* The domain is a column on the school row, not a guess
+                            from its name, so this is the school's own mark. */}
+                        <BrandLogo name={s.name} domain={s.domain} size={22} hideWhenUnknown />
+                        <span>{s.name}</span>
+                      </span>
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {[s.city, s.country].filter(Boolean).join(", ") || "—"}
                     </TableCell>
@@ -497,7 +528,16 @@ export function AdminSchools() {
                     <TableRow key={c.user_id}>
                       <TableCell>{c.full_name || "—"}</TableCell>
                       <TableCell className="text-sm">{c.email}</TableCell>
-                      <TableCell>{c.school_name || <span className="text-muted-foreground">Unassigned</span>}</TableCell>
+                      <TableCell>
+                        {c.school_name ? (
+                          <span className="flex items-center gap-2">
+                            <CollegeLogo name={c.school_name} size={18} className="rounded-[3px]" hideWhenUnknown />
+                            <span>{c.school_name}</span>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Unassigned</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         {accepted ? (
                           <div className="flex flex-col gap-0.5">

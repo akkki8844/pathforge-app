@@ -431,8 +431,8 @@ export function datelineOf(row: EntryRow): string {
   const start = formatMonth(str(row, "startDate"));
   const end = formatMonth(str(row, "endDate"));
   const ongoing = row.ongoing === true;
-  if (start && ongoing) return `${start} — Present`;
-  if (start && end) return start === end ? start : `${start} — ${end}`;
+  if (start && ongoing) return `${start} - Present`;
+  if (start && end) return start === end ? start : `${start} - ${end}`;
   if (start) return start;
   if (end) return end;
   if (ongoing) return "Present";

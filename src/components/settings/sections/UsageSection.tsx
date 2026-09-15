@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useUsage } from "@/contexts/UsageContext";
-import { useAdvisorTokens } from "@/hooks/useAdvisorTokens";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { planDisplayName } from "@/lib/plans";
@@ -26,7 +25,6 @@ export function UsageSection() {
     usageData, percentUsed, loading, unlimited, periodLabel,
     getResetTime, getResetLabel, refreshUsage,
   } = useUsage();
-  const { status: advisor, loading: advisorLoading, refresh: refreshAdvisor } = useAdvisorTokens();
   const { user } = useAuth();
   const [byFeature, setByFeature] = useState<FeatureUsage[]>([]);
   const [last7, setLast7] = useState<{ date: string; count: number }[]>([]);
@@ -77,23 +75,13 @@ export function UsageSection() {
     if (refreshing) return;
     setRefreshing(true);
     try {
-      await Promise.all([refreshUsage(), refreshAdvisor(), loadActivity()]);
+      await Promise.all([refreshUsage(), loadActivity()]);
     } finally {
       setRefreshing(false);
     }
   };
 
   const maxDay = Math.max(1, ...last7.map((d) => d.count));
-
-  // The advisor is metered in tokens server-side, but it is reported here in
-  // the same unit as everything else. Two meters in two currencies is what this
-  // page used to show, and it left no way to tell which limit you were about to
-  // hit first.
-  const advisorPercent =
-    advisor.allowance > 0 ? (advisor.used / advisor.allowance) * 100 : 0;
-  const advisorReset = advisor.resetsAt
-    ? `Resets ${advisor.resetsAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
-    : undefined;
 
   return (
     <SettingsSection
@@ -113,13 +101,6 @@ export function UsageSection() {
             }
             percent={percentUsed}
             unlimited={unlimited}
-          />
-
-          <UsageMeter
-            label="Advisor"
-            sublabel={advisorLoading ? "Loading…" : advisor.unlimited ? undefined : advisorReset}
-            percent={advisorPercent}
-            unlimited={advisor.unlimited}
           />
         </div>
 

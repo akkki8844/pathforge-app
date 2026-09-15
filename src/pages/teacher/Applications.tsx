@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 interface AppEntry {
   id: string;
   student_id: string;
@@ -239,7 +240,12 @@ export default function TeacherApplications() {
                             {nameMap.get(app.student_id) || "Student"}
                           </Link>
                         </td>
-                        <td className="p-3 font-medium text-foreground">{app.college_name}</td>
+                        <td className="p-3 font-medium text-foreground">
+                          <span className="flex items-center gap-2.5">
+                            <CollegeLogo name={app.college_name} size={22} className="rounded" />
+                            <span className="truncate">{app.college_name}</span>
+                          </span>
+                        </td>
                         <td className="p-3 text-muted-foreground hidden md:table-cell">{app.country || "—"}</td>
                         <td className="p-3 text-muted-foreground hidden lg:table-cell">{app.application_round || "—"}</td>
                         <td className="p-3">

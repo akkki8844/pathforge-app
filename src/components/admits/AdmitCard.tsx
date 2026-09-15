@@ -79,7 +79,7 @@ export function AdmitCard({ admit, similarity, onOpen }: Props) {
       animate={{ opacity: 1, y: 0 }}
       transition={transition.base}
       onClick={onOpen}
-      className="card-elevated w-full rounded-2xl p-5 sm:p-6 text-left transition-shadow hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      className="w-full rounded-2xl border border-border bg-card p-5 sm:p-6 text-left transition-colors hover:border-foreground/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     >
       {/* Demographic pills + similarity */}
       <div className="flex flex-wrap items-center gap-2 mb-5">

@@ -225,7 +225,7 @@ function Group({
     <section className="pfi-group" aria-labelledby={`pfi-${label.replace(/\s+/g, "-").toLowerCase()}`}>
       <header className="pfi-group-head">
         <h3 id={`pfi-${label.replace(/\s+/g, "-").toLowerCase()}`}>
-          {label} <b>{items.length}</b>
+          {label} <b>{"\n"}</b>
         </h3>
         <p>{caption}</p>
       </header>
@@ -247,7 +247,7 @@ export default function IntegrationsDirectory() {
         items={LIVE}
       />
       <Group
-        label="On the roadmap"
+         label={"On the roadmap\n"}
         caption="Queued, not yet available. Listed so you know what is coming, not to imply it is here."
         items={PLANNED}
       />

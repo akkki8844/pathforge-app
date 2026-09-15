@@ -13,6 +13,10 @@ import {
   GraduationCap,
   Globe2,
   FlaskConical,
+  BookText,
+  ChevronDown,
+  Briefcase,
+  Send,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -39,20 +43,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useRecommenders } from "@/hooks/useRecommenders";
 import { functionErrorMessage } from "@/lib/functionError";
 import { safeExternalUrl } from "@/lib/safeUrl";
-
-interface Professor {
-  name: string;
-  title: string;
-  department: string;
-  university: string;
-  email: string;
-  profile_url: string;
-  research_interests: string[];
-  country: string;
-  email_source_url: string;
-  /** Optional one-line background/bio, if the search returned one. */
-  bio?: string;
-}
+import { ComposeProfessorEmailDialog } from "./ComposeProfessorEmailDialog";
+import type { Professor } from "./professorTypes";
 
 /**
  * The institution's web domain, used to fetch its logo. The email domain is the
@@ -303,6 +295,10 @@ export function ProfessorsPanel() {
   });
   const [copied, setCopied] = useState<string | null>(null);
 
+  // Compose-mail dialog state
+  const [composeProf, setComposeProf] = useState<Professor | null>(null);
+  const [composeOpen, setComposeOpen] = useState(false);
+
   const runSearch = async () => {
     if (field.trim().length < 2) {
       toast({ title: "Add a field or department", description: "e.g. Computer Science, Biology", variant: "destructive" });
@@ -408,20 +404,19 @@ export function ProfessorsPanel() {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold">Professors to Email</h2>
-        <p className="text-sm text-muted-foreground">
-          Live, web-sourced faculty contacts. Only professors whose email we found verbatim on their university page are shown.
-        </p>
-      </div>
-
-      {/* Filters */}
+    <div className="space-y-4">
+      {/*
+       * No heading here. The page is titled "Professors" and the tab above is
+       * titled "Find professors"; a third heading reading "Professors to Email"
+       * was the same noun three times in 200px of vertical space. The one thing
+       * the heading carried that the tab does not is the constraint on what the
+       * search returns, which now sits with the search button that returns it.
+       */}
       <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
         <div className="grid sm:grid-cols-2 gap-3">
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <GraduationCap className="h-3 w-3" /> Field / department <span className="text-destructive">*</span>
+            <Label className="text-xs text-muted-foreground">
+              Field or department <span className="text-destructive">*</span>
             </Label>
             <Select value={field} onValueChange={(v) => { setField(v); setKeywordTags([]); }}>
               <SelectTrigger><SelectValue placeholder="Select a field" /></SelectTrigger>
@@ -433,9 +428,7 @@ export function ProfessorsPanel() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Building2 className="h-3 w-3" /> University
-            </Label>
+            <Label className="text-xs text-muted-foreground">University</Label>
             <Select value={university} onValueChange={setUniversity}>
               <SelectTrigger><SelectValue placeholder="Any university" /></SelectTrigger>
               <SelectContent className="max-h-72">
@@ -446,9 +439,7 @@ export function ProfessorsPanel() {
             </Select>
           </div>
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <Globe2 className="h-3 w-3" /> Country
-            </Label>
+            <Label className="text-xs text-muted-foreground">Country</Label>
             <Select value={country} onValueChange={setCountry}>
               <SelectTrigger><SelectValue placeholder="Any country" /></SelectTrigger>
               <SelectContent className="max-h-72">
@@ -472,9 +463,7 @@ export function ProfessorsPanel() {
         </div>
         {field && KEYWORDS_BY_FIELD[field]?.length ? (
           <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
-              <FlaskConical className="h-3 w-3" /> Research focus (tap to toggle)
-            </Label>
+            <Label className="text-xs text-muted-foreground">Research focus</Label>
             <div className="flex flex-wrap gap-1.5">
               {KEYWORDS_BY_FIELD[field].map((k) => {
                 const active = keywordTags.includes(k);
@@ -501,7 +490,10 @@ export function ProfessorsPanel() {
             </div>
           </div>
         ) : null}
-        <div className="flex justify-end">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-[52ch] text-xs leading-relaxed text-muted-foreground">
+            Only faculty whose email address appears verbatim on a university page are returned.
+          </p>
           <Button onClick={runSearch} disabled={loading}>
             {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
             {loading ? "Searching the web" : "Find professors"}
@@ -550,11 +542,6 @@ export function ProfessorsPanel() {
                   </div>
                 </div>
 
-                {/* Background / bio */}
-                {p.bio && (
-                  <p className="mt-3 text-xs leading-relaxed text-muted-foreground line-clamp-2">{p.bio}</p>
-                )}
-
                 {/* Research interests */}
                 {p.research_interests.length > 0 && (
                   <div className="mt-3 flex flex-wrap gap-1.5">
@@ -563,6 +550,9 @@ export function ProfessorsPanel() {
                     ))}
                   </div>
                 )}
+
+                {/* What they have actually done: bio, appointments, papers. */}
+                <ProfessorDossier p={p} />
 
                 {/* Email row */}
                 <div className="mt-3 flex items-center gap-2 rounded-lg border bg-muted/40 px-2.5 py-1.5">
@@ -611,38 +601,47 @@ export function ProfessorsPanel() {
                   )}
                 </div>
 
-                {/* Actions */}
-                <div className="mt-4 flex gap-2 border-t pt-3">
-                  <Button size="sm" variant="outline" className="flex-1" onClick={() => addAsRecommender(p)}>
-                    <Plus className="h-3.5 w-3.5 mr-1.5" /> Add
+                {/* Actions. Compose sits on its own row because it is the
+                    thing most students came here to do, and it opens a flow
+                    that ends in a real email leaving their account. */}
+                <div className="mt-4 space-y-2 border-t pt-3">
+                  <Button
+                    size="sm"
+                    className="w-full"
+                    onClick={() => {
+                      setComposeProf(p);
+                      setComposeOpen(true);
+                    }}
+                  >
+                    <Send className="h-3.5 w-3.5 mr-1.5" /> Compose mail
                   </Button>
-                  <Button size="sm" className="flex-1" onClick={() => openBrag(p)}>
-                    <FlaskConical className="h-3.5 w-3.5 mr-1.5" /> Brag sheet
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => addAsRecommender(p)}>
+                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Add
+                    </Button>
+                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openBrag(p)}>
+                      <FlaskConical className="h-3.5 w-3.5 mr-1.5" /> Brag sheet
+                    </Button>
+                  </div>
                 </div>
               </motion.div>
             ))}
           </div>
         </div>
       ) : searched ? (
-        <div className="rounded-xl border border-dashed bg-card/50 px-6 py-16 text-center">
+        <div className="rounded-xl border border-border bg-card px-5 py-6 text-center">
           <p className="text-sm text-muted-foreground">
-            No verified professors found. Try a different university, broaden the field, or remove keywords.
+            No verified professors found. Try a different university, broaden the field, or remove
+            keywords.
           </p>
         </div>
-      ) : (
-        <div className="rounded-xl border border-dashed bg-card/50 px-6 py-12 text-center">
-          <p className="text-sm text-muted-foreground">
-            Enter a field above and run a search to see real, web-verified faculty contacts.
-          </p>
-        </div>
-      )}
+      ) : null}
 
       {/* Brag sheet dialog */}
       <Dialog open={bragOpen} onOpenChange={(o) => !o && setBragOpen(false)}>
         <DialogContent className="max-w-[70rem] max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Targeted brag sheet — {bragProf?.name}</DialogTitle>
+            <DialogTitle>Targeted brag sheet for {bragProf?.name}</DialogTitle>
             <DialogDescription>
               Answer briefly. We'll generate a brag sheet + cold email tailored to this professor.
             </DialogDescription>
@@ -678,7 +677,7 @@ export function ProfessorsPanel() {
                   rows={3}
                   value={bragAnswers.projects_or_research}
                   onChange={(e) => setBragAnswers({ ...bragAnswers, projects_or_research: e.target.value })}
-                  placeholder="One bullet per project — what it was, what you built, what came out of it."
+                  placeholder="One bullet per project: what it was, what you built, what came out of it."
                 />
               </Q>
               <Q label="Achievements (awards, competitions, publications)">
@@ -751,6 +750,12 @@ export function ProfessorsPanel() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ComposeProfessorEmailDialog
+        professor={composeProf}
+        open={composeOpen}
+        onOpenChange={setComposeOpen}
+      />
     </div>
   );
 }
@@ -783,8 +788,96 @@ function ResultBlock({
         </Button>
       </div>
       <pre className="rounded-lg border bg-muted/40 p-4 text-xs whitespace-pre-wrap font-mono leading-relaxed max-h-72 overflow-y-auto">
-        {text || "—"}
+        {text || "Not stated"}
       </pre>
+    </div>
+  );
+}
+
+/**
+ * The part of a professor a directory listing never shows: what they actually
+ * work on, where they have been, and what they have published.
+ *
+ * Collapsed by default to two lines of bio, because the grid has to stay
+ * scannable when thirty of these come back — but the whole dossier is one tap
+ * away, and it is what the compose step writes the email from.
+ */
+function ProfessorDossier({ p }: { p: Professor }) {
+  const [open, setOpen] = useState(false);
+  const experience = p.experience ?? [];
+  const publications = p.publications ?? [];
+  const hasMore = !!p.bio || experience.length > 0 || publications.length > 0;
+  if (!hasMore) return null;
+
+  return (
+    <div className="mt-3">
+      {p.bio && (
+        <p
+          className={
+            "text-xs leading-relaxed text-muted-foreground " + (open ? "" : "line-clamp-2")
+          }
+        >
+          {p.bio}
+        </p>
+      )}
+
+      {open && experience.length > 0 && (
+        <div className="mt-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <Briefcase className="h-3 w-3" /> Experience
+          </div>
+          <ul className="mt-1.5 space-y-1">
+            {experience.map((e) => (
+              <li key={e} className="flex gap-1.5 text-xs leading-relaxed text-foreground/80">
+                <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
+                <span>{e}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {open && publications.length > 0 && (
+        <div className="mt-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+            <BookText className="h-3 w-3" /> Selected papers
+          </div>
+          <ul className="mt-1.5 space-y-1.5">
+            {publications.map((pub, i) => {
+              const href = safeExternalUrl(pub.url ?? "");
+              const meta = [pub.venue, pub.year].filter(Boolean).join(", ");
+              return (
+                <li key={`${pub.title}-${i}`} className="text-xs leading-relaxed">
+                  {href ? (
+                    <a
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-medium text-foreground hover:underline"
+                    >
+                      {pub.title}
+                    </a>
+                  ) : (
+                    <span className="font-medium text-foreground/90">{pub.title}</span>
+                  )}
+                  {meta && <span className="text-muted-foreground">, {meta}</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        {open ? "Show less" : "Background, experience & papers"}
+        <ChevronDown
+          className={"h-3 w-3 transition-transform " + (open ? "rotate-180" : "")}
+        />
+      </button>
     </div>
   );
 }

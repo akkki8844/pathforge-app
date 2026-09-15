@@ -26,6 +26,7 @@ import { EASE_OUT_EXPO } from "@/lib/motion";
 import { functionErrorMessage } from "@/lib/functionError";
 import { Eyebrow, Panel, Reveal } from "@/components/dashboard/primitives";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 /**
  * The LinkedIn builder — routed at /profile-builder. Visual language matches
  * the dashboard and landing page. Each section's generated draft gets an
@@ -131,7 +132,7 @@ export default function ProfileBuilder() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Profile Builder — Pathforge' description='Build a polished student LinkedIn and application profile from your real activities and accomplishments.' path='/profile-builder' />
+      <Seo title='Profile Builder' description='Build a polished student LinkedIn and application profile from your real activities and accomplishments.' path='/profile-builder' />
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}
@@ -150,8 +151,10 @@ export default function ProfileBuilder() {
               adjust any draft on request.
             </p>
             {profile && (
-              <p className="mt-1.5 text-[12px] text-muted-foreground">
-                Targeting <span className="font-medium text-primary">{profile.targetCollege}</span>
+              <p className="mt-1.5 inline-flex items-center gap-1.5 text-[12px] text-muted-foreground">
+                Targeting
+                <CollegeLogo name={profile.targetCollege} size={14} className="rounded-[3px]" />
+                <span className="font-medium text-primary">{profile.targetCollege}</span>
               </p>
             )}
           </div>

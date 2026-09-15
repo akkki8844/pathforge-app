@@ -116,7 +116,7 @@ function toDateTimeLocal(iso: string | null): string {
 }
 
 function personLabel(r: Redemption): string {
-  return r.full_name || r.full_name || r.email || "Unknown user";
+  return r.full_name || r.email || "Unknown user";
 }
 
 /** What a coupon actually hands over, in one line. */

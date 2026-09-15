@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Panel, Reveal, Title } from "./primitives";
+import { Panel, Title } from "./primitives";
 import { EntryCard } from "./EntryCard";
 import {
   blankEntry,
@@ -11,114 +12,54 @@ import {
   type LoggedEntry,
   type RecordKind,
 } from "@/lib/outcomesRecord";
+import {
+  RECORD_SECTIONS,
+  type RecordSectionSpec,
+} from "@/lib/outcomesSections";
 import type { SignalId, SignalStanding } from "@/lib/outcomesScoring";
 import type { EvidenceState, OutcomesProfile } from "@/hooks/useOutcomesData";
 
 /**
- * The record, divided the way a profile is divided.
+ * The record, divided the way a LinkedIn profile is divided.
  *
- * This replaces a single reverse-chronological feed of all eleven kinds mixed
- * together behind a filter dropdown. That feed was honest about time and
- * useless for the thing people actually come here to do: fill in a section.
- * You cannot see that you have no work experience in a list sorted by date —
- * an absence has no row. Sections make absence visible, which is the whole
- * point of keeping a record you intend to act on.
+ * One category per section, and exactly one way to add to it.
  *
- * Each section is one kind of claim, carries its own add button, and states
- * its own reading: how many entries, how many are actually proved, and where
- * the signal it feeds sits against the bar for the tier the student picked.
- * Those three numbers are read from the existing scorer — nothing here
- * computes a new metric, and a section whose signal the student has not
- * reported says so rather than printing a zero.
+ * The version before this merged eleven kinds into eight sections, so three of
+ * them carried two add buttons: "Add leadership" beside "Add activity", "Add
+ * competition" beside "Add award", "Add research" beside "Add publication".
+ * A student wanting to log a club had to first decide whether a club is a
+ * leadership role, then find that decision expressed as a choice between two
+ * buttons in a header. That is a taxonomy question asked at the exact moment
+ * someone is trying to write down a thing they did. The categories are now
+ * divided into their own sections instead: the kind is settled by which
+ * section you are in, and every section has one add control.
+ *
+ * Twelve sections need an index, which is what `RecordRail` is, and they need
+ * each section to be cheap to skim, which is what the card shape below is:
+ * title, count, one add button, then rows. An empty section states in one
+ * sentence what belongs in it and what clears the bar, rather than the two
+ * paragraphs it used to print, which across twelve sections was a wall of
+ * prose standing between a student and a text field.
+ *
+ * The storage is untouched. `outcomesRecord` still maps every kind onto the
+ * same seven jsonb lists, so nothing that saved before stops saving, and
+ * nothing that scored before scores differently.
  */
-
-interface SectionSpec {
-  id: string;
-  title: string;
-  /** Shown when the section is empty: what goes here, and why it counts. */
-  blurb: string;
-  /** Kinds this section holds. The first is what its main button adds. */
-  kinds: RecordKind[];
-  /** The scorer signal this section feeds, when it feeds exactly one. */
-  signal?: SignalId;
-}
-
-/**
- * Order matters: it runs strongest-evidence-first the way a CV does, not in
- * the order the underlying jsonb columns happen to be declared.
- */
-const SECTIONS: SectionSpec[] = [
-  {
-    id: "experience",
-    title: "Experience",
-    blurb:
-      "Internships, placements, shadowing, studio time, paid work. The clearest evidence that someone outside your school trusted you with something.",
-    kinds: ["work"],
-    signal: "internships",
-  },
-  {
-    id: "leadership",
-    title: "Leadership & activities",
-    blurb:
-      "Roles where the team answered to you, and the clubs, sports and ensembles you are part of. Sustained commitment reads louder than a title.",
-    kinds: ["leadership", "activity"],
-    signal: "leadership",
-  },
-  {
-    id: "projects",
-    title: "Projects",
-    blurb:
-      "Things you built, wrote or ran on your own initiative. This is where a file stops being a list of memberships and starts showing what you do unprompted.",
-    kinds: ["project"],
-    signal: "initiative",
-  },
-  {
-    id: "competitions",
-    title: "Competitions & awards",
-    blurb:
-      "Anything an outside body ran, judged and published a result for — and the honours handed to you rather than entered for.",
-    kinds: ["competition", "award"],
-    signal: "competition",
-  },
-  {
-    id: "research",
-    title: "Research & publications",
-    blurb:
-      "Papers, posters, preprints, work under a mentor, and anything of yours that ran under an editor. Rare at school age, and weighted accordingly.",
-    kinds: ["research", "publication"],
-    signal: "research_output",
-  },
-  {
-    id: "service",
-    title: "Volunteering",
-    blurb:
-      "Community, civic and charitable work. Hours matter less than what changed because you were there — say it with a number.",
-    kinds: ["service"],
-    signal: "service_impact",
-  },
-  {
-    id: "portfolio",
-    title: "Portfolio",
-    blurb:
-      "Writing, design, music, film or software with an actual audience. A link a stranger can open is worth more than any description of it.",
-    kinds: ["portfolio"],
-    signal: "creative_portfolio",
-  },
-  {
-    id: "certifications",
-    title: "Certifications",
-    blurb:
-      "Credentials an external body examined you for and issued. Kept apart from awards because they are earned to a published standard.",
-    kinds: ["certification"],
-  },
-];
 
 function newId(): string {
   return Math.random().toString(36).substring(2, 9);
 }
 
-/** Proof state of one section, counted from the entries themselves. */
-function proofOf(entries: LoggedEntry[]) {
+/**
+ * The one-line reading under a section title.
+ *
+ * Three facts the page already computes: how much is on file, how much of it
+ * is proved, and where the signal it drives stands. It never invents a
+ * per-section score, and it says "not reported" rather than "0%" for a signal
+ * with no data behind it, because those are different statements.
+ */
+function readingOf(entries: LoggedEntry[], standing?: SignalStanding): string {
+  if (entries.length === 0) return "Nothing on file";
   let verified = 0;
   let submitted = 0;
   for (const e of entries) {
@@ -126,21 +67,7 @@ function proofOf(entries: LoggedEntry[]) {
     if (state === "verified") verified += 1;
     else if (state === "evidence_submitted") submitted += 1;
   }
-  return { verified, submitted, total: entries.length };
-}
-
-/**
- * The one-line reading under a section head.
- *
- * Three facts, each of which the page already computes elsewhere: how much is
- * on file, how much of it is proved, and how the signal it feeds stands. It
- * never invents a per-section score — the scorer has no such thing — and it
- * says "not reported" rather than "0%" when a signal has no data behind it,
- * because those are different statements about a student.
- */
-function readingOf(entries: LoggedEntry[], standing?: SignalStanding): string {
-  if (entries.length === 0) return "Nothing on file";
-  const { verified, submitted, total } = proofOf(entries);
+  const total = entries.length;
   const parts = [`${total} ${total === 1 ? "entry" : "entries"}`];
   if (verified > 0) parts.push(`${verified} verified`);
   else if (submitted > 0) parts.push(`${submitted} awaiting review`);
@@ -149,10 +76,113 @@ function readingOf(entries: LoggedEntry[], standing?: SignalStanding): string {
   return parts.join(" · ");
 }
 
+/**
+ * The shell every record section wears.
+ *
+ * Header carries the section's icon, its title, its one-line reading and a
+ * single add control; the body is whatever that section holds. Exported
+ * because coursework is stored as its own list with its own editor but is
+ * still one of the twelve sections, and a section that looked different
+ * because of where its rows happen to live would be an implementation detail
+ * leaking into the page.
+ */
+export function RecordSectionCard({
+  section,
+  reading,
+  onAdd,
+  addLabel,
+  children,
+}: {
+  section: RecordSectionSpec;
+  reading: string;
+  onAdd: () => void;
+  /** Spoken label for the icon-only add control. */
+  addLabel: string;
+  children: ReactNode;
+}) {
+  const Icon = section.icon;
+  return (
+    <section id={`record-${section.id}`} className="scroll-mt-24">
+      <Panel flush>
+        <div className="flex items-start gap-3 p-4 sm:gap-4 sm:p-5">
+          <span
+            className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-[0.625rem] border border-border text-muted-foreground"
+            aria-hidden
+          >
+            <Icon className="h-[18px] w-[18px]" />
+          </span>
+
+          <div className="min-w-0 flex-1">
+            <Title>{section.title}</Title>
+            <p className="mt-1 text-[13px] leading-snug text-muted-foreground">{reading}</p>
+          </div>
+
+          {/*
+           * One add control, icon only.
+           *
+           * Icon-only is safe here precisely because the section split removed
+           * the ambiguity it used to resolve: there is nothing left for a
+           * label to disambiguate, the section title above it already names
+           * what gets added, and an empty section repeats the action as a
+           * labelled button in its body.
+           */}
+          <Button
+            size="icon"
+            variant="outline"
+            className="h-9 w-9 shrink-0 rounded-full"
+            onClick={onAdd}
+            aria-label={addLabel}
+            title={addLabel}
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {children}
+      </Panel>
+    </section>
+  );
+}
+
+/** The empty body: what belongs here, what clears the bar, and the way in. */
+function EmptySection({
+  section,
+  requirement,
+  onAdd,
+}: {
+  section: RecordSectionSpec;
+  requirement?: string;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="border-t border-border px-4 py-4 sm:px-5">
+      <p className="max-w-[64ch] text-[13.5px] leading-relaxed text-muted-foreground">
+        {section.blurb}
+      </p>
+      {/* Straight from the scorer. A section that only says "nothing here" is
+          a section nobody fills in. */}
+      {requirement && (
+        <p className="mt-1.5 max-w-[64ch] text-[13.5px] leading-relaxed text-foreground">
+          {requirement}
+        </p>
+      )}
+      <Button
+        size="sm"
+        variant="ghost"
+        className="-ml-2 mt-2 h-8 px-2 text-xs text-primary hover:text-primary"
+        onClick={onAdd}
+      >
+        <Plus className="mr-1.5 h-3.5 w-3.5" />
+        {section.addLabel}
+      </Button>
+    </div>
+  );
+}
+
 export interface RecordSectionsProps {
   profile: OutcomesProfile;
   update: (updater: (prev: OutcomesProfile) => OutcomesProfile) => void;
-  /** Every signal against its tier bar — the source of each section's reading. */
+  /** Every signal against its tier bar, the source of each section's reading. */
   ranked: SignalStanding[];
 }
 
@@ -179,8 +209,8 @@ export function RecordSections({ profile, update, ranked }: RecordSectionsProps)
 
   /*
    * The record is handled through one spec table, while the lists underneath
-   * are seven different interfaces. These three casts are that seam — the same
-   * one RecordEditor carries, and for the same reason: expressing the pairing
+   * are seven different interfaces. These three casts are that seam, the same
+   * one RecordEditor carries and for the same reason: expressing the pairing
    * in the type system needs a discriminated union per kind, which is the
    * eleven-branch switch the spec table exists to delete.
    */
@@ -202,11 +232,11 @@ export function RecordSections({ profile, update, ranked }: RecordSectionsProps)
     }));
 
   /**
-   * Add one entry of a named kind and open it.
+   * Add one entry and open it.
    *
-   * No picker and no modal: the button that creates the entry is inside the
-   * section the entry belongs to, so the kind is already known and the new row
-   * appears directly under the button that made it.
+   * No picker and no modal: the control that creates the entry lives in the
+   * section the entry belongs to, so the kind is already settled and the new
+   * row appears directly under the control that made it.
    */
   const addOfKind = (kind: RecordKind) => {
     const spec = specOf(kind);
@@ -217,8 +247,9 @@ export function RecordSections({ profile, update, ranked }: RecordSectionsProps)
 
   return (
     <div className="space-y-3">
-      {SECTIONS.map((section, i) => {
-        const rows = section.kinds.flatMap((k) => byKind.get(k) ?? []);
+      {RECORD_SECTIONS.filter((s) => s.kind).map((section) => {
+        const kind = section.kind!;
+        const rows = byKind.get(kind) ?? [];
         // Within a section the record still reads newest first.
         const sorted = [...rows].sort((a, b) => {
           if (a.ordinal !== null && b.ordinal !== null) return b.ordinal - a.ordinal;
@@ -227,85 +258,43 @@ export function RecordSections({ profile, update, ranked }: RecordSectionsProps)
           return 0;
         });
         const standing = section.signal ? standings.get(section.signal) : undefined;
-        const primary = specOf(section.kinds[0]);
-        const secondary = section.kinds[1] ? specOf(section.kinds[1]) : null;
 
         return (
-          <Reveal key={section.id} delay={Math.min(i * 0.02, 0.1)}>
-            <div id={`record-${section.id}`} className="scroll-mt-24">
-              <Panel flush>
-                <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3 p-5 sm:p-6">
-                  <div className="min-w-0">
-                    <Title>{section.title}</Title>
-                    <p className="mt-1 text-[13px] leading-snug text-muted-foreground">
-                      {readingOf(sorted, standing)}
-                    </p>
-                  </div>
-
-                  <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-9 text-xs"
-                      onClick={() => addOfKind(section.kinds[0])}
-                    >
-                      <Plus className="mr-1.5 h-3.5 w-3.5" />
-                      {secondary ? `Add ${primary.label.toLowerCase()}` : "Add"}
-                    </Button>
-                    {secondary && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-9 text-xs text-muted-foreground"
-                        onClick={() => addOfKind(section.kinds[1])}
-                      >
-                        <Plus className="mr-1.5 h-3.5 w-3.5" />
-                        Add {secondary.label.toLowerCase()}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-
-                {sorted.length === 0 ? (
-                  <div className="border-t border-border px-5 py-5 sm:px-6">
-                    <p className="max-w-[72ch] text-[13.5px] leading-relaxed text-muted-foreground">
-                      {section.blurb}
-                    </p>
-                    {/* What clearing this signal actually takes, straight from the
-                        scorer — an empty section that only says "nothing here" is
-                        a section nobody fills in. */}
-                    {standing?.requirement && (
-                      <p className="mt-2 max-w-[72ch] text-[13.5px] leading-relaxed text-foreground">
-                        {standing.requirement}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 gap-px border-t border-border bg-border">
-                    {sorted.map((entry) => (
-                      <EntryCard
-                        key={entry.id}
-                        entry={entry}
-                        editing={editingId === entry.id}
-                        onOpen={() => setEditingId(entry.id)}
-                        onClose={() => setEditingId(null)}
-                        onPatch={(patch) => editRow(entry.host, entry.id, patch)}
-                        onRemove={() => {
-                          setEditingId(null);
-                          dropRow(entry.host, entry.id);
-                        }}
-                      />
-                    ))}
-                  </div>
-                )}
-              </Panel>
-            </div>
-          </Reveal>
+          <RecordSectionCard
+            key={section.id}
+            section={section}
+            reading={readingOf(sorted, standing)}
+            onAdd={() => addOfKind(kind)}
+            addLabel={section.addLabel}
+          >
+            {sorted.length === 0 ? (
+              <EmptySection
+                section={section}
+                requirement={standing?.requirement}
+                onAdd={() => addOfKind(kind)}
+              />
+            ) : (
+              <div className={cn("grid grid-cols-1 gap-px border-t border-border bg-border")}>
+                {sorted.map((entry) => (
+                  <EntryCard
+                    key={entry.id}
+                    entry={entry}
+                    editing={editingId === entry.id}
+                    onOpen={() => setEditingId(entry.id)}
+                    onClose={() => setEditingId(null)}
+                    onPatch={(patch) => editRow(entry.host, entry.id, patch)}
+                    onRemove={() => {
+                      setEditingId(null);
+                      dropRow(entry.host, entry.id);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </RecordSectionCard>
         );
       })}
     </div>
   );
 }
 
-/** The section list, for anything that needs to jump into the record. */
-export const RECORD_SECTION_IDS = SECTIONS.map((s) => s.id);

@@ -151,7 +151,7 @@ export function PromptGlow({
           {/* Sweep. Clipped by its own box so the corners stay clean. */}
           <span className={cn("absolute inset-0 overflow-hidden", radius)}>
             <span
-              className="absolute inset-y-0 -left-full w-full -translate-x-4 opacity-0 blur-md transition-all duration-[1400ms] ease-out group-hover:left-full group-hover:opacity-100"
+              className="absolute inset-y-0 -left-full w-full -translate-x-4 opacity-0 blur-md transition-all duration-1400 ease-out group-hover:left-full group-hover:opacity-100"
               style={{
                 background: `linear-gradient(90deg, transparent, rgba(${SKY}, ${0.2 * intensity}), transparent)`,
               }}

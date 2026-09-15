@@ -330,7 +330,7 @@ function Row({
               size="lg"
             />
           ) : (
-            <GroupAvatar title={title} accentName={c.accent} size="lg" />
+            <GroupAvatar title={title} accentName={c.accent} imagePath={c.image_path} size="lg" />
           )}
 
           <span className="min-w-0 flex-1">

@@ -1,4 +1,4 @@
-import { colleges } from "./colleges";
+import { findCollegeByName } from "./colleges";
 import type { ReadinessPillars } from "@/hooks/useDashboardData";
 
 /**
@@ -184,12 +184,14 @@ export function standingFor(index: number): Standing {
   return "Far reach";
 }
 
-const byName = new Map<string, (typeof colleges)[number]>();
-for (const c of colleges) byName.set(c.name.toLowerCase(), c);
-
-/** Tier for a school name, defaulting to the middle band when unknown. */
+/**
+ * Tier for a school name, defaulting to the middle band when unknown. Goes
+ * through `findCollegeByName` rather than a plain name match so a saved
+ * target university under a pre-merge alias ("UC San Diego") still resolves
+ * to its tier instead of silently defaulting to "national".
+ */
 export function tierFor(name: string): Tier {
-  return (byName.get(name.trim().toLowerCase())?.level as Tier) ?? "national";
+  return (findCollegeByName(name)?.level as Tier) ?? "national";
 }
 
 export interface CalibratedCollege {

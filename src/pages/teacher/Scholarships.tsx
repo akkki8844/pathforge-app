@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 
+import { BrandLogo } from "@/components/BrandLogo";
 interface Scholarship {
   id: string;
   name: string;
@@ -170,6 +171,12 @@ export default function TeacherScholarships() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <BrandLogo
+                          name={scholarship.provider}
+                          url={scholarship.url}
+                          size={22}
+                          className="shrink-0"
+                        />
                         <h3 className="text-sm font-semibold text-foreground">{scholarship.name}</h3>
                         {isUrgent && (
                           <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/20">

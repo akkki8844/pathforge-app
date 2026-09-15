@@ -1,6 +1,6 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
+import { useState, useCallback, useRef, useEffect, useLayoutEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { notifyUsageConsumed } from '@/contexts/UsageContext';
+import { notifyUsageConsumed, useUsage } from '@/contexts/UsageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic,
@@ -26,6 +26,7 @@ import {
   MapPin,
   Copy,
   RotateCcw,
+  WifiOff,
 } from 'lucide-react';
 import {
   AlertDialog,
@@ -56,7 +57,6 @@ import { planForTier } from '@/lib/plans';
 import { useAdvisorHistory, type ConversationGroup } from '@/hooks/useAdvisorHistory';
 import { useAdvisorArtifacts } from '@/hooks/useAdvisorArtifacts';
 import { useAdvisorSettings, type AdvisorSettings } from '@/hooks/useAdvisorSettings';
-import { useAdvisorTokens, formatTokens } from '@/hooks/useAdvisorTokens';
 import { useAdvisorSkills } from '@/hooks/useAdvisorSkills';
 import { useOutcomesData, type OutcomesProfile } from '@/hooks/useOutcomesData';
 import { FileUploadButton } from '@/components/advisor/FileUploadButton';
@@ -126,7 +126,7 @@ import { transition } from '@/lib/motion';
 // remedies: tokens refill next month, credits are the app-wide pool artifact
 // generation still spends, and a rate limit clears on its own. Collapsing them
 // into one notice would send a user to the pricing page over a 30-second wait.
-type LimitKind = 'allowance' | 'rate' | 'tokens' | null;
+type LimitKind = 'allowance' | 'rate' | null;
 
 interface Message {
   id: string;
@@ -393,13 +393,71 @@ export default function Advisor() {
   // Mobile only: the rail renders as a left drawer under md. Starts closed —
   // on desktop the rail is always docked and this never applies.
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  // Desktop rail: collapses to an icon-only strip and expands on hover
-  // (mirrors a Notion/Vercel-style docked sidebar). `pinned` overrides hover
-  // so a user who wants it permanently open doesn't have to keep their mouse
-  // there — the header toggle button flips this on desktop, and flips the
-  // mobile drawer (`sidebarOpen`) on small screens instead.
-  const [sidebarPinned, setSidebarPinned] = useState(false);
+  // Desktop sidebar: open by default — it is the advisor's primary navigation,
+  // and a dashboard that starts as an unlabelled strip of icons makes the
+  // reader hunt for what the page can do. It collapses to a 64px icon rail
+  // from either toggle (the sidebar's own header, or the top bar, which also
+  // drives the mobile drawer `sidebarOpen` under md). The choice is remembered
+  // per browser so collapsing it does not un-collapse on the next visit.
+  const [sidebarPinned, setSidebarPinned] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return window.localStorage.getItem('pf.advisor.sidebar') !== 'collapsed';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('pf.advisor.sidebar', sidebarPinned ? 'open' : 'collapsed');
+    } catch {
+      /* private mode / storage disabled — the sidebar still works, it just forgets. */
+    }
+  }, [sidebarPinned]);
+
+  /*
+   * The advisor shell fills whatever is left of the viewport below it, and it
+   * has to be measured rather than assumed. A hardcoded `100svh - 4rem` is
+   * only correct when the navbar is the single thing above the page — but
+   * Layout also stacks AnnouncementBanner, EmailVerificationBanner,
+   * UsageLimitBanner and GuestModeBanner in there, and the Lovable preview
+   * adds a payments-sandbox strip of its own. Every one of those pushed the
+   * shell down without shortening it, so the bottom of the sidebar — the
+   * Settings row and the account card — was cut off below the fold with no
+   * way to scroll to it, since the shell is `overflow-hidden` by design.
+   */
+  const shellRef = useRef<HTMLDivElement | null>(null);
+  const [shellHeight, setShellHeight] = useState<string>('calc(100svh - 4rem)');
+  useLayoutEffect(() => {
+    const el = shellRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      const top = el.getBoundingClientRect().top;
+      // 320px floor: on a very short window a shell smaller than this is
+      // unusable anyway, and letting it collapse to nothing hides the composer.
+      setShellHeight(`${Math.max(320, Math.round(window.innerHeight - top))}px`);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    // Catches a banner appearing or disappearing above the shell, which moves
+    // its top edge without any window resize.
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    return () => {
+      window.removeEventListener('resize', measure);
+      ro.disconnect();
+    };
+  }, []);
   const [limitHit, setLimitHit] = useState<LimitKind>(null);
+  /*
+   * A toast per failed turn is easy to miss and says nothing about whether
+   * this is a one-off blip or the advisor is actually down. Two unrelated
+   * failures in a row (not a limit, not an abort — those already have their
+   * own banners) upgrades to a persistent notice so a student mid-outage
+   * isn't left guessing whether it's them or the service.
+   */
+  const [advisorDown, setAdvisorDown] = useState(false);
+  const consecutiveFailuresRef = useRef(0);
   const [newProjectOpen, setNewProjectOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [deleteProjectId, setDeleteProjectId] = useState<string | null>(null);
@@ -436,13 +494,10 @@ export default function Advisor() {
 
   const { settings: advisorSettings, loading: settingsLoading, save: saveAdvisorSettings } = useAdvisorSettings();
 
-  // The advisor's own monthly token pool. Separate from `useUsage`, which
-  // meters the rest of the app — see src/hooks/useAdvisorTokens.ts.
-  const {
-    status: tokenStatus,
-    refresh: refreshTokens,
-    applyServerBalance: applyTokenBalance,
-  } = useAdvisorTokens();
+  // The advisor draws on the same allowance as every other feature now — see
+  // `refundIfUnbilled` in supabase/functions/voice-advisor/index.ts for the
+  // server side of this.
+  const { getResetLabel, getResetTime, refreshUsage } = useUsage();
 
   const {
     catalog: skillCatalog,
@@ -1080,12 +1135,9 @@ export default function Advisor() {
           controller.signal,
         );
 
+        // Every turn draws on the same allowance as the rest of the app now,
+        // so the shared usage meter just needs telling a turn happened.
         notifyUsageConsumed();
-        // The `done` frame carries the post-charge balance, so the meter moves
-        // with the answer. Only artifact turns actually spend credits now, but
-        // notifyUsageConsumed() is cheap and this is the one place that knows
-        // a turn finished.
-        applyTokenBalance(result.tokens);
         const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
         const finalText = result.response || textBuf.current.trim();
 
@@ -1126,15 +1178,16 @@ export default function Advisor() {
         for (const tool of autoRun) {
           await executeToolCall(answerId, tool);
         }
+
+        consecutiveFailuresRef.current = 0;
+        setAdvisorDown(false);
       } catch (error) {
         const isAbort = error instanceof DOMException && error.name === 'AbortError';
 
         if (isAbort) {
-          // Stopping keeps what arrived. The tokens generated before the stop
-          // are still charged server-side, but this client hung up before the
-          // frame carrying the new balance, so the meter has to ask.
+          // Stopping keeps what arrived — the turn was already charged at the
+          // gate regardless of how much of the answer the student stayed for.
           notifyUsageConsumed();
-          void refreshTokens();
           const partialText = stripSuggestionMarker(textBuf.current).trim();
           const seconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
           setMessages((prev) =>
@@ -1156,7 +1209,7 @@ export default function Advisor() {
           }
         } else if (error instanceof AdvisorLimitError) {
           notifyUsageConsumed();
-          if (error.kind === 'tokens') void refreshTokens();
+          void refreshUsage();
           setLimitHit(error.kind);
           // Drop the optimistic pair — an upgrade card replaces it.
           setMessages((prev) => prev.filter((m) => m.id !== answerId && m.id !== userMsg.id));
@@ -1170,6 +1223,12 @@ export default function Advisor() {
                 : 'We could not reach the advisor. Please try again in a moment.',
           });
           setMessages((prev) => prev.filter((m) => m.id !== answerId && m.id !== userMsg.id));
+          // The message never went anywhere — the composer cleared it on send,
+          // so without this a student who typed a real question loses it the
+          // moment the service hiccups and has to reconstruct it from memory.
+          setTextInput(cleaned);
+          consecutiveFailuresRef.current += 1;
+          if (consecutiveFailuresRef.current >= 2) setAdvisorDown(true);
         }
       } finally {
         // A flush queued for the next frame is harmless here: it maps over the
@@ -1196,8 +1255,7 @@ export default function Advisor() {
       attachments,
       refreshArtifacts,
       executeToolCall,
-      applyTokenBalance,
-      refreshTokens,
+      refreshUsage,
       activeModel,
       enabledSkillCount,
     ],
@@ -1696,21 +1754,26 @@ export default function Advisor() {
   };
 
   return (
-    <div className="flex bg-background h-[calc(100svh-4rem)] min-h-0 overflow-hidden">
+    <div
+      ref={shellRef}
+      style={{ height: shellHeight }}
+      className="flex bg-background min-h-0 overflow-hidden"
+    >
       <Seo
-        title="Advisor — Pathforge"
+        title="Advisor"
         description="Talk or chat with your Pathforge AI advisor for instant, personalized college application guidance."
         path="/advisor"
       />
 
       {/*
-       * Session rail. Collapsed to an icon strip, expanding to the full
-       * sidebar on hover (or staying open when pinned from the top bar); on
-       * small screens it renders itself as a left drawer instead.
+       * The advisor sidebar. Docked and open by default, collapsible to an
+       * icon rail from its own header or the top bar; on small screens it
+       * renders itself as a left drawer instead.
        */}
       <SessionNavBar
         {...sessionNavProps}
         pinned={sidebarPinned}
+        onPinnedChange={setSidebarPinned}
         mobileOpen={sidebarOpen}
         onMobileOpenChange={setSidebarOpen}
       />
@@ -1728,30 +1791,37 @@ export default function Advisor() {
 
         {/* Top bar */}
         <div className="relative z-10 flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-sm">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
             <Button
               size="icon"
               variant="ghost"
-              className="h-11 w-11 sm:h-8 sm:w-8"
-              onClick={() => {
-                if (typeof window !== 'undefined' && window.innerWidth < 768) setSidebarOpen((v) => !v);
-                else setSidebarPinned((v) => !v);
-              }}
-              aria-label={sidebarOpen || sidebarPinned ? 'Close sidebar' : 'Open sidebar'}
+              /* Mobile only. On desktop the sidebar carries its own collapse
+                 control in its header, and a second identical panel icon a
+                 few pixels away in the top bar just reads as clutter. */
+              className="h-11 w-11 rounded-full md:hidden"
+              onClick={() => setSidebarOpen((v) => !v)}
+              aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
             >
-              {sidebarOpen || sidebarPinned ? (
+              {sidebarOpen ? (
                 <PanelLeftClose className="h-4 w-4" />
               ) : (
                 <PanelLeftOpen className="h-4 w-4" />
               )}
             </Button>
-            <span className="font-display font-semibold text-sm">Pathforge Advisor</span>
+            {/* Which chat you are in. The sidebar highlights it too, but the
+                sidebar can be collapsed, and an unlabelled pane with no title
+                is the thing that made this read as a bare canvas rather than a
+                workspace. */}
+            <span className="min-w-0 truncate font-display text-sm font-semibold text-foreground">
+              {conversations.find((c) => c.conversation_id === currentConversationId)?.name ??
+                'New chat'}
+            </span>
           </div>
-          <div className="flex items-center gap-1">
+          <div className="flex shrink-0 items-center gap-1">
             <Button
               size="icon"
               variant="ghost"
-              className="h-11 w-11 sm:h-8 sm:w-8 relative"
+              className="h-11 w-11 sm:h-8 sm:w-8 rounded-full relative"
               onClick={() => setSkillsOpen(true)}
               aria-label="Open skills"
               title="Skills"
@@ -1766,7 +1836,7 @@ export default function Advisor() {
             <Button
               size="icon"
               variant="ghost"
-              className="h-11 w-11 sm:h-8 sm:w-8 relative"
+              className="h-11 w-11 sm:h-8 sm:w-8 rounded-full relative"
               onClick={() => setArtifactsOpen(true)}
               aria-label="Open artifacts"
               title="Artifacts"
@@ -1781,7 +1851,7 @@ export default function Advisor() {
             <Button
               size="icon"
               variant="ghost"
-              className="h-11 w-11 sm:h-8 sm:w-8"
+              className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
               onClick={() => {
                 if (isSpeaking) stopSpeaking();
                 setAudioEnabled((v) => !v);
@@ -1929,9 +1999,9 @@ export default function Advisor() {
                         // otherwise push the turn past the viewport.
                         'min-w-0 break-words',
                         msg.role === 'user'
-                          // The squared-off bottom-right corner is the only
-                          // thing marking direction now that the fill is quiet.
-                          ? 'max-w-[85%] rounded-2xl rounded-br-md border border-border bg-secondary/60 px-4 py-2.5 text-foreground'
+                          // A solid, fully-rounded pill — the same shape a
+                          // sent message takes in Gemini's own thread.
+                          ? 'max-w-[85%] rounded-3xl bg-secondary px-4 py-2.5 text-foreground'
                           : 'w-full text-foreground',
                       )}
                     >
@@ -2066,6 +2136,37 @@ export default function Advisor() {
         <div className="relative z-10 border-t border-border bg-background/80 backdrop-blur-sm">
           <div className="max-w-3xl mx-auto w-full px-4 py-4">
             <AnimatePresence>
+              {advisorDown && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.2 }}
+                  className="mb-3 flex items-center gap-3 rounded-xl border border-destructive/40 bg-destructive/5 px-4 py-3"
+                >
+                  <div className="h-9 w-9 shrink-0 rounded-lg bg-destructive/15 flex items-center justify-center text-destructive">
+                    <WifiOff className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-sm font-semibold">The advisor can't reach its AI service right now.</div>
+                    <div className="text-xs text-muted-foreground">
+                      This isn't about your account or usage — it's a service outage on our end. Please try again shortly.
+                    </div>
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => {
+                      consecutiveFailuresRef.current = 0;
+                      setAdvisorDown(false);
+                    }}
+                    aria-label="Dismiss"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </motion.div>
+              )}
               {limitHit && (
                 <motion.div
                   initial={{ opacity: 0, y: 8 }}
@@ -2079,20 +2180,14 @@ export default function Advisor() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-semibold">
-                      {limitHit === 'tokens'
-                        ? "You've used your advisor tokens for this month."
-                        : limitHit === 'allowance'
-                          ? "You have used 100% of your allowance."
-                          : "You've hit your usage limit."}
+                      {limitHit === 'allowance'
+                        ? "You have used 100% of your allowance."
+                        : "You've hit your usage limit."}
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {limitHit === 'tokens'
-                        ? tokenStatus.resetsAt
-                          ? `Chatting should be available again on ${tokenStatus.resetsAt.toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}. A higher plan lifts the cap sooner.`
-                          : 'Please try again shortly, or upgrade for higher limits.'
-                        : limitHit === 'allowance'
-                          ? 'Artifact generation still draws on your allowance. Upgrade to keep generating documents.'
-                          : 'Please wait a moment, or upgrade for higher limits.'}
+                      {limitHit === 'allowance'
+                        ? `${getResetLabel()} · in ${getResetTime()}. Upgrade for a larger pool sooner.`
+                        : 'Please wait a moment, or upgrade for higher limits.'}
                     </div>
                   </div>
                   <Button size="sm" onClick={() => navigate('/pricing')} className="shrink-0">
@@ -2249,7 +2344,7 @@ export default function Advisor() {
                       type="button"
                       title={`Model: ${activeModel.label}`}
                       aria-label={`Model: ${activeModel.label}`}
-                      className="group inline-flex items-center justify-center gap-1 rounded-lg px-2 h-8 min-w-8 text-xs font-display font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                      className="group inline-flex items-center justify-center gap-1 rounded-full px-2 h-8 min-w-8 text-xs font-display font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
                     >
                       <span className="hidden sm:inline">{activeModel.label}</span>
                       <ChevronDown className="h-3 w-3 opacity-70 transition-transform duration-200 group-data-[state=open]:rotate-180" />
@@ -2312,41 +2407,54 @@ export default function Advisor() {
                 />
 
                 <div className="ml-auto flex shrink-0 items-center gap-1">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant={isListening ? 'destructive' : 'ghost'}
-                  className="h-11 w-11 sm:h-8 sm:w-8 rounded-lg"
-                  onClick={isListening ? stopListening : startListening}
-                  disabled={isProcessing}
-                  aria-label={isListening ? 'Stop recording' : 'Voice input'}
-                >
-                  {isListening ? <Square className="h-3.5 w-3.5 fill-current" /> : <Mic className="h-4 w-4" />}
-                </Button>
-
-                {/* Stop replaces send for the whole time a response is in
-                    flight. Aborting keeps whatever text already arrived. */}
+                {/*
+                 * One primary action, not two — the same toggle Gemini's own
+                 * composer uses: mic while the box is empty, a filled send
+                 * circle the moment there's something to send. Recording and
+                 * an in-flight turn each still get their own explicit stop.
+                 */}
                 {isProcessing || compacting ? (
                   <Button
                     type="button"
                     size="icon"
                     variant="destructive"
-                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-lg"
+                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
                     onClick={stopStreaming}
                     aria-label={compacting ? 'Stop compacting' : 'Stop generating'}
                     title={compacting ? 'Stop compacting' : 'Stop generating'}
                   >
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </Button>
-                ) : (
+                ) : isListening ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
+                    onClick={stopListening}
+                    aria-label="Stop recording"
+                  >
+                    <Square className="h-3.5 w-3.5 fill-current" />
+                  </Button>
+                ) : canSend ? (
                   <Button
                     type="submit"
                     size="icon"
-                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-lg"
-                    disabled={!canSend}
+                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
                     aria-label="Send message"
                   >
                     <Send className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
+                    onClick={startListening}
+                    aria-label="Voice input"
+                  >
+                    <Mic className="h-4 w-4" />
                   </Button>
                 )}
                 </div>

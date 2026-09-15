@@ -3,14 +3,19 @@
 import "@fontsource-variable/inter";
 import { useMemo } from "react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { GridField, News } from "@/components/dashboard/deck";
 import {
-  CohortCard, CohortSummary, ColleaguesCard, FollowupsCard, RosterCard,
+  CohortCard, CohortSummary, ColleaguesCard, FollowupsCard, Masthead, RosterCard,
   SignalsCard, TodayCard,
 } from "@/components/teacher/counsellorDeck";
+import {
+  ApplyingCard, DeadlinesCard, QueueCard,
+} from "@/components/teacher/counsellorPipeline";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { useCounselorActivity } from "@/hooks/useCounselorActivity";
 import { useCounselorFollowups } from "@/hooks/useCounselorFollowups";
+import { useCounsellorQueue } from "@/hooks/useCounsellorQueue";
 
 /**
  * The counsellor home.
@@ -20,10 +25,21 @@ import { useCounselorFollowups } from "@/hooks/useCounselorFollowups";
  * card is filled. A counsellor and a student who sit next to each other should
  * recognise the same product.
  *
- * The order is the argument, as it is on the student side: what needs you
- * today, who you are responsible for, what you have promised to come back to,
- * what the platform noticed on its own, and then the full roster you consult
- * rather than read.
+ * The order is an argument about a counsellor's morning, and each row answers
+ * one question:
+ *
+ *   1. Who am I and what day is it.
+ *   2. What needs me first, and what is sitting in my own queue.
+ *   3. The cohort in five numbers.
+ *   4. Who I am responsible for, and what is dated soonest.
+ *   5. Where the whole list is aiming — the view no single student page gives.
+ *   6. What I promised to come back to.
+ *   7. What the platform noticed on its own.
+ *   8. What is happening in admissions, and who else is on this with me.
+ *   9. The full roster, which is consulted rather than read.
+ *
+ * Every number on the page is counted from a row that exists. Nothing is
+ * estimated to make a card look finished.
  */
 export default function TeacherDashboard() {
   const { students, loading } = useTeacherRoster();
@@ -41,38 +57,68 @@ export default function TeacherDashboard() {
   const { recent, deadlines, inactive, loading: activityLoading } =
     useCounselorActivity({ studentIds, nameMap, scoreMap });
   const { items: followups } = useCounselorFollowups();
+  const { essays, meetings, loading: queueLoading } = useCounsellorQueue(studentIds);
 
   return (
-    <TeacherLayout>
+    <TeacherLayout bare>
+      <Seo
+        title="Counsellor home"
+        description="Your cohort, your queue, and what needs you today."
+        path="/teacher"
+        noindex
+      />
+
       {/*
        * `data-dash` is the hook the stylesheet uses to set this subtree in
        * Inter and re-declare the neutrals cool. Scoped here so the rest of the
        * counsellor workspace is untouched.
        */}
-      <div data-dash className="relative -mx-5 -my-6 min-h-screen bg-background lg:-mx-8 lg:-my-8 xl:-mx-12">
+      <div data-dash className="relative min-h-screen bg-background">
         <GridField />
 
         <div className="pad-safe-x pad-safe-bottom relative mx-auto w-full max-w-[1200px] px-5 pb-28 pt-10 sm:px-8 sm:pt-14">
           <div className="space-y-4">
+            <Masthead students={students} loading={loading} />
+
             <div className="grid gap-4 lg:grid-cols-12">
               <div className="lg:col-span-7">
-                <TodayCard students={students} followups={followups} inactive={inactive} />
+                <TodayCard
+                  students={students}
+                  followups={followups}
+                  inactive={inactive}
+                  essays={essays}
+                />
               </div>
               <div className="lg:col-span-5">
-                <CohortCard students={students} loading={loading} />
+                <QueueCard
+                  essays={essays}
+                  meetings={meetings}
+                  students={students}
+                  loading={queueLoading}
+                />
               </div>
             </div>
 
-            <CohortSummary students={students} inactiveCount={inactive.length} />
+            <CohortSummary
+              students={students}
+              inactiveCount={inactive.length}
+              essayCount={essays.length}
+            />
+
+            <div className="grid gap-4 lg:grid-cols-12">
+              <div className="lg:col-span-7">
+                <CohortCard students={students} loading={loading} />
+              </div>
+              <div className="lg:col-span-5">
+                <DeadlinesCard deadlines={deadlines} loading={activityLoading} />
+              </div>
+            </div>
+
+            <ApplyingCard students={students} loading={loading} />
 
             <FollowupsCard students={students} />
 
-            <SignalsCard
-              recent={recent}
-              deadlines={deadlines}
-              inactive={inactive}
-              loading={activityLoading}
-            />
+            <SignalsCard recent={recent} inactive={inactive} loading={activityLoading} />
 
             <div className="grid gap-4 lg:grid-cols-12">
               <div className="lg:col-span-7">

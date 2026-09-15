@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 type SortField = "name" | "score" | "grade" | "status";
 type SortDir = "asc" | "desc";
 
@@ -238,12 +239,20 @@ export default function TeacherStudents() {
                               <p className="font-medium text-foreground group-hover:text-accent transition-colors">
                                 {s.full_name || s.email || "Student"}
                               </p>
+                              {s.email && s.full_name && (
+                                <p className="text-xs text-muted-foreground">{s.email}</p>
+                              )}
                             </div>
                           </Link>
                         </td>
                         <td className="p-3 text-muted-foreground hidden md:table-cell">{s.grade || "—"}</td>
                         <td className="p-3 text-muted-foreground hidden lg:table-cell">
-                          <span className="line-clamp-1">{s.high_school_name || "—"}</span>
+                          <span className="flex items-center gap-2">
+                            {s.high_school_name && (
+                              <CollegeLogo name={s.high_school_name} size={18} className="rounded-[3px]" hideWhenUnknown />
+                            )}
+                            <span className="line-clamp-1">{s.high_school_name || "—"}</span>
+                          </span>
                         </td>
                         <td className="p-3 text-muted-foreground hidden lg:table-cell">
                           <span className="line-clamp-1">{s.intended_major || "—"}</span>

@@ -48,6 +48,16 @@ export default defineConfig(({ mode }) => ({
     host: "::",
     port: 8080,
   },
+  define: {
+    // Consumed by src/lib/bugs/reporter.ts, which is synced from
+    // pathforge-tech. Stamped into every bug report so Admin -> Bugs can tell a
+    // failure on the current desktop build from one in a months-old install
+    // someone never updated. "desktop-" prefixed so the two products are
+    // distinguishable in the same table.
+    __APP_BUILD__: JSON.stringify(
+      `desktop-${mode}-${new Date().toISOString().slice(0, 16).replace("T", " ")}`,
+    ),
+  },
   // The Lovable MCP plugin re-bundles supabase/functions/mcp/index.ts on every run.
   // On Windows its generator emits a Windows absolute path inside an `npm:` specifier
   // (`import mcp from "npm:C:\\Users\\...\\src\\lib\\mcp\\index.ts"`), which Deno cannot

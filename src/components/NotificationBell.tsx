@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { Bell, Check, Shield, GraduationCap } from "lucide-react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -9,6 +8,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { NotificationStack } from "@/components/ui/notification-stack";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { timeAgo } from "@/lib/timeAgo";
@@ -132,66 +132,58 @@ export function NotificationBell() {
             <div className="p-6 text-center text-sm text-muted-foreground">
               Loading…
             </div>
-          ) : items.length === 0 ? (
-            <div className="p-8 text-center text-sm text-muted-foreground">
-              <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
-              No notifications yet
-            </div>
           ) : (
-            <ul className="divide-y divide-border/40">
-              {items.map((n, index) => (
-                <motion.li
-                  key={n.id}
-                  initial={{ opacity: 0, x: 20, filter: "blur(10px)" }}
-                  animate={{ opacity: 1, x: 0, filter: "blur(0px)" }}
-                  transition={{ duration: 0.3, delay: Math.min(index, 8) * 0.05 }}
-                  className={cn(
-                    "p-4 cursor-pointer hover:bg-accent/40 transition-colors",
-                    !n.is_read && "bg-primary/5",
-                  )}
-                  onClick={() => !n.is_read && markOneRead(n.id)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div
-                      className={cn(
-                        "mt-0.5 flex h-7 w-7 items-center justify-center rounded-full flex-shrink-0",
-                        n.sender_role === "admin"
-                          ? "bg-primary/10 text-primary"
-                          : "bg-accent/10 text-accent-foreground",
-                      )}
-                    >
-                      {n.sender_role === "admin" ? (
-                        <Shield className="h-3.5 w-3.5" />
-                      ) : (
-                        <GraduationCap className="h-3.5 w-3.5" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {!n.is_read && (
-                          <span className="h-1.5 w-1.5 rounded-full bg-primary flex-shrink-0" />
-                        )}
-                        <h4 className="font-medium text-sm truncate">
-                          {n.title}
-                        </h4>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2 whitespace-pre-wrap">
-                        {n.message}
-                      </p>
-                      <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground">
-                        <span className="capitalize">
-                          {n.sender_role || "system"}
-                        </span>
-                        <span>·</span>
-                        <span>
-                          {timeAgo(n.created_at)}
-                        </span>
-                      </div>
-                    </div>
+            <NotificationStack
+              items={items.map((n) => ({
+                id: n.id,
+                title: n.title,
+                message: n.message,
+                unread: !n.is_read,
+                icon: (
+                  <div
+                    className={cn(
+                      "flex h-7 w-7 items-center justify-center rounded-full",
+                      n.sender_role === "admin"
+                        ? "bg-primary/10 text-primary"
+                        : "bg-accent/10 text-accent-foreground",
+                    )}
+                  >
+                    {n.sender_role === "admin" ? (
+                      <Shield className="h-3.5 w-3.5" />
+                    ) : (
+                      <GraduationCap className="h-3.5 w-3.5" />
+                    )}
                   </div>
-                </motion.li>
-              ))}
-            </ul>
+                ),
+                meta: (
+                  <span className="flex items-center gap-2">
+                    <span className="capitalize">{n.sender_role || "system"}</span>
+                    <span>·</span>
+                    <span>{timeAgo(n.created_at)}</span>
+                  </span>
+                ),
+              }))}
+              onActivate={(id) => {
+                const n = items.find((i) => i.id === id);
+                if (n && !n.is_read) markOneRead(id);
+              }}
+              /* Swiping a notification away marks it read rather than deleting
+                 it. The row leaves the list either way, so the gesture feels the
+                 same, but nothing is destroyed by a flick the user may not have
+                 meant — and `notifications` is the audit trail for every
+                 broadcast, which a client-side delete has no business emptying. */
+              onDismiss={(id) => {
+                const n = items.find((i) => i.id === id);
+                if (n && !n.is_read) markOneRead(id);
+                setItems((prev) => prev.filter((i) => i.id !== id));
+              }}
+              dismissLabel="Mark read and hide"
+            >
+              <div className="p-8 text-center text-sm text-muted-foreground">
+                <Bell className="h-8 w-8 mx-auto mb-2 opacity-40" />
+                No notifications yet
+              </div>
+            </NotificationStack>
           )}
         </ScrollArea>
       </PopoverContent>

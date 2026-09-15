@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import { ArrowUpRight, Newspaper } from "lucide-react";
@@ -317,10 +317,46 @@ function since(iso: string): string {
   return `${Math.round(hours / 24)}d ago`;
 }
 
+/**
+ * The outlet's own favicon, taken from the article's URL.
+ *
+ * Not a lookup table of publishers: the domain is whatever the row actually
+ * links to, so a mark can never be attributed to an outlet that did not publish
+ * the story. A URL that fails to parse, or an icon that fails to load, renders
+ * nothing and the source name stands alone.
+ */
+function SourceMark({ url }: { url: string }) {
+  const [failed, setFailed] = useState(false);
+  const domain = useMemo(() => {
+    try {
+      return new URL(url).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+  }, [url]);
+
+  if (!domain || failed) return null;
+  return (
+    <img
+      src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+      alt=""
+      aria-hidden
+      width={14}
+      height={14}
+      loading="lazy"
+      decoding="async"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+      className="h-3.5 w-3.5 shrink-0 rounded-[3px]"
+    />
+  );
+}
+
 /** Source and time on one line — the only metadata a headline needs. */
-function Meta({ source, at }: { source: string; at: string | null }) {
+function Meta({ source, at, url }: { source: string; at: string | null; url?: string }) {
   return (
     <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+      {url && <SourceMark url={url} />}
       <span className="truncate">{source}</span>
       {at && (
         <>
@@ -404,7 +440,7 @@ export function News({ fixture }: { fixture?: CollegeNewsItem[] }) {
                 </div>
               )}
               <div className="mt-5">
-                <Meta source={lead.source} at={lead.published_at} />
+                <Meta source={lead.source} at={lead.published_at} url={lead.url} />
                 <h3
                   className={cn(
                     "mt-3 max-w-[32ch] text-balance decoration-1 underline-offset-4 group-hover:underline",
@@ -432,7 +468,7 @@ export function News({ fixture }: { fixture?: CollegeNewsItem[] }) {
                     className="group flex items-start gap-4 py-4 first:pt-0"
                   >
                     <span className="min-w-0 flex-1">
-                      <Meta source={item.source} at={item.published_at} />
+                      <Meta source={item.source} at={item.published_at} url={item.url} />
                       <span className="mt-2 line-clamp-2 block text-[14.5px] font-medium leading-[1.35] tracking-[-0.014em] decoration-1 underline-offset-4 group-hover:underline">
                         {item.title}
                       </span>

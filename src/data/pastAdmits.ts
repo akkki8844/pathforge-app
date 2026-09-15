@@ -1249,6 +1249,51 @@ export const pastAdmits: PastAdmit[] = [
       },
     ],
   },
+  {
+    id: "mekhi-johnson-2018",
+    name: "Mekhi Johnson",
+    highSchool: "Gilman School",
+    location: "Baltimore, MD",
+    gradYear: 2018,
+    headline: "Set the goal at age six after hearing a radio story. Ten years later, admitted to all eight Ivies.",
+    major: "Political Science",
+    country: "United States",
+    gender: "Male",
+    gpa: "98.1 (weighted average)",
+    acceptedTo: ["Harvard"],
+    totalAccepted: 9,
+    acceptancesNote:
+      "Reporting confirms admission to all eight Ivy League schools plus the University of Chicago, but only Harvard — the school he chose — was individually named in coverage.",
+    chose: "Harvard",
+    intendedFocus: "Political science",
+    activities: [
+      "Diversity Council president",
+      "Yearbook and literary magazine editor",
+      "Hand bell choir, jazz band, and drum line member",
+      "Singer with the Traveling Men (school a cappella group)",
+      "Cast and crew member for musical theater productions",
+      "Volunteer with Bridges, an academic and cultural enrichment program for Title I elementary students",
+    ],
+    awards: ["National Merit Scholarship Program Commended Student"],
+    background:
+      "A Gilman School student since first grade. Said he decided at age six, after hearing a radio segment about a student admitted to every Ivy League school, that he would do the same.",
+    essayNote:
+      "He told reporters the final choice between two schools came down to instinct, describing having tried everything from horoscopes to a coin flip before deciding.",
+    sources: [
+      {
+        label: "CBS News Baltimore — Baltimore Scholar Accepted To All 8 Ivy League Schools",
+        url: "https://www.cbsnews.com/baltimore/news/student-accepted-to-all-ivy-league-schools/",
+      },
+      {
+        label: "FOX45 Baltimore — Gilman School Student is Accepted by All Eight Ivy League Colleges",
+        url: "https://foxbaltimore.com/news/local/gilman-school-student-is-accepted-by-all-eight-ivy-league-colleges",
+      },
+      {
+        label: "WMAR-2 News — Gilman School senior makes a big decision",
+        url: "https://www.wmar2news.com/news/region/baltimore-city/gilman-school-senior-makes-a-big-decision",
+      },
+    ],
+  },
 ];
 
 export const admitSchools = Array.from(

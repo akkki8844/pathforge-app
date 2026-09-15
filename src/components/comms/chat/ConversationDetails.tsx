@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Bell, BellOff, LogOut, Pin, Search, Users } from "lucide-react";
+import { useRef, useState } from "react";
+import { Bell, BellOff, Camera, LogOut, Pin, Search, Users } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import { GroupAvatar, PersonAvatar } from "./PersonAvatar";
 import { listTimestamp, preview } from "@/lib/comms/format";
+import { useAuth } from "@/contexts/AuthContext";
 import { displayName, usePeople, type PersonMap } from "@/hooks/comms/usePeople";
 import { useMessageSearch, usePins } from "@/hooks/comms/useMessages";
 import {
+  useConversationActions,
   useConversationMembers,
   type ConversationListItem,
 } from "@/hooks/comms/useConversations";
@@ -50,11 +52,30 @@ export function ConversationDetails({
   const [term, setTerm] = useState("");
   const [confirmLeave, setConfirmLeave] = useState(false);
 
+  const { user } = useAuth();
+  const { setGroupImage } = useConversationActions();
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+
   const { memberIds } = useConversationMembers(conversation.id);
   const { people: memberPeople } = usePeople(memberIds);
   const people: PersonMap = { ...listPeople, ...memberPeople };
   const { pins } = usePins(conversation.id);
   const search = useMessageSearch(conversation.id, term);
+
+  // Matches the `conversations_update` RLS policy: the creator, or (for a
+  // team conversation) a team owner/admin. A member who isn't either of
+  // those simply doesn't get the hover affordance — the upload would just
+  // be rejected server-side, so there's no point offering it.
+  const canEditPhoto = conversation.kind !== "dm" && conversation.created_by === user?.id;
+
+  const handlePickPhoto = async (file: File | undefined) => {
+    if (!file) return;
+    try {
+      await setGroupImage.mutateAsync({ conversationId: conversation.id, file });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't update the group photo.");
+    }
+  };
 
   const title =
     conversation.kind === "dm"
@@ -76,8 +97,27 @@ export function ConversationDetails({
                 }
                 size="xl"
               />
+            ) : canEditPhoto ? (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="group relative rounded-2xl"
+                aria-label="Change group photo"
+              >
+                <GroupAvatar title={title} accentName={conversation.accent} imagePath={conversation.image_path} size="xl" />
+                <span className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                  <Camera className="h-5 w-5" />
+                </span>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => handlePickPhoto(e.target.files?.[0])}
+                />
+              </button>
             ) : (
-              <GroupAvatar title={title} accentName={conversation.accent} size="xl" />
+              <GroupAvatar title={title} accentName={conversation.accent} imagePath={conversation.image_path} size="xl" />
             )}
             <h2 className="mt-3 font-display text-base font-bold text-foreground">
               {title}

@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import {
   Activity, CircleDollarSign, CalendarClock, Bell, Eye, LogIn, Target, TrendingUp, AlertCircle, LineChart } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
+import { CollegeLogo } from "@/components/CollegeLogo";
 import {
   ResponsiveContainer,
   BarChart,
@@ -463,12 +464,15 @@ export function StudentDeepDive({ studentId }: { studentId: string }) {
                     key={i}
                     className="flex items-center justify-between gap-3 rounded-lg border border-border/60 p-3"
                   >
-                    <div className="min-w-0">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <CollegeLogo name={r.college} size={26} className="rounded-md" />
+                      <div className="min-w-0">
                       <p className="text-sm font-medium text-foreground truncate">{r.college}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
                         {r.verdict ? ` • ${r.verdict}` : ""}
                       </p>
+                      </div>
                     </div>
                     {typeof r.probability === "number" && (
                       <Badge

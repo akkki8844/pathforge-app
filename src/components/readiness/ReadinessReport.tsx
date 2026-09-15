@@ -19,6 +19,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { CollegeLogo } from "@/components/CollegeLogo";
 import type { AnalysisResult } from "@/hooks/useReadinessHistory";
 
 interface Props {
@@ -300,13 +301,16 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
                 key={i}
                 className="flex items-start justify-between gap-3 p-3 rounded-lg border border-border"
               >
-                <div className="min-w-0">
+                <div className="flex min-w-0 items-start gap-3">
+                  <CollegeLogo name={c.university} size={28} className="mt-0.5 rounded-md" />
+                  <div className="min-w-0">
                   <div className="font-medium text-foreground">{c.university}</div>
                   {c.notes && (
                     <p className="text-sm text-muted-foreground mt-0.5">
                       {c.notes}
                     </p>
                   )}
+                  </div>
                 </div>
                 <Badge variant="outline" className={fitColor(c.fit)}>
                   {c.fit}

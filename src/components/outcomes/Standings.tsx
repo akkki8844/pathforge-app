@@ -66,9 +66,9 @@ export function SignalStandings({
             </>
           }
         />
-        <div className="grid grid-cols-[minmax(0,1fr)_minmax(4rem,7rem)_3rem] items-center gap-x-3 px-5 pb-2 sm:gap-x-4 sm:px-6">
+        <div className="grid grid-cols-[minmax(0,16rem)_minmax(0,1fr)_3rem] items-center gap-x-3 px-5 pb-2 sm:gap-x-4 sm:px-6">
           <ColumnHead>Weakest first</ColumnHead>
-          <ColumnHead className="text-center">{TIER_LABEL[tier]}</ColumnHead>
+          <ColumnHead>{TIER_LABEL[tier]} bar</ColumnHead>
           <ColumnHead className="text-right">Of bar</ColumnHead>
         </div>
         <Ledger className="border-t border-border">
@@ -87,7 +87,7 @@ export function SignalStandings({
         </Ledger>
         <p className="border-t border-border bg-card px-5 py-3 text-[12px] leading-relaxed text-muted-foreground sm:px-6">
           The notch on each row is what this tier expects of that signal. Passing it is worth
-          something, but capped — overshooting one signal does not repair a hole in another.
+          something, but capped: overshooting one signal does not repair a hole in another.
         </p>
       </Panel>
     </Reveal>
@@ -137,12 +137,12 @@ export function PointsLedger({ reading }: { reading: Reading }) {
                 </span>
                 <span className="w-10 text-right">
                   <Figure size="sm" className={c.counted ? "text-foreground" : "text-muted-foreground"}>
-                    {c.counted ? c.contribution : "—"}
+                    {c.counted ? c.contribution : "None"}
                   </Figure>
                 </span>
                 <span className="w-10 text-right">
                   <Figure size="sm" className={c.onOffer > 0 ? "text-primary" : "text-muted-foreground/60"}>
-                    {c.counted ? (c.onOffer > 0 ? `+${c.onOffer}` : "0") : "—"}
+                    {c.counted ? (c.onOffer > 0 ? `+${c.onOffer}` : "0") : "None"}
                   </Figure>
                 </span>
               </div>
@@ -259,7 +259,7 @@ export function ProofLedger({ lines }: { lines: ProofLine[] }) {
             </Ledger>
             <p className="border-t border-border bg-card px-5 py-4 text-[12.5px] leading-relaxed text-muted-foreground sm:px-6">
               Verified entries count in full. Submitted-but-unchecked proof counts at 40%, and a
-              typed claim with no proof counts at almost nothing — which is roughly how a reader
+              typed claim with no proof counts at almost nothing, which is roughly how a reader
               treats it.
             </p>
           </>
@@ -274,7 +274,7 @@ export function ProofLedger({ lines }: { lines: ProofLine[] }) {
 const SHAPE_COPY: Record<ShapeReading["verdict"], { title: string; body: string }> = {
   spike: {
     title: "You have a spike",
-    body: "One thing on this file is clearly ahead of the rest. That is the shape selective admissions rewards — keep feeding it rather than spreading yourself to fill the other rows.",
+    body: "One thing on this file is clearly ahead of the rest. That is the shape selective admissions rewards. Keep feeding it rather than spreading yourself to fill the other rows.",
   },
   even: {
     title: "You are broad, not sharp",
@@ -282,7 +282,7 @@ const SHAPE_COPY: Record<ShapeReading["verdict"], { title: string; body: string 
   },
   thin: {
     title: "The file is still thin",
-    body: "There is something here, but nothing yet has the depth to carry an application. Depth beats another category — finish one thing properly before opening a second.",
+    body: "There is something here, but nothing yet has the depth to carry an application. Depth beats another category: finish one thing properly before opening a second.",
   },
   empty: {
     title: "Nothing to read yet",
@@ -413,7 +413,7 @@ export function CourseworkStanding({
           </div>
         ) : (
           <p className="mt-auto border-t border-border pt-5 text-[13.5px] leading-relaxed text-muted-foreground">
-            No courses recorded. Add your timetable in your record — it is the cheapest
+            No courses recorded. Add your timetable in your record. It is the cheapest
             evidence on the page to enter and it carries the largest single weight.
           </p>
         )}

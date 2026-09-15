@@ -31,6 +31,8 @@ import { HelmetProvider } from "react-helmet-async";
 import App from "./App.tsx";
 import ErrorBoundary from "./components/ErrorBoundary.tsx";
 import { initWebVitalsReporting } from "./lib/webVitals";
+import { installBugCapture } from "./lib/bugs/reporter";
+import { looksLikeExtension } from "./lib/bugs/noise";
 import "./index.css";
 
 // ---- Browser-extension noise shield ----------------------------------------
@@ -39,59 +41,19 @@ import "./index.css";
 // context. Without this guard, a single thrown error from an extension can
 // blank the React tree. We swallow only errors that clearly originate from an
 // extension or known wallet/AI sidebar prefix — never from our own code.
-const EXT_HINTS = [
-  "chrome-extension://",
-  "moz-extension://",
-  "safari-extension://",
-  "safari-web-extension://",
-  "webkit-masked-url",
-  "MetaMask",
-  "ethereum",
-  "Phantom",
-  "solana",
-  "Coinbase",
-  "TronLink",
-  "Brave",
-  "Grammarly",
-  "LanguageTool",
-  "Honey",
-  "LastPass",
-  "1Password",
-  "Bitwarden",
-  "Dashlane",
-  "AdBlock",
-  "uBlock",
-  "chatgpt",
-  "Cannot redefine property: ethereum",
-  "Cannot set property ethereum",
-  "evmAsk",
-  "inpage.js",
-  "injected.js",
-  "contentScript",
-  "content_script",
-  "content-script",
-  "Extension context invalidated",
-  "message channel closed",
-  "Receiving end does not exist",
-  "RESET_BLANK_CHECK",
-  "ResizeObserver loop",
-  "ResizeObserver loop completed",
-  "ResizeObserver loop limit exceeded",
-  "Non-Error promise rejection captured",
-  "The message port closed",
-  "A listener indicated an asynchronous response",
-];
-
-const looksLikeExtension = (text: unknown): boolean => {
-  if (!text) return false;
-  const s = String(text);
-  return EXT_HINTS.some((h) => s.includes(h));
-};
-
+//
+// The hint list lives in @/lib/bugs/noise because the bug capture engine needs
+// exactly the same judgement: anything filtered here must not be filed as a
+// Pathforge bug either. Two copies of this list would drift, and the drift
+// would show up as an Admin → Bugs page full of other people's crashes.
+//
+// These run in the CAPTURE phase and call stopImmediatePropagation, so a
+// matched event never reaches the capture engine's own listeners below.
 window.addEventListener("unhandledrejection", (event) => {
   const r = event.reason as { message?: string; stack?: string } | undefined;
   if (looksLikeExtension(r?.message) || looksLikeExtension(r?.stack)) {
     event.preventDefault();
+    event.stopImmediatePropagation();
   }
 });
 
@@ -109,6 +71,9 @@ window.addEventListener(
   },
   true,
 );
+
+// Installed before React mounts so a crash in the very first render is caught.
+installBugCapture();
 
 initWebVitalsReporting();
 

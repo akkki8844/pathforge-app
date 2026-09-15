@@ -24,7 +24,7 @@
  *   - Layout:            `user` is null -> guest nav, and no signed-in chrome
  * which is exactly what a first-time visitor's browser produces.
  *
- * Deliberately NOT rendered: TopLoadingBar, IMessageCursor, ScrollToTop,
+ * Deliberately NOT rendered: TopLoadingBar, ScrollToTop,
  * RouteActivityLogger, KeepAliveProvider. They are pure chrome/side effects
  * with no crawlable text, and every one of them is a browser-global risk for
  * zero SEO gain.

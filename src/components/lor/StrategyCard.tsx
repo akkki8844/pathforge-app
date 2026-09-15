@@ -1,25 +1,44 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { Sparkles, ChevronDown, AlertTriangle, Loader2, Lightbulb } from "lucide-react";
-import { useState } from "react";
+import { ChevronDown, AlertTriangle } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { MultiStateButton } from "@/components/ui/multi-state-button";
 import { cn } from "@/lib/utils";
 import { useLorStrategy } from "@/hooks/useLorStrategy";
 
+/*
+ * Weight, not hue.
+ *
+ * Rating used to be emerald / amber / rose and severity rose / amber / grey,
+ * which is six colours inside a card that sits on a page already carrying one
+ * accent. A rating reads perfectly well as its own word set in the foreground
+ * or muted ink, and severity only needs to separate "act on this" from the
+ * rest, which one tone does.
+ */
 const ratingTone: Record<string, string> = {
-  strong: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-  average: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-  weak: "bg-rose-500/10 text-rose-600 dark:text-rose-300",
+  strong: "border-foreground/30 text-foreground",
+  average: "border-border text-muted-foreground",
+  weak: "border-destructive/40 text-destructive",
 };
 const severityTone: Record<string, string> = {
-  high: "text-rose-600 dark:text-rose-300",
-  medium: "text-amber-600 dark:text-amber-300",
+  high: "text-destructive",
+  medium: "text-foreground",
   low: "text-muted-foreground",
 };
 
 export function StrategyCard({ disabled }: { disabled: boolean }) {
   const { run, result } = useLorStrategy();
-  const [open, setOpen] = useState(true);
+  /*
+   * Closed until asked for. Open, and with no run yet, this card is a heading
+   * and a single button occupying 150px directly above the list the student
+   * came to read. It opens itself once there is a result to show.
+   */
+  const [open, setOpen] = useState(false);
+
+  // A result nobody can see is a result wasted, so producing one opens the card.
+  useEffect(() => {
+    if (result) setOpen(true);
+  }, [result]);
 
   return (
     <div className="rounded-xl border bg-card mb-6 overflow-hidden">
@@ -28,13 +47,11 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
         className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition"
       >
         <div className="flex items-center gap-3">
-          <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-            <Lightbulb className="h-4 w-4" />
-          </div>
           <div className="text-left">
-            <div className="font-medium text-sm">Strategy</div>
+            <div className="text-sm font-medium">Rank this lineup</div>
             <div className="text-xs text-muted-foreground">
-              AI ranks your lineup and surfaces gaps. Counts toward your usage.
+              Orders your recommenders by how strong a letter each is likely to write, and names
+              what the set is missing. Uses one AI credit.
             </div>
           </div>
         </div>
@@ -54,21 +71,19 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
           >
             <div className="p-5 space-y-4">
               <div className="flex items-center gap-2">
-                <Button
+                {/* mutateAsync, not mutate: the button's state machine is
+                    driven by the promise, and `mutate` returns void so a
+                    failure would never reach it. */}
+                <MultiStateButton
                   size="sm"
-                  onClick={() => run.mutate()}
-                  disabled={disabled || run.isPending}
-                >
-                  {run.isPending ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Analyzing…
-                    </>
-                  ) : result ? (
-                    "Re-run analysis"
-                  ) : (
-                    "Analyze lineup"
-                  )}
-                </Button>
+                  variant="outline"
+                  disabled={disabled}
+                  onClick={() => run.mutateAsync()}
+                  idleLabel={result ? "Re-run analysis" : "Analyze lineup"}
+                  loadingLabel="Analyzing…"
+                  successLabel="Ranked"
+                  errorLabel="Could not analyze"
+                />
                 {disabled && (
                   <span className="text-xs text-muted-foreground">
                     Add a recommender to enable.
@@ -104,12 +119,14 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-0.5">
                                   <span className="font-medium text-sm truncate">{r.name}</span>
-                                  <Badge
-                                    variant="secondary"
-                                    className={cn("text-[10px]", ratingTone[r.rating])}
+                                  <span
+                                    className={cn(
+                                      "shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium capitalize",
+                                      ratingTone[r.rating]
+                                    )}
                                   >
                                     {r.rating}
-                                  </Badge>
+                                  </span>
                                 </div>
                                 <p className="text-xs text-muted-foreground leading-relaxed">
                                   {r.reasoning}

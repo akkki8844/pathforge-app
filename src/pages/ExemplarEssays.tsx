@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  PenLine, Search, ExternalLink, Quote, BookOpen, Info, ChevronDown,
+  Search, ExternalLink, Quote, BookOpen, Info, ChevronDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,7 @@ import { listItem, hoverLift, transition } from "@/lib/motion";
 import {
   exemplarEssays, essaySchools, essayThemes, type ExemplarEssay,
 } from "@/data/exemplarEssays";
+import { Eyebrow } from "@/components/cluely/primitives";
 
 function SourceBadge({ kind }: { kind: ExemplarEssay["analysisSource"] }) {
   const isAdmissions = kind === "admissions";
@@ -40,14 +41,12 @@ function FilterChip({
   layoutId,
   children,
   size = "md",
-  tone = "accent",
 }: {
   active: boolean;
   onClick: () => void;
   layoutId: string;
   children: React.ReactNode;
   size?: "sm" | "md";
-  tone?: "accent" | "primary";
 }) {
   const prefersReduced = useReducedMotion();
   return (
@@ -57,7 +56,7 @@ function FilterChip({
         "relative rounded-full font-medium transition-colors border",
         size === "sm" ? "px-2.5 py-1 text-[11px]" : "px-3 py-1 text-xs",
         active
-          ? "border-transparent text-accent-foreground"
+          ? "border-transparent text-primary-foreground"
           : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20",
       )}
     >
@@ -65,23 +64,13 @@ function FilterChip({
         <motion.span
           layoutId={layoutId}
           transition={transition.spring}
-          className={cn(
-            "absolute inset-0 rounded-full",
-            tone === "accent" ? "bg-accent" : "bg-primary",
-          )}
+          className="absolute inset-0 rounded-full bg-primary"
         />
       )}
       {active && prefersReduced && (
-        <span
-          className={cn(
-            "absolute inset-0 rounded-full",
-            tone === "accent" ? "bg-accent" : "bg-primary",
-          )}
-        />
+        <span className="absolute inset-0 rounded-full bg-primary" />
       )}
-      <span className={cn("relative z-10", active && tone === "primary" && "text-primary-foreground")}>
-        {children}
-      </span>
+      <span className="relative z-10">{children}</span>
     </button>
   );
 }
@@ -132,7 +121,7 @@ function EssayDetail({
             How it opens
           </h3>
           <blockquote className="relative rounded-xl bg-muted/50 border border-border/60 p-4 pl-10">
-            <Quote className="absolute left-3 top-4 h-4 w-4 text-accent/60" />
+            <Quote className="absolute left-3 top-4 h-4 w-4 text-primary/60" />
             <p className="text-[15px] leading-relaxed text-foreground italic">
               {essay.excerpt}
             </p>
@@ -172,10 +161,10 @@ function EssayDetail({
             whileHover={{ x: 2 }}
             whileTap={{ scale: 0.99 }}
             transition={transition.fast}
-            className="flex items-center justify-between gap-2 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm font-medium text-foreground hover:bg-accent/10 transition-colors"
+            className="flex items-center justify-between gap-2 rounded-xl border border-primary/30 bg-primary/5 px-4 py-3 text-sm font-medium text-foreground hover:bg-primary/10 transition-colors"
           >
             <span>Read the full essay at {essay.sourceName}</span>
-            <ExternalLink className="h-4 w-4 shrink-0 text-accent" />
+            <ExternalLink className="h-4 w-4 shrink-0 text-primary" />
           </motion.a>
         </DetailSection>
       </div>
@@ -223,22 +212,20 @@ export default function ExemplarEssays() {
   const hasFilters = Boolean(query || school || theme);
 
   return (
-    <div className="py-8 sm:py-12">
+    <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
       <Seo
-        title="Exemplar Essays — Pathforge"
+        title="Exemplar Essays"
         description="Real college application essays officially published by admissions offices — with the committee's own notes on why each one worked."
         path="/exemplar-essays"
       />
       <div className="section-container max-w-6xl">
         {/* Header */}
         <ScrollReveal className="mb-8">
-          <Badge variant="secondary" className="mb-3 gap-1.5">
-            <PenLine className="h-3 w-3" /> Exemplar Essays
-          </Badge>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          <Eyebrow>Officially published essays</Eyebrow>
+          <h1 className="mt-2 max-w-[26ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
             Essays that actually got students in
           </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
             Every essay here was published by the college's own admissions office, with the
             student's permission — no scraped forums, no paywalled leaks. Where the committee
             explained their thinking, we quote them directly.
@@ -248,7 +235,7 @@ export default function ExemplarEssays() {
         {/* Sourcing note */}
         <ScrollReveal delay={0.06} className="mb-6">
           <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
-            <BookOpen className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+            <BookOpen className="h-4 w-4 text-primary shrink-0 mt-0.5" />
             <p className="text-xs text-muted-foreground leading-relaxed">
               We show <strong className="text-foreground">opening excerpts only</strong> and link to
               the official source for the full text. These essays belong to the students who wrote
@@ -304,7 +291,6 @@ export default function ExemplarEssays() {
                       onClick={() => setTheme(theme === t ? null : t)}
                       layoutId="essay-theme-pill"
                       size="sm"
-                      tone="primary"
                     >
                       {t}
                     </FilterChip>
@@ -314,7 +300,7 @@ export default function ExemplarEssays() {
               {essayThemes.length > 8 && (
                 <button
                   onClick={() => setShowAllThemes((v) => !v)}
-                  className="text-[11px] font-medium text-accent hover:underline flex items-center gap-0.5"
+                  className="text-[11px] font-medium text-primary hover:underline flex items-center gap-0.5"
                 >
                   {showAllThemes ? "Show fewer" : `+${essayThemes.length - 8} more`}
                   <ChevronDown className={cn("h-3 w-3 transition-transform", showAllThemes && "rotate-180")} />
@@ -342,7 +328,7 @@ export default function ExemplarEssays() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => { setQuery(""); setSchool(null); setTheme(null); }}
-                    className="text-accent hover:underline font-medium"
+                    className="text-primary hover:underline font-medium"
                   >
                     Clear filters
                   </motion.button>
@@ -374,7 +360,7 @@ export default function ExemplarEssays() {
                 exit="exit"
                 {...hoverLift}
                 onClick={() => setActiveId(essay.id)}
-                className="card-elevated card-motion p-5 text-left flex flex-col group"
+                className="border border-border bg-card transition-colors hover:border-foreground/20 p-5 text-left flex flex-col group"
               >
                 <div className="flex items-center gap-2 mb-3">
                   <CollegeLogo name={essay.school} size={20} className="shrink-0" />
@@ -384,7 +370,7 @@ export default function ExemplarEssays() {
                   </div>
                 </div>
 
-                <h3 className="font-semibold text-foreground text-sm group-hover:text-accent transition-colors">
+                <h3 className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors">
                   {essay.title}
                 </h3>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -406,7 +392,7 @@ export default function ExemplarEssays() {
                       +{essay.themes.length - 2}
                     </Badge>
                   )}
-                  <span className="ml-auto text-[10px] font-medium text-accent opacity-0 group-hover:opacity-100 transition-opacity">
+                  <span className="ml-auto text-[10px] font-medium text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                     Read →
                   </span>
                 </div>

@@ -33,7 +33,7 @@ const sheetVariants = cva(
   // arrive with the same decisive curve as the dialog it's a cousin of, and
   // leave noticeably faster than it arrived, the same asymmetry every other
   // popup in this file uses.
-  "fixed z-50 gap-4 bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:duration-[320ms] data-[state=open]:ease-[cubic-bezier(0.16,1,0.3,1)] data-[state=closed]:duration-[200ms] data-[state=closed]:ease-[cubic-bezier(0.4,0,1,1)]",
+  "fixed z-50 gap-4 bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:duration-320 data-[state=open]:ease-entrance data-[state=closed]:duration-200 data-[state=closed]:ease-exit",
   {
     variants: {
       side: {

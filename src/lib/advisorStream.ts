@@ -17,12 +17,12 @@ const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
 const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
 /**
- * "tokens" is the advisor's own monthly token budget; "allowance" is the app-wide
- * pool that artifact generation still draws on. They are different pools and
- * the notice a user sees has to say which one ran out, so they stay separate
- * here rather than collapsing into one "limit" case.
+ * "allowance" is the same monthly/daily pool every other feature draws on —
+ * the advisor used to meter itself separately in tokens, but that meant a
+ * student could be out of "advisor" while every other usage meter in the app
+ * still read 100%. One pool now, so one kind here.
  */
-export type AdvisorLimitKind = "allowance" | "rate" | "tokens";
+export type AdvisorLimitKind = "allowance" | "rate";
 
 export class AdvisorLimitError extends Error {
   kind: AdvisorLimitKind;
@@ -62,12 +62,6 @@ export interface AdvisorStreamResult {
   /** False when the server never sent a terminal frame (aborted, or cut off). */
   completed: boolean;
   action?: { type: string; value?: string } | null;
-  /**
-   * Post-charge token balance from the server, when the turn finished. Null on
-   * an aborted stream — the charge still happened server-side, but this client
-   * never saw the frame carrying the new number, so the meter refetches.
-   */
-  tokens: unknown | null;
   /** Installed skills whose full instructions were loaded for this turn. */
   skills: { slug: string; name: string }[];
 }
@@ -118,7 +112,6 @@ interface StreamFrame {
   topics?: unknown;
   title?: unknown;
   message?: unknown;
-  tokens?: unknown;
   skills?: unknown;
 }
 
@@ -172,11 +165,6 @@ export async function streamAdvisor(
 
   if (!res.ok) {
     const { code, message } = await readErrorBody(res);
-    if (code === "OUT_OF_TOKENS") {
-      throw new AdvisorLimitError("tokens", message || "You've used your advisor tokens for this month.");
-    }
-    // OUT_OF_CREDITS is the pre-token-budget code. A deployment where the page
-    // is newer than the edge function still needs to say something true.
     if (code === "OUT_OF_CREDITS" || res.status === 402) {
       throw new AdvisorLimitError("allowance", message || "You have used 100% of your allowance.");
     }
@@ -196,7 +184,6 @@ export async function streamAdvisor(
     toolCalls: [],
     completed: false,
     action: null,
-    tokens: null,
     skills: [],
   };
 
@@ -215,7 +202,6 @@ export async function streamAdvisor(
     result.title = typeof data?.title === "string" ? data.title : null;
     result.artifact = data?.artifact ?? null;
     result.action = data?.action ?? null;
-    result.tokens = data?.tokens ?? null;
     if (Array.isArray(data?.toolCalls)) {
       for (const t of data.toolCalls) {
         const call: StreamedToolCall = { id: String(t?.id || crypto.randomUUID()), name: String(t?.name || ""), args: t?.args };
@@ -311,7 +297,6 @@ export async function streamAdvisor(
             result.topics = Array.isArray(frame.topics) ? frame.topics : [];
             result.title = typeof frame.title === "string" ? frame.title : null;
             if (frame.artifact) result.artifact = frame.artifact;
-            if (frame.tokens) result.tokens = frame.tokens;
             result.completed = true;
             break;
           case "error":

@@ -132,9 +132,19 @@ const DOMAIN_INDEX: { exact: Map<string, string>; normalized: Map<string, string
   for (const c of colleges) {
     const domain = domainFromWebsite(c.website);
     if (!domain) continue;
-    exact.set(c.name.toLowerCase(), domain);
-    const norm = normalize(c.name);
-    if (norm && !normalized.has(norm)) normalized.set(norm, domain);
+    // Index the merged-away spellings too ("UC San Diego"), so a name saved
+    // before those rows were folded together still resolves to a logo without
+    // needing a hand-written ALIASES entry.
+    // Guarded like `normalized` below: first writer wins. Without this, an
+    // aka label that happens to collide with another school's canonical name
+    // (or another school's aka) would silently steal that school's logo on
+    // whichever college is processed later in the array.
+    for (const label of [c.name, ...(c.aka ?? [])]) {
+      const key = label.toLowerCase();
+      if (!exact.has(key)) exact.set(key, domain);
+      const norm = normalize(label);
+      if (norm && !normalized.has(norm)) normalized.set(norm, domain);
+    }
   }
   return { exact, normalized };
 })();
@@ -178,9 +188,16 @@ interface CollegeLogoProps {
   /** Rendered pixel size (square). */
   size?: number;
   className?: string;
+  /**
+   * Render nothing instead of the lettered tile when the name resolves to no
+   * domain. For lists of names that are mostly outside the college database —
+   * high schools, say — where a column of monograms is noise rather than
+   * information.
+   */
+  hideWhenUnknown?: boolean;
 }
 
-export function CollegeLogo({ name, size = 24, className }: CollegeLogoProps) {
+export function CollegeLogo({ name, size = 24, className, hideWhenUnknown = false }: CollegeLogoProps) {
   const domain = useMemo(() => resolveCollegeDomain(name), [name]);
 
   const sources = useMemo(() => {
@@ -209,6 +226,7 @@ export function CollegeLogo({ name, size = 24, className }: CollegeLogoProps) {
   const dim = { width: size, height: size };
 
   if (!domain || failed || sources.length === 0) {
+    if (hideWhenUnknown) return null;
     return (
       <span
         style={{ ...dim, fontSize: Math.max(9, size * 0.38) }}

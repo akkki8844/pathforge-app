@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import {
-  Trophy, Search, ExternalLink, GraduationCap, MapPin, Award,
+  Search, ExternalLink, GraduationCap, MapPin, Award,
   Sparkles, ShieldCheck, School, Quote, ArrowUpDown,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -17,6 +17,7 @@ import { DetailOverlay, DetailSection } from "@/components/DetailOverlay";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { AnimatedCounter } from "@/components/animations/AnimatedCounter";
 import { transition } from "@/lib/motion";
+import { Eyebrow } from "@/components/cluely/primitives";
 
 type SortKey = "similarity" | "acceptances" | "recent" | "name";
 
@@ -91,18 +92,18 @@ function FilterChip({
       className={cn(
         "relative rounded-full px-3 py-1 text-xs font-medium transition-colors border",
         active
-          ? "border-transparent text-accent-foreground"
+          ? "border-transparent text-primary-foreground"
           : "bg-background text-muted-foreground border-border hover:text-foreground hover:border-foreground/20",
       )}
     >
       {active &&
         (prefersReduced ? (
-          <span className="absolute inset-0 rounded-full bg-accent" />
+          <span className="absolute inset-0 rounded-full bg-primary" />
         ) : (
           <motion.span
             layoutId={layoutId}
             transition={transition.spring}
-            className="absolute inset-0 rounded-full bg-accent"
+            className="absolute inset-0 rounded-full bg-primary"
           />
         ))}
       <span className="relative z-10 inline-flex items-center gap-1.5">{children}</span>
@@ -149,7 +150,7 @@ function AdmitDetail({
 
       <div className="p-6 space-y-5">
         <DetailSection>
-          <div className="rounded-xl border border-accent/30 bg-accent/5 px-4 py-3">
+          <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
             <p className="text-sm text-foreground font-medium">{admit.headline}</p>
           </div>
         </DetailSection>
@@ -213,7 +214,7 @@ function AdmitDetail({
         <DetailSection>
           <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
             <div className="flex items-center gap-2 mb-1">
-              <GraduationCap className="h-4 w-4 text-accent" />
+              <GraduationCap className="h-4 w-4 text-primary" />
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Chose
               </span>
@@ -247,7 +248,7 @@ function AdmitDetail({
             <ul className="space-y-1.5">
               {admit.activities.map((a) => (
                 <li key={a} className="flex items-start gap-2 text-sm text-foreground">
-                  <Sparkles className="h-3.5 w-3.5 text-accent shrink-0 mt-0.5" />
+                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                   <span className="leading-relaxed">{a}</span>
                 </li>
               ))}
@@ -286,7 +287,7 @@ function AdmitDetail({
               Their essay
             </h3>
             <blockquote className="relative rounded-xl bg-muted/50 border border-border/60 p-4 pl-10">
-              <Quote className="absolute left-3 top-4 h-4 w-4 text-accent/60" />
+              <Quote className="absolute left-3 top-4 h-4 w-4 text-primary/60" />
               <p className="text-sm leading-relaxed text-foreground">{admit.essayNote}</p>
             </blockquote>
           </DetailSection>
@@ -389,9 +390,9 @@ export default function PastAdmits() {
   );
 
   return (
-    <div className="py-8 sm:py-12">
+    <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
       <Seo
-        title="Past Admits — Pathforge"
+        title="Past Admits"
         description="Real students, real acceptances, real stats — every profile sourced from published reporting, with citations you can check yourself."
         path="/past-admits"
       />
@@ -400,13 +401,11 @@ export default function PastAdmits() {
       <div className="section-container max-w-5xl">
         {/* Header */}
         <ScrollReveal className="mb-8">
-          <Badge variant="secondary" className="mb-3 gap-1.5">
-            <Trophy className="h-3 w-3" /> Past Admits
-          </Badge>
-          <h1 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground">
+          <Eyebrow>Real acceptances, verified</Eyebrow>
+          <h1 className="mt-2 max-w-[26ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
             What actually got them in
           </h1>
-          <p className="text-muted-foreground mt-2 max-w-2xl">
+          <p className="mt-3 max-w-2xl text-[14px] leading-relaxed text-muted-foreground">
             Real students whose admissions results were publicly reported — stats, full acceptance
             lists, activities, and essays where they exist. Every claim links to its source so you
             can verify it yourself.
@@ -529,7 +528,7 @@ export default function PastAdmits() {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={() => { setQuery(""); setChose(null); setMajor(null); }}
-                    className="text-accent hover:underline font-medium"
+                    className="text-primary hover:underline font-medium"
                   >
                     Clear filters
                   </motion.button>

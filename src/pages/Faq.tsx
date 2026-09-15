@@ -9,7 +9,7 @@ export default function Faq() {
   return (
     <div className="py-10 sm:py-16 relative overflow-hidden">
       <Seo
-        title="FAQ — Pathforge"
+        title="FAQ"
         description="Answers to the most common questions about Pathforge: pricing, credits, refunds, school/counsellor access, and data privacy."
         path="/faq"
         jsonLd={{

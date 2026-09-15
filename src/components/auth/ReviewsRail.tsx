@@ -57,7 +57,9 @@ const columnC = studentReviews.slice(8, 12);
  */
 export function ReviewsRail() {
   return (
-    <div className="w-full max-w-lg">
+    // Sized to whole columns: two fit by default, three once the panel is
+    // wide enough to hold them, and neither case shows a half-column.
+    <div className="w-full max-w-[37rem] 2xl:max-w-[56rem]">
       <div className="mb-6 flex items-center gap-3">
         <GoogleGlyph className="h-6 w-6" />
         <span className="text-4xl font-semibold leading-none text-foreground">

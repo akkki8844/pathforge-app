@@ -8,6 +8,7 @@ import {
   CheckSquare,
   CircleCheck,
   Flag,
+  NotebookPen,
   Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ const KIND_ICON: Record<AgendaKind, React.ComponentType<{ className?: string }>>
   event: CalendarDays,
   habit: Repeat,
   goal: Flag,
+  testdate: NotebookPen,
 };
 
 export function NextUpCard({

@@ -19,6 +19,7 @@ import {
 import { useLevelEvaluations, isLevelComplete } from "@/hooks/useLevelEvaluations";
 import { cn } from "@/lib/utils";
 import { JourneyTour, JOURNEY_TOUR_SEEN_KEY } from "@/components/journey/JourneyTour";
+import { useProductTour } from "@/components/tour/TourProvider";
 
 import { LevelPath } from "@/components/journey/LevelPath";
 import { LevelDetailModal } from "@/components/journey/LevelDetailModal";
@@ -44,6 +45,7 @@ function StartScreen({
 }: { onConfirm: () => void; onPlace: () => void; saving: boolean }) {
   return (
     <div className="min-h-[75svh] flex items-center justify-center px-4">
+      <Seo title='Journey' description='Your phased dashboard roadmap to top colleges, with progress radar and next best actions.' path='/journey' />
       <motion.div
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
@@ -317,8 +319,13 @@ export default function Journey() {
   // one of the tour's targets is absent. The short delay lets the entrance
   // animations settle so the spotlight lands on a rect that has stopped moving.
   const autoTourFired = useRef(false);
+  // The seven-page product tour also stops here and covers both of this tour's
+  // targets. Belt to TourProvider's braces (which marks this tour seen when it
+  // opens): whichever effect wins the race, only one dialog is ever on screen.
+  const { open: productTourOpen } = useProductTour();
   useEffect(() => {
     if (autoTourFired.current) return;
+    if (productTourOpen) return;
     if (loading || !onboardingData || !journeyStarted) return;
     let seen: string | null = null;
     try {
@@ -339,7 +346,7 @@ export default function Journey() {
       setShowTour(true);
     }, 600);
     return () => window.clearTimeout(t);
-  }, [loading, onboardingData, journeyStarted]);
+  }, [loading, onboardingData, journeyStarted, productTourOpen]);
 
   const handleNext = (task: LevelTask) => {
     // task.link comes from journey/milestone data, not hand-typed by this
@@ -419,7 +426,7 @@ export default function Journey() {
 
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-4 pt-4 sm:pt-6 pb-4 space-y-4">
-      <Seo title='Journey — Pathforge' description='Your phased dashboard roadmap to top colleges, with progress radar and next best actions.' path='/journey' />
+      <Seo title='Journey' description='Your phased dashboard roadmap to top colleges, with progress radar and next best actions.' path='/journey' />
 
       <motion.div
         // Single column since the leaderboard left for /leaderboard. The path

@@ -151,7 +151,12 @@ export function useSpecularEffect(
       program.uniforms.uCenter.value = [(PAD + w / 2) * dpr, (PAD + h / 2) * dpr];
       program.uniforms.uHalfSize.value = [(w / 2) * dpr, (h / 2) * dpr];
     };
-    const ro = new ResizeObserver(resize);
+    // The uniforms this recomputes are only visible once something draws them,
+    // and on a static device nothing ever will unless it is asked to.
+    const ro = new ResizeObserver(() => {
+      resize();
+      drawAfterResize();
+    });
     ro.observe(host);
     resize();
 
@@ -160,6 +165,9 @@ export function useSpecularEffect(
     let pointerAngle: number | null = null;
     let proximityT = 0;
     const onPointerMove = (e: PointerEvent) => {
+      // Any pointer activity can change the picture again, so this is also the
+      // wake-up for a loop that suspended itself as settled.
+      wake();
       const rect = host.getBoundingClientRect();
       const cx = rect.left + rect.width / 2;
       const cy = rect.top + rect.height / 2;
@@ -178,7 +186,6 @@ export function useSpecularEffect(
       const t = Math.max(0, 1 - dist / Math.max(propsRef.current.proximity, 1));
       proximityT = t * t * (3 - 2 * t);
     };
-    window.addEventListener("pointermove", onPointerMove);
 
     let angle = 2.4;
     let idleAngle = 2.4;
@@ -191,30 +198,40 @@ export function useSpecularEffect(
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-    // Off-screen buttons (e.g. a CTA below the fold) shouldn't keep a WebGL
-    // scene rendering at 60fps for as long as they're mounted.
-    const startLoop = () => {
-      if (raf) return;
-      if (prefersReducedMotion) {
-        // Render a single static frame instead of a continuous sweep/shine loop.
-        update(performance.now());
-        cancelAnimationFrame(raf);
-        raf = 0;
-        return;
-      }
-      last = performance.now();
-      raf = requestAnimationFrame(update);
-    };
-    const stopLoop = () => {
-      if (!raf) return;
-      cancelAnimationFrame(raf);
-      raf = 0;
-    };
+    /*
+     * Whether this device can ever produce the thing the loop exists to
+     * animate.
+     *
+     * The moving part of this shader is `hi`, and `hi` is multiplied by
+     * `uIntensity = intensity * bright`. With the default `autoAnimate: false`,
+     * `bright` tracks pointer proximity and nothing else — so on a touch
+     * device it is pinned at 0 for the entire life of the page and the only
+     * thing the fragment shader ever emits is `base`, a static dark stroke
+     * hugging the rounded rect that does not depend on `uAngle` at all.
+     *
+     * Which means that on every phone and tablet, each of these was rendering
+     * a byte-identical frame sixty times a second, for as long as it was on
+     * screen, in its own WebGL context — and the landing page mounts four of
+     * them. That is the shape of workload Lighthouse reports as blocking time,
+     * and it bought a visual difference of exactly zero pixels.
+     */
+    const canHover = window.matchMedia("(hover: hover) and (pointer: fine)").matches;
 
-    const update = (now: number) => {
-      raf = requestAnimationFrame(update);
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
+    /**
+     * Nothing here can move the light, so one frame is the whole job.
+     *
+     * Read as a function rather than captured as a boolean because
+     * `autoAnimate` is a prop: it sweeps on a timer with no pointer involved,
+     * so a caller that turns it on must still animate on a touch device. No
+     * caller sets it today, and a frozen button on every phone is exactly the
+     * kind of thing that would not be noticed until one did.
+     */
+    const isStatic = () =>
+      prefersReducedMotion || (!canHover && !propsRef.current.autoAnimate);
+
+    let onScreen = false;
+
+    const draw = (dt: number) => {
       const p = propsRef.current;
 
       idleAngle += p.speed * dt;
@@ -240,16 +257,87 @@ export function useSpecularEffect(
       renderer.render({ scene: mesh });
     };
 
+    /**
+     * Has this reached a state where the next frame would be identical?
+     *
+     * `autoAnimate` sweeps forever by definition, so it is never settled.
+     * Otherwise the shine is invisible once `bright` has decayed to nothing and
+     * the pointer is outside `proximity` — `idleAngle` keeps advancing
+     * underneath, but it is multiplied by an intensity of zero, so no pixel it
+     * touches changes. The threshold is well below one 8-bit level of alpha.
+     */
+    const settled = () =>
+      !propsRef.current.autoAnimate && proximityT === 0 && bright < 0.002;
+
+    const update = (now: number) => {
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+      draw(dt);
+      // Scheduled at the foot rather than the head of the frame, which is what
+      // lets the loop decline to book another one.
+      raf = settled() ? 0 : requestAnimationFrame(update);
+    };
+
+    /** One frame, right now, outside the loop. */
+    const renderOnce = () => {
+      last = performance.now();
+      draw(0);
+    };
+
+    // Off-screen buttons (e.g. a CTA below the fold) shouldn't keep a WebGL
+    // scene rendering at 60fps for as long as they're mounted.
+    const startLoop = () => {
+      if (raf) return;
+      if (isStatic()) {
+        renderOnce();
+        return;
+      }
+      last = performance.now();
+      raf = requestAnimationFrame(update);
+    };
+    const stopLoop = () => {
+      if (!raf) return;
+      cancelAnimationFrame(raf);
+      raf = 0;
+    };
+
+    /** Restart a loop that suspended itself, but only if it is worth drawing. */
+    function wake() {
+      if (isStatic() || raf || !onScreen) return;
+      last = performance.now();
+      raf = requestAnimationFrame(update);
+    }
+
+    // A pointermove listener per instance, on the window, is not free either —
+    // and on a touch device it can only ever report a tap. Registered solely
+    // where the value it feeds can actually be seen.
+    if (canHover) window.addEventListener("pointermove", onPointerMove);
+
+    // Keep the static frame correct across a resize or an orientation change,
+    // since there is no loop to redraw it.
+    // A function declaration, not a const: the ResizeObserver above is created
+    // before this point in the effect body and delivers its first callback
+    // asynchronously, so hoisting is what keeps that first delivery safe no
+    // matter how the surrounding order is edited later.
+    function drawAfterResize() {
+      if (isStatic() && onScreen) renderOnce();
+      else wake();
+    }
+
     const stopInView = inView(host, () => {
+      onScreen = true;
       startLoop();
-      return stopLoop;
+      return () => {
+        onScreen = false;
+        stopLoop();
+      };
     }, { margin: "100px" });
 
     return () => {
       stopLoop();
       stopInView();
       ro.disconnect();
-      window.removeEventListener("pointermove", onPointerMove);
+      if (canHover) window.removeEventListener("pointermove", onPointerMove);
       if (gl.canvas.parentNode === fx) fx.removeChild(gl.canvas);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };

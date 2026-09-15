@@ -59,7 +59,7 @@ export const IN_APP_ROUTES: readonly AppRoute[] = [
   { path: "/lor", label: "Letters of Recommendation", purpose: "Recommenders, requests and LOR strategy" },
   { path: "/scholarships", label: "Scholarships", purpose: "Scholarship search and tracking" },
   { path: "/college-readiness", label: "College Readiness", purpose: "Readiness score and history" },
-  { path: "/weekly-planner", label: "Weekly Planner", purpose: "Week-by-week task planning" },
+  { path: "/weekly-planner", label: "Calendar", purpose: "Week-by-week task planning" },
   { path: "/requirements", label: "Requirements", purpose: "Per-college application requirements" },
   { path: "/admissions-probability", label: "Admissions Probability", purpose: "Chance estimates for target schools" },
   { path: "/exemplar-essays", label: "Exemplar Essays", purpose: "Library of successful essays" },

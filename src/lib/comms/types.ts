@@ -186,6 +186,38 @@ export interface MessageAttachment {
   created_at: string;
 }
 
+/**
+ * A poll, as a message's payload.
+ *
+ * Fixed at send time — there is no UPDATE policy on `message_polls` or
+ * `message_poll_options`, because changing a live poll's question or options
+ * out from under people who already voted is not something any messenger
+ * actually lets you do. Votes are the only thing that keeps moving.
+ */
+export interface MessagePoll {
+  id: string;
+  message_id: string;
+  question: string;
+  allow_multiple: boolean;
+  created_by: string;
+  created_at: string;
+}
+
+export interface MessagePollOption {
+  id: string;
+  poll_id: string;
+  label: string;
+  position: number;
+}
+
+export interface MessagePollVote {
+  id: string;
+  poll_id: string;
+  option_id: string;
+  user_id: string;
+  created_at: string;
+}
+
 export interface MessagePin {
   id: string;
   conversation_id: string;

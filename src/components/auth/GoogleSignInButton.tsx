@@ -3,14 +3,9 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 const PENDING_OAUTH_REDIRECT_KEY = "pathforge_pending_oauth_redirect";
-
-const safeRedirectPath = (value?: string) => {
-  if (!value) return "/dashboard";
-  const path = value.startsWith("/") ? value : `/${value}`;
-  return path.startsWith("//") ? "/dashboard" : path;
-};
 
 export function GoogleSignInButton({
   label = "Continue with Google",

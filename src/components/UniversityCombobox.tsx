@@ -12,7 +12,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { colleges } from "@/lib/colleges";
+import { colleges, collegeMatchesQuery } from "@/lib/colleges";
 import { CollegeLogo } from "@/components/CollegeLogo";
 
 /** All university names from our curated colleges dataset, deduped + sorted. */
@@ -61,8 +61,8 @@ export function MultiUniversityCombobox({
 
   const pool = useMemo(() => getUniversitiesForCountries(countries), [countries]);
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const base = q ? pool.filter((u) => u.toLowerCase().includes(q)) : pool;
+    const q = query.trim();
+    const base = q ? pool.filter((u) => collegeMatchesQuery(u, q)) : pool;
     return base.slice(0, 100);
   }, [pool, query]);
 
@@ -89,7 +89,8 @@ export function MultiUniversityCombobox({
       {values.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {values.map((v) => (
-            <Badge key={v} variant="secondary" className="gap-1">
+            <Badge key={v} variant="secondary" className="gap-1.5">
+              <CollegeLogo name={v} size={14} className="rounded-[3px]" />
               {v}
               <button
                 type="button"

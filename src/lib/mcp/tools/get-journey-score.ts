@@ -26,7 +26,7 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+      return { content: [{ type: "text" as const, text: "Not authenticated" }], isError: true };
     }
     const { data, error } = await sb(ctx)
       .from("journey_scores")
@@ -34,10 +34,10 @@ export default defineTool({
       .eq("user_id", ctx.getUserId())
       .maybeSingle();
     if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
+      return { content: [{ type: "text" as const, text: error.message }], isError: true };
     }
     return {
-      content: [{ type: "text", text: JSON.stringify(data ?? { score: null }, null, 2) }],
+      content: [{ type: "text" as const, text: JSON.stringify(data ?? { score: null }, null, 2) }],
       structuredContent: (data ?? { score: null }) as Record<string, unknown>,
     };
   },

@@ -152,7 +152,7 @@ export default function ApplicationBuilder() {
 
   return (
     <div className="py-8 sm:py-12">
-      <Seo title='Application Builder — Pathforge' description='Turn your achievements into professional Common App and supplemental statements with AI guidance.' path='/application-builder' />
+      <Seo title='Application Builder' description='Turn your achievements into professional Common App and supplemental statements with AI guidance.' path='/application-builder' />
       <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}

@@ -1,14 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageCircle, X, Send, Loader2, Bot, User } from "lucide-react";
+import { X, Send, Loader2, User, Copy, Check } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import { markdownCodeComponents } from "@/components/advisor/CodeBlock";
 import remarkGfm from "remark-gfm";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { Bloub } from "@/components/support/Bloub";
 import { PromptGlow } from "@/components/ui/prompt-glow";
+import { StreamingText } from "@/components/ui/streaming-text";
 
 interface Message {
   role: "user" | "assistant";
@@ -33,6 +36,15 @@ export default function SupportChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [launcherHovered, setLauncherHovered] = useState(false);
+  const [greeting, setGreeting] = useState(false);
+  // Which answer was last copied, so the tick can replace the icon for a
+  // moment. Index, not content: two identical answers are still two answers.
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+
+  // The mascot in the header says what the bot is doing: dots while it works,
+  // a wink for the first moment after you open it, resting otherwise.
+  const headerState = isLoading ? "thinking" : greeting ? "wink" : "idle";
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -45,6 +57,27 @@ export default function SupportChatbot() {
       textareaRef.current.focus();
     }
   }, [isOpen]);
+
+  // Wink hello on open, then settle. Cleared on close so it fires again next time.
+  useEffect(() => {
+    if (!isOpen) {
+      setGreeting(false);
+      return;
+    }
+    setGreeting(true);
+    const t = setTimeout(() => setGreeting(false), 1600);
+    return () => clearTimeout(t);
+  }, [isOpen]);
+
+  const copyAnswer = async (index: number, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex((c) => (c === index ? null : c)), 1600);
+    } catch {
+      toast.error("Couldn't copy that. Select the text and copy it manually.");
+    }
+  };
 
   const handleSend = async () => {
     const trimmedInput = input.trim();
@@ -82,10 +115,9 @@ export default function SupportChatbot() {
           await refreshOnboardingData();
           toast.success(`Major updated to ${data.action.value}.`);
         }
-        // Support chat is free — the support-chat function never calls
-        // consume_credit, so firing the usage-consumed event here only moved the
-        // meter and made users think asking for help had cost them part of their
-        // allowance.
+        // Support chat is free — the support-chat function never meters, so
+        // firing the usage-consumed event here only moved the meter and made
+        // users think asking for help had cost them part of their allowance.
         setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
       } else if (data?.error) {
         setMessages((prev) => [...prev, { role: "assistant", content: data.error }]);
@@ -121,11 +153,13 @@ export default function SupportChatbot() {
             whileHover={{ scale: 1.08, y: -2 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsOpen(true)}
-            className="fixed bottom-5 right-5 z-50 h-11 w-11 rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-black/10 flex items-center justify-center hover:shadow-xl transition-shadow"
+            onHoverStart={() => setLauncherHovered(true)}
+            onHoverEnd={() => setLauncherHovered(false)}
+            className="fixed bottom-5 right-5 z-50 h-11 w-11 rounded-full bg-white shadow-lg ring-1 ring-black/10 flex items-center justify-center hover:shadow-xl transition-shadow"
             aria-label="Open support chat"
             title="Support"
           >
-            <MessageCircle className="h-[18px] w-[18px]" />
+            <Bloub state={launcherHovered ? "happy" : "idle"} className="h-7 w-7" title={null} />
           </motion.button>
         )}
       </AnimatePresence>
@@ -138,13 +172,17 @@ export default function SupportChatbot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            /* 380px was narrower than the content this panel carries: a short
+               markdown table or a numbered "how do I" answer wrapped every other
+               word. 480 by default, 560 once there is room, still clamped to the
+               viewport so it never overflows a phone. */
             className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-50 flex w-[calc(100vw-2rem)] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl h-[70svh] max-h-[calc(100dvh-6rem)] sm:h-[600px] sm:w-[480px] lg:w-[560px]"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 bg-accent/10 border-b border-border">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-8 rounded-full bg-accent/20 flex items-center justify-center">
-                  <Bot className="h-4 w-4 text-accent" />
+                <div className="h-8 w-8 flex items-center justify-center">
+                  <Bloub state={headerState} className="h-8 w-8" title={null} />
                 </div>
                 <div>
                   <h3 className="font-semibold text-foreground text-sm">Pathforge Support</h3>
@@ -172,8 +210,8 @@ export default function SupportChatbot() {
                   className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}
                 >
                   {message.role === "assistant" && (
-                    <div className="h-6 w-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-1">
-                      <Bot className="h-3 w-3 text-accent" />
+                    <div className="h-6 w-6 flex items-center justify-center flex-shrink-0 mt-1">
+                      <Bloub className="h-6 w-6" title={null} still />
                     </div>
                   )}
                   <div
@@ -184,8 +222,31 @@ export default function SupportChatbot() {
                     }`}
                   >
                     {message.role === "assistant" ? (
-                      <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+                      <div className="group/answer">
+                        <div className="prose prose-sm dark:prose-invert max-w-none [&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]} components={markdownCodeComponents}>{message.content}</ReactMarkdown>
+                        </div>
+                        {/* An answer worth acting on is usually an answer worth
+                            pasting into an email to support, so it gets the same
+                            copy control the advisor's answers have. */}
+                        <button
+                          type="button"
+                          onClick={() => copyAnswer(index, message.content)}
+                          className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/answer:opacity-100"
+                          aria-label="Copy this answer"
+                        >
+                          {copiedIndex === index ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </>
+                          )}
+                        </button>
                       </div>
                     ) : (
                       <p className="whitespace-pre-wrap">{message.content}</p>
@@ -204,11 +265,16 @@ export default function SupportChatbot() {
                   animate={{ opacity: 1 }}
                   className="flex gap-2 justify-start"
                 >
-                  <div className="h-6 w-6 rounded-full bg-accent/20 flex items-center justify-center flex-shrink-0 mt-1">
-                    <Bot className="h-3 w-3 text-accent" />
+                  <div className="h-6 w-6 flex items-center justify-center flex-shrink-0 mt-1">
+                    <Bloub className="h-6 w-6" title={null} still />
                   </div>
-                  <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2.5">
-                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  <div className="flex items-center gap-2 rounded-2xl rounded-bl-md bg-muted px-4 py-2">
+                    <Bloub state="thinking" className="h-9 w-9" title="Support is typing" />
+                    {/* The one true thing about this moment: the request is out
+                        and nothing has come back yet. No fake progress steps. */}
+                    <span className="text-xs text-muted-foreground">
+                      <StreamingText text="Reading your question" active />
+                    </span>
                   </div>
                 </motion.div>
               )}

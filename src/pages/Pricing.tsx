@@ -247,7 +247,7 @@ export default function Pricing() {
   return (
     <div className="min-h-[100svh] relative overflow-hidden">
       <Seo
-        title='Pricing — Pathforge'
+        title='Pricing'
         description='Free forever with a daily usage allowance. Pro is $20/mo for about 3× that allowance monthly, Max is $75/mo for about 8×. Enterprise plans for schools and counselling teams.'
         path='/pricing'
         jsonLd={{

@@ -1,11 +1,11 @@
 import { Link } from "react-router-dom";
-import { BookOpenCheck, CheckSquare, Timer } from "lucide-react";
+import { Bell, BookOpenCheck, Timer } from "lucide-react";
 import { RoutinePanel } from "@/components/routine/RoutineShell";
 
 /**
- * Contextual jump-offs. Quick-add already lives in the sub-nav, so this row is
- * about starting the two things you *do* from Today and reaching the pages that
- * own the rest.
+ * Contextual jump-offs. Quick-add lives in the header, so this row is about
+ * starting the thing you *do* from Today and reaching the pages that own the
+ * rest.
  */
 
 const ACTIONS: {
@@ -15,8 +15,8 @@ const ACTIONS: {
   primary?: boolean;
 }[] = [
   { href: "/routine/focus", label: "Start focus", icon: Timer, primary: true },
-  { href: "/routine/tasks", label: "Tasks", icon: CheckSquare },
-  { href: "/routine/study-planner", label: "Plan & calendar", icon: BookOpenCheck },
+  { href: "/routine/reminders", label: "Reminders", icon: Bell },
+  { href: "/routine/study-planner", label: "Study planner", icon: BookOpenCheck },
 ];
 
 export function QuickActions() {

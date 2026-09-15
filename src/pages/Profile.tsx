@@ -28,7 +28,7 @@ export default function Profile() {
 
   return (
     <>
-    <Seo title="Settings — Pathforge" description="Manage your Pathforge account, preferences, notifications, connectors, and billing." path="/profile" />
+    <Seo title="Settings" description="Manage your Pathforge account, preferences, notifications, connectors, and billing." path="/profile" />
     {/* One draft store above the sections. SettingsShell unmounts inactive
         sections, so per-section state could never survive a tab switch —
         which is why edits used to silently vanish before you hit save. */}

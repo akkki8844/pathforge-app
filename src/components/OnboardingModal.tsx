@@ -13,6 +13,7 @@ import {
 import { colleges, majors } from "@/lib/data";
 import { saveProfile } from "@/lib/storage";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 interface OnboardingModalProps {
   onComplete: () => void;
 }
@@ -84,7 +85,10 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                   <SelectContent className="bg-popover">
                     {colleges.map((college) => (
                       <SelectItem key={college} value={college}>
-                        {college}
+                        <span className="flex items-center gap-2">
+                          <CollegeLogo name={college} size={16} />
+                          {college}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

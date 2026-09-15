@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { MessageSquare, Plus } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { MessageSquare, PenSquare } from "lucide-react";
 import { toast } from "sonner";
-import { Button as MotionButton } from "@/components/ui/be-ui-button";
+import { Button } from "@/components/ui/button";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CommsEmpty, CommsShell } from "@/components/comms/CommsShell";
 import { ChatThread } from "@/components/comms/chat/ChatThread";
 import { ConversationDetails } from "@/components/comms/chat/ConversationDetails";
@@ -16,6 +18,7 @@ import { ConversationList } from "@/components/comms/chat/ConversationList";
 import { NewChatDialog } from "@/components/comms/chat/NewChatDialog";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePeople } from "@/hooks/comms/usePeople";
+import { transition } from "@/lib/motion";
 import {
   useConversationActions,
   useConversations,
@@ -26,19 +29,27 @@ import {
  * Chats.
  *
  * Three panes on a desktop — list, thread, details — and on a phone the same
- * three as a stack: the list, then the thread with a labelled `← Chats` back
- * button, then details in a sheet. The panes are not separate implementations;
- * the layout decides which of them is on screen, so a fix to the thread is a fix
- * everywhere.
+ * three as a stack: the list, then the thread with a back button, then details
+ * in a sheet. The panes are not separate implementations; the layout decides
+ * which of them is on screen, so a fix to the thread is a fix everywhere.
  *
  * The open conversation lives in the URL (`?c=<id>`) rather than in component
  * state, which is what makes a conversation linkable, survivable across a
  * refresh, and correct when the browser Back button is pressed on a phone.
+ *
+ * **On the chrome.** This page runs in `bare` shell mode, which drops the page
+ * title block every other Communications page carries. That block was costing
+ * roughly a sixth of the viewport above a pane that then had to fit a header, a
+ * scrolling thread and a composer inside what was left — which is most of why
+ * the page read as congested. A messenger says what it is by looking like one;
+ * the sub-nav stays because it is how you leave, and "Chats" now titles the
+ * list pane where it also does a job.
  */
 export default function Chats() {
   const [params, setParams] = useSearchParams();
   const selectedId = params.get("c") ?? undefined;
   const isMobile = useIsMobile();
+  const reduced = useReducedMotion();
 
   const [newChatOpen, setNewChatOpen] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
@@ -120,11 +131,29 @@ export default function Chats() {
     });
   };
 
+  /** The compose control, as an icon in the list header and a button elsewhere. */
+  const newChatIcon = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setNewChatOpen(true)}
+          aria-label="New chat"
+          className="h-10 w-10 shrink-0 rounded-full text-muted-foreground hover:bg-accent/10 hover:text-accent"
+        >
+          <PenSquare className="h-[1.1rem] w-[1.1rem]" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent side="bottom">New chat</TooltipContent>
+    </Tooltip>
+  );
+
   const newChatButton = (
-    <MotionButton onClick={() => setNewChatOpen(true)} ripple className="rounded-xl">
-      <Plus className="mr-2 h-4 w-4" />
+    <Button onClick={() => setNewChatOpen(true)} className="rounded-xl">
+      <PenSquare className="mr-2 h-4 w-4" />
       New chat
-    </MotionButton>
+    </Button>
   );
 
   const listPane = (
@@ -138,6 +167,14 @@ export default function Chats() {
       onMarkUnread={handleMarkUnread}
       isLoading={isLoading}
       emptyAction={newChatButton}
+      header={
+        <div className="flex shrink-0 items-center justify-between gap-2 px-4 pb-1 pt-4">
+          <h1 className="font-display text-xl font-bold tracking-tight text-foreground">
+            Chats
+          </h1>
+          {newChatIcon}
+        </div>
+      }
     />
   );
 
@@ -151,14 +188,19 @@ export default function Chats() {
       showBackButton={isMobile}
       jumpToMessageId={jumpTo}
       onJumpHandled={() => setJumpTo(null)}
+      onTogglePin={() => togglePin(selected)}
+      onToggleMute={() => toggleMute(selected)}
+      onLeave={() => handleLeave(selected)}
     />
   ) : (
-    <CommsEmpty
-      icon={MessageSquare}
-      title="Pick a conversation"
-      description="Choose someone from the list, or start a new chat with a classmate, a teammate or your counsellor."
-      action={newChatButton}
-    />
+    <div className="flex h-full items-center justify-center bg-chat-canvas">
+      <CommsEmpty
+        icon={MessageSquare}
+        title="Pick a conversation"
+        description="Choose someone from the list, or start a new chat with a classmate, a teammate or your counsellor."
+        action={newChatButton}
+      />
+    </div>
   );
 
   const detailsPane = selected ? (
@@ -183,12 +225,29 @@ export default function Chats() {
       icon={MessageSquare}
       path="/communications/chats"
       fill
-      actions={newChatButton}
+      bare
     >
       <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
         {isMobile ? (
-          <div className="h-[calc(100vh-15rem)] min-h-[420px]">
-            {selected ? threadPane : listPane}
+          /*
+           * One pane at a time, sliding. The direction carries the hierarchy —
+           * the thread comes in from the right and leaves to the right — which
+           * is the same gesture language as the phone's own back swipe, so the
+           * layout never contradicts what the user just did.
+           */
+          <div className="relative h-full overflow-hidden">
+            <AnimatePresence initial={false} mode="popLayout">
+              <motion.div
+                key={selected ? selected.id : "list"}
+                initial={reduced ? false : { x: selected ? "100%" : "-35%", opacity: 0.6 }}
+                animate={{ x: 0, opacity: 1 }}
+                exit={reduced ? undefined : { x: selected ? "-35%" : "100%", opacity: 0.6 }}
+                transition={transition.base}
+                className="absolute inset-0"
+              >
+                {selected ? threadPane : listPane}
+              </motion.div>
+            </AnimatePresence>
           </div>
         ) : (
           <ResizablePanelGroup
@@ -197,13 +256,13 @@ export default function Chats() {
             // appears or disappears rather than resizing into a stale layout.
             key={showDetailsColumn ? "with-details" : "no-details"}
             direction="horizontal"
-            className="h-[calc(100vh-16rem)] min-h-[480px]"
+            className="h-full"
           >
-            <ResizablePanel defaultSize={28} minSize={20} maxSize={40}>
+            <ResizablePanel defaultSize={27} minSize={20} maxSize={40}>
               {listPane}
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={showDetailsColumn ? 48 : 72} minSize={35}>
+            <ResizablePanel defaultSize={showDetailsColumn ? 49 : 73} minSize={35}>
               {threadPane}
             </ResizablePanel>
             {showDetailsColumn && (

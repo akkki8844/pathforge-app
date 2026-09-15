@@ -471,7 +471,7 @@ export function AdminEmails() {
                               )}
                               className={`w-full text-left px-2 py-1.5 rounded text-xs flex items-center justify-between hover:bg-accent/10 ${checked ? "bg-accent/10 text-accent" : ""}`}
                             >
-                              <span className="truncate">{u.email} <span className="text-muted-foreground">{u.full_name || u.full_name || ""}</span></span>
+                              <span className="truncate">{u.email} <span className="text-muted-foreground">{u.full_name || ""}</span></span>
                               {checked && <CheckCircle2 className="h-3 w-3" />}
                             </button>
                           );

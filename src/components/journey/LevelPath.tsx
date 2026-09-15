@@ -339,11 +339,11 @@ function PathConnector({ from, to, completed }: { from: number; to: number; comp
 
 // ── Node ────────────────────────────────────────────────────────────────
 
-const W = 80; // cap diameter
+const W = 88; // cap diameter
 // Extrusion depth and press travel. 9px read as a drop shadow rather than as
 // thickness once the cap picked up its own outer shadow; 13 is enough for the
 // side wall below to be a visible surface with its own shading.
-const DEPTH = 13;
+const DEPTH = 18;
 
 function StageNode({
   stage,
@@ -466,6 +466,9 @@ function StageNode({
           // Lifting the cap off its own wall tilts it toward the viewer. The
           // rotation is what makes the lift read as the coin coming up out of
           // the page rather than the whole node sliding upward.
+          // A resting tilt so the cap reads as extruded even before any
+          // hover — hover deepens the same rotation rather than introducing it.
+          animate={{ rotateX: isLocked ? 0 : -4 }}
           whileHover={!isLocked ? { y: -4, rotateX: -9 } : undefined}
           whileTap={!isLocked ? { y: DEPTH, rotateX: 0 } : undefined}
           transition={{ type: "spring", stiffness: 700, damping: 26 }}

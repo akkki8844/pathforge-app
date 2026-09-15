@@ -19,6 +19,7 @@ import {
 } from "@/lib/outcomesRecord";
 import type { EvidenceState } from "@/hooks/useOutcomesData";
 
+import { BrandLogo } from "@/components/BrandLogo";
 /**
  * One entry in the record.
  *
@@ -84,6 +85,7 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
 
   const title = str(row, spec.titleKey);
   const subtitle = spec.subtitle(row);
+  const organization = str(row, "organization").trim();
   const description = str(row, "description");
   const outcome = spec.outcomeKey ? str(row, spec.outcomeKey) : "";
   const link = str(row, "link").trim();
@@ -176,7 +178,14 @@ export function EntryCard({ entry, editing, onOpen, onClose, onPatch, onRemove }
         )}
       </h3>
 
-      {subtitle && <p className="mt-1 text-[15px] leading-snug text-muted-foreground">{subtitle}</p>}
+      {subtitle && (
+        <p className="mt-1 flex items-center gap-2 text-[15px] leading-snug text-muted-foreground">
+          {organization && (
+            <BrandLogo name={organization} size={18} className="rounded-[4px]" hideWhenUnknown />
+          )}
+          <span className="min-w-0">{subtitle}</span>
+        </p>
+      )}
 
       {description && (
         <p className="mt-2.5 max-w-[68ch] whitespace-pre-line text-[15px] leading-relaxed text-muted-foreground">

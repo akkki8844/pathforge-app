@@ -6,15 +6,14 @@ if (typeof window !== "undefined") {
 }
 import { motion, AnimatePresence } from "framer-motion";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import {
-  Sparkles, GraduationCap, Briefcase, Trophy, Award, BookOpen, Wrench, FlaskConical, FolderGit2, Plus, Trash2, Download, Loader2, ArrowRight, ArrowLeft, Check, FileText } from "lucide-react";
+import { Plus, Trash2, Download, Loader2, ArrowRight, ArrowLeft, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
+import { Eyebrow, Panel, StepRail, Title } from "@/components/cluely/primitives";
+import { Card } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
@@ -343,23 +342,27 @@ export default function Resume() {
      ────────────────────────────────────────────────────────────── */
   if (output) {
     return (
-      <div className="container mx-auto max-w-4xl p-6">
-        <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
-        <ScrollReveal className="mb-8 flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <Badge variant="secondary" className="mb-2">{targetRole}</Badge>
-            <h1 className="text-3xl font-bold tracking-tight">Your one-page resume</h1>
-            <p className="text-muted-foreground mt-1">ATS-friendly, classic format. Edit by re-running the wizard or download as PDF.</p>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => { setOutput(null); setStep(0); if (draftKey) localStorage.removeItem(draftKey); }}>Start over</Button>
-            <Button onClick={downloadPDF} className="gap-2"><Download className="h-4 w-4" /> Download PDF</Button>
-          </div>
-        </ScrollReveal>
+      <div data-cluely className="min-h-svh bg-background font-cluely">
+        <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-4xl px-4 pb-24 pt-8 sm:px-6">
+          <Seo title="Resume Builder" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+          <ScrollReveal className="mb-6 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
+            <div className="min-w-0">
+              <Eyebrow>{targetRole || "Resume"}</Eyebrow>
+              <h1 className="mt-2 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+                Your one-page resume
+              </h1>
+              <p className="mt-1.5 text-[13px] text-muted-foreground">ATS-friendly, classic format. Edit by re-running the wizard or download as PDF.</p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button variant="outline" onClick={() => { setOutput(null); setStep(0); if (draftKey) localStorage.removeItem(draftKey); }}>Start over</Button>
+              <Button onClick={downloadPDF} className="gap-2"><Download className="h-4 w-4" /> Download PDF</Button>
+            </div>
+          </ScrollReveal>
 
-        <ScrollReveal delay={0.08}>
-          <ResumePreview r={output} />
-        </ScrollReveal>
+          <ScrollReveal delay={0.08}>
+            <ResumePreview r={output} />
+          </ScrollReveal>
+        </div>
       </div>
     );
   }
@@ -369,44 +372,40 @@ export default function Resume() {
      ────────────────────────────────────────────────────────────── */
   if (generating) {
     return (
-      <div className="container mx-auto max-w-2xl p-6">
-        <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        >
-          <Card className="p-10 text-center">
-            <motion.div
-              className="inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-accent/10 mb-5"
-              animate={{ rotate: [0, 5, -5, 0], scale: [1, 1.05, 1] }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-            >
-              <FileText className="h-7 w-7 text-accent" />
-            </motion.div>
-            <h2 className="text-2xl font-bold mb-2">Building your resume…</h2>
-            <p className="text-muted-foreground mb-6 text-sm">
-              Polishing every bullet, tightening to one page, formatting for ATS. ~30–60 seconds.
-            </p>
-            <AiGenerationNotice active className="mb-6 text-left" />
-            <Progress value={progress} className="h-2 mb-4" />
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={progress < 30 ? 'a' : progress < 65 ? 'b' : progress < 95 ? 'c' : 'd'}
-                className="text-xs text-muted-foreground"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6 }}
-                transition={{ duration: 0.2 }}
-              >
-                {progress < 30 && "Reading your profile…"}
-                {progress >= 30 && progress < 65 && "Writing summary + experience bullets…"}
-                {progress >= 65 && progress < 95 && "Tightening to one page…"}
-                {progress >= 95 && "Finalizing…"}
-              </motion.p>
-            </AnimatePresence>
-          </Card>
-        </motion.div>
+      <div data-cluely className="min-h-svh bg-background font-cluely">
+        <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-2xl px-4 pb-24 pt-16 sm:px-6">
+          <Seo title="Resume Builder" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.97 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <Panel tone="lead" className="text-center">
+              <Eyebrow className="mb-3">Resume Builder</Eyebrow>
+              <h2 className="mb-2 font-cluely text-[19px] font-semibold tracking-[-0.02em]">Building your resume…</h2>
+              <p className="mb-6 text-[13px] text-muted-foreground">
+                Polishing every bullet, tightening to one page, formatting for ATS. ~30–60 seconds.
+              </p>
+              <AiGenerationNotice active className="mb-6 text-left" />
+              <Progress value={progress} className="mb-4 h-1.5" />
+              <AnimatePresence mode="wait">
+                <motion.p
+                  key={progress < 30 ? 'a' : progress < 65 ? 'b' : progress < 95 ? 'c' : 'd'}
+                  className="font-cluely text-[12px] text-muted-foreground"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -6 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {progress < 30 && "Reading your profile…"}
+                  {progress >= 30 && progress < 65 && "Writing summary + experience bullets…"}
+                  {progress >= 65 && progress < 95 && "Tightening to one page…"}
+                  {progress >= 95 && "Finalizing…"}
+                </motion.p>
+              </AnimatePresence>
+            </Panel>
+          </motion.div>
+        </div>
       </div>
     );
   }
@@ -415,12 +414,15 @@ export default function Resume() {
      Wizard
      ────────────────────────────────────────────────────────────── */
   return (
-    <div className="container mx-auto max-w-3xl p-6">
-      <Seo title="Resume Builder — Pathforge" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
+    <div data-cluely className="min-h-svh bg-background font-cluely">
+      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-3xl px-4 pb-24 pt-8 sm:px-6">
+      <Seo title="Resume Builder" description="Build a polished, ATS-friendly one-page resume for college applications — auto-filled from your profile, you confirm and refine." path="/resume" />
       <ScrollReveal className="mb-6">
-        <Badge variant="secondary" className="mb-2 gap-1.5"><FileText className="h-3 w-3" /> Resume Builder</Badge>
-        <h1 className="text-3xl font-bold tracking-tight">Build a perfect one-page resume</h1>
-        <p className="text-muted-foreground mt-1.5">Classic ATS format. We auto-fill what we know — you confirm and add the rest.</p>
+        <Eyebrow>Resume Builder</Eyebrow>
+        <h1 className="mt-2 max-w-[18ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+          Build a perfect one-page resume
+        </h1>
+        <p className="mt-1.5 text-[13px] text-muted-foreground">Classic ATS format. We auto-fill what we know — you confirm and add the rest.</p>
       </ScrollReveal>
 
       {/* Build-from-LinkedIn — Pro/Enterprise only */}
@@ -495,43 +497,18 @@ export default function Resume() {
 
 
       {/* Stepper */}
-      <motion.div
-        className="flex items-center gap-2 mb-8 overflow-x-auto pb-2"
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
-      >
-        {STEPS.map((label, i) => (
-          <motion.div
-            key={label}
-            className="flex items-center gap-2 flex-shrink-0"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.15 + i * 0.05, type: 'spring', stiffness: 300, damping: 20 }}
-          >
-            <motion.div
-              className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-semibold ${i === step ? "bg-accent text-accent-foreground" : i < step ? "bg-accent/20 text-accent" : "bg-muted text-muted-foreground"}`}
-              animate={i === step ? { scale: [1, 1.12, 1] } : {}}
-              transition={{ duration: 0.3 }}
-            >
-              {i < step ? <Check className="h-3.5 w-3.5" /> : i + 1}
-            </motion.div>
-            <span className={`text-xs ${i === step ? "font-semibold text-foreground" : "text-muted-foreground"}`}>{label}</span>
-            {i < STEPS.length - 1 && <div className="w-4 h-px bg-border" />}
-          </motion.div>
-        ))}
-      </motion.div>
+      <StepRail steps={STEPS} current={step} className="mb-6" />
 
-      <Card className="p-6">
+      <Panel>
         <AnimatePresence mode="wait">
           <motion.div key={step} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }}>
 
             {/* STEP 0 — Target */}
             {step === 0 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><FileText className="h-5 w-5 text-accent" /> What is this resume for?</h2>
+                <Title className="mb-3">What is this resume for?</Title>
                 {onboardingData?.intended_major && (
-                  <div className="rounded-md border bg-accent/5 p-3 text-xs text-muted-foreground">
+                  <div className="rounded-[0.625rem] border border-primary/30 bg-primary/5 p-3 text-[12.5px] text-muted-foreground">
                     <span className="font-semibold text-foreground">Tailored for {majorEmphasis.label}.</span> {majorEmphasis.coachLine}
                   </div>
                 )}
@@ -548,7 +525,7 @@ export default function Resume() {
             {/* STEP 1 — Header */}
             {step === 1 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><FileText className="h-5 w-5 text-accent" /> Contact information</h2>
+                <Title className="mb-3">Contact information</Title>
                 <p className="text-xs text-muted-foreground -mt-2">Auto-filled from your profile. Confirm or edit.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Full name*"><Input value={header.name} onChange={(e) => setHeader({ ...header, name: e.target.value })} /></Field>
@@ -564,9 +541,9 @@ export default function Resume() {
             {/* STEP 2 — Education */}
             {step === 2 && (
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold flex items-center gap-2"><GraduationCap className="h-5 w-5 text-accent" /> Education</h2>
+                <Title className="mb-3">Education</Title>
                 {education.map((e, i) => (
-                  <div key={i} className="space-y-3 rounded-lg border p-4 bg-card">
+                  <div key={i} className="space-y-3 rounded-[0.625rem] border border-border bg-muted/40 p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <Field label="High school*"><Input value={e.school} onChange={(ev) => setEducation(upd(education, i, { school: ev.target.value }))} /></Field>
                       <Field label="Location"><Input value={e.location} onChange={(ev) => setEducation(upd(education, i, { location: ev.target.value }))} placeholder="City, Country" /></Field>
@@ -589,7 +566,7 @@ export default function Resume() {
             {step === 3 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Briefcase className="h-5 w-5 text-accent" /> Work experience (internships, jobs)</h2>
+                  <Title className="mb-3">Work experience (internships, jobs)</Title>
                   {experience.length === 0 && <p className="text-xs text-muted-foreground mb-2">Optional — add if you've done internships or paid work.</p>}
                   {experience.map((x, i) => (
                     <ItemBox key={i} onRemove={() => setExperience(remove(experience, i))}>
@@ -611,7 +588,7 @@ export default function Resume() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Trophy className="h-5 w-5 text-accent" /> Activities & leadership*</h2>
+                  <Title className="mb-3">Activities & leadership*</Title>
                   {activities.map((a, i) => (
                     <ItemBox key={i} onRemove={() => setActivities(remove(activities, i))}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -638,7 +615,7 @@ export default function Resume() {
                 <p className="text-xs text-muted-foreground -mt-1">Optional bonus sections. We auto-pulled from Outcomes if you've added items there.</p>
 
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><FolderGit2 className="h-5 w-5 text-accent" /> Projects</h2>
+                  <Title className="mb-3">Projects</Title>
                   {projects.map((p, i) => (
                     <ItemBox key={i} onRemove={() => setProjects(remove(projects, i))}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -655,7 +632,7 @@ export default function Resume() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><FlaskConical className="h-5 w-5 text-accent" /> Research / publications</h2>
+                  <Title className="mb-3">Research / publications</Title>
                   {research.map((r, i) => (
                     <ItemBox key={i} onRemove={() => setResearch(remove(research, i))}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -681,7 +658,7 @@ export default function Resume() {
             {step === 5 && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Award className="h-5 w-5 text-accent" /> Honors & awards*</h2>
+                  <Title className="mb-3">Honors & awards*</Title>
                   {honors.map((h, i) => (
                     <ItemBox key={i} onRemove={() => setHonors(remove(honors, i))}>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -698,7 +675,7 @@ export default function Resume() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><BookOpen className="h-5 w-5 text-accent" /> Certifications & coursework</h2>
+                  <Title className="mb-3">Certifications & coursework</Title>
                   {certifications.map((c, i) => (
                     <ItemBox key={i} onRemove={() => setCertifications(remove(certifications, i))}>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -718,7 +695,7 @@ export default function Resume() {
                 </div>
 
                 <div>
-                  <h2 className="text-lg font-semibold flex items-center gap-2 mb-3"><Wrench className="h-5 w-5 text-accent" /> Skills</h2>
+                  <Title className="mb-3">Skills</Title>
                   <div className="space-y-3">
                     <Field label="Technical (comma-separated)">
                       <Input value={skillsTech} onChange={(e) => setSkillsTech(e.target.value)} placeholder="Python, JavaScript, SQL, Figma…" />
@@ -736,12 +713,10 @@ export default function Resume() {
 
             {/* STEP 6 — Generate */}
             {step === 6 && (
-              <div className="space-y-4 text-center py-6">
-                <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 mb-2">
-                  <FileText className="h-7 w-7 text-accent" />
-                </div>
-                <h2 className="text-xl font-semibold">Ready to generate your resume</h2>
-                <p className="text-sm text-muted-foreground max-w-md mx-auto">
+              <div className="space-y-4 py-4 text-center">
+                <Eyebrow>Last step</Eyebrow>
+                <h2 className="font-cluely text-[19px] font-semibold tracking-[-0.02em]">Ready to generate your resume</h2>
+                <p className="mx-auto max-w-md text-[13px] text-muted-foreground">
                   We'll polish every bullet, write your summary, tighten to one page, and format it for ATS. Costs 1 credit.
                 </p>
                 <AiGenerationNotice className="mx-auto max-w-md text-left" />
@@ -755,12 +730,13 @@ export default function Resume() {
         </AnimatePresence>
 
         {step < STEPS.length - 1 && (
-          <div className="flex justify-between mt-6 pt-6 border-t">
+          <div className="flex justify-between mt-6 pt-6 border-t border-border">
             <Button variant="outline" onClick={back} disabled={step === 0} className="gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>
             <Button onClick={next} className="gap-2">Next <ArrowRight className="h-4 w-4" /></Button>
           </div>
         )}
-      </Card>
+      </Panel>
+      </div>
     </div>
   );
 }
@@ -775,7 +751,7 @@ function splitBullets(s: string): string[] {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs">{label}</Label>
+      <Label className="font-cluely text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">{label}</Label>
       {children}
     </div>
   );
@@ -783,7 +759,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function ItemBox({ children, onRemove }: { children: React.ReactNode; onRemove: () => void }) {
   return (
-    <div className="rounded-lg border p-4 bg-card mb-3 space-y-3 relative">
+    <div className="relative mb-3 space-y-3 rounded-[0.625rem] border border-border bg-muted/40 p-4">
       <Button size="icon" variant="ghost" onClick={onRemove} className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-destructive">
         <Trash2 className="h-3.5 w-3.5" />
       </Button>
@@ -794,7 +770,7 @@ function ItemBox({ children, onRemove }: { children: React.ReactNode; onRemove: 
 
 function AddButton({ onClick, label }: { onClick: () => void; label: string }) {
   return (
-    <Button variant="outline" size="sm" onClick={onClick} className="gap-2">
+    <Button variant="outline" size="sm" onClick={onClick} className="gap-2 font-cluely text-[12.5px]">
       <Plus className="h-3.5 w-3.5" /> {label}
     </Button>
   );
@@ -1052,14 +1028,11 @@ function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch)
 
   if (!hasAccess) {
     return (
-      <Card className="mb-6 p-4 border-accent/30 bg-accent/5">
-        <div className="flex items-start gap-3 flex-wrap">
-          <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-            <FileText className="h-5 w-5 text-accent" />
-          </div>
-          <div className="flex-1 min-w-[200px]">
-            <p className="text-sm font-semibold text-foreground">Import from LinkedIn — Pro feature</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+      <Panel className="mb-6 p-4">
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="min-w-[200px] flex-1">
+            <p className="font-cluely text-[13px] font-semibold text-foreground">Import from LinkedIn — Pro feature</p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
               Upload your LinkedIn PDF and we'll auto-fill your header, education, experience, activities, projects, honors, certifications, and skills exactly as they appear — no manual retyping.
             </p>
           </div>
@@ -1067,19 +1040,16 @@ function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch)
             <a href="/pricing">Upgrade to Pro</a>
           </Button>
         </div>
-      </Card>
+      </Panel>
     );
   }
 
   return (
-    <Card className="mb-6 p-4 border-accent/30 bg-accent/5">
-      <div className="flex items-start gap-3 flex-wrap">
-        <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
-          <FileText className="h-5 w-5 text-accent" />
-        </div>
-        <div className="flex-1 min-w-[200px]">
-          <p className="text-sm font-semibold text-foreground">Import from LinkedIn</p>
-          <p className="text-xs text-muted-foreground mt-0.5">
+    <Panel className="mb-6 p-4">
+      <div className="flex flex-wrap items-start gap-3">
+        <div className="min-w-[200px] flex-1">
+          <p className="font-cluely text-[13px] font-semibold text-foreground">Import from LinkedIn</p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
             Upload your LinkedIn PDF (Profile → <span className="font-medium text-foreground">More</span> → <span className="font-medium text-foreground">Save to PDF</span>). We'll autofill every section using the exact data from your profile.
           </p>
         </div>
@@ -1095,7 +1065,7 @@ function LinkedInImportButton({ onPrefill }: { onPrefill: (patch: LinkedInPatch)
           className="hidden"
         />
       </div>
-    </Card>
+    </Panel>
   );
 }
 

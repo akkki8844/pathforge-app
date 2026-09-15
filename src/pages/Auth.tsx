@@ -6,7 +6,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { PasswordStrength } from '@/components/ui/password-strength';
 import { PATHFORGE_PASSWORD_RULES } from '@/lib/passwordRules';
 import { Button } from '@/components/ui/button';
-import SpecularButtonBase from '@/components/ui/specular/SpecularButton';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -14,13 +13,11 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 
 import { z } from 'zod';
-import pathforgeLogo from '@/assets/pathforge-logo.webp';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { GitHubSignInButton } from '@/components/auth/GitHubSignInButton';
 import { ReviewsRail } from '@/components/auth/ReviewsRail';
+import { AuthShell, AuthHeading, AuthDivider } from '@/components/auth/AuthShell';
 import { Seo } from '@/components/Seo';
-
-const SpecularButton = motion.create(SpecularButtonBase);
 
 // zod's built-in .email() is deliberately permissive (accepts things like
 // "a@b" with no TLD). A stricter shape check on top catches the obviously-
@@ -63,7 +60,7 @@ const AUTH_SEO: Record<AuthView, { title: string; description: string }> = {
       'Sign in to your Pathforge account to pick up your college journey — your activities, essays, target list and admissions estimates are where you left them.',
   },
   signup: {
-    title: 'Sign up — Pathforge',
+    title: 'Sign up',
     description:
       'Create a free Pathforge account in under a minute. Three AI credits a day, forever, with no card required — build your activity plan, refine essays and estimate your admissions odds.',
   },
@@ -77,24 +74,14 @@ const AUTH_SEO: Record<AuthView, { title: string; description: string }> = {
 const EASE = [0.16, 1, 0.3, 1] as const;
 
 const formFieldVariants = {
-  hidden: { opacity: 0, y: 14, filter: 'blur(4px)' },
+  hidden: { opacity: 0, y: 10 },
   visible: (i: number) => ({
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
-    transition: { delay: 0.08 + i * 0.06, duration: 0.35, ease: EASE },
+    transition: { delay: 0.05 + i * 0.05, duration: 0.28, ease: EASE },
   }),
 };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 24, scale: 0.97 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    scale: 1,
-    transition: { duration: 0.5, ease: EASE },
-  },
-};
 
 const viewTransition = {
   initial: { opacity: 0, x: 20, filter: 'blur(4px)' },
@@ -323,7 +310,7 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-[100svh] bg-background flex items-center justify-center p-4">
+    <>
       <Seo
         title={AUTH_SEO[view].title}
         description={AUTH_SEO[view].description}
@@ -333,66 +320,19 @@ export default function Auth() {
         // Those copies are the URLs that got indexed as separate thin pages.
         noindex={searchParams.has('redirect')}
       />
-      {/* Two columns on desktop: testimony on the left, the form pinned right.
-          Below lg the reviews drop out entirely — on a phone the only thing
-          worth showing above the fold is the form itself. */}
-      <div className="w-full max-w-5xl grid gap-12 lg:grid-cols-2 lg:items-center">
-        <div className="hidden lg:flex lg:justify-start">
-          <ReviewsRail />
-        </div>
-
-        <motion.div
-          variants={cardVariants}
-          initial="hidden"
-          animate="visible"
-          className="w-full max-w-md mx-auto lg:mx-0 lg:justify-self-end"
-        >
-        <div className="card-elevated p-8">
-          {/* Logo */}
-          <motion.div
-            className="text-center mb-8"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.45, ease: EASE }}
-          >
-            <motion.img
-              src={pathforgeLogo}
-              alt="Pathforge application logo"
-              className="h-12 mx-auto mb-4"
-              initial={{ scale: 0.8, opacity: 0, rotate: -8 }}
-              animate={{ scale: 1, opacity: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 260, damping: 20, delay: 0.1 }}
-            />
-            <AnimatePresence mode="wait">
-              <motion.h1
-                key={view}
-                className="text-2xl font-bold text-foreground"
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-              >
-                {isForgot ? 'Forgot Password' : isSignUp ? 'Create Your Account' : 'Welcome Back'}
-              </motion.h1>
-            </AnimatePresence>
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={view + '-sub'}
-                className="text-muted-foreground mt-2"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.2, delay: 0.05 }}
-              >
-                {isForgot
-                  ? 'Enter your email and we\'ll send you a password reset link'
-                  : isSignUp
-                    ? 'Join Pathforge to plan your path to success'
-                    : 'Sign in to continue your college journey'
-                }
-              </motion.p>
-            </AnimatePresence>
-          </motion.div>
+      {/* Same split shell the counsellor portal uses: what the product is on
+          the left, the form on the right, and on a phone only the form. */}
+      <AuthShell aside={<ReviewsRail />} eyebrow="Student" tone="muted">
+          <AuthHeading
+            title={isForgot ? 'Reset your password' : isSignUp ? 'Create your account' : 'Welcome back'}
+            sub={
+              isForgot
+                ? "Enter your email and we'll send you a password reset link."
+                : isSignUp
+                  ? 'Join Pathforge to plan your path to the universities on your list.'
+                  : 'Sign in to continue your college journey.'
+            }
+          />
 
           {/* Forgot Password Form */}
           {isForgot ? (
@@ -477,21 +417,7 @@ export default function Auth() {
                 />
               </motion.div>
 
-              <motion.div
-                className="relative my-5"
-                initial={{ opacity: 0, scaleX: 0.3 }}
-                animate={{ opacity: 1, scaleX: 1 }}
-                transition={{ duration: 0.4, delay: 0.1, ease: EASE }}
-              >
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="bg-background px-3 text-muted-foreground uppercase tracking-wider">
-                    or use email
-                  </span>
-                </div>
-              </motion.div>
+              <AuthDivider />
 
               {/* Email Form */}
               <motion.form
@@ -637,29 +563,18 @@ export default function Auth() {
                 )}
 
                 <motion.div variants={formFieldVariants} custom={isSignUp ? 2 : 3}>
-                  <SpecularButton
-                    type="submit"
-                    size="md"
-                    radius={10}
-                    tint="#4465d8"
-                    tintOpacity={1}
-                    textColor="#ffffff"
-                    lineColor="#ffffff"
-                    baseColor="#29439c"
-                    className="w-full"
-                    disabled={loading}
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.985 }}
-                  >
+                  {/* The theme's own accent, not three hardcoded hex values
+                      that stayed navy through a theme switch. */}
+                  <Button type="submit" className="btn-accent h-11 w-full" disabled={loading}>
                     {loading ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <>
-                        {isSignUp ? 'Create Account' : 'Sign In'}
+                        {isSignUp ? 'Create account' : 'Sign in'}
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}
-                  </SpecularButton>
+                  </Button>
                 </motion.div>
               </motion.form>
 
@@ -725,16 +640,13 @@ export default function Auth() {
               </motion.div>
             </>
           )}
-        </div>
-
-          <p className="text-center text-xs text-muted-foreground mt-4">
+          <p className="mt-8 text-center text-xs leading-relaxed text-muted-foreground">
             By continuing, you agree to Pathforge's{" "}
             <a href="/terms" className="underline hover:text-accent">Terms of Service</a>,{" "}
             <a href="/privacy" className="underline hover:text-accent">Privacy Notice</a>, and{" "}
             <a href="/refund-policy" className="underline hover:text-accent">Refund Policy</a>.
           </p>
-        </motion.div>
-      </div>
-    </div>
+      </AuthShell>
+    </>
   );
 }

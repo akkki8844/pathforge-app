@@ -297,7 +297,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
         : apIb === 0
           ? `${profile.courses.length} courses on file, none at AP or IB level.`
           : `${apIb} AP/IB${honors ? ` and ${honors} honors` : ""} on file.`,
-    requirement: "A full rigorous load — roughly ten AP/IB-equivalent courses, weighted toward your intended field.",
+    requirement: "A full rigorous load: roughly ten AP/IB-equivalent courses, weighted toward your intended field.",
   });
 
   // ── Testing ────────────────────────────────────────────────────────────
@@ -480,9 +480,9 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
     reported: impactProjects.length + impactRoles.length > 0,
     reason:
       impactProjects.length + impactRoles.length === 0
-        ? "Nothing on file yet carries a number — how many people, how much raised, how far it reached."
+        ? "Nothing on file yet carries a number: how many people, how much raised, how far it reached."
         : `${impactProjects.length + impactRoles.length} entr${impactProjects.length + impactRoles.length === 1 ? "y" : "ies"} state a measurable result.`,
-    requirement: "Three verified entries whose outcome names a figure — people served, funds raised, reach achieved.",
+    requirement: "Three verified entries whose outcome names a figure: people served, funds raised, reach achieved.",
   });
 
   // ── Service ────────────────────────────────────────────────────────────
@@ -500,7 +500,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
       service.length === 0
         ? "No community or civic work recorded."
         : `${service.length} entr${service.length === 1 ? "y" : "ies"}, ${deepService.length} at forty hours or more with a stated outcome.`,
-    requirement: "Sustained verified service — forty hours or more, with a documented community result.",
+    requirement: "Sustained verified service: forty hours or more, with a documented community result.",
   });
 
   // ── Internships ────────────────────────────────────────────────────────
@@ -534,7 +534,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
       research.length === 0
         ? "No papers, posters, preprints or mentored research recorded."
         : `${research.length} output${research.length === 1 ? "" : "s"}, ${citable.length} with a venue or a link.`,
-    requirement: "A verified artefact a reader can find — paper, poster, preprint, or a mentor who will confirm it.",
+    requirement: "A verified artefact a reader can find: a paper, poster, preprint, or a mentor who will confirm it.",
   });
 
   // ── Portfolio ──────────────────────────────────────────────────────────
@@ -992,7 +992,7 @@ const TASK_COPY: Record<
   test_score: {
     objective: "Sit the SAT or ACT and report the score",
     scope:
-      "Eight weeks of preparation is the realistic floor for a meaningful jump. Book the sitting first — the date is what makes the plan real.",
+      "Eight weeks of preparation is the realistic floor for a meaningful jump. Book the sitting first; the date is what makes the plan real.",
     horizon: "Next available sitting",
     proof: ["Official score report", "Score-send confirmation to your list"],
   },
@@ -1018,7 +1018,7 @@ const TASK_COPY: Record<
   competition: {
     objective: "Enter one recognised state or national competition in your field",
     scope:
-      "Recognised means an external body runs it and publishes results — Olympiads, USACO, DECA, Regeneron, debate nationals. Entering is the minimum; the result is the signal.",
+      "Recognised means an external body runs it and publishes results: Olympiads, USACO, DECA, Regeneron, debate nationals. Entering is the minimum; the result is the signal.",
     horizon: "Next competition cycle",
     proof: ["Registration confirmation", "Official result or placement certificate"],
   },
@@ -1037,7 +1037,7 @@ const TASK_COPY: Record<
     proof: ["Signed hours log", "Statement from the organisation", "The outcome, stated as a number"],
   },
   internships: {
-    objective: "Secure one placement — lab, studio, clinic, firm, or paid work",
+    objective: "Secure one placement: lab, studio, clinic, firm, or paid work",
     scope:
       "Approach people whose work you can already discuss. A specific ask referencing their actual output outperforms fifty generic emails.",
     horizon: "One term to arrange",
@@ -1053,7 +1053,7 @@ const TASK_COPY: Record<
   creative_portfolio: {
     objective: "Publish your work somewhere with an audience",
     scope:
-      "Writing, design, music, film, software — the medium is open, the audience is not. Selection, publication, or measurable reach is what separates a portfolio from a folder.",
+      "Writing, design, music, film, software: the medium is open, the audience is not. Selection, publication, or measurable reach is what separates a portfolio from a folder.",
     horizon: "2–3 months",
     proof: ["Public link", "Audience, circulation or selection evidence"],
   },

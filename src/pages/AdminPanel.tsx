@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AdminSidebar, AdminSection } from '@/components/admin/AdminSidebar';
 import { AdminDashboard } from '@/components/admin/AdminDashboard';
+import { AdminBugs } from '@/components/admin/AdminBugs';
 import { AdminUserManagement } from '@/components/admin/AdminUserManagement';
 import { AdminAIUsage } from '@/components/admin/AdminAIUsage';
 import { AdminContent } from '@/components/admin/AdminContent';
@@ -62,6 +63,8 @@ export default function AdminPanel() {
         return <AdminDashboard />;
       case 'analytics':
         return <AdminPlatformAnalytics />;
+      case 'bugs':
+        return <AdminBugs />;
       case 'users':
         return <AdminUserManagement />;
       case 'ai-usage':
@@ -107,7 +110,7 @@ export default function AdminPanel() {
   };
 
   const sectionLabels: Record<AdminSection, string> = {
-    dashboard: "Dashboard", analytics: "Platform Analytics", users: "User Management",
+    dashboard: "Dashboard", analytics: "Platform Analytics", bugs: "Bugs", users: "User Management",
     "ai-usage": "AI Usage", content: "Content", "feature-flags": "Feature Flags",
     moderation: "Moderation", feedback: "Feedback", announcements: "Announcements",
     "proof-review": "Proof Review", coupons: "Coupons", credits: "Credits Control",

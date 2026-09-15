@@ -4,9 +4,7 @@ import { Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Seo } from "@/components/Seo";
-
-const DOWNLOAD_URL =
-  "https://github.com/akkki8844/pathforge-app/releases/latest/download/Pathforge-Setup.exe";
+import { desktopDownload } from "@/lib/desktopDownload";
 
 /**
  * The browser half of desktop sign-in.
@@ -117,7 +115,7 @@ export default function AppLogin() {
           Don't have Pathforge yet?
         </p>
         <a
-          href={DOWNLOAD_URL}
+          href={desktopDownload().url}
           className="inline-flex h-[3.1rem] items-center rounded-[0.65rem] bg-muted px-6 text-[1.05rem] font-semibold tracking-[-0.01em] text-foreground transition-colors hover:bg-muted/70"
         >
           Download Pathforge

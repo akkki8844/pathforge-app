@@ -19,7 +19,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   // Guest visitors on the landing page get the whole minimal chrome (Index
   // ships its own header/footer, so the app's is redundant there).
@@ -28,8 +28,19 @@ export function Layout({ children }: LayoutProps) {
   // browsing them, logged in or not, should see the account Navbar (with its
   // Journey/Activities/Builders links) or the lateral-nav GuestNavbar. They
   // get a logo + back button instead.
-  const MARKETING_PATHS = ["/pricing", "/about", "/contact", "/terms", "/privacy", "/refund-policy", "/faq", "/guides/ivy-league-admissions"];
+  const MARKETING_PATHS = ["/pricing", "/about", "/contact", "/terms", "/privacy", "/refund-policy", "/faq", "/guides/ivy-league-admissions", "/guides/ivy-league-study-tools"];
   const isMarketingPage = MARKETING_PATHS.includes(location.pathname);
+  // The sitewide footer is marketing chrome: Pricing, About, Terms, the guides.
+  // It belongs on the public site, not under a signed-in workspace page — on
+  // /journey it put a dark full-width link farm below the app UI and pointed a
+  // student mid-task back out to the sales pages. Signed-out visitors keep it
+  // everywhere they browse; the authenticated app only gets it on the
+  // marketing/legal routes, which are the same pages whether or not you're in.
+  // `user` starts `null` while AuthContext is still resolving the session
+  // (`loading`), which used to read exactly like signed-out and flash the
+  // marketing footer under the workspace UI on every hard refresh of an app
+  // page before flipping it back off once the session loaded.
+  const showFooter = !useGuestNav && (isMarketingPage || (!user && !loading));
 
   return (
     /*
@@ -56,7 +67,7 @@ export function Layout({ children }: LayoutProps) {
         <main className="flex-1 min-w-0">
           <PageTransition>{children}</PageTransition>
         </main>
-        {!useGuestNav && <Footer />}
+        {showFooter && <Footer />}
         {user && <FeedbackWidget />}
         {user && <UpgradeCelebration />}
       </div>

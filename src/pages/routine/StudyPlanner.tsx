@@ -52,10 +52,14 @@ import {
 } from "@/components/routine/RoutineForm";
 import {
   DEFAULT_PLAN_SETTINGS,
+  dailyCapFromWeeklyHours,
   describePlan,
+  scoreSubjects,
   suggestPlan,
   type PlanSettings,
+  type SubjectScore,
 } from "@/components/routine/study-planner/suggest";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DayIndicators,
   ItemChip,
@@ -92,23 +96,30 @@ import {
 } from "@/lib/routine/types";
 
 /**
- * The Planner: everything scheduled, and everything you decide to schedule.
+ * A study plan built around the student, not a calendar they fill in.
  *
- * This used to be two pages — a Study Planner for study blocks, and a Calendar
- * for the wider view drawn from every part of Routine. They are now one page,
- * two tabs, over the same `useRoutineSources()` call: "Study week" for
- * deciding *what* to study and *when*, "Calendar" for seeing study blocks
- * alongside classes, tasks, reminders, habits, goal deadlines and one-off
- * events in a single agenda. `buildAgenda()` is what makes that agenda
- * automatic — an objective accepted in Communications writes a
- * `routine_tasks` row, and a goal's target date is read directly, so nothing
- * here has to know those features exist.
+ * "My plan" is the primary tab: `scoreSubjects()` runs unconditionally and
+ * shows *why* each subject needs attention this week — an exam nine days out,
+ * three open tasks, hours already logged — before the student ever opens the
+ * plan-builder dialog. Subjects come from onboarding first (so a student who
+ * hasn't touched their timetable yet still gets a real plan), then from
+ * classes and study history. The daily time budget defaults to what
+ * onboarding's "weekly hours available" bucket implies, not a generic guess.
+ * "Build my study plan" runs `suggestPlan()` — the real scheduling algorithm
+ * in `study-planner/suggest.ts` — against those personal inputs.
  *
- * The distinction that made Study Planner its own page originally still holds
- * *inside* this page: a task is "submit the physics assignment", done or not;
- * a study block is "45 minutes on electromagnetism, Tuesday evening", time
- * committed to a subject. The "Suggest a plan" action stays specific to study
- * blocks for that reason.
+ * "Full schedule" is the second tab: study blocks alongside classes, tasks,
+ * reminders, habits, goal deadlines and one-off events, in a single agenda.
+ * `buildAgenda()` is what makes that automatic — an objective accepted in
+ * Communications writes a `routine_tasks` row, and a goal's target date is
+ * read directly, so nothing here has to know those features exist. It used to
+ * be this page's whole identity (a bare Calendar); now it's the supplementary
+ * view for "what's everything on my plate", not the first thing a student sees.
+ *
+ * The distinction that made Study Planner its own page originally still holds:
+ * a task is "submit the physics assignment", done or not; a study block is
+ * "45 minutes on electromagnetism, Tuesday evening", time committed to a
+ * subject. The plan-builder stays specific to study blocks for that reason.
  */
 
 const STATUS_LABEL: Record<StudyBlockStatus, string> = {
@@ -160,6 +171,9 @@ const DEFAULT_EVENT: NewRoutineEvent = {
   ends_at: null,
   all_day: false,
   location: null,
+  recurrence: null,
+  recurrence_end: null,
+  calendar_id: null,
 };
 
 interface EventDraft extends NewRoutineEvent {
@@ -171,6 +185,7 @@ const AGENDA_DAYS = 45;
 
 export default function StudyPlanner() {
   const { sources, loading, error, study, goals, events: eventApi } = useRoutineSources();
+  const { onboardingData } = useAuth();
   const isMobile = useIsMobile();
   const navigate = useNavigate();
   const [tab, setTab] = useState<"study" | "calendar">("study");
@@ -193,10 +208,44 @@ export default function StudyPlanner() {
   const now = useMemo(() => new Date(), []);
   const blocks = study.studyBlocks;
 
+  // Onboarding subjects seed this immediately — a student who hasn't touched
+  // their timetable yet still gets a plan built around what they actually
+  // take, not an empty list waiting for classes to exist.
   const subjects = useMemo(
-    () => knownSubjects(null, sources.classes ?? [], blocks),
-    [sources.classes, blocks],
+    () => knownSubjects(onboardingData?.subjects ?? null, sources.classes ?? [], blocks),
+    [onboardingData?.subjects, sources.classes, blocks],
   );
+
+  /** This week's urgency read, always visible — not locked behind the dialog. */
+  const priorities = useMemo(
+    () =>
+      scoreSubjects(
+        {
+          subjects,
+          classes: sources.classes ?? [],
+          events: sources.events ?? [],
+          tasks: sources.tasks ?? [],
+          existingBlocks: blocks,
+          now,
+        },
+        DEFAULT_PLAN_SETTINGS,
+      ),
+    [subjects, sources.classes, sources.events, sources.tasks, blocks, now],
+  );
+
+  /** Onboarding's weekly-hours bucket, translated into a daily cap — the one
+   *  planner default that comes from the student's own profile rather than a
+   *  generic guess. */
+  const personalDailyCap = useMemo(
+    () => dailyCapFromWeeklyHours(onboardingData?.weekly_hours_available),
+    [onboardingData?.weekly_hours_available],
+  );
+
+  const openPlanner = () =>
+    setPlanner({
+      ...DEFAULT_PLAN_SETTINGS,
+      dailyCapMinutes: personalDailyCap ?? DEFAULT_PLAN_SETTINGS.dailyCapMinutes,
+    });
 
   const week = useMemo(
     () => Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)),
@@ -431,6 +480,9 @@ export default function StudyPlanner() {
       ends_at: e.ends_at,
       all_day: e.all_day,
       location: e.location,
+      recurrence: e.recurrence,
+      recurrence_end: e.recurrence_end,
+      calendar_id: e.calendar_id,
     });
   };
 
@@ -485,7 +537,7 @@ export default function StudyPlanner() {
   return (
     <RoutineShell
       title="Study Planner"
-      purpose="Decide what to study and when, and see everything else scheduled — tasks, reminders, habits, goal deadlines and one-off events — in one place."
+      purpose="A study plan built around your subjects, exams and deadlines — not a blank calendar. See everything else scheduled in Full schedule."
       icon={BookOpenCheck}
       path="/routine/study-planner"
       actions={
@@ -495,10 +547,10 @@ export default function StudyPlanner() {
               size="sm"
               variant="outline"
               className="gap-1.5"
-              onClick={() => setPlanner({ ...DEFAULT_PLAN_SETTINGS })}
+              onClick={() => openPlanner()}
             >
               <Wand2 className="h-4 w-4" />
-              Suggest a plan
+              Rebuild plan
             </Button>
             <Button size="sm" className="gap-1.5" onClick={() => openNewBlock()}>
               <Plus className="h-4 w-4" />
@@ -517,11 +569,11 @@ export default function StudyPlanner() {
         <TabsList>
           <TabsTrigger value="study" className="gap-1.5">
             <BookOpenCheck className="h-4 w-4" />
-            Study week
+            My plan
           </TabsTrigger>
           <TabsTrigger value="calendar" className="gap-1.5">
             <CalendarDays className="h-4 w-4" />
-            Calendar
+            Full schedule
           </TabsTrigger>
         </TabsList>
 
@@ -533,14 +585,25 @@ export default function StudyPlanner() {
             loadingVariant="grid"
             loadingRows={6}
           >
+            {priorities.length > 0 && (
+              <PrioritiesPanel priorities={priorities} onPlan={openPlanner} className="mb-5" />
+            )}
             {blocks.length === 0 ? (
               <RoutineEmptyState
                 icon={BookOpenCheck}
-                title="Plan the week, not just the day"
-                description="A study block is time committed to a subject, not another checkbox. Let Routine draft a week around your timetable and deadlines, or place a single session yourself."
-                actionLabel="Suggest a plan for me"
-                onAction={() => setPlanner({ ...DEFAULT_PLAN_SETTINGS })}
-                secondaryLabel="Add one block"
+                title={
+                  subjects.length > 0
+                    ? "Your subjects are ready — build the plan"
+                    : "Plan the week, not just the day"
+                }
+                description={
+                  subjects.length > 0
+                    ? `Built around ${subjects.slice(0, 4).join(", ")}${subjects.length > 4 ? " and more" : ""}, your timetable, and what's due soon — not a blank grid you fill in yourself.`
+                    : "A study block is time committed to a subject, not another checkbox. Add your subjects in onboarding or a class in your timetable, then let Routine draft a week around your deadlines."
+                }
+                actionLabel="Build my study plan"
+                onAction={() => openPlanner()}
+                secondaryLabel="Add one block myself"
                 onSecondary={() => openNewBlock()}
               />
             ) : (
@@ -1414,6 +1477,73 @@ export default function StudyPlanner() {
         </RoutineDialog>
       )}
     </RoutineShell>
+  );
+}
+
+/**
+ * The planner's "why" made visible without opening a dialog.
+ *
+ * This is the difference between a personalized study planner and a bare
+ * calendar: the same urgency scoring that drives the auto-generated plan is
+ * shown here plainly, every time, so a student sees *why* Chemistry outranks
+ * History this week before they ever click "Build my study plan."
+ */
+function PrioritiesPanel({
+  priorities,
+  onPlan,
+  className,
+}: {
+  priorities: SubjectScore[];
+  onPlan: () => void;
+  className?: string;
+}) {
+  const top = priorities.slice(0, 5);
+  const tierFor = (weight: number) => (weight >= 1.8 ? "high" : weight >= 1.15 ? "medium" : "low");
+
+  return (
+    <RoutinePanel
+      title="This week's priorities"
+      description="Weighed from your exams, open tasks, and how much you've already covered — not a generic list."
+      icon={Sparkles}
+      actions={
+        <Button size="sm" variant="outline" className="gap-1.5" onClick={onPlan}>
+          <Wand2 className="h-3.5 w-3.5" />
+          Build my study plan
+        </Button>
+      }
+      className={className}
+      bodyClassName="p-3 sm:p-4"
+    >
+      <ul className="space-y-2">
+        {top.map((s) => {
+          const tier = tierFor(s.weight);
+          return (
+            <li key={s.subject} className="flex items-center gap-3">
+              <span
+                className={cn(
+                  "h-2 w-2 shrink-0 rounded-full",
+                  swatch(colorForSubject(s.subject)).dot,
+                )}
+              />
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
+                {s.subject}
+              </span>
+              <span
+                className={cn(
+                  "shrink-0 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold uppercase",
+                  PRIORITY_CLASSES[tier],
+                )}
+              >
+                {tier}
+              </span>
+              <span className="hidden shrink-0 text-xs text-muted-foreground sm:inline">
+                {s.reason}
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+    </RoutinePanel>
   );
 }
 

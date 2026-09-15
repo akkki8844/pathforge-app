@@ -29,6 +29,20 @@ import { cn } from "@/lib/utils";
 import { transition } from "@/lib/motion";
 import type { ConversationGroup, AdvisorProject } from "@/hooks/useAdvisorHistory";
 
+// One small-caps label for every section heading in this rail — Pinned,
+// Projects, Chats, the date buckets under it, and Archived all used to carry
+// slightly different sizes, weights and tracking, which is what made the list
+// read as several components stitched together rather than one list.
+const SECTION_EYEBROW = "text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground";
+// The date buckets ("Previous 7 days"...) sit one level under "Chats"; a
+// lighter, smaller label plus extra indent is what actually reads as nested
+// rather than another top-level section of equal weight.
+const SUBGROUP_LABEL = "text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/70";
+// The neutral count next to a project name — same pill shape as the primary-
+// tinted badges in the rail's workspace links, in muted ink since it is
+// informational rather than something new to look at.
+const COUNT_PILL = "inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground";
+
 /**
  * The advisor's chat history, without any surrounding chrome.
  *
@@ -243,7 +257,7 @@ export function ConversationList({
       <div
         key={conv.conversation_id}
         className={cn(
-          "group/row relative flex items-center rounded-lg transition-colors",
+          "group/row relative flex min-h-9 items-center rounded-lg transition-colors",
           isActive ? "bg-secondary" : "hover:bg-secondary/50",
         )}
       >
@@ -252,11 +266,11 @@ export function ConversationList({
           className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
         >
           {conv.pinned ? (
-            <Zap className="h-3.5 w-3.5 shrink-0 fill-accent text-accent" />
+            <Zap className="h-4 w-4 shrink-0 fill-accent text-accent" />
           ) : (
-            <MessageSquare className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+            <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
           )}
-          <span className="flex-1 truncate text-sm">{conv.name}</span>
+          <span className="flex-1 truncate text-[13px] font-medium">{conv.name}</span>
         </button>
         {/*
          * Archive keeps its own always-visible control rather than living only
@@ -316,9 +330,7 @@ export function ConversationList({
             </DropdownMenuItem>
 
             <DropdownMenuSeparator />
-            <div className="px-2 py-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">
-              Move to project
-            </div>
+            <div className={cn("px-2 py-1", SECTION_EYEBROW)}>Move to project</div>
             <DropdownMenuItem
               onClick={() => onSetProject(conv.conversation_id, null)}
               className="gap-2 text-xs"
@@ -376,7 +388,7 @@ export function ConversationList({
     <>
       {searching ? (
         <div>
-          <div className="mb-1 px-2 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+          <div className={cn("mb-1 px-2", SECTION_EYEBROW)}>
             {searchResults.length === 0
               ? "No matches"
               : `${searchResults.length} result${searchResults.length > 1 ? "s" : ""}`}
@@ -400,20 +412,18 @@ export function ConversationList({
       ) : (
         <>
           {pinned.length > 0 && (
-            <div className="mb-4">
-              <div className="mb-1 flex items-center gap-1 px-2 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+            <div className="mb-5">
+              <div className={cn("mb-1.5 flex items-center gap-1.5 px-2", SECTION_EYEBROW)}>
                 <Zap className="h-3 w-3" /> Pinned
               </div>
               <div className="space-y-0.5">{pinned.map(renderConv)}</div>
             </div>
           )}
 
-          <div className="mb-4 scroll-mt-2">
-            <div className="mb-1 flex items-center gap-1 px-2">
+          <div className="mb-5 scroll-mt-2">
+            <div className="mb-1.5 flex items-center gap-1.5 px-2">
               <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className="flex-1 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                Projects
-              </span>
+              <span className={cn("flex-1", SECTION_EYEBROW)}>Projects</span>
               <button
                 type="button"
                 onClick={onNewProject}
@@ -480,11 +490,9 @@ export function ConversationList({
                               !collapsed && "rotate-90",
                             )}
                           />
-                          <FileBox className="h-3.5 w-3.5 shrink-0 text-accent" />
-                          <span className="flex-1 truncate text-sm font-medium">{p.name}</span>
-                          <span className="shrink-0 text-[11px] text-muted-foreground">
-                            {items.length}
-                          </span>
+                          <FileBox className="h-4 w-4 shrink-0 text-accent" />
+                          <span className="flex-1 truncate text-[13px] font-medium">{p.name}</span>
+                          <span className={COUNT_PILL}>{items.length}</span>
                         </button>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -543,15 +551,11 @@ export function ConversationList({
           </div>
 
           {(pinned.length > 0 || dateGroups.length > 0) && (
-            <div className="mb-1 px-2 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-              Chats
-            </div>
+            <div className={cn("mb-2 px-2", SECTION_EYEBROW)}>Chats</div>
           )}
           {dateGroups.map((g) => (
-            <div key={g.label} className="mb-4">
-              <div className="mb-1 px-2 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
-                {g.label}
-              </div>
+            <div key={g.label} className="mb-3">
+              <div className={cn("mb-1 px-3", SUBGROUP_LABEL)}>{g.label}</div>
               <div className="space-y-0.5">{g.items.map(renderConv)}</div>
             </div>
           ))}
@@ -562,10 +566,13 @@ export function ConversationList({
           exists once you have used it cannot be discovered, and the rail's
           Archived button needs somewhere to land. */}
       {!searching && (
-        <div ref={archivedAnchorRef} className="mt-4 scroll-mt-2 border-t border-border/60 pt-3">
+        <div ref={archivedAnchorRef} className="mt-5 scroll-mt-2 border-t border-border pt-4">
           <button
             onClick={() => onArchivedOpenChange(!archivedOpen)}
-            className="flex w-full items-center gap-1.5 px-2 py-1 font-display text-[11px] font-bold uppercase tracking-[0.12em] text-muted-foreground transition-colors hover:text-foreground"
+            className={cn(
+              "flex w-full items-center gap-1.5 px-2 py-1 transition-colors hover:text-foreground",
+              SECTION_EYEBROW,
+            )}
             aria-expanded={archivedOpen}
           >
             {archivedOpen ? (

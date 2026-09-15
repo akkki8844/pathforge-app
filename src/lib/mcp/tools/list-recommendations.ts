@@ -26,7 +26,7 @@ export default defineTool({
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async (_input, ctx) => {
     if (!ctx.isAuthenticated()) {
-      return { content: [{ type: "text", text: "Not authenticated" }], isError: true };
+      return { content: [{ type: "text" as const, text: "Not authenticated" }], isError: true };
     }
     const { data, error } = await sb(ctx)
       .from("readiness_analyses")
@@ -35,11 +35,11 @@ export default defineTool({
       .order("created_at", { ascending: false })
       .limit(10);
     if (error) {
-      return { content: [{ type: "text", text: error.message }], isError: true };
+      return { content: [{ type: "text" as const, text: error.message }], isError: true };
     }
     const rows = data ?? [];
     return {
-      content: [{ type: "text", text: JSON.stringify(rows, null, 2) }],
+      content: [{ type: "text" as const, text: JSON.stringify(rows, null, 2) }],
       structuredContent: { items: rows },
     };
   },

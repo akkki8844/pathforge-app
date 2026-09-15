@@ -2,8 +2,8 @@ import { useState } from "react";
 import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  FileText, Upload, Target, Sparkles, GraduationCap, Loader2, X, ChevronDown, History, Trash2, Clock, Pencil, Check } from "lucide-react";
+import {
+  Upload, Sparkles, Loader2, X, ChevronDown, History, Trash2, Clock, Pencil, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -37,6 +37,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Seo } from "@/components/Seo";
 import { ReadinessReport } from "@/components/readiness/ReadinessReport";
 import { CollegeLogo } from "@/components/CollegeLogo";
+import { Eyebrow, Panel, Title } from "@/components/cluely/primitives";
 
 export default function CollegeReadiness() {
   const { user } = useAuth();
@@ -230,8 +231,8 @@ export default function CollegeReadiness() {
   };
 
   return (
-    <div className="py-8 sm:py-12">
-      <Seo title='College Readiness — Pathforge' description='Upload your report card and goals to see where you stand for top colleges and what to improve next.' path='/college-readiness' />
+    <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
+      <Seo title='College Readiness' description='Upload your report card and goals to see where you stand for top colleges and what to improve next.' path='/college-readiness' />
       <div className="section-container">
         {/* Header */}
         <motion.div
@@ -242,26 +243,15 @@ export default function CollegeReadiness() {
         >
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-                <motion.div
-                  initial={{ rotate: -15, scale: 0.8 }}
-                  animate={{ rotate: 0, scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 250, damping: 18, delay: 0.1 }}
-                >
-                  <GraduationCap className="h-8 w-8 text-accent" />
-                </motion.div>
-                College Readiness Analysis
+              <Eyebrow>Report card analysis</Eyebrow>
+              <h1 className="mt-2 max-w-[26ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+                College readiness analysis
               </h1>
-              <motion.p
-                className="mt-2 text-muted-foreground"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.15, duration: 0.3 }}
-              >
+              <p className="mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted-foreground">
                 Upload your report card and get personalized insights for your college goals
-              </motion.p>
+              </p>
             </div>
-            
+
             <div className="flex items-center gap-2">
             {/* History Button */}
             {user && (
@@ -271,7 +261,7 @@ export default function CollegeReadiness() {
                     <History className="h-4 w-4" />
                     History
                     {analyses.length > 0 && (
-                      <span className="ml-1 text-xs bg-accent/20 text-accent px-1.5 py-0.5 rounded-full">
+                      <span className="ml-1 text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
                         {analyses.length}
                       </span>
                     )}
@@ -337,7 +327,7 @@ export default function CollegeReadiness() {
                                   <h4 className="font-medium text-foreground">{a.name}</h4>
                                   <button 
                                     onClick={() => startRename(a.id, a.name)}
-                                    className="text-muted-foreground hover:text-accent"
+                                    className="text-muted-foreground hover:text-primary"
                                   >
                                     <Pencil className="h-3 w-3" />
                                   </button>
@@ -387,26 +377,23 @@ export default function CollegeReadiness() {
           <div className="space-y-6">
             {/* PDF Upload */}
             <motion.div
-              className="card-elevated p-6"
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
             >
-              <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                <FileText className="h-5 w-5 text-accent" />
-                Upload Report Card
-              </h2>
+              <Panel>
+              <Title className="mb-4">Upload report card</Title>
 
               {!pdfFile ? (
                 <label className="block cursor-pointer">
                   <motion.div
-                    className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-accent/50 hover:bg-accent/5 transition-all"
-                    whileHover={{ scale: 1.01, borderColor: 'hsl(var(--accent))' }}
+                    className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/40 hover:bg-primary/5 transition-all"
+                    whileHover={{ scale: 1.01 }}
                     whileTap={{ scale: 0.99 }}
                   >
                     {isExtracting ? (
                       <div className="flex flex-col items-center gap-3">
-                        <Loader2 className="h-10 w-10 text-accent animate-spin" />
+                        <Loader2 className="h-10 w-10 text-primary animate-spin" />
                         <p className="text-muted-foreground">Processing PDF...</p>
                       </div>
                     ) : (
@@ -430,9 +417,9 @@ export default function CollegeReadiness() {
                   />
                 </label>
               ) : (
-                <div className="flex items-center justify-between p-4 bg-accent/5 rounded-lg border border-accent/20">
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-lg border border-primary/20">
                   <div className="flex items-center gap-3">
-                    <FileText className="h-8 w-8 text-accent" />
+                    <Upload className="h-8 w-8 text-primary" />
                     <div>
                       <p className="font-medium text-foreground">{pdfFile.name}</p>
                       <p className="text-sm text-muted-foreground">
@@ -464,6 +451,7 @@ export default function CollegeReadiness() {
                   <p>• Works best with standard report card formats</p>
                 </CollapsibleContent>
               </Collapsible>
+              </Panel>
             </motion.div>
 
             {/* College Goals Form */}
@@ -473,12 +461,9 @@ export default function CollegeReadiness() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -20 }}
-                  className="card-elevated p-6"
                 >
-                  <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Target className="h-5 w-5 text-accent" />
-                    Your College Goals
-                  </h2>
+                  <Panel>
+                  <Title className="mb-4">Your college goals</Title>
 
                   <div className="space-y-4">
                     {/* Intended Major - Dropdown */}
@@ -537,7 +522,7 @@ export default function CollegeReadiness() {
                           {targetUniversities.map((uni) => (
                             <span
                               key={uni}
-                              className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 text-xs rounded-full bg-accent/10 text-accent"
+                              className="inline-flex items-center gap-1.5 pl-1 pr-2 py-1 text-xs rounded-full bg-primary/10 text-primary"
                             >
                               <CollegeLogo name={uni} size={14} />
                               {uni}
@@ -570,7 +555,7 @@ export default function CollegeReadiness() {
                     <Button
                       onClick={handleAnalyze}
                       disabled={!intendedMajor.trim() || isAnalyzing}
-                      className="w-full btn-accent"
+                      className="w-full"
                     >
                       {isAnalyzing ? (
                         <>
@@ -585,6 +570,7 @@ export default function CollegeReadiness() {
                       )}
                     </Button>
                   </div>
+                  </Panel>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -599,9 +585,9 @@ export default function CollegeReadiness() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="card-elevated p-8 text-center"
                 >
-                  <Loader2 className="h-12 w-12 text-accent animate-spin mx-auto mb-4" />
+                  <Panel className="text-center">
+                  <Loader2 className="h-12 w-12 text-primary animate-spin mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">
                     Analyzing Your Report Card
                   </h3>
@@ -617,8 +603,9 @@ export default function CollegeReadiness() {
                     role="progressbar"
                     aria-label="Analysing"
                   >
-                    <div className="h-full w-full animate-pulse rounded-full bg-accent/70" />
+                    <div className="h-full w-full animate-pulse rounded-full bg-primary/70" />
                   </div>
+                  </Panel>
                 </motion.div>
               ) : analysis ? (
                 <div key="results">
@@ -630,9 +617,9 @@ export default function CollegeReadiness() {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="card-elevated p-8 text-center"
                 >
-                  <GraduationCap className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <Panel className="text-center">
+                  <Upload className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">
                     Ready to Analyze
                   </h3>
@@ -640,6 +627,7 @@ export default function CollegeReadiness() {
                     Upload your report card and enter your college goals to receive
                     personalized insights and recommendations.
                   </p>
+                  </Panel>
                 </motion.div>
               )}
             </AnimatePresence>

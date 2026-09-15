@@ -342,7 +342,7 @@ export default function Scholarships() {
 
   return (
     <div data-cluely className="min-h-svh bg-background font-cluely">
-      <Seo title='Scholarships — Pathforge' description='Browse a curated, regional database of scholarships matched to your major, region, and grade.' path='/scholarships' />
+      <Seo title='Scholarships' description='Browse a curated, regional database of scholarships matched to your major, region, and grade.' path='/scholarships' />
       {/* A searchable database of a few hundred rows wants the whole table,
           not a centred column with paper down both sides. */}
       <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1440px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">

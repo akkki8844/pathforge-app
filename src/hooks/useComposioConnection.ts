@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionError";
+import { isTrustedOAuthMessage } from "@/lib/oauthPopupMessage";
 
 export interface ComposioConnection {
   toolkit: string;
@@ -47,6 +48,7 @@ export function useComposioConnection(toolkit: ComposioToolkit = "gmail") {
   useEffect(() => {
     const onFocus = () => void refresh();
     const onMessage = (e: MessageEvent) => {
+      if (!isTrustedOAuthMessage(e)) return;
       if (e?.data && (e.data as { type?: string }).type === "composio-oauth-complete") void refresh();
     };
     window.addEventListener("focus", onFocus);

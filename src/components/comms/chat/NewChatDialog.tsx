@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Loader2, MessageSquarePlus, Search, UserPlus, X } from "lucide-react";
+import { useRef, useState } from "react";
+import { Camera, Loader2, MessageSquarePlus, Search, UserPlus, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -40,13 +40,16 @@ export function NewChatDialog({
   /** Called with the new conversation's id so the caller can open it. */
   onCreated: (conversationId: string) => void;
 }) {
-  const { startDm, createGroup } = useConversationActions();
+  const { startDm, createGroup, setGroupImage } = useConversationActions();
 
   const [dmQuery, setDmQuery] = useState("");
   const [groupQuery, setGroupQuery] = useState("");
   const [groupName, setGroupName] = useState("");
   const [groupAccent, setGroupAccent] = useState<TeamAccent>("indigo");
+  const [groupPhoto, setGroupPhoto] = useState<File | null>(null);
+  const [groupPhotoPreview, setGroupPhotoPreview] = useState<string | null>(null);
   const [selected, setSelected] = useState<Person[]>([]);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const dmSearch = usePeopleSearch(dmQuery);
   const groupSearch = usePeopleSearch(groupQuery);
@@ -56,6 +59,9 @@ export function NewChatDialog({
     setGroupQuery("");
     setGroupName("");
     setGroupAccent("indigo");
+    if (groupPhotoPreview) URL.revokeObjectURL(groupPhotoPreview);
+    setGroupPhoto(null);
+    setGroupPhotoPreview(null);
     setSelected([]);
   };
 
@@ -76,6 +82,13 @@ export function NewChatDialog({
     }
   };
 
+  const pickGroupPhoto = (file: File | undefined) => {
+    if (!file) return;
+    if (groupPhotoPreview) URL.revokeObjectURL(groupPhotoPreview);
+    setGroupPhoto(file);
+    setGroupPhotoPreview(URL.createObjectURL(file));
+  };
+
   const handleCreateGroup = async () => {
     try {
       const id = await createGroup.mutateAsync({
@@ -83,6 +96,16 @@ export function NewChatDialog({
         memberIds: selected.map((p) => p.user_id),
         accent: groupAccent,
       });
+      // The photo needs the conversation to exist first — its storage path is
+      // keyed by conversation id, same as a message attachment. A failed
+      // upload here still leaves a perfectly usable, colour-tinted group.
+      if (groupPhoto) {
+        try {
+          await setGroupImage.mutateAsync({ conversationId: id, file: groupPhoto });
+        } catch (e) {
+          toast.error(e instanceof Error ? e.message : "Group created, but the photo didn't upload.");
+        }
+      }
       close(false);
       onCreated(id);
     } catch (e) {
@@ -153,7 +176,42 @@ export function NewChatDialog({
             </div>
 
             <div className="space-y-1.5">
-              <Label>Colour</Label>
+              <Label>Group photo</Label>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => photoInputRef.current?.click()}
+                  className={cn(
+                    "group relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-dashed border-border text-muted-foreground transition-colors hover:border-primary/50 hover:text-primary",
+                    groupPhotoPreview && "border-solid",
+                  )}
+                  aria-label={groupPhotoPreview ? "Change group photo" : "Add a group photo"}
+                >
+                  {groupPhotoPreview ? (
+                    <img src={groupPhotoPreview} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <Camera className="h-5 w-5" />
+                  )}
+                  <span className="absolute inset-0 flex items-center justify-center bg-black/40 text-white opacity-0 transition-opacity group-hover:opacity-100">
+                    <Camera className="h-4 w-4" />
+                  </span>
+                </button>
+                <input
+                  ref={photoInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/gif"
+                  className="hidden"
+                  onChange={(e) => pickGroupPhoto(e.target.files?.[0])}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Optional — without one, the group shows as a tinted tile
+                  with its initials instead.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>{groupPhotoPreview ? "Colour (used if the photo is removed)" : "Colour"}</Label>
               <div className="flex flex-wrap gap-2">
                 {TEAM_ACCENTS.map((name) => (
                   <button

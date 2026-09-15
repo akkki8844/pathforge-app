@@ -858,6 +858,7 @@ const baseSchools: School[] = [
   { name: "Doha College", city: "Doha", country: "Qatar" },
   { name: "American School of Kuwait", city: "Kuwait City", country: "Kuwait" },
   { name: "British School Muscat", city: "Muscat", country: "Oman" },
+  { name: "American International School of Muscat", city: "Muscat", country: "Oman" },
   { name: "American International School of Riyadh", city: "Riyadh", country: "Saudi Arabia" },
   { name: "KAUST School", city: "Thuwal", country: "Saudi Arabia" },
   { name: "Eastern Mediterranean International School", city: "Hod HaSharon", country: "Israel" },
@@ -873,9 +874,11 @@ const baseSchools: School[] = [
   { name: "British International School Lagos", city: "Lagos", country: "Nigeria" },
   { name: "Loyola Jesuit College", city: "Abuja", country: "Nigeria" },
   { name: "SOS-Hermann Gmeiner International College", city: "Tema", country: "Ghana" },
+  { name: "Achimota School", city: "Accra", country: "Ghana" },
   { name: "Cairo American College", city: "Cairo", country: "Egypt" },
   { name: "Schutz American School", city: "Alexandria", country: "Egypt" },
   { name: "American International School of Mozambique", city: "Maputo", country: "Mozambique" },
+  { name: "Aga Khan Academy Maputo", city: "Maputo", country: "Mozambique" },
 
   // ── Additional Asia (under-represented) ──────────────────────────────
   { name: "United World College of South East Asia (Dover)", city: "Singapore", country: "Singapore" },
@@ -894,6 +897,7 @@ const baseSchools: School[] = [
   { name: "United Nations International School of Hanoi", city: "Hanoi", country: "Vietnam" },
   { name: "Saigon South International School", city: "Ho Chi Minh City", country: "Vietnam" },
   { name: "International School Dhaka", city: "Dhaka", country: "Bangladesh" },
+  { name: "Scholastica School", city: "Dhaka", country: "Bangladesh" },
   { name: "Aga Khan Academy Karachi", city: "Karachi", country: "Pakistan" },
   { name: "Karachi Grammar School", city: "Karachi", country: "Pakistan" },
   { name: "Lahore Grammar School", city: "Lahore", country: "Pakistan" },

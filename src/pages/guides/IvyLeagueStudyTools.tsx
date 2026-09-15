@@ -68,7 +68,7 @@ export default function IvyLeagueStudyTools() {
   return (
     <div className="py-10 sm:py-16 relative overflow-hidden">
       <Seo
-        title="Ivy League Study Tools — Pathforge"
+        title="Ivy League Study Tools"
         description="A practical guide to the best Ivy League study tools and apps — application planners, activity trackers, essay tools and study planners, and what each one should actually do."
         path="/guides/ivy-league-study-tools"
         type="article"

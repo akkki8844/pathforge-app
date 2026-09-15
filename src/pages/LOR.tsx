@@ -1,13 +1,20 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { fadeUp, staggerParent } from "@/lib/motion";
-import { Plus, Search, Trash2, Mail, Building2, UserRound, BookOpen, Clock, CalendarClock, CheckCircle2 } from "lucide-react";
+import {
+  Plus,
+  Search,
+  Trash2,
+  Mail,
+  Building2,
+  UserRound,
+  BookOpen,
+  CalendarClock,
+  CheckCircle2,
+} from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -34,7 +41,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SmoothTabs } from "@/components/ui/smooth-tabs";
 import { cn } from "@/lib/utils";
 import {
   RecommenderStatus,
@@ -44,15 +51,48 @@ import {
   type Recommender,
   type RecommenderInput,
 } from "@/hooks/useRecommenders";
-import { formatDistanceToNow } from "date-fns";
+import { useBragSheets } from "@/hooks/useBragSheets";
 import { BragSheetPanel } from "@/components/lor/BragSheetPanel";
 import { PacketSection } from "@/components/lor/PacketSection";
 import { StrategyCard } from "@/components/lor/StrategyCard";
 import { StrengthSection } from "@/components/lor/StrengthSection";
 import { RequestEmailSection } from "@/components/lor/RequestEmailSection";
 import { PortalLinkSection } from "@/components/lor/PortalLinkSection";
-import { ReadinessRing } from "@/components/lor/ReadinessRing";
+import { LetterStanding } from "@/components/lor/LetterStanding";
 import { ProfessorsPanel } from "@/components/lor/ProfessorsPanel";
+import { personInitials, withoutHonorific } from "@/lib/personName";
+
+import { CollegeLogo } from "@/components/CollegeLogo";
+
+/**
+ * Professors.
+ *
+ * Two jobs on one route: tracking the people writing your letters, and finding
+ * faculty worth emailing in the first place.
+ *
+ * What changed, and why:
+ *
+ * The status of a letter is a pipeline, not a filter dimension, and the page
+ * treated it as one. Six filter pills sat above the list, each with its own
+ * count badge, so a student with five recommenders could press a pill and see
+ * exactly one of them. Every row then repeated its status as a coloured chip,
+ * in a different hue per status: emerald, amber, blue, indigo, grey, plus four
+ * more hues on the deadline chip beside it. That is nine colours carrying no
+ * information the list did not already have. The list is grouped by stage now,
+ * strongest signal first, so the stage is the heading a row sits under and the
+ * whole rainbow is gone.
+ *
+ * Search is rendered only once there is enough on file to need it. Under seven
+ * recommenders every one of them is already on screen, and a search box over
+ * five rows is a control that can only ever hide four of them.
+ *
+ * The primary action follows the tab. It used to be "Add recommender" on all
+ * three, so two thirds of the time the most prominent button on the page did
+ * something unrelated to what the reader was looking at.
+ *
+ * The readiness model in `@/lib/lorReadiness` is unchanged; `LetterStanding` is what
+ * renders it now, in place of the header ring that has been retired.
+ */
 
 const emptyInput: RecommenderInput = {
   name: "",
@@ -67,41 +107,56 @@ const emptyInput: RecommenderInput = {
   submitted_at: null,
 };
 
-function StatusPill({ status }: { status: RecommenderStatus }) {
-  const tone: Record<RecommenderStatus, string> = {
-    not_requested: "bg-muted text-muted-foreground",
-    requested: "bg-blue-500/10 text-blue-600 dark:text-blue-300",
-    accepted: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-    drafting: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-    submitted: "bg-violet-500/10 text-violet-600 dark:text-violet-300",
-  };
-  return (
-    <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium", tone[status])}>
-      {STATUS_LABELS[status]}
-    </span>
-  );
-}
+/** Below this the whole list fits on screen and a search box only hides rows. */
+const SEARCH_THRESHOLD = 7;
+
+type TabId = "recommenders" | "professors" | "brag";
 
 export default function LOR() {
   const { list, create, update, remove } = useRecommenders();
+  /*
+   * Read here as well as in the panel purely to know whether the brag tab has
+   * anything on it yet. React Query serves both callers the same cached list,
+   * so this costs one extra subscription and no extra request.
+   */
+  const bragSheets = useBragSheets().list.data ?? [];
+  const [tab, setTab] = useState<TabId>("recommenders");
   const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<"all" | RecommenderStatus>("all");
   const [editing, setEditing] = useState<Recommender | null>(null);
   const [creating, setCreating] = useState(false);
   const [draft, setDraft] = useState<RecommenderInput>(emptyInput);
+  const [bragNonce, setBragNonce] = useState(0);
 
-  const items = list.data ?? [];
+  // Memoised so the empty-array fallback is not a new array identity on every
+  // render, which would re-run every derivation below it.
+  const items = useMemo(() => list.data ?? [], [list.data]);
+  const showSearch = items.length >= SEARCH_THRESHOLD;
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return items.filter((r) => {
-      if (filter !== "all" && r.status !== filter) return false;
-      if (!q) return true;
-      return [r.name, r.subject, r.school, r.position, r.email]
+    const q = showSearch ? query.trim().toLowerCase() : "";
+    if (!q) return items;
+    return items.filter((r) =>
+      [r.name, r.subject, r.school, r.position, r.email]
         .filter(Boolean)
-        .some((v) => v!.toLowerCase().includes(q));
-    });
-  }, [items, query, filter]);
+        .some((v) => v!.toLowerCase().includes(q))
+    );
+  }, [items, query, showSearch]);
+
+  /**
+   * The list, in pipeline order.
+   *
+   * Empty stages are dropped rather than printed as "Submitted (0)": a stage
+   * nobody has reached is not a fact worth a heading, and keeping them made
+   * five headings out of two real ones.
+   */
+  const stages = useMemo(
+    () =>
+      STATUS_ORDER.map((status) => ({
+        status,
+        rows: filtered.filter((r) => r.status === status),
+      })).filter((s) => s.rows.length > 0),
+    [filtered]
+  );
 
   const openCreate = () => {
     setDraft(emptyInput);
@@ -139,146 +194,118 @@ export default function LOR() {
     closeSheet();
   };
 
-  const counts = useMemo(() => {
-    const c: Record<string, number> = { all: items.length };
-    for (const s of STATUS_ORDER) c[s] = 0;
-    for (const r of items) c[r.status] = (c[r.status] ?? 0) + 1;
-    return c;
-  }, [items]);
+  /*
+   * One primary action, and it is whatever the open tab is for. Find
+   * Professors has none here on purpose: its search form carries its own
+   * submit button, and a second primary button in the header would compete
+   * with it for the same intent.
+   */
+  const action =
+    tab === "recommenders"
+      ? { label: "Add recommender", onClick: openCreate }
+      : // An empty brag tab states its own call to action beside the sentence
+        // explaining what a brag sheet is, which is a better place for it than
+        // the far corner of the header. Two buttons reading "New brag sheet"
+        // on one screen is one button too many, so the header yields until
+        // there is a list for it to add to.
+        tab === "brag" && bragSheets.length > 0
+        ? { label: "New brag sheet", onClick: () => setBragNonce((n) => n + 1) }
+        : null;
 
   return (
-    <>
+    <div data-cluely className="min-h-svh bg-background font-cluely">
       <Seo
-        title="Professors — Pathforge"
+        title="Professors"
         description="Find professors, track recommenders, statuses, and deadlines for your college recommendation letters in one place."
         path="/lor"
       />
 
-      <div className="section-container py-10 max-w-5xl">
-        <motion.header
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mb-10"
-        >
-          <div>
-            <p className="text-[11px] font-display font-bold uppercase tracking-[0.16em] text-muted-foreground mb-2">
-              Preparation
-            </p>
-            <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
+      <div className="section-container max-w-5xl py-10">
+        <header className="mb-8 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <h1 className="max-w-[22ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
               Professors
             </h1>
-            <p className="text-muted-foreground mt-2 max-w-xl">
-              Find the professors worth reaching out to, and keep every recommender, status, and deadline in one quiet place.
+            <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-muted-foreground">
+              Track who is writing your letters, and find faculty worth emailing.
             </p>
           </div>
-          <div className="flex items-center gap-3 shrink-0">
-            <ReadinessRing items={items} />
-            <Button onClick={openCreate}>
-              <Plus className="mr-2 h-4 w-4" /> Add recommender
+          {action && (
+            <Button className="shrink-0" onClick={action.onClick}>
+              <Plus className="mr-2 h-4 w-4" /> {action.label}
             </Button>
-          </div>
-        </motion.header>
+          )}
+        </header>
 
-        <Tabs defaultValue="recommenders" className="w-full">
-          <TabsList className="mb-6">
-            <TabsTrigger value="recommenders">Recommenders</TabsTrigger>
-            <TabsTrigger value="professors">Find Professors</TabsTrigger>
-            <TabsTrigger value="brag">Brag sheets</TabsTrigger>
-          </TabsList>
+        {/* The counts sit on the tabs rather than inside each panel: which tab
+            is worth opening is a question you have before you open one, and
+            answering it after the click is answering it too late. */}
+        <SmoothTabs<TabId>
+          aria-label="Letters of recommendation"
+          className="mb-6"
+          value={tab}
+          onValueChange={setTab}
+          tabs={[
+            { value: "recommenders", label: "Recommenders", badge: items.length || undefined },
+            { value: "professors", label: "Find professors" },
+            { value: "brag", label: "Brag sheets", badge: bragSheets.length || undefined },
+          ]}
+        />
 
-          <TabsContent value="recommenders" className="mt-0">
-            {/* Toolbar */}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center mb-6">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {tab === "recommenders" && (
+          <div className="mt-0 space-y-3">
+            <LetterStanding items={items} />
+
+            {showSearch && (
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by name, subject, or school"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   className="pl-9"
+                  aria-label="Search recommenders"
                 />
               </div>
-              <div className="flex flex-wrap gap-2">
-                <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>
-                  All <Badge variant="secondary" className="ml-1.5">{counts.all}</Badge>
-                </FilterChip>
-                {STATUS_ORDER.map((s) => (
-                  <FilterChip key={s} active={filter === s} onClick={() => setFilter(s)}>
-                    {STATUS_LABELS[s]}{" "}
-                    <Badge variant="secondary" className="ml-1.5">{counts[s] ?? 0}</Badge>
-                  </FilterChip>
-                ))}
-              </div>
-            </div>
+            )}
 
             <StrategyCard disabled={items.length === 0} />
 
-            {/* List */}
             {list.isLoading ? (
-              <div className="text-sm text-muted-foreground py-12 text-center">Loading…</div>
+              <LoadingRows />
             ) : filtered.length === 0 ? (
               <EmptyState onAdd={openCreate} hasAny={items.length > 0} />
             ) : (
-              <motion.div
-                variants={staggerParent}
-                custom={0.05}
-                initial="hidden"
-                animate="visible"
-                className="rounded-xl border bg-card divide-y"
-              >
-                {filtered.map((r) => (
-                  <motion.button
-                    key={r.id}
-                    variants={fadeUp}
-                    onClick={() => openEdit(r)}
-                    className="w-full text-left px-5 py-4 hover:bg-muted/40 transition flex items-center gap-4"
-                  >
-                    <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium shrink-0">
-                      {r.name.slice(0, 2).toUpperCase()}
+              <div className="space-y-5">
+                {stages.map(({ status, rows }) => (
+                  <section key={status}>
+                    <h2 className="px-1 pb-2 font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
+                      {STATUS_LABELS[status]} ({rows.length})
+                    </h2>
+                    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+                      {rows.map((r) => (
+                        <RecommenderRow key={r.id} r={r} onOpen={() => openEdit(r)} />
+                      ))}
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium truncate">{r.name}</span>
-                        <StatusPill status={r.status} />
-                      </div>
-                      <div className="text-sm text-muted-foreground truncate">
-                        {[r.position, r.subject].filter(Boolean).join(" · ") || "—"}
-                        {r.school ? <> · {r.school}</> : null}
-                      </div>
-                    </div>
-                    <div className="hidden sm:flex flex-col items-end gap-1 text-xs text-muted-foreground shrink-0">
-                      {r.due_date && r.status !== "submitted" ? (
-                        <DeadlineChip dueDate={r.due_date} />
-                      ) : null}
-                      <span className="inline-flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {formatDistanceToNow(new Date(r.updated_at), { addSuffix: true })}
-                      </span>
-                    </div>
-                  </motion.button>
+                  </section>
                 ))}
-              </motion.div>
+              </div>
             )}
-          </TabsContent>
+          </div>
+        )}
 
-          <TabsContent value="professors" className="mt-0">
-            <ProfessorsPanel />
-          </TabsContent>
+        {tab === "professors" && <ProfessorsPanel />}
 
-          <TabsContent value="brag" className="mt-0">
-            <BragSheetPanel />
-          </TabsContent>
-        </Tabs>
+        {tab === "brag" && <BragSheetPanel newSheetSignal={bragNonce} />}
       </div>
 
       {/* Add / Edit sheet */}
       <Sheet open={creating || !!editing} onOpenChange={(o) => !o && closeSheet()}>
-        <SheetContent className="w-full sm:max-w-[41rem] overflow-y-auto">
+        <SheetContent className="w-full overflow-y-auto sm:max-w-[41rem]">
           <SheetHeader>
             <SheetTitle>{editing ? "Edit recommender" : "Add recommender"}</SheetTitle>
             <SheetDescription>
-              {editing ? "Update their details or status." : "Who's writing a letter for you?"}
+              {editing ? "Update their details or status." : "Who is writing a letter for you?"}
             </SheetDescription>
           </SheetHeader>
 
@@ -287,7 +314,7 @@ export default function LOR() {
               <Input
                 value={draft.name}
                 onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                placeholder="Ms. Sarah Chen"
+                placeholder="Dr Amara Osei"
                 autoFocus
               />
             </Field>
@@ -296,7 +323,7 @@ export default function LOR() {
                 type="email"
                 value={draft.email ?? ""}
                 onChange={(e) => setDraft({ ...draft, email: e.target.value })}
-                placeholder="schen@school.edu"
+                placeholder="a.osei@fenwickcc.edu"
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -315,19 +342,17 @@ export default function LOR() {
                 />
               </Field>
             </div>
-            <Field label="School / Organization" icon={Building2}>
+            <Field label="School or organization" icon={Building2}>
               <Input
                 value={draft.school ?? ""}
                 onChange={(e) => setDraft({ ...draft, school: e.target.value })}
-                placeholder="Lincoln High School"
+                placeholder="Meridian High School"
               />
             </Field>
             <Field label="Relationship duration">
               <Input
                 value={draft.relationship_duration ?? ""}
-                onChange={(e) =>
-                  setDraft({ ...draft, relationship_duration: e.target.value })
-                }
+                onChange={(e) => setDraft({ ...draft, relationship_duration: e.target.value })}
                 placeholder="2 years"
               />
             </Field>
@@ -339,7 +364,7 @@ export default function LOR() {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="cly-scope font-cluely">
                   {STATUS_ORDER.map((s) => (
                     <SelectItem key={s} value={s}>
                       {STATUS_LABELS[s]}
@@ -353,9 +378,7 @@ export default function LOR() {
                 <Input
                   type="date"
                   value={draft.due_date ?? ""}
-                  onChange={(e) =>
-                    setDraft({ ...draft, due_date: e.target.value || null })
-                  }
+                  onChange={(e) => setDraft({ ...draft, due_date: e.target.value || null })}
                 />
               </Field>
               <Field label="Submitted on" icon={CheckCircle2}>
@@ -378,16 +401,14 @@ export default function LOR() {
               <Textarea
                 value={draft.notes ?? ""}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
-                placeholder="Anything to remember about this recommender…"
+                placeholder="Anything to remember about this recommender"
                 rows={3}
               />
             </Field>
 
             {editing && (
               <>
-                <StrengthSection
-                  recommender={items.find((r) => r.id === editing.id) ?? editing}
-                />
+                <StrengthSection recommender={items.find((r) => r.id === editing.id) ?? editing} />
                 <RequestEmailSection
                   recommender={items.find((r) => r.id === editing.id) ?? editing}
                 />
@@ -402,14 +423,14 @@ export default function LOR() {
               <AlertDialog>
                 <AlertDialogTrigger asChild>
                   <Button variant="ghost" size="sm" className="text-destructive">
-                    <Trash2 className="h-4 w-4 mr-1.5" /> Delete
+                    <Trash2 className="mr-1.5 h-4 w-4" /> Delete
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete this recommender?</AlertDialogTitle>
                     <AlertDialogDescription>
-                      This will remove {editing.name} and any notes you've kept.
+                      This will remove {editing.name} and any notes you have kept.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -442,30 +463,53 @@ export default function LOR() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
-    </>
+    </div>
   );
 }
 
-function FilterChip({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+/**
+ * One recommender.
+ *
+ * No status chip: the stage heading above the group already says it, and
+ * repeating it per row is what produced a column of five different colours.
+ * No "updated 3 minutes ago" either, which was the row's most prominent
+ * right-hand figure and told a student nothing about what to do next.
+ */
+function RecommenderRow({ r, onOpen }: { r: Recommender; onOpen: () => void }) {
+  const display = withoutHonorific(r.name) || r.name;
+  const detail = [r.position, r.subject].filter(Boolean).join(" · ");
+
   return (
     <button
-      onClick={onClick}
-      className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1.5 text-xs font-medium transition",
-        active
-          ? "border-foreground bg-foreground text-background"
-          : "border-border bg-background hover:bg-muted text-muted-foreground"
-      )}
+      onClick={onOpen}
+      className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/40"
     >
-      {children}
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-cluely text-sm font-medium">
+        {personInitials(r.name)}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-medium">{r.name}</span>
+        {(detail || r.school) && (
+          <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
+            {detail && <span className="truncate">{detail}</span>}
+            {detail && r.school && <span aria-hidden>·</span>}
+            {r.school && (
+              <>
+                <CollegeLogo name={r.school} size={14} className="rounded-[3px]" hideWhenUnknown />
+                <span className="truncate">{r.school}</span>
+              </>
+            )}
+          </span>
+        )}
+        <span className="sr-only">{display}</span>
+      </span>
+
+      {r.due_date && r.status !== "submitted" && (
+        <span className="hidden shrink-0 sm:block">
+          <DeadlineChip dueDate={r.due_date} />
+        </span>
+      )}
     </button>
   );
 }
@@ -481,7 +525,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+      <Label className="flex items-center gap-1.5 text-xs text-muted-foreground">
         {Icon ? <Icon className="h-3 w-3" /> : null}
         {label}
       </Label>
@@ -490,18 +534,32 @@ function Field({
   );
 }
 
+/** Skeleton rows in the shape of the real ones, not a centred spinner. */
+function LoadingRows() {
+  return (
+    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="flex items-center gap-4 px-5 py-4">
+          <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-muted" />
+          <div className="min-w-0 flex-1 space-y-2">
+            <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
+            <div className="h-3 w-56 animate-pulse rounded bg-muted" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
   return (
-    <div className="rounded-xl border border-dashed bg-card/50 px-6 py-16 text-center">
-      <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-        <UserRound className="h-5 w-5 text-muted-foreground" />
-      </div>
-      <h3 className="text-base font-medium mb-1">
+    <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
+      <h3 className="mb-1 text-base font-medium">
         {hasAny ? "No matches" : "Add your first recommender"}
       </h3>
-      <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
+      <p className="mx-auto mb-5 max-w-sm text-sm text-muted-foreground">
         {hasAny
-          ? "Try a different search or status filter."
+          ? "Try a different search."
           : "Start with the teacher, mentor, or supervisor most likely to write you a strong letter."}
       </p>
       {!hasAny && (
@@ -513,27 +571,35 @@ function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
   );
 }
 
+/**
+ * How long is left, in two tones rather than four.
+ *
+ * Overdue and due-within-three-days are the only two states a student does
+ * anything differently about, so they are the only two the colour separates.
+ * The blue "due within a fortnight" and grey "due later" tiers were two more
+ * hues spent on the same instruction: nothing yet.
+ */
 function DeadlineChip({ dueDate }: { dueDate: string }) {
   const due = new Date(dueDate);
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const days = Math.round((due.getTime() - today.getTime()) / 86400000);
-  const tone =
-    days < 0
-      ? "bg-destructive/10 text-destructive"
-      : days <= 3
-      ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-      : days <= 14
-      ? "bg-blue-500/10 text-blue-600 dark:text-blue-300"
-      : "bg-muted text-muted-foreground";
+  const urgent = days <= 3;
   const label =
     days < 0
       ? `${Math.abs(days)}d overdue`
       : days === 0
-      ? "Due today"
-      : `Due in ${days}d`;
+        ? "Due today"
+        : `Due in ${days}d`;
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", tone)}>
+    <span
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-medium",
+        urgent
+          ? "border-destructive/40 bg-destructive/5 text-destructive"
+          : "border-border text-muted-foreground"
+      )}
+    >
       <CalendarClock className="h-3 w-3" />
       {label}
     </span>

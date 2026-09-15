@@ -6,7 +6,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { fadeUp, staggerParent } from "@/lib/motion";
 import { functionErrorMessage } from "@/lib/functionError";
 import {
-  FileText, CheckCircle2, Circle, RefreshCw, ArrowRight, Sparkles, Loader2, AlertTriangle, Lightbulb, Target, TrendingUp, ThumbsUp, ThumbsDown, Wand2, BarChart3, PenLine } from "lucide-react";
+  CheckCircle2, Circle, RefreshCw, ArrowRight, Sparkles, Loader2, AlertTriangle, ThumbsUp, ThumbsDown, Wand2, BarChart3, PenLine } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -27,7 +27,7 @@ import { notifyUsageConsumed } from "@/contexts/UsageContext";
 import { Seo } from "@/components/Seo";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
-import { ReadingIcon } from "@/components/icons/FlatSvgIcons";
+import { Eyebrow, Panel, Title } from "@/components/cluely/primitives";
 
 const checklistItems = [
   { key: "opening", label: "Strong opening hook" },
@@ -190,16 +190,16 @@ export default function Essays() {
     n >= 80 ? "text-emerald-600 dark:text-emerald-400" : n >= 60 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400";
 
   return (
-    <div className="py-8 sm:py-12">
-      <Seo title='Essays — Pathforge' description='Polish your college essays with grounded AI feedback that preserves your voice — no hallucinations.' path='/essays' />
+    <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
+      <Seo title='Essays' description='Polish your college essays with grounded AI feedback that preserves your voice — no hallucinations.' path='/essays' />
       <div className="section-container max-w-5xl">
         {/* Header */}
         <ScrollReveal className="mb-6">
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
-            <ReadingIcon className="h-8 w-8" />
-            Essay Refiner & Analyzer
+          <Eyebrow>AI-assisted writing</Eyebrow>
+          <h1 className="mt-2 max-w-[26ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+            Essay refiner & analyzer
           </h1>
-          <p className="mt-2 text-muted-foreground">
+          <p className="mt-3 max-w-[52ch] text-[14px] leading-relaxed text-muted-foreground">
             Polish your essay and get an honest, structured evaluation from an admissions-trained AI.
           </p>
         </ScrollReveal>
@@ -280,7 +280,7 @@ export default function Essays() {
 
           <TabsContent value="refine" className="mt-6">
             {isRefining && <AiGenerationNotice active className="mb-4" />}
-            <Button onClick={handleRefine} disabled={isRefining || !originalEssay.trim()} className="btn-accent">
+            <Button onClick={handleRefine} disabled={isRefining || !originalEssay.trim()}>
               {isRefining ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Refining...</>) : (<><Sparkles className="mr-2 h-4 w-4" />Refine essay</>)}
             </Button>
 
@@ -293,7 +293,7 @@ export default function Essays() {
                 className="mt-8 space-y-6"
               >
                 <motion.div variants={fadeUp} className="grid md:grid-cols-2 gap-6">
-                  <div className="card-elevated p-6">
+                  <Panel>
                     <h4 className="text-sm font-medium text-muted-foreground mb-3">Original</h4>
                     {/* break-words because this is arbitrary pasted text: one
                         long unbroken token (a URL, a run-on string) blows the
@@ -303,30 +303,30 @@ export default function Essays() {
                     <div className="prose prose-sm dark:prose-invert break-words text-foreground whitespace-pre-wrap">
                       {originalEssay}
                     </div>
-                  </div>
-                  <div className="card-elevated p-6 border-accent/50">
-                    <h4 className="text-sm font-medium text-accent mb-3 flex items-center gap-2">
+                  </Panel>
+                  <Panel className="border-primary/30">
+                    <h4 className="text-sm font-medium text-primary mb-3 flex items-center gap-2">
                       <PenLine className="h-4 w-4" />Refined
                     </h4>
                     <div className="prose prose-sm dark:prose-invert break-words text-foreground whitespace-pre-wrap">
                       {refinedEssay}
                     </div>
-                  </div>
+                  </Panel>
                 </motion.div>
 
                 {suggestions.length > 0 && (
-                  <motion.div variants={fadeUp} className="card-elevated p-6">
-                    <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
-                      <Lightbulb className="h-5 w-5 text-accent" />Suggestions
-                    </h4>
+                  <motion.div variants={fadeUp}>
+                    <Panel>
+                    <Title className="mb-3">Suggestions</Title>
                     <ul className="space-y-2">
                       {suggestions.map((s, i) => (
                         <li key={i} className="flex gap-2 text-sm text-foreground">
-                          <ArrowRight className="h-4 w-4 text-accent shrink-0 mt-0.5" />
+                          <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-0.5" />
                           <span>{s}</span>
                         </li>
                       ))}
                     </ul>
+                    </Panel>
                   </motion.div>
                 )}
 
@@ -339,7 +339,7 @@ export default function Essays() {
 
           <TabsContent value="analyze" className="mt-6">
             {isAnalyzing && <AiGenerationNotice active className="mb-4" />}
-            <Button onClick={handleAnalyze} disabled={isAnalyzing || !originalEssay.trim()} className="btn-accent">
+            <Button onClick={handleAnalyze} disabled={isAnalyzing || !originalEssay.trim()}>
               {isAnalyzing ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" />Analyzing...</>) : (<><BarChart3 className="mr-2 h-4 w-4" />Analyze essay</>)}
             </Button>
 
@@ -352,7 +352,8 @@ export default function Essays() {
                 className="mt-8 space-y-6"
               >
                 {/* Overall */}
-                <motion.div variants={fadeUp} className="card-elevated p-6 flex flex-col sm:flex-row sm:items-center gap-6">
+                <motion.div variants={fadeUp}>
+                  <Panel className="flex flex-col sm:flex-row sm:items-center gap-6">
                   <div className="flex-shrink-0 text-center">
                     <div className={`text-5xl font-bold ${scoreColor(analysis.overall_score)}`}>
                       <AnimatedCounter target={analysis.overall_score} duration={1.2} />
@@ -360,13 +361,13 @@ export default function Essays() {
                     <div className="text-xs text-muted-foreground mt-1">Overall / 100</div>
                   </div>
                   <p className="text-foreground italic">"{analysis.one_line_verdict}"</p>
+                  </Panel>
                 </motion.div>
 
                 {/* Breakdown */}
-                <motion.div variants={fadeUp} className="card-elevated p-6">
-                  <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-                    <Target className="h-5 w-5 text-accent" />Breakdown
-                  </h4>
+                <motion.div variants={fadeUp}>
+                  <Panel>
+                  <Title className="mb-4">Breakdown</Title>
                   <div className="space-y-3">
                     {Object.entries(analysis.breakdown).map(([k, v]) => (
                       <div key={k}>
@@ -378,11 +379,12 @@ export default function Essays() {
                       </div>
                     ))}
                   </div>
+                  </Panel>
                 </motion.div>
 
                 {/* Did well / wrong */}
                 <motion.div variants={fadeUp} className="grid md:grid-cols-2 gap-6">
-                  <div className="card-elevated p-6">
+                  <Panel>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
                       <ThumbsUp className="h-5 w-5 text-emerald-500" />What you did well
                     </h4>
@@ -394,8 +396,8 @@ export default function Essays() {
                         </li>
                       ))}
                     </ul>
-                  </div>
-                  <div className="card-elevated p-6">
+                  </Panel>
+                  <Panel>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
                       <ThumbsDown className="h-5 w-5 text-rose-500" />What to fix
                     </h4>
@@ -407,19 +409,19 @@ export default function Essays() {
                         </li>
                       ))}
                     </ul>
-                  </div>
+                  </Panel>
                 </motion.div>
 
                 {/* How to improve */}
-                <motion.div variants={fadeUp} className="card-elevated p-6">
-                  <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
-                    <TrendingUp className="h-5 w-5 text-accent" />How to improve
-                  </h4>
+                <motion.div variants={fadeUp}>
+                  <Panel>
+                  <Title className="mb-3">How to improve</Title>
                   <ol className="space-y-2 list-decimal list-inside">
                     {analysis.how_to_improve.map((s, i) => (
                       <li key={i} className="text-sm text-foreground">{s}</li>
                     ))}
                   </ol>
+                  </Panel>
                 </motion.div>
               </motion.div>
             )}
@@ -431,10 +433,8 @@ export default function Essays() {
             into ~230px each at tablet width. */}
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           <ScrollReveal delay={0}>
-            <div className="card-elevated p-6">
-              <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-accent" />Checklist
-              </h3>
+            <Panel>
+              <Title className="mb-4">Checklist</Title>
               <div className="space-y-3">
                 {checklistItems.map((item, i) => (
                   <motion.button
@@ -458,7 +458,7 @@ export default function Essays() {
                           exit={{ scale: 0, rotate: 90 }}
                           transition={{ type: 'spring', stiffness: 400, damping: 18 }}
                         >
-                          <CheckCircle2 className="h-5 w-5 text-accent shrink-0" />
+                          <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
                         </motion.div>
                       ) : (
                         <motion.div
@@ -467,7 +467,7 @@ export default function Essays() {
                           animate={{ scale: 1 }}
                           exit={{ scale: 0 }}
                         >
-                          <Circle className="h-5 w-5 text-muted-foreground shrink-0 group-hover:text-accent transition-colors" />
+                          <Circle className="h-5 w-5 text-muted-foreground shrink-0 group-hover:text-primary transition-colors" />
                         </motion.div>
                       )}
                     </AnimatePresence>
@@ -477,14 +477,12 @@ export default function Essays() {
                   </motion.button>
                 ))}
               </div>
-            </div>
+            </Panel>
           </ScrollReveal>
 
           <ScrollReveal delay={0.08}>
-            <div className="card-elevated p-6">
-              <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                <PenLine className="h-5 w-5 text-accent" />What top essays include
-              </h3>
+            <Panel>
+              <Title className="mb-4">What top essays include</Title>
               <ul className="space-y-2">
                 {tipsTopColleges.map((t, i) => (
                   <motion.li
@@ -495,15 +493,15 @@ export default function Essays() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.06, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <ArrowRight className="h-4 w-4 text-accent shrink-0 mt-0.5" /><span>{t}</span>
+                    <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-0.5" /><span>{t}</span>
                   </motion.li>
                 ))}
               </ul>
-            </div>
+            </Panel>
           </ScrollReveal>
 
           <ScrollReveal delay={0.16}>
-            <div className="card-elevated p-6">
+            <Panel>
               <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
                 <AlertTriangle className="h-5 w-5 text-amber-500" />Common mistakes
               </h3>
@@ -521,7 +519,7 @@ export default function Essays() {
                   </motion.li>
                 ))}
               </ul>
-            </div>
+            </Panel>
           </ScrollReveal>
         </div>
       </div>

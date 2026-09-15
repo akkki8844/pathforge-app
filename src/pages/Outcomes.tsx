@@ -27,6 +27,7 @@ import {
   type Project,
 } from "@/hooks/useOutcomesData";
 import { useScoringWeights } from "@/hooks/useScoringWeights";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   useGitHubRepos,
   repoDuration,
@@ -111,6 +112,7 @@ export default function Outcomes() {
     reload,
   } = useOutcomesData();
   const { weights } = useScoringWeights();
+  const { user, profile: account } = useAuth();
   const {
     repos: githubRepos,
     connected: githubConnected,
@@ -183,7 +185,7 @@ export default function Outcomes() {
     setLinkedinLoading(true);
     try {
       await reload();
-      toast.success("Imported from LinkedIn — check each section and add what it missed.");
+      toast.success("Imported from LinkedIn. Check each section and add what it missed.");
     } finally {
       setLinkedinLoading(false);
     }
@@ -202,6 +204,26 @@ export default function Outcomes() {
   const coursework = useMemo(() => readCoursework(profile), [profile]);
   const tasks = useMemo(() => generateGapTasks(signals, reading), [signals, reading]);
   const academicsBar = reading.categories.find((c) => c.key === "academics")?.bar ?? 95;
+
+  /*
+   * Whose file this is, for the record's identity card. Falls back through
+   * the account name, then the email's local part, then a neutral noun, so
+   * the card never renders a blank line or the word "undefined" while the
+   * profile row is still loading.
+   */
+  const studentCard = useMemo(
+    () => ({
+      name: account?.full_name?.trim() || user?.email?.split("@")[0] || "Your record",
+      avatarUrl: account?.avatar_url ?? null,
+      id: user?.id ?? null,
+    }),
+    [account?.full_name, account?.avatar_url, user?.email, user?.id]
+  );
+
+  // Spelled the way the picker at the top of the page spells it, so the card
+  // and the control never disagree about what the reading is measured against.
+  const tierLabel =
+    TIER_OPTIONS.find((t) => t.value === profile.targetTier)?.label ?? profile.targetTier;
 
   const update = useCallback(
     (updater: (prev: OutcomesProfile) => OutcomesProfile) => updateProfile(updater),
@@ -225,7 +247,7 @@ export default function Outcomes() {
   return (
     <>
       <Seo
-        title="Outcomes — Pathforge"
+        title="Outcomes"
         description="Your evidence file, read against the standard your target tier expects, with the gaps ranked by what closing them recovers."
         path="/outcomes"
       />
@@ -343,6 +365,8 @@ export default function Outcomes() {
                 profile={profile}
                 update={update}
                 ranked={ranked}
+                student={studentCard}
+                tierLabel={tierLabel}
                 githubLoading={githubLoading}
                 onSyncGithub={syncGithub}
                 linkedinLoading={linkedinLoading}
@@ -411,7 +435,7 @@ export default function Outcomes() {
                     <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">Proof beats claims.</span> A verified
                       entry counts in full, submitted-but-unchecked proof at 40%, and a typed
-                      claim at almost nothing — which is what calibration is reporting.
+                      claim at almost nothing, which is what calibration is reporting.
                     </p>
                     <p className="max-w-[46ch] text-[13px] leading-relaxed text-muted-foreground">
                       <span className="text-foreground">Time is not a score.</span> Being in an

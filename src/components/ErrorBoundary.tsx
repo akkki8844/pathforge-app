@@ -1,4 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
+import { reportBug } from "@/lib/bugs/reporter";
+import { shouldIgnore } from "@/lib/bugs/noise";
 
 interface Props {
   children: ReactNode;
@@ -30,6 +32,24 @@ class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // eslint-disable-next-line no-console
     console.warn("ErrorBoundary auto-recovering from:", error?.message, errorInfo?.componentStack);
+
+    // Auto-recovery is what keeps a user from being locked out, but it also
+    // means a render crash leaves no trace: the subtree remounts, the user sees
+    // a flicker, and nobody ever hears about it. Filing it here is the only way
+    // these reach anyone. Deduplication is by fingerprint on the server, so a
+    // component crashing 25 times in a row is one report with a count of 25.
+    if (!shouldIgnore(error?.message, error?.stack)) {
+      void reportBug({
+        source: "react_error",
+        severity: "critical",
+        title: `Render crash: ${(error?.message || "unknown error").slice(0, 160)}`,
+        error_message: error?.message ?? String(error),
+        error_stack: error?.stack,
+        component_stack: errorInfo?.componentStack ?? undefined,
+        context: { recovery_attempt: this.retries + 1 },
+      });
+    }
+
     // Auto-recover up to a generous limit to avoid pathological infinite loops.
     if (this.retries < 25) {
       this.retries += 1;

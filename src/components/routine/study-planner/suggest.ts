@@ -69,6 +69,29 @@ export const DEFAULT_PLAN_SETTINGS: PlanSettings = {
   skipWeekends: false,
 };
 
+/**
+ * A daily cap derived from what the student told onboarding, not a guess.
+ *
+ * Onboarding collects "weekly time available for college prep" as one of five
+ * bucketed labels (see `weeklyHoursOptions` in OnboardingSurvey), never a raw
+ * number — so this reads the bucket's midpoint and spreads it over six active
+ * days, leaving one day free by design. Returns `null` for an unset or
+ * unrecognized label, so the caller can fall back to the generic default
+ * rather than silently planning around a fabricated number.
+ */
+export function dailyCapFromWeeklyHours(label: string | null | undefined): number | null {
+  if (!label) return null;
+  const nums = label.match(/\d+/g)?.map(Number) ?? [];
+  if (nums.length === 0) return null;
+  const hours = nums.length >= 2
+    ? (nums[0] + nums[1]) / 2
+    : label.toLowerCase().includes("less than")
+      ? nums[0] / 2
+      : nums[0] + 2.5; // "20+ hours" reads as a bit over 20.
+  const perDay = (hours * 60) / 6;
+  return Math.max(30, Math.min(600, Math.round(perDay / 15) * 15));
+}
+
 export interface PlanInputs {
   subjects: string[];
   classes: RoutineClass[];

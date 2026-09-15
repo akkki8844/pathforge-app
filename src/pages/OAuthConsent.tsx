@@ -97,7 +97,7 @@ export default function OAuthConsent() {
 
   return (
     <main className="min-h-[100svh] flex items-center justify-center bg-background px-4">
-      <Seo title="Connect App — Pathforge" description="Approve or deny an app requesting access to your Pathforge account." />
+      <Seo title="Connect App" description="Approve or deny an app requesting access to your Pathforge account." />
       <div className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-8 shadow-xl">
         {error ? (
           <>

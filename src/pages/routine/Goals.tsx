@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarClock,
@@ -21,6 +20,7 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { RoutineShell, RoutinePanel, RoutineStat } from "@/components/routine/RoutineShell";
+import { QuickAddDialog } from "@/components/routine/QuickAdd";
 import { RoutineAsync, RoutineEmptyState } from "@/components/routine/RoutineStates";
 import {
   DeleteAction,
@@ -51,14 +51,14 @@ import {
  * milestones, that other parts of Routine push forward on their own. So:
  *
  *   * Progress is **derived, never stored**. `goalProgress()` reads milestones,
- *     linked tasks and linked study minutes. Completing a task on the Tasks page
+ *     linked tasks and linked study minutes. Completing a linked task on Today
  *     moves the bar here without either page writing to the other, because both
  *     read the same query cache.
  *   * The one exception is the manual override, for goals arithmetic genuinely
  *     cannot see ("reach 90% in Biology"). It is opt-in and clearly labelled as
  *     the student's own number rather than a computed one.
- *   * Milestones live inside the goal, not in Tasks, because they are the
- *     student's breakdown of the destination — not scheduled work.
+ *   * Milestones live inside the goal, because they are the student's
+ *     breakdown of the destination — not scheduled work.
  */
 
 const STATUSES: GoalStatus[] = ["active", "completed", "paused", "archived"];
@@ -482,6 +482,7 @@ function GoalCard({
   const days = progress.daysRemaining;
   const late = days !== null && days < 0 && goal.status === "active";
   const inactive = goal.status === "paused" || goal.status === "archived";
+  const [linking, setLinking] = useState(false);
 
   return (
     <div
@@ -582,7 +583,7 @@ function GoalCard({
         {progress.milestonesTotal === 0 &&
           progress.linkedTasksTotal === 0 &&
           goal.progress_override === null && (
-            <span>Nothing linked yet. Add a milestone, or link a task from Tasks.</span>
+            <span>Nothing linked yet. Add a milestone, or link a task below.</span>
           )}
       </div>
 
@@ -689,9 +690,20 @@ function GoalCard({
             </Button>
           </form>
 
-          <Button asChild variant="ghost" size="sm" className="h-8 w-full text-xs">
-            <Link to="/routine/tasks">Link work to this goal from Tasks</Link>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-full text-xs"
+            onClick={() => setLinking(true)}
+          >
+            Link a new task to this goal
           </Button>
+          <QuickAddDialog
+            open={linking}
+            onOpenChange={setLinking}
+            initialKind="task"
+            goalId={goal.id}
+          />
         </div>
       )}
     </div>

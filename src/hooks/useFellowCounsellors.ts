@@ -21,7 +21,13 @@ export function useFellowCounsellors() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    // Not a bare `return`: leaving `loading` true here pins every consumer on
+    // its spinner forever when there is no session.
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoading(true);

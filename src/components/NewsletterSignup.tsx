@@ -108,7 +108,7 @@ export function NewsletterSignup() {
               {loading ? "Signing up…" : "Subscribe"}
             </Button>
             <p className="text-xs text-muted-foreground">
-              One email a week. Unsubscribe any time — no spam, ever.
+              Unsubscribe any time — no spam, ever.
             </p>
           </motion.form>
         )}

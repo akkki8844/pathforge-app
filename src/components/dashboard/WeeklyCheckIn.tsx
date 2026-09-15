@@ -198,11 +198,13 @@ function MoraleTrend({ trend }: { trend: WeeklyCheckinsData["trend"] }) {
 // ── The mood control ──────────────────────────────────────────────────
 
 /**
- * Where the week landed. At rest this is a line of text, not a control —
- * a track and a thumb sitting under a value nobody has set yet is the
- * loudest thing on the card. The slider only appears once the student
- * clicks in; from then on it behaves like the ordinary drag/keyboard
- * control it always was.
+ * Where the week landed.
+ *
+ * Rendered directly rather than behind a "click to reveal" text link — that
+ * link read as inert copy rather than a control, so most students never
+ * clicked it and the check-in looked like it had no mood input at all. The
+ * thumb starts hollow and unset (see `hasValue`/`isDragging` below) so an
+ * untouched slider still can't be mistaken for a value the student chose.
  */
 function MoodSlider({
   value,
@@ -214,7 +216,6 @@ function MoodSlider({
   defaultValue: number;
 }) {
   const reduced = useReducedMotion();
-  const [revealed, setRevealed] = useState(false);
   // The live drag position, continuous rather than station-quantized. Null
   // outside of an active drag, so the thumb reads straight off the committed
   // `value` and can spring to it — a whole-number jump per pixel read as
@@ -334,22 +335,6 @@ function MoodSlider({
     }
   };
 
-  if (!revealed) {
-    return (
-      <button
-        type="button"
-        onClick={() => setRevealed(true)}
-        className="-mx-1 block rounded px-1 py-1 text-left text-[13px] leading-relaxed text-foreground transition-colors hover:text-primary"
-      >
-        {hasValue ? (
-          <span className="font-display font-semibold">{moraleWord(value!)}</span>
-        ) : (
-          <span className="text-muted-foreground">Click to rate the week</span>
-        )}
-      </button>
-    );
-  }
-
   // While dragging the thumb tracks the pointer with no lag; letting go hands
   // it to a spring so it settles into the station rather than snapping.
   const thumbTransition = isDragging || reduced ? { duration: 0 } : transition.spring;
@@ -372,10 +357,6 @@ function MoodSlider({
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onKeyDown={handleKeyDown}
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- the click that
-          // revealed this track was already a deliberate "I want to set this"
-          // gesture, so carrying focus straight into it costs nothing.
-          autoFocus
           className={cn(
             "absolute inset-0 cursor-pointer touch-none select-none rounded-sm",
             "before:absolute before:-top-3 before:inset-x-0 before:-bottom-5 before:content-['']",

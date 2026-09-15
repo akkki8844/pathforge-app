@@ -14,13 +14,68 @@
  * to let a client add rows on someone else's behalf — and because those RPCs are
  * where the "may I contact this person at all" check lives.
  */
-import { useCallback, useMemo } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo } from "react";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { commsDb } from "@/integrations/supabase/communications";
 import { useAuth } from "@/contexts/AuthContext";
 import type { ConversationKind, TeamAccent } from "@/lib/comms/types";
 import { commsKeys } from "./keys";
+
+/**
+ * One inbox realtime channel per signed-in user, shared across every
+ * `useConversations()` caller — not one per mounted component.
+ *
+ * `useConversations()` is called from the Chats page itself, `ForwardDialog`,
+ * `TeamWorkspace`, and the teacher messages page, and more than one of these
+ * can be mounted at the same time (forwarding a message opens `ForwardDialog`
+ * *on top of* the open Chats page). Each caller used to open its own channel
+ * named `comms:inbox:<uid>`; two channels racing to subscribe under the same
+ * topic is exactly what Supabase Realtime's "cannot add postgres_changes
+ * callbacks ... after subscribe()" guards against, and it took the whole page
+ * down through the nearest error boundary. A per-user singleton, reference-
+ * counted so the channel closes only once every caller has unmounted, means
+ * there is only ever one subscription to collide with itself.
+ */
+const inboxChannels = new Map<string, { channel: ReturnType<typeof supabase.channel>; refCount: number }>();
+
+function acquireInboxChannel(userId: string, qc: QueryClient): () => void {
+  let entry = inboxChannels.get(userId);
+  if (!entry) {
+    let pending = false;
+    const scheduleRefetch = () => {
+      if (pending) return;
+      pending = true;
+      setTimeout(() => {
+        pending = false;
+        void qc.invalidateQueries({ queryKey: commsKeys.conversations(userId) });
+        void qc.invalidateQueries({ queryKey: ["comms", "unread-total", userId] });
+      }, 300);
+    };
+    const channel = supabase
+      .channel(`comms:inbox:${userId}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, scheduleRefetch)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_members", filter: `user_id=eq.${userId}` },
+        scheduleRefetch,
+      )
+      .subscribe();
+    entry = { channel, refCount: 0 };
+    inboxChannels.set(userId, entry);
+  }
+  entry.refCount += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    entry!.refCount -= 1;
+    if (entry!.refCount <= 0) {
+      inboxChannels.delete(userId);
+      void supabase.removeChannel(entry!.channel);
+    }
+  };
+}
 
 /** One row of `comms_conversation_list()`. */
 export interface ConversationListItem {
@@ -48,6 +103,7 @@ export interface ConversationListItem {
 
 export function useConversations() {
   const { user } = useAuth();
+  const qc = useQueryClient();
 
   const query = useQuery({
     queryKey: commsKeys.conversations(user?.id),
@@ -60,6 +116,23 @@ export function useConversations() {
   });
 
   const conversations = useMemo(() => query.data ?? [], [query.data]);
+
+  /*
+   * Everything above answers "what does the list look like right now" — it
+   * says nothing about "what does the list look like after someone else
+   * sends me a message." `ChatThread`'s realtime channel only exists once a
+   * conversation is open and only updates *that* conversation's messages, so
+   * a new DM landing while you're looking at the list — or at a different
+   * thread — used to sit invisible until something forced a refetch. This is
+   * the one subscription that's alive for as long as any caller of this hook
+   * is mounted, independent of which conversation (if any) is open — see
+   * `acquireInboxChannel` above for why it's a shared singleton rather than
+   * one channel per caller.
+   */
+  useEffect(() => {
+    if (!user?.id) return;
+    return acquireInboxChannel(user.id, qc);
+  }, [user?.id, qc]);
 
   /**
    * Every user id the list needs a name for: DM counterparts and the authors of
@@ -258,6 +331,37 @@ export function useConversationActions() {
     onSettled: invalidateList,
   });
 
+  /**
+   * Set (or replace) a group's photo.
+   *
+   * Reuses the `comms-attachments` bucket rather than a dedicated one — its
+   * storage policy only checks that the path's first folder segment is a
+   * conversation the caller belongs to, so `{conversationId}/avatar/...`
+   * satisfies it exactly like a message attachment's
+   * `{conversationId}/{messageId}/...` does. The `conversations` row itself
+   * can only be updated by its creator (or a team owner/admin, for a team
+   * conversation) per `conversations_update` — the same people the group
+   * dialog already lets choose an accent colour at creation.
+   */
+  const setGroupImage = useMutation({
+    mutationFn: async (input: { conversationId: string; file: File }): Promise<string> => {
+      const safe = input.file.name.replace(/[^\w.-]+/g, "_").slice(-120);
+      const path = `${input.conversationId}/avatar/${crypto.randomUUID()}-${safe}`;
+      const { error: upErr } = await supabase.storage
+        .from("comms-attachments")
+        .upload(path, input.file, { contentType: input.file.type || "application/octet-stream" });
+      if (upErr) throw upErr;
+
+      const { error } = await commsDb
+        .from("conversations")
+        .update({ image_path: path })
+        .eq("id", input.conversationId);
+      if (error) throw error;
+      return path;
+    },
+    onSuccess: invalidateList,
+  });
+
   /** Leave a group. Removes only the caller's own membership row. */
   const leaveConversation = useMutation({
     mutationFn: async (conversationId: string) => {
@@ -272,5 +376,5 @@ export function useConversationActions() {
     onSuccess: invalidateList,
   });
 
-  return { startDm, createGroup, markRead, markUnread, setFlag, leaveConversation };
+  return { startDm, createGroup, setGroupImage, markRead, markUnread, setFlag, leaveConversation };
 }

@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
+import { BrandLogo } from "@/components/BrandLogo";
 export interface SchoolRow {
   id: string;
   name: string;
@@ -117,9 +118,16 @@ export function SchoolPicker({ value, onChange, initialQuery = "" }: Props) {
                 onMouseDown={(e) => { e.preventDefault(); pick(s); }}
                 className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b border-border/50 last:border-b-0"
               >
-                <div className="font-medium text-foreground">{s.name}</div>
-                <div className="text-xs text-muted-foreground">
-                  {[s.city, s.country].filter(Boolean).join(", ") || "Unverified"}
+                <div className="flex items-center gap-2.5">
+                  {/* The domain is a column on the school record, so this is the
+                      school's own mark rather than a guess from its name. */}
+                  <BrandLogo name={s.name} domain={s.domain} size={22} hideWhenUnknown />
+                  <div className="min-w-0">
+                    <div className="font-medium text-foreground">{s.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {[s.city, s.country].filter(Boolean).join(", ") || "Unverified"}
+                    </div>
+                  </div>
                 </div>
               </button>
             )) : (

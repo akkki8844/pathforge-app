@@ -106,7 +106,7 @@ export default function LorPortal() {
   return (
     <>
       <Seo
-        title="Letter portal — Pathforge"
+        title="Letter portal"
         description="Private portal for uploading a letter of recommendation."
         path={`/lor/portal/${token ?? ""}`}
       />

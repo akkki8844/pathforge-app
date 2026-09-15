@@ -664,7 +664,7 @@ export default function Activities() {
     <div data-cluely className="min-h-svh bg-background font-cluely">
       <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1800px] px-4 pb-20 pt-7 sm:px-6 lg:px-8">
         <Seo
-          title="Competitions — Pathforge"
+          title="Competitions"
           description="Olympiads, awards and honors matched to your intended college major, ordered by the deadline that matters next."
           path="/activities"
         />

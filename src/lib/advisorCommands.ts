@@ -118,9 +118,9 @@ export const BUILTIN_COMMANDS: AdvisorCommand[] = [
   { id: "essays", summary: "Go to your essays", group: "navigate" },
   { id: "activities", summary: "Browse activities", group: "navigate" },
   { id: "scholarships", summary: "Browse scholarships", group: "navigate" },
-  { id: "planner", summary: "Open the weekly planner", group: "navigate" },
+  { id: "planner", summary: "Open the calendar", group: "navigate" },
   { id: "profile", summary: "Open your profile", group: "navigate" },
-  { id: "usage", aliases: ["credits"], summary: "See your credits and usage", group: "navigate" },
+  { id: "usage", aliases: ["credits"], summary: "See your plan usage", group: "navigate" },
 ];
 
 /** Where each navigation command goes. Kept beside the list it belongs to. */

@@ -497,7 +497,7 @@ export default function WeeklyPlanner() {
         inside the standard prose container, so each day column got roughly a
         finger's width and the whole planner sat in a narrow slot. */}
     <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1600px] space-y-6 px-4 pb-24 pt-8 sm:px-6 lg:px-8">
-      <Seo title='Calendar — Pathforge' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
+      <Seo title='Calendar' description='Plan and track weekly hours across study, activities, and applications with smart AI adjustments.' path='/weekly-planner' />
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -16 }}

@@ -167,7 +167,7 @@ export default function TeamWorkspace() {
   return (
     <>
       <Seo
-        title={`${team.name} · Teams · Pathforge`}
+        title={team.name}
         description={team.description ?? `The ${team.name} team workspace.`}
         path={`/communications/teams/${team.id}`}
         noindex

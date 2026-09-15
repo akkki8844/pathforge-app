@@ -475,6 +475,86 @@ export const UNIVERSITIES: UniversityProfile[] = [
     supplements: [
       { id: "scholarship", label: "Scholarship essay (if applying)", wordLimit: 500, prompt: "Write a scholarship essay for the ANU programme/scholarship to which you are applying." },
     ] },
+
+  // ── Verified 2026-27 cycle (added via live web research, not memory) ──
+  {
+    id: "georgetown",
+    name: "Georgetown University",
+    shortName: "Georgetown",
+    notes: "Revised its writing supplement for 2026-27: dropped the old special-talents question for a new differing-viewpoints essay, and standardized word limits. Requires the SAT or ACT (not test-optional) and bans AI tools anywhere in the application. Applies through Common App or Georgetown's own application — same four essays either way.",
+    supplements: [
+      { id: "activity", label: "Most significant activity", wordLimit: 250, prompt: "Briefly discuss the significance to you of the school or summer activity in which you have been most involved." },
+      { id: "differing-viewpoints", label: "Differing viewpoints (new for 2026-27)", wordLimit: 250, prompt: "In all our lives, we interact with people who hold different viewpoints than our own. Describe such an event you experienced. What did you learn from the experience?" },
+      { id: "personal-creative", label: "Personal or creative essay", wordLimit: 650, prompt: "As Georgetown is a diverse community, the Admissions Committee would like to know more about you in your own words. Please submit a brief personal or creative essay which you feel best describes you and reflects on your personal background and individual experiences, skills, and talents." },
+      { id: "school-cas", label: "College of Arts & Sciences (if applying here)", wordLimit: 500, prompt: "Founded in 1789, the Georgetown College of Arts & Sciences is committed to the Jesuit traditions of an integrated education and of productive research in the natural sciences, humanities, social sciences, and fine arts. Describe your interest in studying at the College of Arts & Sciences." },
+      { id: "school-nursing", label: "Berkley School of Nursing (if applying here)", wordLimit: 500, prompt: "Georgetown University's Berkley School of Nursing is committed to the formation of ethical, empathetic, and transformational nursing leaders. Describe the factors that have influenced your interest in studying Nursing at Georgetown University." },
+      { id: "school-health", label: "School of Health (if applying here)", wordLimit: 500, prompt: "Georgetown University's School of Health was founded to advance the health and well-being of people locally, nationally, and globally through innovative research, the delivery of interdisciplinary education, and transformative engagement of communities. Describe the factors that influenced your interest in studying health care at Georgetown University, specifically addressing your intended related major: Global Health, Health Care Management & Policy, or Human Science." },
+      { id: "school-sfs", label: "Walsh School of Foreign Service (if applying here)", wordLimit: 500, prompt: "Georgetown University's Walsh School of Foreign Service was founded more than a century ago to prepare generations of leaders with the foundational skills to address global issues. Describe your primary motivations for studying international affairs at Georgetown University and dedicating your undergraduate studies toward a future in global service." },
+      { id: "school-msb", label: "McDonough School of Business (if applying here)", wordLimit: 500, prompt: "Georgetown University's McDonough School of Business provides graduates with essential global, ethical, analytical, financial, and diverse perspectives on the economies of our nation and the world. Describe your primary motivations for studying business at Georgetown University." },
+    ],
+  },
+  {
+    id: "umich",
+    name: "University of Michigan",
+    shortName: "Michigan",
+    notes: "Prompts are unchanged from the prior cycle for 2026-27. Applicants pick an undergraduate school/college (LSA, Engineering, Ross, Kinesiology, Music Theatre & Dance, Art & Design, Nursing, etc.) and the second essay must engage that specific school, not Michigan in general.",
+    supplements: [
+      { id: "leadership-citizenship", label: "Leadership and citizenship", wordLimit: 300, prompt: "At the University of Michigan, we are focused on developing leaders and citizens who will challenge the present and enrich the future. In your essay, share with us how you are prepared to contribute to these goals. This could include the people, places, experiences, or aspirations that have shaped your journey and future plans." },
+      { id: "why-school", label: "Why this college or school", wordLimit: 550, prompt: "Describe the unique qualities that attract you to the specific undergraduate College or School (including preferred admission and dual degree programs) to which you are applying at the University of Michigan. How would that curriculum support your interests?" },
+    ],
+  },
+  {
+    id: "uc-system",
+    name: "University of California",
+    shortName: "UC (any campus)",
+    notes: "Covers every UC campus (Berkeley, UCLA, San Diego, Irvine, Davis, Santa Barbara, etc.) — they share one application and one set of essay prompts, called Personal Insight Questions (PIQs), verified against UC's own admissions site. Applicants answer 4 of the 8 questions below, 350 words each; there is no 'right' four, and no campus reads more or fewer than the others submit.",
+    supplements: [
+      { id: "piq-1", label: "PIQ 1 — Leadership", wordLimit: 350, prompt: "Describe an example of your leadership experience in which you have positively influenced others, helped resolve disputes or contributed to group efforts over time." },
+      { id: "piq-2", label: "PIQ 2 — Creativity", wordLimit: 350, prompt: "Every person has a creative side, and it can be expressed in many ways: problem solving, original and innovative thinking, and artistically, to name a few. Describe how you express your creative side." },
+      { id: "piq-3", label: "PIQ 3 — Greatest talent or skill", wordLimit: 350, prompt: "What would you say is your greatest talent or skill? How have you developed and demonstrated that talent over time?" },
+      { id: "piq-4", label: "PIQ 4 — Educational opportunity or barrier", wordLimit: 350, prompt: "Describe how you have taken advantage of a significant educational opportunity or worked to overcome an educational barrier you have faced." },
+      { id: "piq-5", label: "PIQ 5 — Significant challenge", wordLimit: 350, prompt: "Describe the most significant challenge you have faced and the steps you have taken to overcome this challenge. How has this challenge affected your academic achievement?" },
+      { id: "piq-6", label: "PIQ 6 — Academic subject that inspires you", wordLimit: 350, prompt: "Think about an academic subject that inspires you. Describe how you have furthered this interest inside and/or outside of the classroom." },
+      { id: "piq-7", label: "PIQ 7 — Improving your school or community", wordLimit: 350, prompt: "What have you done to make your school or your community a better place?" },
+      { id: "piq-8", label: "PIQ 8 — Why you're a strong candidate", wordLimit: 350, prompt: "Beyond what has already been shared in your application, what do you believe makes you a strong candidate for admissions to the University of California?" },
+    ],
+  },
+  {
+    id: "nyu",
+    name: "New York University",
+    shortName: "NYU",
+    notes: "The supplemental essay is technically optional but strongly recommended for a competitive application. Applicants may respond to one, several, or none of the listed guiding questions as long as the main prompt is addressed.",
+    supplements: [
+      { id: "bridge-builders", label: "Bridge builders (optional but recommended)", wordLimit: 250, prompt: "We are looking for students who want to be bridge builders — students who can connect people, groups, and ideas to span divides, foster understanding, and promote collaboration within a dynamic, interconnected, and vibrant global academic community. We are eager for you to tell us how your experiences have helped you understand what qualities and efforts are needed to bridge divides so that people can better learn and work together. Please consider one or more of the following questions in your essay: Tell us about a time you encountered a perspective different from your own." },
+    ],
+  },
+  {
+    id: "usc",
+    name: "University of Southern California",
+    shortName: "USC",
+    notes: "Essay 2 is new for 2026-27 and framed around USC's Student Commitment on open debate. The gap-year essay only applies if the applicant actually has a fall/spring term outside school. Ten short-answer questions (100 characters max, except the 3-word opener) round out the writing supplement.",
+    supplements: [
+      { id: "academic-interests", label: "Academic interests at USC", wordLimit: 250, prompt: "Describe how you plan to pursue your academic interests and why you want to explore them at USC specifically. Please feel free to address your first- and second-choice major selections." },
+      { id: "disagreement", label: "Disagreement and common ground (optional, new for 2026-27)", wordLimit: 250, prompt: "The USC Student Commitment charges Trojans to 'value honest, open communication and robust debate,' and to 'champion ideological diversity and embrace freedom of expression.' Describe a time when you disagreed with someone you know about something important to you. Did you change your mind or reach common ground?" },
+      { id: "gap-year", label: "Education gap (only if applicable)", wordLimit: 250, prompt: "Starting with the beginning of high school/secondary school, if you have had a gap where you were not enrolled in school during a fall or spring term, please address this gap in your educational history." },
+    ],
+  },
+  {
+    id: "uva",
+    name: "University of Virginia",
+    shortName: "UVA",
+    notes: "Verified for 2026-27: UVA dropped its general supplemental essay entirely — almost all applicants submit only the Common App personal statement. The single exception is the School of Nursing, which keeps one short-answer prompt. Do not draft a general UVA supplement; there isn't one.",
+    supplements: [
+      { id: "nursing", label: "School of Nursing only", wordLimit: 250, prompt: "Describe a healthcare-related experience and how it shaped your decision to pursue nursing." },
+    ],
+  },
+  {
+    id: "gatech",
+    name: "Georgia Institute of Technology",
+    shortName: "Georgia Tech",
+    notes: "Verified for 2026-27: Georgia Tech eliminated its short-answer supplement entirely, announced days before the cycle opened. The Common App personal essay is now the only piece of writing Georgia Tech reads — do not draft a Georgia Tech-specific supplement.",
+    supplements: [],
+  },
 ];
 
 export const getUniversityById = (id: string): UniversityProfile | undefined =>

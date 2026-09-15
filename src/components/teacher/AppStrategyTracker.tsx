@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { CollegeLogo } from "@/components/CollegeLogo";
 import {
   useAppStrategies,
   APP_STAGES,
@@ -208,7 +209,9 @@ function StrategyRow({
   return (
     <li className="rounded-lg border border-border bg-card overflow-hidden">
       <div className="grid grid-cols-12 gap-2 items-center px-3 py-2.5">
-        <div className="col-span-12 md:col-span-4 min-w-0">
+        <div className="col-span-12 md:col-span-4 flex min-w-0 items-start gap-2.5">
+          <CollegeLogo name={college} size={26} className="mt-0.5 rounded-md" />
+          <div className="min-w-0 flex-1">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
@@ -222,6 +225,7 @@ function StrategyRow({
               {overdue && " • overdue"}
             </div>
           )}
+          </div>
         </div>
         <div className="col-span-4 md:col-span-3">
           <Select value={tier} onValueChange={(v) => onChange({ fit_tier: v as FitTier })}>

@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { transition } from "@/lib/motion";
 import { EmojiPicker } from "./EmojiPicker";
 import { PersonAvatar } from "./PersonAvatar";
+import { PollComposerButton } from "./PollCard";
 import { fileSize } from "@/lib/comms/format";
 import { displayName, type Person, type PersonMap } from "@/hooks/comms/usePeople";
 import { ATTACHMENT_MAX_BYTES, ATTACHMENT_TYPES, type ChatMessage } from "@/hooks/comms/useMessages";
@@ -18,6 +19,7 @@ interface SendPayload {
   mentions: string[];
   files: File[];
   replyToId: string | null;
+  poll?: { question: string; allowMultiple: boolean; options: string[] } | null;
 }
 
 /**
@@ -357,6 +359,13 @@ export function Composer({
           >
             <ImageIcon className="h-4 w-4" />
           </Button>
+          <PollComposerButton
+            disabled={disabled || isSending}
+            onCreate={(poll) => {
+              onSend({ body: "", mentions: [], files: [], replyToId: replyTo?.id ?? null, poll });
+              onCancelReply();
+            }}
+          />
 
           <Textarea
             ref={textareaRef}

@@ -18,8 +18,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import type {
+  RoutineCalendar,
   RoutineClass,
   RoutineEvent,
+  RoutineEventGuest,
   RoutineFocusSession,
   RoutineFocusFlight,
   RoutineGoal,
@@ -61,6 +63,8 @@ export type RoutineDatabase = {
       routine_tasks: Table<RoutineTask>;
       routine_reminders: Table<RoutineReminder>;
       routine_events: Table<RoutineEvent>;
+      routine_calendars: Table<RoutineCalendar>;
+      routine_event_guests: Table<RoutineEventGuest>;
       routine_habits: Table<RoutineHabit>;
       routine_habit_logs: Table<RoutineHabitLog>;
       routine_focus_sessions: Table<RoutineFocusSession>;
@@ -93,6 +97,7 @@ export const ROUTINE_TABLES = [
   "routine_tasks",
   "routine_reminders",
   "routine_events",
+  "routine_calendars",
   "routine_habits",
   "routine_habit_logs",
   "routine_focus_sessions",

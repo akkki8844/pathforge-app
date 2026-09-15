@@ -82,12 +82,6 @@ export interface PlanConfig {
   accent: string;
   highlighted?: boolean;
   features: string[];
-  /**
-   * Monthly advisor token pool. Separate from `allowanceUnits`: the advisor is
-   * metered in tokens, everything else draws on the usage allowance. Mirrors
-   * `advisor_token_allowance()` in the database, which does the enforcing.
-   */
-  advisorTokens: number;
   /** Advisor model this tier unlocks. */
   advisorModel: string;
   /** One line on what that model is actually good for. */
@@ -125,11 +119,6 @@ export function usageLabel(plan: PlanConfig): string {
   return `About ${Math.round(ratio)}× the free allowance, monthly`;
 }
 
-/** "25,000 advisor tokens / month". */
-export function advisorTokenLabel(plan: PlanConfig): string {
-  return `${plan.advisorTokens.toLocaleString()} advisor tokens / month`;
-}
-
 export const PLANS: PlanConfig[] = [
   {
     tier: "free",
@@ -138,7 +127,6 @@ export const PLANS: PlanConfig[] = [
     priceUSD: 0,
     allowanceUnits: 3,
     allowancePeriod: "day",
-    advisorTokens: 25000,
     icon: Sparkles,
     accent: "from-slate-400 to-slate-500",
     advisorModel: "PFA 5.5",
@@ -148,7 +136,7 @@ export const PLANS: PlanConfig[] = [
       "PFA 5.5 advisor model",
       "Activities, essays & resume builders",
       "Full daily allowance, resets every 24 h",
-      "25,000 advisor tokens / month",
+      "Advisor chats draw on the same daily allowance",
       "Community support",
     ],
   },
@@ -160,7 +148,6 @@ export const PLANS: PlanConfig[] = [
     originalPriceUSD: 25,
     allowanceUnits: 250,
     allowancePeriod: "month",
-    advisorTokens: 100000,
     icon: Zap,
     accent: "from-indigo-500 to-violet-600",
     highlighted: true,
@@ -171,7 +158,6 @@ export const PLANS: PlanConfig[] = [
       "Everything in Free",
       "PFA 6.5 advisor model",
       "About 3× the free allowance",
-      "100,000 advisor tokens / month",
       "Priority screenshot verification",
       "All application & LinkedIn builders",
       "Email support",
@@ -185,7 +171,6 @@ export const PLANS: PlanConfig[] = [
     originalPriceUSD: 100,
     allowanceUnits: 750,
     allowancePeriod: "month",
-    advisorTokens: 250000,
     icon: Crown,
     accent: "from-amber-400 via-orange-500 to-rose-500",
     advisorModel: "PFA 7",
@@ -195,7 +180,6 @@ export const PLANS: PlanConfig[] = [
       "Everything in Pro",
       "PFA 7 advisor model",
       "About 8× the free allowance",
-      "250,000 advisor tokens / month",
       "Fastest verification queue",
       "1:1 priority support",
       "Early access to new features",

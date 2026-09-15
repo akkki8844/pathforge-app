@@ -208,6 +208,15 @@ export type NewRoutineReminder = Omit<
 export type EventCategory =
   | "exam" | "deadline" | "school" | "application" | "personal" | "other";
 
+/**
+ * Five named patterns, not an RRULE: what a student's own calendar actually
+ * needs, each answerable with plain date arithmetic against the row's own
+ * `starts_at` rather than an RRULE parser. There is no per-occurrence
+ * exception model — editing the row edits every occurrence, the same way
+ * editing a timetable class does.
+ */
+export type EventRecurrence = "daily" | "weekdays" | "weekly" | "monthly" | "yearly";
+
 export interface RoutineEvent {
   id: string;
   user_id: string;
@@ -218,9 +227,64 @@ export interface RoutineEvent {
   ends_at: string | null;
   all_day: boolean;
   location: string | null;
+  /** Null means one-off. Set means it repeats forward from `starts_at`. */
+  recurrence: EventRecurrence | null;
+  /** Null means it repeats indefinitely when `recurrence` is set. */
+  recurrence_end: string | null;
+  /** Which of the student's own calendars this lands on. Null pre-migration. */
+  calendar_id: string | null;
   created_at: string;
   updated_at: string;
 }
+
+/**
+ * One of a student's own organizing calendars — "Work", "Personal",
+ * "Birthdays" — distinct from `EventCategory`, which says what *kind* of
+ * thing an event is, not which calendar it's filed under. There is no
+ * sharing or membership on this: every calendar belongs to exactly one user,
+ * the same as every other Routine row.
+ */
+export interface RoutineCalendar {
+  id: string;
+  user_id: string;
+  name: string;
+  color: RoutineColor;
+  /** Where a new event lands when its dialog doesn't ask. Exactly one per user. */
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewRoutineCalendar = Omit<
+  RoutineCalendar,
+  "id" | "user_id" | "created_at" | "updated_at"
+>;
+
+// ── Event guests ─────────────────────────────────────────────────────────
+
+export type EventGuestStatus = "pending" | "accepted" | "declined";
+
+/**
+ * One invite to one event. Scoped to exactly that — not membership in a
+ * shared calendar, not a conversation. `inviter_id` is always the event's own
+ * `user_id`; kept as its own column (rather than joined every read) because
+ * RLS needs it in a WITH CHECK the client's own insert already satisfies.
+ */
+export interface RoutineEventGuest {
+  id: string;
+  event_id: string;
+  inviter_id: string;
+  invitee_id: string;
+  invitee_email: string;
+  status: EventGuestStatus;
+  created_at: string;
+  updated_at: string;
+}
+
+export type NewRoutineEventGuest = Omit<
+  RoutineEventGuest,
+  "id" | "inviter_id" | "status" | "created_at" | "updated_at"
+>;
 
 export type NewRoutineEvent = Omit<
   RoutineEvent,
@@ -402,7 +466,7 @@ export const GOAL_CATEGORIES = [
  * never colour alone, so the categories stay distinguishable without it.
  */
 export type AgendaKind =
-  | "class" | "study" | "task" | "reminder" | "event" | "habit" | "goal";
+  | "class" | "study" | "task" | "reminder" | "event" | "habit" | "goal" | "testdate";
 
 export interface AgendaItem {
   /** Unique per occurrence, not per row — a weekly class yields one per day. */

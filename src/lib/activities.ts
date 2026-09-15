@@ -1,6 +1,6 @@
 // Comprehensive Activities Database with external links and country availability
 
-import { colleges, College } from "./colleges";
+import { findCollegeByName } from "./colleges";
 
 export interface Activity {
   id: string;
@@ -33,13 +33,13 @@ export const isActivityAvailableInCountry = (activity: Activity, country: string
 
 // Get college level from name
 const getCollegeLevelFromName = (collegeName: string): "regional" | "national" | "global" => {
-  const college = colleges.find(c => c.name === collegeName);
+  const college = findCollegeByName(collegeName);
   return college?.level || "national";
 };
 
 // Get college strong majors
 const getCollegeStrongMajors = (collegeName: string): string[] => {
-  const college = colleges.find(c => c.name === collegeName);
+  const college = findCollegeByName(collegeName);
   return college?.strongMajors || [];
 };
 
@@ -7394,7 +7394,230 @@ export const activities: Activity[] = [
     relevantMajors: ["Journalism", "Communications", "English/Creative Writing", "Media Studies", "Political Science"],
     whyRelevant: "Journalism programmes read clips, and a professionally edited byline is the clearest evidence that your work meets a publishable standard.",
     countries: [], learnMoreUrl: "https://www.poynter.org/", applyUrl: null,
-    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 8 } }
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 8 } },
+
+  // ── Additional coverage for majors that were thinly represented above ──
+  {
+    id: "scholastic-art-writing",
+    name: "Scholastic Art & Writing Awards",
+    category: "Creative Writing & Art",
+    type: "Competition",
+    cost: "Paid",
+    difficulty: "Beginner",
+    gradeSuitability: "Best for Grades 7-12",
+    description: "The longest-running, most prestigious recognition program for creative teens in the US, judged in art and writing categories.",
+    detailedDescription: "Founded in 1923, the Scholastic Art & Writing Awards recognizes student work in categories from poetry and short story to painting and photography. Regional Gold Key winners advance to national judging, where National Medalists are honored at Carnegie Hall. Alumni include Truman Capote, Sylvia Plath, and Andy Warhol.",
+    relevantMajors: ["Creative Writing", "English/Creative Writing", "Comparative Literature", "Art History", "Film", "Animation"],
+    whyRelevant: "A National Medal is the single most recognized pre-college honor in creative writing and art admissions.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.artandwriting.org/",
+    applyUrl: "https://www.artandwriting.org/submit/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 9, uniqueness: 9 }
+  },
+  {
+    id: "youngarts",
+    name: "YoungArts National Foundation Awards",
+    category: "Creative Arts",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 10-12",
+    description: "National competition for high schoolers in writing, music, dance, film, theater, and visual arts; winners can become US Presidential Scholars.",
+    detailedDescription: "YoungArts identifies and supports the most accomplished young artists in the visual, literary, and performing arts, ages 15-18. Winners are invited to National YoungArts Week in Miami for masterclasses with working artists, and top finalists are eligible for nomination as US Presidential Scholars in the Arts.",
+    relevantMajors: ["Creative Writing", "Music Performance", "Dance", "Film", "Film Production", "Fashion Design", "Art History"],
+    whyRelevant: "A federally recognized national arts honor that carries weight with any conservatory or arts-adjacent program.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.youngarts.org/",
+    applyUrl: "https://www.youngarts.org/apply",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 9, uniqueness: 9 }
+  },
+  {
+    id: "usaaao",
+    name: "USA Astronomy and Astrophysics Olympiad (USAAAO)",
+    category: "Science Olympiad",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "National qualifying exam for the International Olympiad on Astronomy and Astrophysics (IOAA).",
+    detailedDescription: "USAAAO is a multi-round exam covering astrophysics, celestial mechanics, and observational astronomy. Top scorers are invited to a national training camp, from which the US team for the International Olympiad on Astronomy and Astrophysics (IOAA) is selected.",
+    relevantMajors: ["Astronomy", "Physics", "Atmospheric Science", "Mathematics"],
+    whyRelevant: "A top national ranking is direct, verifiable evidence of depth in physics and astronomy well beyond the AP curriculum.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.astronomyolympiad.org/",
+    applyUrl: "https://www.astronomyolympiad.org/exams",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 9 }
+  },
+  {
+    id: "international-earth-science-olympiad",
+    name: "International Earth Science Olympiad (IESO) — US Team Selection",
+    category: "Science Olympiad",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "National selection process for the US team competing at the International Earth Science Olympiad, covering geology, oceanography, meteorology, and astronomy.",
+    detailedDescription: "IESO is one of the recognized ISO/UNESCO-affiliated science olympiads. National qualifying rounds test knowledge across the earth sciences; top performers train for and represent the country at the international competition.",
+    relevantMajors: ["Geology", "Atmospheric Science", "Environmental Science", "Conservation Biology"],
+    whyRelevant: "Earth science has few dedicated national competitions, so qualifying stands out sharply on an application in this field.",
+    countries: [],
+    learnMoreUrl: "https://www.ieso-info.org/",
+    applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 10 }
+  },
+  {
+    id: "biogeneius",
+    name: "International BioGENEius Challenge",
+    category: "Science Research",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "Biotechnology research competition where students present original lab research to a panel of scientists.",
+    detailedDescription: "Run by the Biotechnology Innovation Organization (BIO), the BioGENEius Challenge has high schoolers design and conduct original biotech research — genetics, pharmacology, or bioinformatics — and defend it before working scientists at the BIO International Convention.",
+    relevantMajors: ["Genetics", "Biotechnology", "Pharmacology", "Biochemistry", "Biology/Pre-Med"],
+    whyRelevant: "Original bench research judged by industry scientists is exactly the evidence competitive biology programs look for.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.biotechinstitute.org/biogeneius",
+    applyUrl: "https://www.biotechinstitute.org/biogeneius",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 8, uniqueness: 9 }
+  },
+  {
+    id: "dna-day-essay",
+    name: "ASHG DNA Day Essay Contest",
+    category: "Science Writing",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Intermediate",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "International essay contest run by the American Society of Human Genetics on a current topic in genetics.",
+    detailedDescription: "Each year ASHG poses a genetics-ethics or genetics-science question; students write a short essay judged by genetics professionals and educators. Winners receive cash prizes and national recognition from a leading professional society in the field.",
+    relevantMajors: ["Genetics", "Biology/Pre-Med", "Biochemistry", "Public Health"],
+    whyRelevant: "Recognition from a national professional society is credible, third-party evidence of engagement with the field.",
+    countries: [],
+    learnMoreUrl: "https://www.ashg.org/education/dnaday/",
+    applyUrl: "https://www.ashg.org/education/dnaday/",
+    priorityFactors: { majorAlignment: 9, collegeImpact: 6, uniqueness: 8 }
+  },
+  {
+    id: "ffa-vet-science-cde",
+    name: "National FFA Veterinary Science Career Development Event",
+    category: "Agricultural Science",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Intermediate",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "National FFA competition testing veterinary science knowledge and hands-on animal-health skills.",
+    detailedDescription: "Teams compete through chapter, state, and national rounds of the FFA Veterinary Science CDE, covering animal anatomy, disease identification, and clinical skills stations judged by veterinary professionals.",
+    relevantMajors: ["Veterinary Medicine", "Pre-Vet", "Animal Science", "Biology/Pre-Med"],
+    whyRelevant: "One of the only nationally standardized pre-vet competitions, giving a benchmarked result to a field with few formal contests.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.ffa.org/programs/agriscience/career-development-events/",
+    applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 6, uniqueness: 9 }
+  },
+  {
+    id: "fccla-stem",
+    name: "FCCLA STAR Events (Nutrition, Hospitality & Fashion Tracks)",
+    category: "Family & Consumer Sciences",
+    type: "Competition",
+    cost: "Paid",
+    difficulty: "Beginner",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "National competitive events run by Family, Career and Community Leaders of America, spanning nutrition, hospitality, and fashion design projects.",
+    detailedDescription: "FCCLA's STAR Events (Students Taking Action with Recognition) let students design and present a real project — a nutrition education campaign, a hospitality business plan, or an original fashion design — judged at chapter, state, and national conferences.",
+    relevantMajors: ["Nutrition", "Hospitality", "Hospitality Management", "Fashion Design", "Nonprofit Management"],
+    whyRelevant: "A national STAR Events placement is verifiable, project-based evidence in fields where formal high-school competitions are rare.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.fcclainc.org/programs/star-events",
+    applyUrl: null,
+    priorityFactors: { majorAlignment: 9, collegeImpact: 6, uniqueness: 8 }
+  },
+  {
+    id: "ace-mentor-program",
+    name: "ACE Mentor Program (Architecture, Construction & Engineering)",
+    category: "Design & Architecture",
+    type: "Leadership",
+    cost: "Free",
+    difficulty: "Intermediate",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "Year-long, industry-mentored program where teams design a real building project under working architects and engineers.",
+    detailedDescription: "ACE Mentor Program pairs high schoolers with volunteer architects, engineers, and construction professionals for an after-school program culminating in a real-site design project, presented to a jury of industry professionals. Scholarships are awarded to top participants nationally.",
+    relevantMajors: ["Interior Design", "Civil Engineering", "Industrial Design", "Architecture"],
+    whyRelevant: "Direct mentorship from licensed architects and a jury-reviewed real design project is rare, credible exposure to the field.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.acementor.org/",
+    applyUrl: "https://www.acementor.org/find-an-affiliate/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 9 }
+  },
+  {
+    id: "we-the-people",
+    name: "We the People: The Citizen and the Constitution",
+    category: "Civics & Debate",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "National constitutional law competition where teams testify before a panel of judges in a simulated congressional hearing.",
+    detailedDescription: "Run by the Center for Civic Education, We the People has classes prepare testimony on constitutional principles and defend it before a panel that questions them like a congressional hearing. It culminates in a national finals held in Washington, D.C.",
+    relevantMajors: ["Law", "Political Science", "Religious Studies", "History"],
+    whyRelevant: "A nationally judged simulated hearing is close to real legal argumentation, a strong signal for pre-law applicants.",
+    countries: ["United States"],
+    learnMoreUrl: "https://www.civiced.org/we-the-people",
+    applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 8 }
+  },
+  {
+    id: "all-american-hs-film-festival",
+    name: "All American High School Film Festival",
+    category: "Film & Media",
+    type: "Competition",
+    cost: "Paid",
+    difficulty: "Intermediate",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "Juried high school film festival screening selected student films in a real theater, with a Times Square billboard for finalists.",
+    detailedDescription: "AAHSFF screens juried student short films across genres, with a live festival in New York and industry judges including working filmmakers. Selection alone functions as an external, juried credit for a film portfolio.",
+    relevantMajors: ["Film", "Film Production", "Film/Media Studies", "Animation"],
+    whyRelevant: "A real juried festival screening is portfolio-grade evidence for film programs, distinct from a self-published video.",
+    countries: [],
+    learnMoreUrl: "https://aahsfilmfestival.com/",
+    applyUrl: "https://aahsfilmfestival.com/submit/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 9 }
+  },
+  {
+    id: "nafme-all-national-honor-ensembles",
+    name: "NAfME All-National Honor Ensembles",
+    category: "Music",
+    type: "Competition",
+    cost: "Paid",
+    difficulty: "Advanced",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "Audition-only national honor ensembles (orchestra, band, choir, jazz) run by the National Association for Music Education.",
+    detailedDescription: "Students submit recorded auditions to qualify for one of NAfME's national honor ensembles, rehearsing and performing under professional conductors at the national conference. Selection is a recognized national-level benchmark in pre-college music performance.",
+    relevantMajors: ["Music Performance", "Dance"],
+    whyRelevant: "A national-ensemble seat is an externally judged performance credential that conservatory admissions specifically look for.",
+    countries: ["United States"],
+    learnMoreUrl: "https://nafme.org/programs/all-national-honor-ensembles/",
+    applyUrl: "https://nafme.org/programs/all-national-honor-ensembles/",
+    priorityFactors: { majorAlignment: 10, collegeImpact: 7, uniqueness: 8 }
+  },
+  {
+    id: "national-translation-day-contest",
+    name: "ALTA National Student Translation Contest",
+    category: "Language & Literature",
+    type: "Competition",
+    cost: "Free",
+    difficulty: "Intermediate",
+    gradeSuitability: "Best for Grades 9-12",
+    description: "Literary translation competition run by the American Literary Translators Association for student translators.",
+    detailedDescription: "Students translate a piece of literature from a foreign language into English, judged by professional literary translators on both linguistic accuracy and literary quality — a rare formal outlet for bilingual/multilingual students.",
+    relevantMajors: ["Translation/Interpretation", "Foreign Languages", "Comparative Literature"],
+    whyRelevant: "One of the very few national competitions built specifically around translation, a natural fit for multilingual applicants.",
+    countries: [],
+    learnMoreUrl: "https://literarytranslators.org/",
+    applyUrl: null,
+    priorityFactors: { majorAlignment: 10, collegeImpact: 5, uniqueness: 10 }
+  }
 ];
 
 // Get activities by major

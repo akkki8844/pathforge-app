@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Download, Plus, Trash2, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { MultiStateButton } from "@/components/ui/multi-state-button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -49,7 +50,17 @@ const emptyDraft: BragSheetInput = {
   extra_context: "",
 };
 
-export function BragSheetPanel() {
+/**
+ * `newSheetSignal` is the page header's "New brag sheet" button reaching in.
+ *
+ * The panel used to carry its own header: a title, a one-line description, and
+ * a "New brag sheet" button, sitting directly under the page's own title and
+ * its own primary button. So the tab opened with two headings for one thing and
+ * two buttons for one intent, and the empty state added a third ("Start"). The
+ * page header owns the title and the action now; this takes the action as a
+ * counter that fires the same `startNew` the empty state does.
+ */
+export function BragSheetPanel({ newSheetSignal = 0 }: { newSheetSignal?: number }) {
   const { list, upsert, remove, generatePdf } = useBragSheets();
   const [editing, setEditing] = useState<BragSheet | null>(null);
   const [creating, setCreating] = useState(false);
@@ -63,11 +74,17 @@ export function BragSheetPanel() {
     if (!open) setStep(0);
   }, [open]);
 
-  const startNew = () => {
+  const startNew = useCallback(() => {
     setDraft(emptyDraft);
     setEditing(null);
     setCreating(true);
-  };
+  }, []);
+
+  // Fires on every increment of the header button's counter, and never on
+  // mount, so arriving on the tab does not open an empty dialog.
+  useEffect(() => {
+    if (newSheetSignal > 0) startNew();
+  }, [newSheetSignal, startNew]);
 
   const startEdit = (s: BragSheet) => {
     setCreating(false);
@@ -127,31 +144,17 @@ export function BragSheetPanel() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold">Brag sheets</h2>
-          <p className="text-sm text-muted-foreground">
-            Give every recommender a focused, story-rich packet to write from.
-          </p>
-        </div>
-        <Button onClick={startNew} size="sm">
-          <Plus className="h-4 w-4 mr-1.5" /> New brag sheet
-        </Button>
-      </div>
-
       {list.isLoading ? (
         <div className="text-sm text-muted-foreground py-12 text-center">Loading…</div>
       ) : items.length === 0 ? (
-        <div className="rounded-xl border border-dashed bg-card/50 px-6 py-16 text-center">
-          <div className="mx-auto h-12 w-12 rounded-full bg-muted flex items-center justify-center mb-4">
-            <FileText className="h-5 w-5 text-muted-foreground" />
-          </div>
+        <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
           <h3 className="text-base font-medium mb-1">Build your first brag sheet</h3>
-          <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">
-            A guided 4-step form gives your recommender real stories to work from. Export to PDF and send.
+          <p className="text-sm text-muted-foreground max-w-md mx-auto mb-5">
+            A brag sheet is the notes your recommender writes from: what you did, what came of it,
+            and what you want the letter to say. Export it as a PDF and send it with your request.
           </p>
           <Button onClick={startNew} variant="outline">
-            <Plus className="mr-2 h-4 w-4" /> Start
+            <Plus className="mr-2 h-4 w-4" /> New brag sheet
           </Button>
         </div>
       ) : (
@@ -262,14 +265,15 @@ export function BragSheetPanel() {
                 Save & close
               </Button>
               {isLast ? (
-                <Button onClick={saveAndGenerate} disabled={upsert.isPending || generatePdf.isPending}>
-                  {generatePdf.isPending ? (
-                    <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-                  ) : (
-                    <Sparkles className="h-4 w-4 mr-1.5" />
-                  )}
-                  Save & generate PDF
-                </Button>
+                <MultiStateButton
+                  onClick={saveAndGenerate}
+                  disabled={upsert.isPending}
+                  idleIcon={<Sparkles className="h-4 w-4" />}
+                  idleLabel="Save & generate PDF"
+                  loadingLabel="Building PDF…"
+                  successLabel="PDF ready"
+                  errorLabel="Could not build PDF"
+                />
               ) : (
                 <Button onClick={() => setStep((s) => Math.min(BRAG_STEPS.length - 1, s + 1))}>
                   Next <ChevronRight className="h-4 w-4 ml-1" />

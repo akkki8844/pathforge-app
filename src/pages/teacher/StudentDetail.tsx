@@ -23,6 +23,7 @@ import { CounsellorOverridePanel } from "@/components/teacher/CounsellorOverride
 import { StudentDeepDive } from "@/components/teacher/StudentDeepDive";
 
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 interface StudentSnapshot {
   email: string | null;
   full_name: string | null;
@@ -76,7 +77,7 @@ export default function StudentDetail() {
         supabase.from("onboarding_data")
           .select("grade,intended_major,high_school_name,country,curriculum,gpa,application_year,target_universities,standardized_test_score")
           .eq("user_id", id).maybeSingle(),
-        supabase.from("profiles").select("email, full_name").eq("user_id", id).maybeSingle(),
+        supabase.from("profiles").select("email,full_name").eq("user_id", id).maybeSingle(),
         supabase.from("journey_scores")
           .select("overall_score,academics_score,activities_score,leadership_score,competitions_score,test_prep_score")
           .eq("user_id", id).maybeSingle(),
@@ -161,10 +162,10 @@ export default function StudentDetail() {
       ) : (
         <div className="space-y-8">
           {/* Premium hero */}
-          <header className="rounded-3xl border border-border/60 bg-gradient-to-br from-card via-card to-muted/30 overflow-hidden">
+          <header className="overflow-hidden rounded-3xl border border-border bg-card">
             <div className="p-6 lg:p-8 flex flex-col lg:flex-row gap-6 lg:items-end lg:justify-between">
               <div className="flex items-start gap-5 min-w-0">
-                <div className="h-16 w-16 lg:h-20 lg:w-20 rounded-2xl bg-gradient-to-br from-primary/20 via-accent/15 to-transparent border border-border/60 flex items-center justify-center flex-shrink-0 text-2xl font-semibold text-foreground tracking-tight">
+                <div className="flex h-16 w-16 flex-shrink-0 items-center justify-center rounded-2xl border border-border bg-muted/50 text-2xl font-semibold tracking-tight text-foreground lg:h-20 lg:w-20">
                   {initials}
                 </div>
                 <div className="min-w-0 space-y-1.5">
@@ -188,8 +189,11 @@ export default function StudentDetail() {
                     )}
                   </div>
                   {(snap.high_school_name || snap.country) && (
-                    <p className="text-xs text-muted-foreground">
-                      {[snap.high_school_name, snap.country].filter(Boolean).join(" · ")}
+                    <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      {snap.high_school_name && (
+                        <CollegeLogo name={snap.high_school_name} size={14} className="rounded-[3px]" hideWhenUnknown />
+                      )}
+                      <span>{[snap.high_school_name, snap.country].filter(Boolean).join(" · ")}</span>
                     </p>
                   )}
                 </div>
@@ -376,7 +380,7 @@ export default function StudentDetail() {
                 <Row icon={BookOpen} label="GPA" value={snap.gpa ?? "—"} />
                 <Row icon={BookOpen} label="Curriculum" value={snap.curriculum ?? "—"} />
                 <Row icon={Trophy} label="Application year" value={snap.application_year ?? "—"} />
-                <Row icon={Trophy} label="Target universities" value={(snap.target_universities ?? []).join(", ") || "—"} />
+                <TargetsRow universities={snap.target_universities ?? []} />
               </div>
             </TabsContent>
 
@@ -435,6 +439,40 @@ function Row({ icon: Icon, label, value }: { icon: React.ComponentType<{ classNa
       <div className="flex-1">
         <div className="text-xs text-muted-foreground">{label}</div>
         <div className="text-foreground">{value}</div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The student's target list, drawn as the universities' own marks.
+ *
+ * This was a comma-joined string, which at five schools ran past the width of
+ * the card and read as one long name. A row of marks is scannable, and the
+ * name still sits beside each one.
+ */
+function TargetsRow({ universities }: { universities: string[] }) {
+  const list = universities.map((u) => (u ?? "").trim()).filter(Boolean);
+  return (
+    <div className="flex items-start gap-2">
+      <Trophy className="mt-0.5 h-3.5 w-3.5 text-muted-foreground" />
+      <div className="flex-1">
+        <div className="text-xs text-muted-foreground">Target universities</div>
+        {list.length === 0 ? (
+          <div className="text-foreground">—</div>
+        ) : (
+          <ul className="mt-1 flex flex-wrap gap-1.5">
+            {list.map((u) => (
+              <li
+                key={u}
+                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-2 py-1 text-xs text-foreground"
+              >
+                <CollegeLogo name={u} size={14} className="rounded-[3px]" />
+                <span className="truncate">{u}</span>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );

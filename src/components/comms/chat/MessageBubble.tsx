@@ -35,6 +35,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { PersonAvatar } from "./PersonAvatar";
+import { PollCard } from "./PollCard";
 import { EmojiPicker } from "./EmojiPicker";
 import { emojiOnlyCount, fileSize, fullTimestamp, messageTime } from "@/lib/comms/format";
 import { QUICK_REACTIONS, type MessageAttachment } from "@/lib/comms/types";
@@ -248,6 +249,11 @@ export function MessageBubble({
               {message.message_attachments.map((a) => (
                 <Attachment key={a.id} attachment={a} onOwnBubble={isOwn} />
               ))}
+            </div>
+          )}
+          {!deleted && message.message_polls && (
+            <div className={cn(message.body && "mb-2")}>
+              <PollCard poll={message.message_polls} people={people} />
             </div>
           )}
           {message.body ? (

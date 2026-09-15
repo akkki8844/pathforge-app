@@ -27,6 +27,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { CountryCombobox } from "@/components/CountryCombobox";
 
+import { BrandLogo } from "@/components/BrandLogo";
 interface UserSearchResult {
   user_id: string;
   email: string | null;
@@ -510,6 +511,9 @@ export function AdminUserManagement() {
                           {user.is_flagged && <Flag className="h-4 w-4 text-destructive" />}
                           <div>
                             <div className="font-medium">{user.email || "N/A"}</div>
+                            {user.full_name && (
+                              <div className="text-xs text-muted-foreground">{user.full_name}</div>
+                            )}
                           </div>
                         </div>
                       </TableCell>
@@ -634,7 +638,7 @@ export function AdminUserManagement() {
                   <CardContent>
                     <div className="grid grid-cols-2 gap-3 text-sm">
                       <Row label="Email" value={userDetails.profile?.email || detailEmail} />
-                      <Row label="Username" value={userDetails.profile?.full_name || "Not set"} />
+                      <Row label="Full name" value={userDetails.profile?.full_name || "Not set"} />
                       <Row label="Joined"
                         value={userDetails.profile?.created_at
                           ? format(new Date(userDetails.profile.created_at), "MMM d, yyyy")
@@ -643,8 +647,10 @@ export function AdminUserManagement() {
                         value={userDetails.last_active_at
                           ? `${formatDistanceToNow(new Date(userDetails.last_active_at))} ago`
                           : "Never"} />
-                      <Row label="School"
-                        value={userDetails.school?.name || userDetails.onboarding?.high_school_name || "-"} />
+                      <SchoolRow
+                        name={userDetails.school?.name || userDetails.onboarding?.high_school_name || null}
+                        domain={userDetails.school?.domain ?? null}
+                      />
                       <Row label="Country" value={userDetails.onboarding?.country || "-"} />
                       <Row label="Grade" value={userDetails.onboarding?.grade || "-"} />
                       <Row label="Major" value={userDetails.onboarding?.intended_major || "-"} />
@@ -988,6 +994,19 @@ export function AdminUserManagement() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </div>
+  );
+}
+
+/** The school row, with the institution's own mark when we can resolve one. */
+function SchoolRow({ name, domain }: { name: string | null; domain: string | null }) {
+  return (
+    <div>
+      <div className="text-xs text-muted-foreground">School</div>
+      <div className="flex items-center gap-2 font-medium">
+        {name && <BrandLogo name={name} domain={domain} size={18} hideWhenUnknown />}
+        <span className="truncate">{name || "-"}</span>
+      </div>
     </div>
   );
 }

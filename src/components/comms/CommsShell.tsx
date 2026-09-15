@@ -66,7 +66,7 @@ export function CommsShell({
   return (
     <>
       <Seo
-        title={seoTitle ?? `${title} · Communications · Pathforge`}
+        title={seoTitle ?? title}
         description={seoDescription ?? purpose}
         path={path}
         noindex

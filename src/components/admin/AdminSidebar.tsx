@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Users2, FileText, ToggleLeft, ShieldAlert, MessagesSquare, Megaphone, ChevronLeft, ChevronRight, BadgeCheck, TicketPercent, CircleDollarSign, Building2, SlidersHorizontal, Bot, ScrollText, BarChart3, LogOut, Gauge, Settings, Mail } from "lucide-react";
+import { LayoutDashboard, Users2, FileText, ToggleLeft, ShieldAlert, MessagesSquare, Megaphone, ChevronLeft, ChevronRight, BadgeCheck, TicketPercent, CircleDollarSign, Building2, SlidersHorizontal, Bot, ScrollText, BarChart3, LogOut, Gauge, Settings, Mail, Bug } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
 export type AdminSection =
-  | "dashboard" | "analytics" | "users" | "ai-usage" | "content" | "feature-flags"
+  | "dashboard" | "analytics" | "bugs" | "users" | "ai-usage" | "content" | "feature-flags"
   | "moderation" | "feedback" | "announcements" | "proof-review"
   | "coupons" | "credits" | "schools"
   | "ai-control" | "ai-usage-control" | "chatbot-monitor" | "system-logs"
@@ -24,6 +24,7 @@ const menuGroups: { label: string; items: { id: AdminSection; label: string; ico
     items: [
       { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
       { id: "analytics", label: "Platform Analytics", icon: BarChart3 },
+      { id: "bugs", label: "Bugs", icon: Bug },
       { id: "system-logs", label: "System Logs", icon: ScrollText },
     ],
   },

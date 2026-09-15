@@ -88,7 +88,11 @@ export function Verdict({
 
   return (
     <Reveal>
-      <Panel tone="lead" flush>
+      {/* Flat, not `tone="lead"`. That tone paints a radial primary-tinted
+          wash across the card; one tinted panel above a run of white ones is
+          the single most "generated" thing on the page. The verdict earns its
+          prominence from the size of the figure in it, not from a gradient. */}
+      <Panel flush>
         <div className="grid gap-8 p-6 sm:p-8 md:grid-cols-[minmax(0,20rem)_minmax(0,1fr)] md:gap-12 lg:p-10">
           {/* The instrument */}
           <div className="flex min-w-0 flex-col justify-center">
@@ -122,7 +126,7 @@ export function Verdict({
 
           {/* The reading */}
           <div className="flex min-w-0 flex-col justify-center">
-            <p className="max-w-[22ch] text-balance font-cluely text-[clamp(1.55rem,5.2vw,2.35rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-foreground">
+            <p className="max-w-[30ch] text-balance font-cluely text-[clamp(1.55rem,5.2vw,2.35rem)] font-semibold leading-[1.12] tracking-[-0.035em] text-foreground">
               {verdictSentence(reading)}
             </p>
 
@@ -138,12 +142,12 @@ export function Verdict({
             <div className="mt-7 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-border pt-6 sm:grid-cols-4">
               <Stat
                 label="Carrying"
-                value={strongest ? strongest.name : "—"}
+                value={strongest ? strongest.name : "None yet"}
                 hint={strongest ? `${Math.round(strongest.attainment)}% of bar` : "Nothing on file"}
               />
               <Stat
                 label="Losing"
-                value={weakest ? weakest.name : "—"}
+                value={weakest ? weakest.name : "None yet"}
                 hint={weakest ? `${Math.round(weakest.attainment)}% of bar` : "Every signal at bar"}
               />
               <Stat

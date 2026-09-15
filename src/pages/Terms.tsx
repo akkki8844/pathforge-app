@@ -5,11 +5,11 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 export default function Terms() {
   return (
     <div className="min-h-[100svh] bg-background">
-      <Seo title='Terms of Service — Pathforge' description="The terms governing your use of Pathforge's college application guidance platform." path='/terms' />
+      <Seo title='Terms of Service' description="The terms governing your use of Pathforge's college application guidance platform." path='/terms' />
       <div className="section-container max-w-3xl py-12 prose prose-sm dark:prose-invert">
         <ScrollReveal>
           <h1 className="text-3xl font-bold mb-2">Terms of Service</h1>
-          <p className="text-muted-foreground text-sm mb-8">Last updated: August 12, 2026</p>
+          <p className="text-muted-foreground text-sm mb-8">Last updated: September 8, 2026</p>
         </ScrollReveal>
 
         <p>
@@ -36,8 +36,10 @@ export default function Terms() {
         <p>
           Pathforge provides AI-assisted college readiness tools, including profile building,
           activity and Olympiad discovery, essay and application-statement refinement, scholarship
-          discovery, recommendation-letter coordination, weekly planning, a guided Journey, and a
-          chat and voice AI advisor.
+          discovery, recommendation-letter coordination, a personalized study planner and daily
+          routine tools, a guided Journey, a chat and voice AI advisor, and Communications features
+          (direct messages, group and team chats, and shared objectives) for coordinating with other
+          students and, where connected, a counsellor.
         </p>
         <p>
           <strong>
@@ -225,6 +227,15 @@ export default function Terms() {
           you have a legitimate reason to share it and that you are permitted to do so. We contact
           those people only for the purpose you initiated, and they may opt out at any time. Do not
           use these features to send unsolicited or repeated messages.
+        </p>
+        <p>
+          Communications features (direct messages, group and team chats) put you in direct contact
+          with other students. Messages you send are visible to the other people in that
+          conversation and are not reviewed by us before delivery, though they remain subject to
+          Section 12 (Acceptable Use) and our moderation and reporting tools. A counsellor connected
+          to a team you belong to can see that team's metadata and an AI-generated activity summary,
+          but not the content of your messages — see our{" "}
+          <Link to="/privacy" className="text-accent underline">Privacy Notice</Link> for detail.
         </p>
 
         <h2>10. Counsellor, Teacher &amp; School Accounts</h2>

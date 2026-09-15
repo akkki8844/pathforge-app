@@ -28,8 +28,14 @@ export interface TourStep {
   placement?: TourPlacement;
 }
 
-/** localStorage flag for the once-per-user auto-run. */
-export const JOURNEY_TOUR_SEEN_KEY = "pf_journey_tour_seen";
+/**
+ * localStorage flag for the once-per-user auto-run.
+ *
+ * Defined in `lib/tour/keys.ts` and re-exported here so the eagerly-mounted
+ * `TourProvider` can read it without importing this component (and with it,
+ * the step script and the whole tour surface) into the entry chunk.
+ */
+export { JOURNEY_TOUR_SEEN_KEY } from "@/lib/tour/keys";
 
 /**
  * The script. Any step whose target is missing at open time is dropped, so

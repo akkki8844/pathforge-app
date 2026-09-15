@@ -83,7 +83,7 @@ export default function IvyLeagueAdmissions() {
   return (
     <div className="py-10 sm:py-16 relative overflow-hidden">
       <Seo
-        title="Ivy League Admissions — Pathforge"
+        title="Ivy League Admissions"
         description="A practical, evidence-based guide to how to get into Ivy League colleges and schools — building a coherent profile, choosing niche activities, essays, recommendations and list strategy."
         path="/guides/ivy-league-admissions"
         type="article"

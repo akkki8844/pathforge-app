@@ -48,7 +48,7 @@ export function GuestNavbar() {
               <Link to="/pricing">Pricing</Link>
             </Button>
             <Button asChild size="sm" variant="ghost">
-              <Link to="/?explore=1#preview-tools">Explore platform</Link>
+              <Link to="/#departments">Explore platform</Link>
             </Button>
             <Button asChild size="sm" variant="ghost" className="hidden lg:inline-flex">
               <Link to="/teacher/auth">Counsellor sign in</Link>

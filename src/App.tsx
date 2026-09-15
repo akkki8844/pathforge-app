@@ -3,7 +3,7 @@ import { preloadCommonRoutes } from "@/lib/routePreload";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import { TopLoadingBar } from "@/components/TopLoadingBar";
@@ -15,13 +15,11 @@ import { Layout } from "@/components/layout/Layout";
 import { RouteActivityLogger } from "@/components/RouteActivityLogger";
 import ScrollToTop from "@/components/ScrollToTop";
 import { KeepAliveProvider } from "@/components/KeepAliveProvider";
-import { IMessageCursor } from "@/components/animations/iMessageCursor";
+import { TourProvider } from "@/components/tour/TourProvider";
 import { MotionConfig } from "framer-motion";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
 import Maintenance from "./pages/Maintenance";
-import { isDesktop } from "@/lib/desktop";
-import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
 
 
 // Resilient lazy: retry once, then hard-reload so a stale chunk after a deploy
@@ -48,11 +46,9 @@ function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ de
   });
 }
 
-const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
 const Auth = lazyWithRetry(() => import("./pages/Auth"));
 const AppLogin = lazyWithRetry(() => import("./pages/AppLogin"));
 const Dashboard = lazyWithRetry(() => import("./pages/Dashboard"));
-const DashboardPreview = lazyWithRetry(() => import("./pages/__DashboardPreview"));
 const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
 const Activities = lazyWithRetry(() => import("./pages/Activities"));
 const Journey = lazyWithRetry(() => import("./pages/Journey"));
@@ -63,7 +59,7 @@ const Scholarships = lazyWithRetry(() => import("./pages/Scholarships"));
 const CollegeReadiness = lazyWithRetry(() => import("./pages/CollegeReadiness"));
 const Outcomes = lazyWithRetry(() => import("./pages/Outcomes"));
 const WeeklyPlanner = lazyWithRetry(() => import("./pages/WeeklyPlanner"));
-// Routine — one product area, nine views over one shared data model.
+// Routine — one product area, six views over one shared data model.
 const RoutineToday = lazyWithRetry(() => import("./pages/routine/Today"));
 const RoutineTimetable = lazyWithRetry(() => import("./pages/routine/Timetable"));
 const RoutineStudyPlanner = lazyWithRetry(() => import("./pages/routine/StudyPlanner"));
@@ -76,6 +72,14 @@ const CommsTeams = lazyWithRetry(() => import("./pages/communications/Teams"));
 const CommsTeamWorkspace = lazyWithRetry(() => import("./pages/communications/TeamWorkspace"));
 const CommsObjectives = lazyWithRetry(() => import("./pages/communications/Objectives"));
 const CommsAnnouncements = lazyWithRetry(() => import("./pages/communications/Announcements"));
+const TestPrepOverview = lazyWithRetry(() => import("./pages/testprep/Overview"));
+const TestPrepPractice = lazyWithRetry(() => import("./pages/testprep/Practice"));
+const TestPrepQuestionBank = lazyWithRetry(() => import("./pages/testprep/QuestionBank"));
+const TestPrepExams = lazyWithRetry(() => import("./pages/testprep/PracticeExams"));
+const TestPrepProgress = lazyWithRetry(() => import("./pages/testprep/Progress"));
+const TestPrepSession = lazyWithRetry(() => import("./pages/testprep/Session"));
+const TestPrepExam = lazyWithRetry(() => import("./pages/testprep/Exam"));
+const TestPrepResults = lazyWithRetry(() => import("./pages/testprep/Results"));
 const About = lazyWithRetry(() => import("./pages/About"));
 const Contact = lazyWithRetry(() => import("./pages/Contact"));
 const Faq = lazyWithRetry(() => import("./pages/Faq"));
@@ -121,6 +125,8 @@ const LOR = lazyWithRetry(() => import("./pages/LOR"));
 const LorPortal = lazyWithRetry(() => import("./pages/LorPortal"));
 const OAuthConsent = lazyWithRetry(() => import("./pages/OAuthConsent"));
 
+import { safeRedirectPath } from "@/lib/safeRedirect";
+
 const PENDING_OAUTH_REDIRECT_KEY = "pathforge_pending_oauth_redirect";
 
 function consumeSafePendingOAuthRedirect() {
@@ -128,7 +134,10 @@ function consumeSafePendingOAuthRedirect() {
   const value = window.localStorage.getItem(PENDING_OAUTH_REDIRECT_KEY);
   if (!value) return null;
   window.localStorage.removeItem(PENDING_OAUTH_REDIRECT_KEY);
-  return value.startsWith("/") && !value.startsWith("//") ? value : null;
+  // Same normalisation the sign-in buttons apply on the way in. This is the
+  // last gate before the value reaches navigate(), so it re-checks rather than
+  // trusting whatever ended up in localStorage.
+  return safeRedirectPath(value);
 }
 
 import { useUsage } from "@/contexts/UsageContext";
@@ -144,6 +153,16 @@ const OnboardingSurvey = lazyWithRetry(() =>
   import("@/components/OnboardingSurvey").then((m) => ({ default: m.OnboardingSurvey }))
 );
 const SupportChatbot = lazyWithRetry(() => import("@/components/SupportChatbot"));
+const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
+// Not lazy: this is what appears when the app is already failing to load
+// things, which is the worst possible moment to depend on fetching one more
+// chunk.
+import { BugAlertBanner } from "@/components/BugAlertBanner";
+// Desktop-only. This file is otherwise kept in sync with pathforge-tech; the
+// isDesktop/UpdateNotifier/DesktopWelcome references are the whole of the
+// desktop delta and are re-applied after every sync.
+import { isDesktop } from "@/lib/desktop";
+import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
 // (default export — no .then() mapping needed, unlike the named exports above/below)
 const NameBackfillGate = lazyWithRetry(() =>
   import("@/components/NameBackfillGate").then((m) => ({ default: m.NameBackfillGate }))
@@ -738,6 +757,97 @@ function AppRoutes() {
           path="/communications/*"
           element={<Navigate to="/communications/chats" replace />}
         />
+
+        {/* Test Prep. `:testId` is real routing, not decoration — the section
+            is built for five tests and each page resolves its own blueprint,
+            so adding the PSAT is a data change rather than five new routes.
+            Only the SAT has content today; the others render an in-app "not
+            built yet" state instead of a marketing page.
+
+            The exam runner is deliberately outside `Layout`: a timed sitting
+            with the global navbar above it is not a testing environment. The
+            practice runner keeps the navbar, because leaving a practice set is
+            not something to make hard. */}
+        <Route path="/test-prep" element={<Navigate to="/test-prep/sat" replace />} />
+        <Route
+          path="/test-prep/:testId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepOverview />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/practice"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepPractice />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/question-bank"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepQuestionBank />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/exams"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepExams />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/progress"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepProgress />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/session"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepSession />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/results/:attemptId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <TestPrepResults />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/test-prep/:testId/exam"
+          element={
+            <ProtectedRoute>
+              <TestPrepExam />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/test-prep/*" element={<Navigate to="/test-prep/sat" replace />} />
         <Route
           path="/requirements"
           element={
@@ -868,11 +978,6 @@ function AppRoutes() {
           }
         />
         {/* Public legal pages */}
-        {/* Dev-only fixture for eyeballing the dashboard with a populated
-            profile, without needing a seeded account. Stripped from prod builds. */}
-        {import.meta.env.DEV && (
-          <Route path="/__dashboard-preview" element={<Layout><DashboardPreview /></Layout>} />
-        )}
         {/* Wrapped in Layout like the other public pages. Without it these
             three rendered with no nav and no footer, and neither Privacy nor
             RefundPolicy contains an outbound link of its own — three indexed
@@ -896,6 +1001,12 @@ function AppRoutes() {
         <Route path="*" element={<NotFound />} />
       </Routes>
       </Suspense>
+      {/* Mounted here rather than in Layout, and outside the !isLandingPage
+          guard, because a failure can happen on any route. Layout wraps most of
+          the app but not the whole /teacher counsellor workspace,
+          /communications, /application or the landing page. Renders nothing at
+          all until the capture engine reports something broke. */}
+      <BugAlertBanner />
       {!isLandingPage && (
         <Suspense fallback={null}>
           <CreditGiftNotification />
@@ -925,7 +1036,16 @@ const App = () => {
     // device — it is the single most sensitive thing this app now holds.
     "comms",
   ];
-  const shouldDehydrateQuery = (query: { queryKey: readonly unknown[] }) => {
+  const shouldDehydrateQuery = (query: Parameters<typeof defaultShouldDehydrateQuery>[0]) => {
+    // Only settled, successful queries may be persisted. react-query dehydrates
+    // a *pending* query together with its in-flight `promise`; JSON.stringify
+    // turns that promise into `{}`, and on the next load `hydrate()` sees a
+    // truthy `promise` and calls `.then()` on it. That throws
+    // "promise.then is not a function", which aborts persistQueryClientRestore
+    // entirely — so nothing at all was being restored and every page refetched
+    // from scratch. Deferring to the library default reinstates the
+    // status === "success" check; the key filter below only narrows it further.
+    if (!defaultShouldDehydrateQuery(query)) return false;
     const first = query.queryKey?.[0];
     if (typeof first !== "string") return true;
     const k = first.toLowerCase();
@@ -937,6 +1057,11 @@ const App = () => {
         persistOptions: {
           persister,
           maxAge: 24 * 60 * 60 * 1000,
+          // Retires the caches already sitting in browsers from before pending
+          // queries were excluded. One of those still holds a serialized
+          // `promise` and would throw on restore exactly once per user;
+          // a changed buster makes the client discard them instead of reading.
+          buster: "settled-only-v1",
           dehydrateOptions: { shouldDehydrateQuery },
         },
       }
@@ -952,9 +1077,13 @@ const App = () => {
             {isDesktop() && <UpdateNotifier />}
             <BrowserRouter>
               <ScrollToTop />
-              <IMessageCursor />
               <MobileMotionGate>
-                <AppRoutes />
+                {/* Inside BrowserRouter and AuthProvider: the tour drives the
+                    router between the seven nav-bar pages, and it only runs for
+                    a signed-in student who has just finished onboarding. */}
+                <TourProvider>
+                  <AppRoutes />
+                </TourProvider>
               </MobileMotionGate>
             </BrowserRouter>
           </TooltipProvider>

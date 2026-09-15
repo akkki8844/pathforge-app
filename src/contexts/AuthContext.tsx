@@ -88,6 +88,24 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const SESSION_PERSIST_KEY = 'pathforge_stay_logged_in';
+
+// How long an anonymous ("try it without an account") session stays valid.
+//
+// Supabase persists every session in localStorage and refreshes it forever, so
+// a guest session created on a shared or school machine otherwise outlives the
+// person who created it indefinitely — and a guest is not an empty account:
+// they can fill in onboarding, target colleges, and essay drafts before ever
+// signing up. A real account is the user's own deliberate choice to stay
+// signed in; a guest session is not, so it gets a ceiling.
+const GUEST_SESSION_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+
+/** True when this is an anonymous session that has outlived its ceiling. */
+function guestSessionExpired(user: User | null | undefined): boolean {
+  if (!user || user.is_anonymous !== true) return false;
+  const startedAt = Date.parse(user.created_at ?? '');
+  if (!Number.isFinite(startedAt)) return false;
+  return Date.now() - startedAt > GUEST_SESSION_MAX_AGE_MS;
+}
 const PENDING_TEACHER_KEY = 'pathforge_pending_teacher_signup';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -150,6 +168,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshTeacherStatus = async () => {
     if (user) await fetchTeacherStatus(user.id);
+  };
+
+  // Re-reads the profiles row into context. Settings calls this after saving a
+  // new avatar or name so the navbar updates without a page reload.
+  const refreshProfile = async () => {
+    if (user) await fetchProfile(user.id);
   };
 
   const fetchProfile = async (userId: string) => {
@@ -286,6 +310,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // INITIAL_SESSION event firing in time.
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (cancelled) return;
+
+      // An expired guest session is dropped before any of it reaches state, so
+      // no page ever renders with it and no query runs under it.
+      if (guestSessionExpired(session?.user)) {
+        void supabase.auth.signOut();
+        setSession(null);
+        setUser(null);
+        setRoleLoading(false);
+        setLoading(false);
+        return;
+      }
+
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
@@ -379,11 +415,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error as Error | null };
   };
 
-  // Re-reads the profiles row into context. Settings calls this after saving a
-  // new avatar or name so the navbar updates without a page reload.
-  const refreshProfile = async () => {
-    if (user) await fetchProfile(user.id);
-  };
 
   const signOut = async () => {
     localStorage.removeItem(SESSION_PERSIST_KEY);

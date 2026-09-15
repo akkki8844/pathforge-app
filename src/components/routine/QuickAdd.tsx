@@ -179,6 +179,9 @@ export function QuickAddDialog({
               : null,
             all_day: !draft.timeStated,
             location: null,
+            recurrence: null,
+            recurrence_end: null,
+            calendar_id: null,
           });
           break;
       }

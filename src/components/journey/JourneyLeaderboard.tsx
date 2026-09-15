@@ -3,6 +3,7 @@ import { Gem, Flame, Heart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
+import { CollegeLogo } from "@/components/CollegeLogo";
 /**
  * Leaderboard data + row primitives.
  *
@@ -38,11 +39,18 @@ export interface LeaderboardRow {
   is_me: boolean;
 }
 
-/** Ordinal medal colour for the top three. */
+/**
+ * Ordinal weight for the top three.
+ *
+ * This used to be a medal palette — amber, zinc, orange — which is three
+ * colours spent restating a number the reader can already see. On a
+ * Cluely-scoped page the one accent means "this is the measured quantity",
+ * and on a leaderboard that is the rank itself, so first place gets it and
+ * everyone else is drawn in plain ink at decreasing weight.
+ */
 export function rankAccent(rank: number): string {
-  if (rank === 1) return "text-amber-500";
-  if (rank === 2) return "text-zinc-400";
-  if (rank === 3) return "text-orange-600";
+  if (rank === 1) return "text-primary";
+  if (rank <= 3) return "text-foreground";
   return "text-muted-foreground";
 }
 
@@ -93,7 +101,7 @@ function Stat({
   return (
     <span className="flex items-center justify-end gap-1 tabular-nums" title={label}>
       <Icon className={cn("h-3.5 w-3.5 shrink-0", className)} />
-      <span className="font-display text-[13px] font-semibold">{value}</span>
+      <span className="font-cluely text-[13px] font-semibold text-foreground">{value}</span>
     </span>
   );
 }
@@ -118,9 +126,8 @@ export function StandingRow({ r, dense = false }: { r: LeaderboardRow; dense?: b
     >
       <span
         className={cn(
-          "font-serif text-[17px] leading-none tabular-nums",
+          "font-cluely text-[17px] font-semibold leading-none tabular-nums tracking-[-0.02em]",
           rankAccent(r.rank),
-          r.rank > 3 && "text-muted-foreground/80",
         )}
       >
         {r.rank}
@@ -128,26 +135,33 @@ export function StandingRow({ r, dense = false }: { r: LeaderboardRow; dense?: b
 
       <span className="min-w-0">
         <span className="flex items-baseline gap-2">
-          <span className="truncate text-sm font-medium text-foreground">{r.display_name}</span>
+          <span className="truncate font-cluely text-sm font-medium text-foreground">{r.display_name}</span>
           {r.is_me && (
-            <span className="shrink-0 font-display text-[9px] font-bold uppercase tracking-[0.14em] text-primary">
+            <span className="shrink-0 font-cluely text-[9px] font-semibold uppercase tracking-[0.14em] text-primary">
               You
             </span>
           )}
         </span>
         {(r.school_name || r.grade) && (
-          <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
-            {[r.school_name, r.grade ? `Grade ${r.grade}` : null].filter(Boolean).join(" · ")}
+          <span className="mt-0.5 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            {r.school_name && (
+              <CollegeLogo name={r.school_name} size={12} className="rounded-[2px]" hideWhenUnknown />
+            )}
+            <span className="truncate">
+              {[r.school_name, r.grade ? `Grade ${r.grade}` : null].filter(Boolean).join(" · ")}
+            </span>
           </span>
         )}
       </span>
 
-      <Stat icon={Gem} value={r.diamonds} className="text-sky-500" label="Gems" />
+      {/* Gems is the sort key, so it is the one figure carrying the accent;
+          streak and hearts are context and stay in ink. */}
+      <Stat icon={Gem} value={r.diamonds} className="text-primary" label="Gems" />
       <span className="hidden sm:block">
-        <Stat icon={Flame} value={r.streak} className="text-orange-500" label="Streak" />
+        <Stat icon={Flame} value={r.streak} className="text-muted-foreground" label="Streak" />
       </span>
       <span className="hidden sm:block">
-        <Stat icon={Heart} value={r.hearts} className="text-rose-500" label="Hearts" />
+        <Stat icon={Heart} value={r.hearts} className="text-muted-foreground" label="Hearts" />
       </span>
     </li>
   );

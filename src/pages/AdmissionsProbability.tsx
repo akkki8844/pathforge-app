@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, } from "recharts";
 import {
-  TrendingUp, TrendingDown, Target, GraduationCap, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Zap, FileText, BookOpen, Award, Users, AlertCircle, Loader2, Sparkles, History, Trash2, Pencil, Check, X as XIcon, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
+  TrendingUp, TrendingDown, Target, AlertTriangle, CheckCircle2, ChevronDown, ChevronUp, Zap, FileText, BookOpen, Award, Users, AlertCircle, Loader2, Sparkles, History, Trash2, Pencil, Check, X as XIcon, ArrowRight, ArrowLeft, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useDraftPersistence } from "@/hooks/useDraftPersistence";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +37,7 @@ import {
 import { SubjectGradeList } from "@/components/admissions/SubjectGradeList";
 import { TestScoreInput } from "@/components/admissions/TestScoreInput";
 import { Seo } from "@/components/Seo";
+import { Eyebrow } from "@/components/cluely/primitives";
 
 interface AdmissionsProbabilityResult {
   collegeName: string;
@@ -149,7 +150,7 @@ export default function AdmissionsProbability() {
     let gpaValue = onboardingData.gpa || "";
     if (onboardingData.gpa_range && onboardingData.gpa_range.includes(":")) {
       const [sys, val] = onboardingData.gpa_range.split(":");
-      if (["gpa-4", "gpa-10", "percentage"].includes(sys)) gpaSystem = sys as GpaSystem;
+      if (GPA_SYSTEMS.some((s) => s.value === sys)) gpaSystem = sys as GpaSystem;
       if (val) gpaValue = val;
     }
     // curriculum_programme (e.g. "IB-MYP") is the precise programme key onboarding's
@@ -339,8 +340,8 @@ export default function AdmissionsProbability() {
   if (!onboardingData) {
     return (
       <div className="py-8 sm:py-12">
-        <div className="section-container max-w-6xl">
-          <Card>
+        <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8">
+          <Card className="shadow-none hover:shadow-none">
             <CardContent className="py-12 text-center">
               <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
               <h2 className="text-xl font-semibold text-foreground mb-2">Profile Data Required</h2>
@@ -355,22 +356,20 @@ export default function AdmissionsProbability() {
   const pct = Math.round(((step - 1) / (STEPS.length - 1)) * 100);
 
   return (
-    <div className="py-8 sm:py-12">
-      <Seo title='Admissions Probability — Pathforge' description='Get a calibrated AI estimate of your chances at top universities, grounded in your real profile.' path='/admissions-probability' />
-      <div className="section-container max-w-6xl">
+    <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
+      <Seo title='Admissions Probability' description='Get a calibrated AI estimate of your chances at top universities, grounded in your real profile.' path='/admissions-probability' />
+      <div className="mx-auto w-full max-w-[1400px] px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
           <div className="flex items-center justify-between mb-3 flex-wrap gap-3">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-accent/10 p-2.5">
-                <GraduationCap className="h-7 w-7 text-accent" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-bold text-foreground tracking-tight">Admissions Probability</h1>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  Guided 4-step analysis · Verified proofs boost credibility
-                </p>
-              </div>
+            <div>
+              <Eyebrow>Calibrated AI estimate</Eyebrow>
+              <h1 className="mt-2 max-w-[26ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+                Admissions probability
+              </h1>
+              <p className="mt-2 text-[13px] text-muted-foreground">
+                Guided 4-step analysis · Verified proofs boost credibility
+              </p>
             </div>
             {isAuthenticated && (
               <Sheet>
@@ -380,16 +379,16 @@ export default function AdmissionsProbability() {
                     History ({history.length})
                   </Button>
                 </SheetTrigger>
-                <SheetContent>
+                <SheetContent className="w-full sm:max-w-xl">
                   <SheetHeader><SheetTitle>Analysis History</SheetTitle></SheetHeader>
-                  <div className="mt-4 space-y-3 overflow-y-auto max-h-[calc(100dvh-120px)]">
+                  <div className="mt-4 grid grid-cols-1 gap-3 overflow-y-auto max-h-[calc(100dvh-120px)] sm:grid-cols-2">
                     {history.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
+                      <p className="text-sm text-muted-foreground text-center py-8 sm:col-span-2">
                         No saved analyses yet. Run an analysis to save it automatically.
                       </p>
                     ) : (
                       history.map((entry) => (
-                        <Card key={entry.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
+                        <Card key={entry.id} className="shadow-none hover:shadow-none cursor-pointer hover:bg-muted/50 transition-colors">
                           <CardContent className="p-4">
                             <div className="flex items-center justify-between mb-2">
                               {renamingId === entry.id ? (
@@ -429,7 +428,7 @@ export default function AdmissionsProbability() {
           </div>
 
           {/* Stepper */}
-          <Card className="border-border/60">
+          <Card className="shadow-none hover:shadow-none border-border/60">
             <CardContent className="py-5">
               <div className="flex items-center justify-between gap-2 mb-4">
                 {STEPS.map((s, i) => {
@@ -457,8 +456,8 @@ export default function AdmissionsProbability() {
                         <motion.div
                           className={cn(
                             "flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border-2 transition-all shrink-0",
-                            completed && "bg-accent border-accent text-accent-foreground",
-                            active && "border-accent bg-accent/10 text-accent ring-4 ring-accent/15",
+                            completed && "bg-primary border-primary text-primary-foreground",
+                            active && "border-primary bg-primary/10 text-primary ring-4 ring-primary/15",
                             !completed && !active && "border-border bg-muted text-muted-foreground",
                           )}
                           animate={active ? { scale: [1, 1.08, 1] } : {}}
@@ -488,7 +487,7 @@ export default function AdmissionsProbability() {
                         <div className="text-left hidden sm:block min-w-0">
                           <p className={cn(
                             "text-xs font-semibold uppercase tracking-wider truncate",
-                            active ? "text-accent" : completed ? "text-foreground" : "text-muted-foreground",
+                            active ? "text-primary" : completed ? "text-foreground" : "text-muted-foreground",
                           )}>Step {s.id}</p>
                           <p className={cn(
                             "text-sm font-medium truncate",
@@ -500,7 +499,7 @@ export default function AdmissionsProbability() {
                         <motion.div
                           className={cn(
                             "h-0.5 flex-1 mx-2 sm:mx-3",
-                            step > s.id ? "bg-accent" : "bg-border",
+                            step > s.id ? "bg-primary" : "bg-border",
                           )}
                           initial={{ scaleX: 0 }}
                           animate={{ scaleX: 1 }}
@@ -517,7 +516,10 @@ export default function AdmissionsProbability() {
           </Card>
         </motion.div>
 
-        {/* Step content */}
+        {/* Step content, plus a sidebar putting the wide screen's spare width to
+            use: what's already known from the profile, shown rather than just
+            silently reused, and the target list this whole analysis runs against. */}
+        <div className={cn("grid gap-6", !showResults && "lg:grid-cols-[1fr_320px] items-start")}>
         <AnimatePresence mode="wait">
           <motion.div
             key={step}
@@ -526,12 +528,12 @@ export default function AdmissionsProbability() {
             exit={{ opacity: 0, x: -20 }}
             transition={{ duration: 0.2 }}
           >
-            <Card className="mb-6">
+            <Card className="shadow-none hover:shadow-none mb-6">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   {(() => {
                     const Icon = STEPS[step - 1].icon;
-                    return <Icon className="h-5 w-5 text-accent" />;
+                    return <Icon className="h-5 w-5 text-primary" />;
                   })()}
                   {STEPS[step - 1].title}
                 </CardTitle>
@@ -637,7 +639,7 @@ export default function AdmissionsProbability() {
                 {/* ─── STEP 2: Test Scores ─── */}
                 {step === 2 && (
                   <div className="space-y-4">
-                    <div className="rounded-lg bg-accent/5 border border-accent/20 p-3">
+                    <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
                       <p className="text-xs text-foreground">
                         All tests optional. Scores are validated against their max — invalid entries are blocked.
                       </p>
@@ -668,9 +670,9 @@ export default function AdmissionsProbability() {
                       </Select>
                     </div>
 
-                    <div className="rounded-lg border border-accent/20 bg-accent/5 p-4">
+                    <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
                       <div className="flex items-start gap-3">
-                        <FileText className="h-5 w-5 text-accent shrink-0 mt-0.5" />
+                        <FileText className="h-5 w-5 text-primary shrink-0 mt-0.5" />
                         <div className="flex-1">
                           <p className="text-sm font-semibold text-foreground mb-1">Outcomes Evidence</p>
                           {outcomesProfile ? (
@@ -760,7 +762,7 @@ export default function AdmissionsProbability() {
 
                     <div className="space-y-2">
                       <h3 className="text-sm font-semibold text-foreground flex items-center gap-1.5">
-                        <Target className="h-4 w-4 text-accent" />
+                        <Target className="h-4 w-4 text-primary" />
                         Target Universities (from profile)
                       </h3>
                       {onboardingData.target_universities?.length ? (
@@ -835,6 +837,10 @@ export default function AdmissionsProbability() {
             </div>
           </motion.div>
         </AnimatePresence>
+        {!showResults && (
+          <ProfileSidebar onboardingData={onboardingData} verifiedProofs={verifiedProofs} />
+        )}
+        </div>
 
         {/* Results */}
         {showResults && results.length > 0 && (
@@ -846,7 +852,7 @@ export default function AdmissionsProbability() {
               animate="visible"
               className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8"
             >
-              <motion.div variants={fadeUp}><Card><CardContent className="pt-6">
+              <motion.div variants={fadeUp}><Card className="shadow-none hover:shadow-none"><CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Highest Chance</p>
@@ -858,7 +864,7 @@ export default function AdmissionsProbability() {
                   <TrendingUp className="h-8 w-8 text-chart-2" />
                 </div>
               </CardContent></Card></motion.div>
-              <motion.div variants={fadeUp}><Card><CardContent className="pt-6">
+              <motion.div variants={fadeUp}><Card className="shadow-none hover:shadow-none"><CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     {/* Was "Average Chance" — the mean of a 4% global and a 70%
@@ -874,10 +880,10 @@ export default function AdmissionsProbability() {
                     </p>
                     <p className="text-xs text-muted-foreground">Of {results.length} universities</p>
                   </div>
-                  <Target className="h-8 w-8 text-accent" />
+                  <Target className="h-8 w-8 text-primary" />
                 </div>
               </CardContent></Card></motion.div>
-              <motion.div variants={fadeUp}><Card><CardContent className="pt-6">
+              <motion.div variants={fadeUp}><Card className="shadow-none hover:shadow-none"><CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm text-muted-foreground">Reach Schools</p>
@@ -896,7 +902,7 @@ export default function AdmissionsProbability() {
             </motion.div>
 
             <motion.div variants={fadeUp} initial="hidden" animate="visible">
-              <Card className="mb-8">
+              <Card className="shadow-none hover:shadow-none mb-8">
                 <CardHeader><CardTitle>Probability Comparison</CardTitle></CardHeader>
                 {/* interval={0} forces every college label to render, so at
                     320px they overlapped into an unreadable smear with no way
@@ -946,7 +952,7 @@ export default function AdmissionsProbability() {
               {results.map((r, i) => (
                 <motion.div key={r.collegeId} variants={fadeUp}>
                 <Collapsible open={expandedCollege === r.collegeId} onOpenChange={(o) => setExpandedCollege(o ? r.collegeId : null)}>
-                  <Card>
+                  <Card className="shadow-none hover:shadow-none">
                     <CollapsibleTrigger className="w-full text-left">
                       <CardHeader>
                         <div className="flex items-center justify-between gap-3 flex-wrap">
@@ -992,10 +998,10 @@ export default function AdmissionsProbability() {
                         )}
                         {r.improvements?.length > 0 && (
                           <div>
-                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-1.5"><Zap className="h-4 w-4 text-accent" />Improvements</h4>
+                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-1.5 mb-1.5"><Zap className="h-4 w-4 text-primary" />Improvements</h4>
                             <div className="space-y-2">
                               {r.improvements.map((imp, j) => (
-                                <div key={j} className="text-sm border-l-2 border-accent/30 pl-3">
+                                <div key={j} className="text-sm border-l-2 border-primary/30 pl-3">
                                   <p className="text-foreground font-medium">{imp.action}</p>
                                   <p className="text-xs text-muted-foreground">{imp.impact}</p>
                                   {/* This ranks what to do first — not a
@@ -1016,6 +1022,73 @@ export default function AdmissionsProbability() {
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/**
+ * The right rail during the wizard: what the analysis already knows about you
+ * without asking again, shown plainly instead of used silently. Fills the
+ * space a lone form card left blank on a wide screen, and doubles as a
+ * confirmation that "autofilled from your profile" actually happened.
+ */
+function ProfileSidebar({
+  onboardingData,
+  verifiedProofs,
+}: {
+  onboardingData: NonNullable<ReturnType<typeof useAuth>["onboardingData"]>;
+  verifiedProofs: { totalApproved: number };
+}) {
+  const targets = onboardingData.target_universities || [];
+  return (
+    <div className="hidden lg:block lg:sticky lg:top-24 space-y-4">
+      <Card className="shadow-none hover:shadow-none">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm">From your profile</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <SidebarRow label="Grade" value={onboardingData.grade} />
+          <SidebarRow label="Curriculum" value={onboardingData.curriculum} />
+          <SidebarRow label="Intended major" value={onboardingData.intended_major} />
+          <SidebarRow label="Country" value={onboardingData.country} />
+          <SidebarRow label="Application year" value={onboardingData.application_year} />
+          {verifiedProofs.totalApproved > 0 && (
+            <SidebarRow
+              label="Verified proofs"
+              value={`${verifiedProofs.totalApproved} approved`}
+            />
+          )}
+          <p className="pt-1 text-[11px] text-muted-foreground">
+            Filled in from onboarding — change any of it in your profile settings.
+          </p>
+        </CardContent>
+      </Card>
+
+      {targets.length > 0 && (
+        <Card className="shadow-none hover:shadow-none">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm">Analyzing against</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {targets.map((t) => (
+              <div key={t} className="flex items-center gap-2 text-sm">
+                <CollegeLogo name={t} size={18} />
+                <span className="min-w-0 truncate text-foreground">{t}</span>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+function SidebarRow({ label, value }: { label: string; value?: string | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between gap-3 text-sm">
+      <span className="text-muted-foreground">{label}</span>
+      <span className="min-w-0 truncate font-medium text-foreground">{value}</span>
     </div>
   );
 }

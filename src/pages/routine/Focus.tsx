@@ -72,7 +72,7 @@ import { FlightDeck } from "@/components/routine/focus/FlightDeck";
 import { ArrivalScreen } from "@/components/routine/focus/ArrivalScreen";
 import { FlightLog, RouteNetwork } from "@/components/routine/focus/FlightLog";
 import { useCabinAudio } from "@/components/routine/focus/CabinAudio";
-import { FlightMap } from "@/components/routine/focus/FlightMap";
+import { LiveRouteMap } from "@/components/routine/focus/LiveRouteMap";
 import { airportByCode } from "@/lib/focus-flight/airports";
 import { formatKm } from "@/lib/focus-flight/geo";
 import { generatePass } from "@/lib/focus-flight/flight";
@@ -236,10 +236,6 @@ export default function Focus() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stage, arrival]);
 
-  const visitedCodes = useMemo(
-    () => new Set(flights.flatMap((f) => [f.origin_code, f.destination_code])),
-    [flights],
-  );
   const recentCodes = useMemo(() => flights.map((f) => f.destination_code), [flights]);
 
   /** Seats already flown. The cabin fills up over a term. */
@@ -362,32 +358,19 @@ export default function Focus() {
               transition={{ duration: 0.4, ease: EASE_OUT_EXPO }}
               className="relative overflow-hidden rounded-3xl border border-white/10 bg-slate-950"
             >
-              {/* Aerial ground texture behind the route: muted terrain tones
-                  rather than flat slate, so the map reads as a place viewed
-                  from above rather than a diagram on a dark panel. */}
-              <div
-                aria-hidden="true"
-                className="absolute inset-0 opacity-70"
-                style={{
-                  background:
-                    "radial-gradient(120% 90% at 15% 20%, hsl(150 28% 22%) 0%, transparent 55%), " +
-                    "radial-gradient(100% 80% at 75% 15%, hsl(38 32% 30%) 0%, transparent 50%), " +
-                    "radial-gradient(90% 100% at 60% 90%, hsl(200 45% 20%) 0%, transparent 55%), " +
-                    "hsl(222 47% 8%)",
-                }}
-              />
-              {/* The map is the backdrop, not an illustration: it draws the
-                  student's own last route, or a default long-haul if they have
-                  never flown. */}
-              <div className="absolute inset-0 opacity-[0.55]">
-                <HeroMap flights={flights} homeCode={home?.code} visitedCodes={visitedCodes} />
+              {/* The map is the backdrop, not an illustration: a real,
+                  live-tiled map of the student's own last route, or a default
+                  long-haul if they have never flown — not a decorative SVG
+                  standing in for one. */}
+              <div className="absolute inset-0">
+                <HeroMap flights={flights} homeCode={home?.code} />
               </div>
               <div
                 aria-hidden="true"
                 className="absolute inset-0"
                 style={{
                   background:
-                    "linear-gradient(100deg, rgba(2,6,23,0.96) 8%, rgba(2,6,23,0.72) 46%, rgba(2,6,23,0.35) 100%)",
+                    "linear-gradient(100deg, rgba(2,6,23,0.85) 8%, rgba(2,6,23,0.5) 46%, rgba(2,6,23,0.2) 100%)",
                 }}
               />
 
@@ -688,11 +671,9 @@ function greeting(): string {
 function HeroMap({
   flights,
   homeCode,
-  visitedCodes,
 }: {
   flights: { origin_code: string; destination_code: string }[];
   homeCode?: string;
-  visitedCodes: Set<string>;
 }) {
   const route = useMemo(() => {
     const last = flights[0];
@@ -703,13 +684,5 @@ function HeroMap({
     return { origin, destination };
   }, [flights, homeCode]);
 
-  return (
-    <FlightMap
-      origin={route.origin}
-      destination={route.destination}
-      progress={0}
-      visitedCodes={visitedCodes}
-      preview
-    />
-  );
+  return <LiveRouteMap origin={route.origin} destination={route.destination} progress={0} />;
 }

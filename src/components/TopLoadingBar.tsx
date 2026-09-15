@@ -73,11 +73,26 @@ export function TopLoadingBar() {
       className="pointer-events-none fixed inset-x-0 top-0 z-[100] h-[2px]"
       style={{ opacity: visible ? 1 : 0, transition: "opacity 200ms ease-out" }}
     >
+      {/*
+       * scaleX, not width.
+       *
+       * `width` is not a compositable property, so animating it ran Layout and
+       * Paint on the main thread for every frame of every one of these — and
+       * this bar starts on mount, so that included the landing page's first
+       * seconds. It was the only animation on the page Lighthouse flagged as
+       * non-composited ("Unsupported CSS Property: width"), while style and
+       * layout were the largest remaining block of main-thread time.
+       *
+       * A full-width element scaled from its left edge is the same picture and
+       * runs entirely on the compositor. The glow is scaled horizontally along
+       * with the bar, which on a 2px rule with an 8px blur is not a difference
+       * anyone can see.
+       */}
       <div
-        className="h-full bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.7)]"
+        className="h-full w-full origin-left bg-accent shadow-[0_0_8px_hsl(var(--accent)/0.7)]"
         style={{
-          width: `${progress}%`,
-          transition: "width 280ms cubic-bezier(0.22,1,0.36,1)",
+          transform: `scaleX(${progress / 100})`,
+          transition: "transform 280ms cubic-bezier(0.22,1,0.36,1)",
         }}
       />
     </div>

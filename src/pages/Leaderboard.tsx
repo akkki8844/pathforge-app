@@ -9,7 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Seo } from "@/components/Seo";
 import { useAuth } from "@/contexts/AuthContext";
 import { cn } from "@/lib/utils";
-import { EASE_OUT_EXPO, fadeUp, staggerParent, staggerStep, transition } from "@/lib/motion";
+import { fadeUp, staggerParent, staggerStep, transition } from "@/lib/motion";
+import { CollegeLogo } from "@/components/CollegeLogo";
+import { Eyebrow, Figure, Panel, Title } from "@/components/cluely/primitives";
 import {
   AUTO_HANDLE_RE, STANDINGS_GRID, StandingRow, rankAccent, useLeaderboard,
   type LeaderboardRow, type LeaderboardScope,
@@ -56,68 +58,69 @@ const EMPTY_COPY: Record<LeaderboardScope, { title: string; body: string; cta?: 
 
 /* ── Podium ──────────────────────────────────────────────────────────── */
 
-const PODIUM_ORDER = [1, 0, 2]; // silver, gold, bronze — left to right
-const PODIUM_META = [
-  { ring: "border-amber-500/35", glow: "from-amber-500/10", label: "Champion" },
-  { ring: "border-zinc-400/30", glow: "from-zinc-400/10", label: "Runner-up" },
-  { ring: "border-orange-600/30", glow: "from-orange-600/10", label: "Third" },
-];
+const PODIUM_ORDER = [1, 0, 2]; // second, first, third — left to right
+const PODIUM_LABELS = ["Champion", "Runner-up", "Third"];
 
+/**
+ * The top three.
+ *
+ * The medal palette this used to carry — an amber ring over an amber glow, a
+ * zinc one, an orange one — was three gradients and three hues restating the
+ * ordinal printed directly beneath them. Cluely leads with a single lifted
+ * surface instead of with colour, so first place is the page's one `lead`
+ * panel and the other two are flat cards.
+ */
 function PodiumCard({ r, place }: { r: LeaderboardRow; place: number }) {
-  const meta = PODIUM_META[place];
   const isFirst = place === 0;
   return (
-    <motion.article
-      variants={fadeUp}
-      className={cn(
-        "relative flex flex-col overflow-hidden rounded-2xl border bg-card p-5 text-center",
-        meta.ring,
-        // The champion sits proud of the other two on desktop. On a phone the
-        // three stack, so the lift is dropped rather than inverted.
-        isFirst ? "sm:-mt-4 sm:pb-7" : "sm:mt-2",
-        r.is_me && "ring-1 ring-primary/30",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn("pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b to-transparent", meta.glow)}
-      />
+    <motion.article variants={fadeUp}>
+      <Panel
+        tone={isFirst ? "lead" : "default"}
+        className={cn(
+          "flex h-full flex-col p-5 text-center",
+          // The champion sits proud of the other two on desktop. On a phone the
+          // three stack, so the lift is dropped rather than inverted.
+          isFirst ? "sm:-mt-4 sm:pb-7" : "sm:mt-2",
+          r.is_me && !isFirst && "border-primary/30",
+        )}
+      >
+        <Eyebrow>{PODIUM_LABELS[place]}</Eyebrow>
 
-      <div className="relative">
-        <span className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
-          {meta.label}
-        </span>
-
-        <p className={cn("mt-2 font-serif leading-none tabular-nums", rankAccent(r.rank), isFirst ? "text-5xl" : "text-4xl")}>
-          {r.rank}
+        <p className={cn("mt-2", rankAccent(r.rank))}>
+          <Figure className={isFirst ? "text-[2.75rem]" : "text-[2.25rem]"}>{r.rank}</Figure>
         </p>
 
-        <p className="mt-3 truncate font-display text-base font-semibold tracking-tight text-foreground">
+        <p className="mt-3 truncate font-cluely text-base font-semibold tracking-[-0.01em] text-foreground">
           {r.display_name}
         </p>
-        <p className="mt-1 h-4 truncate text-[11px] text-muted-foreground">
-          {[r.school_name, r.grade ? `Grade ${r.grade}` : null].filter(Boolean).join(" · ")}
+        <p className="mt-1 flex h-4 items-center justify-center gap-1.5 truncate text-[11px] text-muted-foreground">
+          {r.school_name && (
+            <CollegeLogo name={r.school_name} size={12} className="rounded-[2px]" hideWhenUnknown />
+          )}
+          <span className="truncate">
+            {[r.school_name, r.grade ? `Grade ${r.grade}` : null].filter(Boolean).join(" · ")}
+          </span>
         </p>
 
-        <div className="mt-4 flex items-center justify-center gap-4 border-t border-border pt-3">
+        <div className="mt-4 flex items-center justify-center gap-5 border-t border-border pt-3">
           {[
-            { icon: Gem, value: r.diamonds, cls: "text-sky-500", label: "Gems" },
-            { icon: Flame, value: r.streak, cls: "text-orange-500", label: "Streak" },
-            { icon: Heart, value: r.hearts, cls: "text-rose-500", label: "Hearts" },
+            { icon: Gem, value: r.diamonds, cls: "text-primary", label: "Gems" },
+            { icon: Flame, value: r.streak, cls: "text-muted-foreground", label: "Streak" },
+            { icon: Heart, value: r.hearts, cls: "text-muted-foreground", label: "Hearts" },
           ].map((s) => (
             <span key={s.label} className="flex flex-col items-center gap-1" title={s.label}>
               <s.icon className={cn("h-3.5 w-3.5", s.cls)} />
-              <span className="font-display text-sm font-semibold tabular-nums text-foreground">{s.value}</span>
+              <span className="font-cluely text-sm font-semibold tabular-nums text-foreground">{s.value}</span>
             </span>
           ))}
         </div>
 
         {r.is_me && (
-          <span className="mt-3 inline-block font-display text-[9px] font-bold uppercase tracking-[0.16em] text-primary">
+          <span className="mt-3 inline-block font-cluely text-[9px] font-semibold uppercase tracking-[0.16em] text-primary">
             That's you
           </span>
         )}
-      </div>
+      </Panel>
     </motion.article>
   );
 }
@@ -155,35 +158,36 @@ export default function Leaderboard() {
   return (
     <>
       <Seo
-        title="Leaderboard — Pathforge"
+        title="Leaderboard"
         description="Where you stand against every student on Pathforge, your school, and your grade — ranked by gems earned on the journey."
         path="/leaderboard"
       />
 
-      {/* Matches the dashboard measure, so moving between the two doesn't
-          shift the page's left edge. */}
-      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1180px] px-4 pb-24 pt-8 sm:px-6">
+      {/* A leaderboard is a table: every column on it is a number or a name,
+          none of it is prose, and capping it at a reading measure left the
+          standings squeezed into the middle of an empty page. */}
+      <div data-cluely className="min-h-svh bg-background font-cluely">
+      <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1440px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
         <motion.header
           initial={reduced ? false : { opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
+          transition={transition.base}
           className="mb-8"
         >
           <Link
             to="/journey"
-            className="inline-flex items-center text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
+            className="inline-flex items-center font-cluely text-xs font-semibold text-muted-foreground transition-colors hover:text-primary"
           >
             ← Back to journey
           </Link>
 
-          <h1 className="mt-3 max-w-[15ch] text-balance font-serif text-[clamp(2rem,7vw,3.6rem)] leading-[0.95] tracking-[-0.035em]">
-            Where you stand.
+          <h1 className="mt-3 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+            Where you stand
           </h1>
-          <p className="mt-4 max-w-[58ch] text-sm leading-relaxed text-muted-foreground sm:text-base">
+          <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
             One gem per level completed. The board counts gems first, then the streak you've held,
             then hearts remaining — so it rewards finishing work, not starting it.
           </p>
-          <div className="dash-double-rule mt-5" aria-hidden />
         </motion.header>
 
         {/* Scope — a segmented control rather than three tabs, because the
@@ -192,7 +196,7 @@ export default function Leaderboard() {
           <div
             role="tablist"
             aria-label="Leaderboard scope"
-            className="inline-flex rounded-xl border border-border bg-card p-1"
+            className="inline-flex rounded-[0.625rem] border border-border bg-card p-1"
           >
             {SCOPES.map((s) => {
               const active = s.value === scope;
@@ -204,7 +208,7 @@ export default function Leaderboard() {
                   aria-selected={active}
                   onClick={() => setScope(s.value)}
                   className={cn(
-                    "relative inline-flex min-h-[38px] items-center gap-1.5 rounded-lg px-3 py-1.5 font-display text-[11px] font-bold uppercase tracking-[0.1em] transition-colors sm:px-4",
+                    "relative inline-flex min-h-[38px] items-center gap-1.5 rounded-lg px-3 py-1.5 font-cluely text-[11px] font-semibold uppercase tracking-[0.1em] transition-colors sm:px-4",
                     active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                   )}
                 >
@@ -233,7 +237,7 @@ export default function Leaderboard() {
         {/* Guests are excluded server-side; say so instead of letting someone
             wonder why they never appear. */}
         {isGuest && (
-          <div className="mb-6 flex items-start gap-2.5 rounded-xl border border-border bg-muted/30 px-4 py-3">
+          <div className="mb-6 flex items-start gap-2.5 rounded-[0.625rem] border border-border bg-muted/30 px-4 py-3">
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p className="text-[13px] leading-relaxed text-muted-foreground">
               You're in a guest session, so you aren't ranked.{" "}
@@ -250,7 +254,7 @@ export default function Leaderboard() {
         {me && AUTO_HANDLE_RE.test(me.display_name) && (
           <Link
             to="/profile?section=general"
-            className="mb-6 flex items-start gap-2.5 rounded-xl border border-primary/25 bg-primary/[0.06] px-4 py-3 transition-colors hover:bg-primary/10"
+            className="mb-6 flex items-start gap-2.5 rounded-[0.625rem] border border-primary/25 bg-primary/[0.06] px-4 py-3 transition-colors hover:bg-primary/10"
           >
             <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
             <p className="text-[13px] leading-relaxed text-foreground">
@@ -265,15 +269,13 @@ export default function Leaderboard() {
             <Loader2 className="h-6 w-6 animate-spin text-primary" />
           </div>
         ) : error ? (
-          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
+          <Panel className="px-6 py-16 text-center">
             <p className="text-sm text-muted-foreground">{error}</p>
-          </div>
+          </Panel>
         ) : rows.length === 0 ? (
-          <div className="rounded-2xl border border-border bg-card px-6 py-16 text-center">
+          <Panel className="px-6 py-16 text-center">
             <Trophy className="mx-auto h-6 w-6 text-muted-foreground/60" />
-            <h2 className="mt-4 font-display text-lg font-semibold tracking-tight text-foreground">
-              {empty.title}
-            </h2>
+            <Title className="mt-4">{empty.title}</Title>
             <p className="mx-auto mt-2 max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
               {empty.body}
             </p>
@@ -282,7 +284,7 @@ export default function Leaderboard() {
                 <Link to={empty.cta.to}>{empty.cta.label}</Link>
               </Button>
             )}
-          </div>
+          </Panel>
         ) : (
           <motion.div
             variants={staggerParent}
@@ -302,11 +304,11 @@ export default function Leaderboard() {
             )}
 
             {rest.length > 0 && (
-              <motion.section variants={fadeUp} aria-label="Standings" className="rounded-2xl border border-border bg-card p-2 sm:p-3">
+              <motion.section variants={fadeUp} aria-label="Standings" className="rounded-[0.875rem] border border-border bg-card p-2 sm:p-3">
                 <div
                   className={cn(
                     STANDINGS_GRID,
-                    "px-3 pb-2 pt-1 font-display text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground",
+                    "px-3 pb-2 pt-1 font-cluely text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground",
                   )}
                 >
                   <span>#</span>
@@ -326,7 +328,7 @@ export default function Leaderboard() {
                     A mid-pack rank is otherwise unreachable without paging. */}
                 {me && !meOnScreen && (
                   <>
-                    <div className="my-2 flex items-center gap-2 px-3 font-display text-[9px] font-bold uppercase tracking-[0.16em] text-muted-foreground/70">
+                    <div className="my-2 flex items-center gap-2 px-3 font-cluely text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
                       <span className="h-px flex-1 bg-border" />
                       Your rank
                       <span className="h-px flex-1 bg-border" />
@@ -354,7 +356,7 @@ export default function Leaderboard() {
                       >
                         <ChevronLeft className="h-4 w-4" />
                       </Button>
-                      <span className="px-1 font-display tabular-nums font-semibold text-foreground">
+                      <span className="px-1 font-cluely tabular-nums font-semibold text-foreground">
                         {page} / {totalPages}
                       </span>
                       <Button
@@ -375,6 +377,7 @@ export default function Leaderboard() {
             )}
           </motion.div>
         )}
+      </div>
       </div>
     </>
   );

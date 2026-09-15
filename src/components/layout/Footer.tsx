@@ -12,7 +12,7 @@ const PRODUCT_LINKS = [
   { to: "/outcomes", label: "Outcomes" },
   { to: "/application-builder", label: "Application Builder" },
   { to: "/admissions-probability", label: "Admissions" },
-  { to: "/weekly-planner", label: "Planner" },
+  { to: "/weekly-planner", label: "Calendar" },
 ];
 
 const RESOURCE_LINKS = [

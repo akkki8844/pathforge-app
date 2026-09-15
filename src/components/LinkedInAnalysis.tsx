@@ -45,8 +45,12 @@ import { toast } from "sonner";
 import { AiGenerationNotice } from "@/components/AiGenerationNotice";
 import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 
-/** What `analyze-linkedin` charges, per its `consume_credits({ amount: 2 })`. */
-const ANALYSIS_CREDIT_COST = 2;
+import { CollegeLogo } from "@/components/CollegeLogo";
+
+// A full analysis draws roughly twice what a normal AI action does — the edge
+// function charges `consume_credits({ amount: 2 })`. Usage reaches students as
+// a percentage of their allowance, so the copy below states that as relative
+// weight rather than as a price in a unit nothing else in the product mentions.
 
 /** The edge function refuses anything shorter, so don't let the user pay to find out. */
 const MIN_PROFILE_CHARS = 50;
@@ -535,7 +539,7 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
                 ) : (
                   <RefreshCw className="mr-2 h-3.5 w-3.5" />
                 )}
-                Re-analyze · {ANALYSIS_CREDIT_COST} credits
+                Re-analyze
               </Button>
             </div>
           </div>
@@ -662,6 +666,9 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
             <div className="p-3 rounded-lg bg-muted/50 text-sm mb-4">
               <p className="text-muted-foreground">
                 Analysis will be tailored for:{" "}
+                {targetCollege && (
+                  <CollegeLogo name={targetCollege} size={14} className="mr-1 inline-block translate-y-[2px] rounded-[3px]" />
+                )}
                 <span className="font-medium text-foreground">{targetCollege || "no target university set"}</span>
                 {" | "}
                 Major: <span className="font-medium text-foreground">{intendedMajor || "not set"}</span>
@@ -691,9 +698,9 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
               </>
             )}
           </Button>
-          {/* The edge function calls consume_credits with amount: 2. */}
+          {/* Charged at twice a normal action by the edge function. */}
           <p className="text-xs text-muted-foreground mt-3">
-            Uses {ANALYSIS_CREDIT_COST} credits each time it runs. Your saved analysis stays free to read.
+            Each run uses about twice the allowance of a normal AI action. Your saved analysis stays free to read.
           </p>
           <AiGenerationNotice active={isAnalyzing} className="mt-4" />
 
@@ -984,7 +991,7 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
           <AlertDialogHeader>
             <AlertDialogTitle>Re-analyze your profile?</AlertDialogTitle>
             <AlertDialogDescription>
-              This runs a fresh analysis and costs {ANALYSIS_CREDIT_COST} credits, replacing the analysis you
+              This runs a fresh analysis — about twice the usage of a normal AI action — replacing the analysis you
               already have. You don't need to re-analyze just to read your current one — that's free.
               {usingStoredProfile
                 ? " It will use the LinkedIn profile already imported to your account."
@@ -996,7 +1003,7 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
           <AlertDialogFooter>
             <AlertDialogCancel>Keep my current analysis</AlertDialogCancel>
             <AlertDialogAction onClick={() => void runAnalysis()}>
-              Use {ANALYSIS_CREDIT_COST} credits & re-analyze
+              Re-analyze
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

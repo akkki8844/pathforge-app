@@ -98,6 +98,7 @@ export const KIND_COLOR: Record<AgendaKind, RoutineColor> = {
   event: "rose",
   habit: "emerald",
   goal: "orange",
+  testdate: "rose",
 };
 
 /** Human label for an agenda source. Rendered next to the icon, not instead of it. */
@@ -109,6 +110,7 @@ export const KIND_LABEL: Record<AgendaKind, string> = {
   event: "Event",
   habit: "Habit",
   goal: "Goal",
+  testdate: "Test date",
 };
 
 /**

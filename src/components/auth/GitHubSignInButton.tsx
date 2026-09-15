@@ -3,12 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-const safeRedirectPath = (value?: string) => {
-  if (!value) return "/dashboard";
-  const path = value.startsWith("/") ? value : `/${value}`;
-  return path.startsWith("//") ? "/dashboard" : path;
-};
+import { safeRedirectPath } from "@/lib/safeRedirect";
 
 export function GitHubSignInButton({
   label = "Continue with GitHub",

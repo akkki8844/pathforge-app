@@ -7,21 +7,42 @@ import { Input } from "@/components/ui/input";
 import { Illustration } from "@/components/ui/not-found";
 import { useAuth } from "@/contexts/AuthContext";
 
+/**
+ * Every entry here is checked against the route table in App.tsx. Two of them
+ * used to point at routes that do not exist (`/colleges`, `/readiness`), so
+ * searching from the 404 page landed the visitor on another 404 — the one
+ * place in the product where a dead link is least forgivable. Add a row here
+ * only alongside a real `<Route path>`.
+ */
 const SEARCH_INDEX = [
-  { label: "Dashboard", path: "/dashboard", terms: ["dashboard", "home"] },
-  { label: "Journey", path: "/journey", terms: ["journey", "levels", "tasks", "roadmap"] },
-  { label: "Profile", path: "/profile", terms: ["profile", "account", "settings"] },
-  { label: "Colleges", path: "/colleges", terms: ["colleges", "universities", "schools"] },
-  { label: "Activities", path: "/activities", terms: ["activities", "extracurriculars", "competitions", "olympiads"] },
-  { label: "Outcomes", path: "/outcomes", terms: ["outcomes", "chances", "admissions"] },
-  { label: "Readiness", path: "/readiness", terms: ["readiness", "report", "analysis"] },
-  { label: "Recommendations", path: "/recommendations", terms: ["recommendations", "recs", "suggestions"] },
-  { label: "Scholarships", path: "/scholarships", terms: ["scholarships", "financial aid"] },
-  { label: "Pricing", path: "/pricing", terms: ["pricing", "plans", "subscription", "credits"] },
+  { label: "Dashboard", path: "/dashboard", terms: ["dashboard", "home"], app: true },
+  { label: "Journey", path: "/journey", terms: ["journey", "levels", "tasks", "roadmap", "plan"], app: true },
+  { label: "Advisor", path: "/advisor", terms: ["advisor", "ai", "chat", "counsellor", "counselor"], app: true },
+  { label: "Activities", path: "/activities", terms: ["activities", "extracurriculars", "competitions", "olympiads"], app: true },
+  { label: "Outcomes", path: "/outcomes", terms: ["outcomes", "achievements", "record"], app: true },
+  { label: "Admissions probability", path: "/admissions-probability", terms: ["chances", "probability", "odds", "admissions"], app: true },
+  { label: "College readiness", path: "/college-readiness", terms: ["readiness", "colleges", "universities", "schools", "report"], app: true },
+  { label: "Requirements", path: "/requirements", terms: ["requirements", "deadlines", "checklist"], app: true },
+  { label: "Recommendations", path: "/recommendations", terms: ["recommendations", "recs", "suggestions", "next steps"], app: true },
+  { label: "Essays", path: "/essays", terms: ["essays", "personal statement", "writing", "drafts"], app: true },
+  { label: "Exemplar essays", path: "/exemplar-essays", terms: ["exemplar", "sample essays", "examples"] },
+  { label: "Letters of recommendation", path: "/lor", terms: ["lor", "letters", "recommendation letters", "teachers"], app: true },
+  { label: "Application builder", path: "/application-builder", terms: ["application", "common app", "builder", "submit"], app: true },
+  { label: "Profile builder", path: "/profile-builder", terms: ["profile builder", "linkedin", "presence"], app: true },
+  { label: "Resume", path: "/resume", terms: ["resume", "cv", "one pager"], app: true },
+  { label: "Past admits", path: "/past-admits", terms: ["past admits", "admitted", "profiles"] },
+  { label: "Scholarships", path: "/scholarships", terms: ["scholarships", "financial aid", "funding", "money"], app: true },
+  { label: "Today", path: "/routine/today", terms: ["today", "routine", "daily", "agenda", "tasks", "to do", "todo"], app: true },
+  { label: "Study planner", path: "/routine/study-planner", terms: ["study planner", "schedule", "subjects"], app: true },
+  { label: "Calendar", path: "/weekly-planner", terms: ["calendar", "weekly planner", "week", "planning"], app: true },
+  { label: "Chats", path: "/communications/chats", terms: ["chat", "messages", "dm"], app: true },
+  { label: "Teams", path: "/communications/teams", terms: ["teams", "groups", "collaboration"], app: true },
+  { label: "Profile", path: "/profile", terms: ["profile", "account", "settings"], app: true },
+  { label: "Pricing", path: "/pricing", terms: ["pricing", "plans", "subscription", "credits", "billing"] },
   { label: "About", path: "/about", terms: ["about", "team", "company"] },
   { label: "Contact", path: "/contact", terms: ["contact", "support", "help"] },
   { label: "FAQ", path: "/faq", terms: ["faq", "questions", "help"] },
-  { label: "Privacy", path: "/privacy", terms: ["privacy", "policy"] },
+  { label: "Privacy", path: "/privacy", terms: ["privacy", "policy", "data"] },
   { label: "Terms", path: "/terms", terms: ["terms", "conditions"] },
 ];
 
@@ -40,13 +61,18 @@ const NotFound = () => {
   const matches = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return [];
+    // Routes marked `app` live behind ProtectedRoute. Offering them to a
+    // signed-out visitor sends them to /auth instead of the thing they
+    // searched for, which reads as a second dead end — so they are only
+    // listed once there is a session to open them with.
     return SEARCH_INDEX.filter(
       (item) =>
-        item.label.toLowerCase().includes(q) ||
-        item.path.toLowerCase().includes(q) ||
-        item.terms.some((term) => term.includes(q))
+        (signedIn || !item.app) &&
+        (item.label.toLowerCase().includes(q) ||
+          item.path.toLowerCase().includes(q) ||
+          item.terms.some((term) => term.includes(q)))
     );
-  }, [query]);
+  }, [query, signedIn]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,7 +84,7 @@ const NotFound = () => {
   return (
     <div className="relative flex min-h-[100svh] w-full flex-col justify-center bg-background p-6 md:p-10">
       <Seo
-        title="Page Not Found — Pathforge"
+        title="Page Not Found"
         description="The page you're looking for doesn't exist. Return to Pathforge to keep planning your college journey."
         path={location.pathname}
         noindex

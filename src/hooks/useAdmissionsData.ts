@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import type { SubjectEntry } from '@/components/admissions/SubjectGradeList';
 import type { TestScore } from '@/components/admissions/TestScoreInput';
+import type { GpaSystem } from '@/lib/curriculumSubjects';
 
 export interface AdmissionsFormData {
   // GPA — structured
-  gpaSystem: 'gpa-4' | 'gpa-10' | 'percentage';
+  gpaSystem: GpaSystem;
   gpaValue: string;
   // Curriculum (auto-filled from onboarding)
   curriculum: string;

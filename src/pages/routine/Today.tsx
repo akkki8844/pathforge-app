@@ -28,6 +28,7 @@ import { NextUpCard } from "@/components/routine/today/NextUpCard";
 import { DayProgress } from "@/components/routine/today/DayProgress";
 import { OverdueStrip } from "@/components/routine/today/OverdueStrip";
 import { QuickActions } from "@/components/routine/today/QuickActions";
+import { QuickAddDialog } from "@/components/routine/QuickAdd";
 
 /** First name from the fullest source available, degrading gracefully. */
 function firstName(
@@ -51,7 +52,7 @@ function useNow(intervalMs = 30_000): Date {
 }
 
 export default function Today() {
-  const { user, profile } = useAuth();
+  const { user, profile, onboardingData } = useAuth();
   const navigate = useNavigate();
   const now = useNow();
   const {
@@ -68,10 +69,11 @@ export default function Today() {
 
   // Keys currently being written, so a row can't be double-fired mid-flight.
   const [pendingKeys, setPendingKeys] = useState<Set<string>>(new Set());
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
 
   const agenda = useMemo(
-    () => buildAgenda(sources, now, { now }),
-    [sources, now],
+    () => buildAgenda(sources, now, { now, intendedMajor: onboardingData?.intended_major }),
+    [sources, now, onboardingData?.intended_major],
   );
   const summary = useMemo(() => summarizeDay(sources, now, now), [sources, now]);
   const overdue = useMemo(
@@ -180,6 +182,8 @@ export default function Today() {
   }, [overdue, pendingKeys]);
 
   return (
+    <>
+    <QuickAddDialog open={quickAddOpen} onOpenChange={setQuickAddOpen} initialKind="task" />
     <RoutineShell
       title="Today"
       purpose="Your day at a glance, and what to do next."
@@ -220,7 +224,7 @@ export default function Today() {
             actionLabel="Add your timetable"
             onAction={() => navigate("/routine/timetable")}
             secondaryLabel="Add a task"
-            onSecondary={() => navigate("/routine/tasks")}
+            onSecondary={() => setQuickAddOpen(true)}
           />
         ) : (
           <div className="grid gap-4 lg:grid-cols-3 lg:gap-6">
@@ -330,5 +334,6 @@ export default function Today() {
         )}
       </RoutineAsync>
     </RoutineShell>
+    </>
   );
 }

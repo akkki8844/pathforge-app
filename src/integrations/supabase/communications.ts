@@ -29,6 +29,9 @@ import type {
   Message,
   MessageAttachment,
   MessagePin,
+  MessagePoll,
+  MessagePollOption,
+  MessagePollVote,
   MessageReaction,
   Objective,
   ObjectiveActivity,
@@ -85,6 +88,9 @@ export type CommsDatabase = {
       message_reactions: Table<MessageReaction>;
       message_attachments: Table<MessageAttachment>;
       message_pins: Table<MessagePin>;
+      message_polls: Table<MessagePoll>;
+      message_poll_options: Table<MessagePollOption>;
+      message_poll_votes: Table<MessagePollVote>;
       objectives: Table<Objective>;
       objective_activity: Table<ObjectiveActivity>;
       announcements: Table<Announcement>;

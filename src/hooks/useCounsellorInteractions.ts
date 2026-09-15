@@ -15,23 +15,33 @@ export interface CounsellorInteraction {
 }
 
 /**
- * Contact log timeline for a single student. Powers "last contacted" indicators
- * and the CRM-style interaction history view.
+ * Contact log timeline. Powers "last contacted" indicators and the CRM-style
+ * interaction history view.
+ *
+ * Pass a student id for that student's timeline, or omit it for every
+ * interaction this counsellor has logged — which is what the Meetings calendar
+ * needs. It used to return early on a missing id and leave `items` empty
+ * forever, so /teacher/meetings rendered an empty calendar no matter how many
+ * sessions had been logged.
  */
-export function useCounsellorInteractions(studentId: string | undefined) {
+export function useCounsellorInteractions(studentId?: string) {
   const { user } = useAuth();
   const [items, setItems] = useState<CounsellorInteraction[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    if (!user || !studentId) return;
+    if (!user) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase.from as any)("counsellor_interactions")
+    let query = (supabase.from as any)("counsellor_interactions")
       .select("*")
-      .eq("counsellor_id", user.id)
-      .eq("student_id", studentId)
-      .order("occurred_at", { ascending: false });
+      .eq("counsellor_id", user.id);
+    if (studentId) query = query.eq("student_id", studentId);
+    const { data } = await query.order("occurred_at", { ascending: false });
     setItems((data as CounsellorInteraction[] | null) ?? []);
     setLoading(false);
   }, [user, studentId]);

@@ -9,6 +9,7 @@ import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 
+import { BrandLogo } from "@/components/BrandLogo";
 /**
  * School-wide view for a counselor.
  * Aggregates the linked roster into trends the counselor can act on:
@@ -21,11 +22,15 @@ export default function CounselorSchoolView() {
   const { teacherProfile } = useAuth();
   const { students, loading } = useTeacherRoster();
   const [schoolName, setSchoolName] = useState<string>("");
+  const [schoolDomain, setSchoolDomain] = useState<string | null>(null);
 
   useEffect(() => {
     if (!teacherProfile?.school_id) return;
-    supabase.from("schools").select("name").eq("id", teacherProfile.school_id).maybeSingle()
-      .then(({ data }) => setSchoolName(data?.name ?? ""));
+    supabase.from("schools").select("name,domain").eq("id", teacherProfile.school_id).maybeSingle()
+      .then(({ data }) => {
+        setSchoolName(data?.name ?? "");
+        setSchoolDomain((data as { domain?: string | null } | null)?.domain ?? null);
+      });
   }, [teacherProfile?.school_id]);
 
   const metrics = useMemo(() => {
@@ -96,7 +101,13 @@ export default function CounselorSchoolView() {
       <div className="space-y-6">
         <header>
           <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <School className="h-5 w-5 text-accent" />
+            {/* The school's own mark when its record carries a domain; the
+                generic glyph only when there is nothing to show. */}
+            {schoolName && schoolDomain ? (
+              <BrandLogo name={schoolName} domain={schoolDomain} size={24} />
+            ) : (
+              <School className="h-5 w-5 text-accent" />
+            )}
             {schoolName || "Your school"}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

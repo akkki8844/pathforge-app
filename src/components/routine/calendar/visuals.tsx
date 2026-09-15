@@ -16,6 +16,7 @@ import {
   CheckSquare,
   Flag,
   GraduationCap,
+  NotebookPen,
   Repeat,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -34,6 +35,7 @@ export const KIND_ICON: Record<AgendaKind, LucideIcon> = {
   event: CalendarClock,
   habit: Repeat,
   goal: Flag,
+  testdate: NotebookPen,
 };
 
 /** Reading order for filters, legends and the day-sheet's grouped sections. */
@@ -45,6 +47,7 @@ export const KIND_ORDER: AgendaKind[] = [
   "event",
   "habit",
   "goal",
+  "testdate",
 ];
 
 /**

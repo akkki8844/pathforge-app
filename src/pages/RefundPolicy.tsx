@@ -5,7 +5,7 @@ import { ScrollReveal } from "@/components/animations/ScrollReveal";
 export default function RefundPolicy() {
   return (
     <div className="min-h-[100svh] bg-background">
-      <Seo title='Refund Policy — Pathforge' description="Pathforge's refund policy for credits, subscriptions, and one-time purchases." path='/refund-policy' />
+      <Seo title='Refund Policy' description="Pathforge's refund policy for credits, subscriptions, and one-time purchases." path='/refund-policy' />
       <div className="section-container max-w-3xl py-12 prose prose-sm dark:prose-invert">
         <ScrollReveal>
           <h1 className="text-3xl font-bold mb-2">Refund Policy</h1>

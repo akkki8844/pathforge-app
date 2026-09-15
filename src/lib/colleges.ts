@@ -8,6 +8,13 @@ export interface College {
   level: "regional" | "national" | "global";
   strongMajors: string[];
   website: string;
+  /**
+   * Other names this same institution was listed under before the rows were
+   * merged ("UC San Diego" for "University of California, San Diego"). Kept so
+   * a search for the short form still finds the school — see
+   * {@link collegeMatchesQuery}.
+   */
+  aka?: string[];
 }
 
 // Helper to get colleges by country.
@@ -628,6 +635,7 @@ const collegesRaw: College[] = [
   { id: "ksu-sa", name: "King Saud University", country: "Saudi Arabia", region: "Riyadh", level: "national", strongMajors: ["Medicine", "Engineering", "Business/Finance", "Pharmacy"], website: "https://www.ksu.edu.sa" },
   { id: "qu", name: "Qatar University", country: "Qatar", region: "Doha", level: "national", strongMajors: ["Engineering", "Business/Finance", "Medicine", "Law/Pre-Law"], website: "https://www.qu.edu.qa" },
   { id: "kuwait-u", name: "Kuwait University", country: "Kuwait", region: "Kuwait City", level: "national", strongMajors: ["Engineering", "Medicine", "Business/Finance", "Law/Pre-Law"], website: "https://www.kuniv.edu.kw" },
+  { id: "auk", name: "American University of Kuwait", country: "Kuwait", region: "Salmiya", level: "national", strongMajors: ["Business/Finance", "Computer Science", "International Business", "Communications"], website: "https://www.auk.edu.kw" },
   { id: "auc", name: "American University in Cairo", country: "Egypt", region: "Cairo", level: "national", strongMajors: ["Business/Finance", "Engineering", "Political Science", "Journalism"], website: "https://www.aucegypt.edu" },
   { id: "cairo-u", name: "Cairo University", country: "Egypt", region: "Cairo", level: "national", strongMajors: ["Medicine", "Engineering", "Law/Pre-Law", "Pharmacy"], website: "https://cu.edu.eg" },
   { id: "technion", name: "Technion - Israel Institute of Technology", country: "Israel", region: "Haifa", level: "global", strongMajors: ["Computer Science", "Electrical Engineering", "Aerospace Engineering", "Biomedical Engineering"], website: "https://www.technion.ac.il" },
@@ -639,7 +647,9 @@ const collegesRaw: College[] = [
   { id: "ui-nigeria", name: "University of Ibadan", country: "Nigeria", region: "Ibadan", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Agriculture", "Engineering"], website: "https://www.ui.edu.ng" },
   { id: "covenant-u", name: "Covenant University", country: "Nigeria", region: "Ota", level: "regional", strongMajors: ["Computer Science", "Business/Finance", "Engineering", "Architecture"], website: "https://covenantuniversity.edu.ng" },
   { id: "u-nairobi", name: "University of Nairobi", country: "Kenya", region: "Nairobi", level: "national", strongMajors: ["Medicine", "Engineering", "Law/Pre-Law", "Business/Finance"], website: "https://www.uonbi.ac.ke" },
+  { id: "strathmore", name: "Strathmore University", country: "Kenya", region: "Nairobi", level: "national", strongMajors: ["Business/Finance", "Law/Pre-Law", "Computer Science", "Accounting"], website: "https://www.strathmore.edu" },
   { id: "u-ghana", name: "University of Ghana", country: "Ghana", region: "Accra", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Business/Finance", "Political Science"], website: "https://www.ug.edu.gh" },
+  { id: "knust", name: "Kwame Nkrumah University of Science and Technology (KNUST)", country: "Ghana", region: "Kumasi", level: "national", strongMajors: ["Engineering", "Medicine", "Architecture", "Computer Science"], website: "https://www.knust.edu.gh" },
   { id: "amu", name: "Aligarh Muslim University", country: "India", region: "Uttar Pradesh", level: "national", strongMajors: ["Medicine", "Engineering", "Law/Pre-Law", "Humanities"], website: "https://www.amu.ac.in" },
   { id: "ashoka", name: "Ashoka University", country: "India", region: "Haryana", level: "national", strongMajors: ["Economics", "Political Science", "Computer Science", "English/Creative Writing"], website: "https://www.ashoka.edu.in" },
   { id: "krea", name: "Krea University", country: "India", region: "Andhra Pradesh", level: "regional", strongMajors: ["Economics", "Business/Finance", "Political Science", "Mathematics"], website: "https://krea.edu.in" },
@@ -661,7 +671,9 @@ const collegesRaw: College[] = [
   { id: "u-oslo", name: "University of Oslo", country: "Norway", region: "Oslo", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Computer Science", "Political Science"], website: "https://www.uio.no/english/" },
   { id: "u-copenhagen", name: "University of Copenhagen", country: "Denmark", region: "Copenhagen", level: "national", strongMajors: ["Medicine", "Biology/Pre-Med", "Law/Pre-Law", "Veterinary Science/Animal Science"], website: "https://www.ku.dk/english/" },
   { id: "vienna-u", name: "University of Vienna", country: "Austria", region: "Vienna", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Philosophy", "Music/Musicology"], website: "https://www.univie.ac.at/en/" },
+  { id: "tu-wien", name: "TU Wien (Vienna University of Technology)", country: "Austria", region: "Vienna", level: "national", strongMajors: ["Mechanical Engineering", "Computer Science", "Electrical Engineering", "Physics"], website: "https://www.tuwien.at/en/" },
   { id: "warsaw-u", name: "University of Warsaw", country: "Poland", region: "Warsaw", level: "national", strongMajors: ["Computer Science", "Law/Pre-Law", "Economics", "Mathematics"], website: "https://en.uw.edu.pl" },
+  { id: "jagiellonian-u", name: "Jagiellonian University", country: "Poland", region: "Kraków", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Philosophy", "History"], website: "https://en.uj.edu.pl" },
   { id: "charles-prague", name: "Charles University", country: "Czech Republic", region: "Prague", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Philosophy", "Mathematics"], website: "https://cuni.cz/UKEN-1.html" },
   { id: "sapienza", name: "Sapienza University of Rome", country: "Italy", region: "Rome", level: "national", strongMajors: ["Medicine", "Engineering", "Architecture", "Classics"], website: "https://www.uniroma1.it/en" },
   { id: "bocconi", name: "Bocconi University", country: "Italy", region: "Milan", level: "global", strongMajors: ["Business/Finance", "Economics", "Management", "Law/Pre-Law"], website: "https://www.unibocconi.eu" },
@@ -670,17 +682,22 @@ const collegesRaw: College[] = [
   { id: "ie-university", name: "IE University", country: "Spain", region: "Madrid", level: "national", strongMajors: ["Business/Finance", "Communications", "Law/Pre-Law", "Architecture"], website: "https://www.ie.edu" },
   { id: "iese", name: "IESE Business School", country: "Spain", region: "Barcelona", level: "global", strongMajors: ["Business/Finance", "Management", "Economics", "Entrepreneurship"], website: "https://www.iese.edu" },
   { id: "uba2", name: "Universidad de los Andes (Colombia)", country: "Colombia", region: "Bogotá", level: "national", strongMajors: ["Engineering", "Business/Finance", "Law/Pre-Law", "Economics"], website: "https://uniandes.edu.co/en" },
+  { id: "u-nacional-colombia", name: "Universidad Nacional de Colombia", country: "Colombia", region: "Bogotá", level: "national", strongMajors: ["Engineering", "Medicine", "Law/Pre-Law", "Architecture"], website: "https://unal.edu.co" },
   { id: "puc-rio", name: "Pontifical Catholic University of Rio de Janeiro", country: "Brazil", region: "Rio de Janeiro", level: "national", strongMajors: ["Engineering", "Economics", "Computer Science", "Architecture"], website: "https://www.puc-rio.br/english/" },
   { id: "fgv", name: "Fundação Getulio Vargas", country: "Brazil", region: "São Paulo", level: "national", strongMajors: ["Business/Finance", "Economics", "Law/Pre-Law", "Public Policy"], website: "https://portal.fgv.br/en" },
   { id: "ucr", name: "Universidad de Costa Rica", country: "Costa Rica", region: "San José", level: "regional", strongMajors: ["Medicine", "Engineering", "Law/Pre-Law", "Education"], website: "https://www.ucr.ac.cr" },
+  { id: "tec-costa-rica", name: "Costa Rica Institute of Technology (TEC)", country: "Costa Rica", region: "Cartago", level: "regional", strongMajors: ["Engineering", "Computer Science", "Industrial Design", "Environmental Science"], website: "https://www.tec.ac.cr" },
   { id: "u-philippines", name: "University of the Philippines Diliman", country: "Philippines", region: "Quezon City", level: "national", strongMajors: ["Engineering", "Business/Finance", "Medicine", "Computer Science"], website: "https://upd.edu.ph" },
   { id: "ateneo", name: "Ateneo de Manila University", country: "Philippines", region: "Quezon City", level: "national", strongMajors: ["Business/Finance", "Law/Pre-Law", "Communications", "Computer Science"], website: "https://www.ateneo.edu" },
   { id: "chulalongkorn", name: "Chulalongkorn University", country: "Thailand", region: "Bangkok", level: "national", strongMajors: ["Engineering", "Medicine", "Business/Finance", "Architecture"], website: "https://www.chula.ac.th/en/" },
   { id: "mahidol", name: "Mahidol University", country: "Thailand", region: "Bangkok", level: "national", strongMajors: ["Medicine", "Pharmacy", "Public Health", "Biology/Pre-Med"], website: "https://mahidol.ac.th/en/" },
   { id: "u-malaya", name: "University of Malaya", country: "Malaysia", region: "Kuala Lumpur", level: "national", strongMajors: ["Medicine", "Engineering", "Computer Science", "Business/Finance"], website: "https://www.um.edu.my" },
   { id: "ui-indo", name: "University of Indonesia", country: "Indonesia", region: "Depok", level: "national", strongMajors: ["Engineering", "Medicine", "Law/Pre-Law", "Economics"], website: "https://www.ui.ac.id/en/" },
+  { id: "itb", name: "Institut Teknologi Bandung (ITB)", country: "Indonesia", region: "Bandung", level: "national", strongMajors: ["Engineering", "Computer Science", "Architecture", "Mathematics"], website: "https://www.itb.ac.id/en" },
   { id: "vnu", name: "Vietnam National University, Hanoi", country: "Vietnam", region: "Hanoi", level: "national", strongMajors: ["Computer Science", "Engineering", "Economics", "International Relations"], website: "https://vnu.edu.vn/eng" },
+  { id: "vnu-hcm", name: "Vietnam National University, Ho Chi Minh City", country: "Vietnam", region: "Ho Chi Minh City", level: "national", strongMajors: ["Computer Science", "Engineering", "Business/Finance", "Biology/Pre-Med"], website: "https://vnuhcm.edu.vn/en" },
   { id: "taiwan-u", name: "National Taiwan University", country: "Taiwan", region: "Taipei", level: "global", strongMajors: ["Computer Science", "Electrical Engineering", "Medicine", "Business/Finance"], website: "https://www.ntu.edu.tw/english" },
+  { id: "nctu-taiwan", name: "National Yang Ming Chiao Tung University", country: "Taiwan", region: "Hsinchu", level: "national", strongMajors: ["Computer Science", "Electrical Engineering", "Medicine", "Biotechnology"], website: "https://www.nycu.edu.tw/nycu/en/index" },
   { id: "kaist", name: "KAIST", country: "South Korea", region: "Daejeon", level: "global", strongMajors: ["Computer Science", "Electrical Engineering", "Mechanical Engineering", "Physics"], website: "https://www.kaist.ac.kr/en/" },
   { id: "snu-korea", name: "Seoul National University", country: "South Korea", region: "Seoul", level: "global", strongMajors: ["Engineering", "Medicine", "Business/Finance", "Law/Pre-Law"], website: "https://en.snu.ac.kr" },
   { id: "yonsei", name: "Yonsei University", country: "South Korea", region: "Seoul", level: "national", strongMajors: ["Business/Finance", "Medicine", "Engineering", "International Relations"], website: "https://www.yonsei.ac.kr/en_sc/" },
@@ -693,6 +710,41 @@ const collegesRaw: College[] = [
 ];
 
 const LEVEL_RANK: Record<College["level"], number> = { global: 0, national: 1, regional: 2 };
+
+/**
+ * Cosmetic subdomains that wrap a school's real site without being part of
+ * its identity ("home.iitd.ac.in" vs "www.iitd.ac.in", "en.sjtu.edu.cn" vs
+ * "www.sjtu.edu.cn"). Stripped so both resolve to the same merge key. This is
+ * deliberately a short curated list, not "strip every subdomain": a lot of
+ * schools use a subdomain as their actual identity — "nyuad.nyu.edu" is NYU
+ * Abu Dhabi, a genuinely separate campus from "nyu.edu" — and blanket
+ * stripping would merge those into one row.
+ */
+const GENERIC_SUBDOMAINS = new Set(["www", "home", "en", "english", "portal", "welcome"]);
+
+/** Registrable-ish host for a website URL: "https://home.iitd.ac.in" -> "iitd.ac.in". */
+function hostOf(website: string): string | null {
+  try {
+    const labels = new URL(website).hostname.toLowerCase().split(".");
+    while (labels.length > 2 && GENERIC_SUBDOMAINS.has(labels[0])) labels.shift();
+    return labels.join(".");
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fold `b` into `a`: `a` keeps its identity, but the pair resolves to the most
+ * selective tier either row claimed and to the union of their strong majors, so
+ * nothing a duplicate contributed is lost.
+ */
+function mergeInto(a: College, b: College): College {
+  return {
+    ...a,
+    level: LEVEL_RANK[b.level] < LEVEL_RANK[a.level] ? b.level : a.level,
+    strongMajors: Array.from(new Set([...a.strongMajors, ...b.strongMajors])),
+  };
+}
 
 /**
  * Deduplicate by id *and* by name.
@@ -725,14 +777,38 @@ export const colleges: College[] = (() => {
       order.push(key);
       continue;
     }
-    // Keep the earlier entry's identity, but adopt the most selective level and
-    // the union of strong majors so nothing a duplicate contributed is lost.
-    const merged: College = {
-      ...existing,
-      level: LEVEL_RANK[c.level] < LEVEL_RANK[existing.level] ? c.level : existing.level,
-      strongMajors: Array.from(new Set([...existing.strongMajors, ...c.strongMajors])),
-    };
-    byName.set(key, merged);
+    byName.set(key, mergeInto(existing, c));
+  }
+
+  // Second pass: the same school listed under two *different* names. Matching
+  // on the name cannot catch these — "UC Irvine" and "University of California,
+  // Irvine" share no useful substring — so both survived pass one and the
+  // onboarding picker offered them as two separate, independently selectable
+  // schools. 29 institutions were duplicated this way.
+  //
+  // The website domain is the merge key because it is a fact already on the
+  // row, not an inference from the name. That distinction matters: fuzzy name
+  // matching would have collapsed Singapore Management University and Southern
+  // Methodist University, which really are two schools that happen to share the
+  // id `smu`. Their domains (smu.edu.sg / smu.edu) differ, so they stay apart.
+  const byHost: College[] = [];
+  const slotOfHost = new Map<string, number>();
+  for (const key of order) {
+    const c = byName.get(key)!;
+    const host = hostOf(c.website);
+    if (!host) {
+      byHost.push(c);
+      continue;
+    }
+    const at = slotOfHost.get(host);
+    if (at === undefined) {
+      slotOfHost.set(host, byHost.length);
+      byHost.push(c);
+      continue;
+    }
+    // First spelling wins the display name; the others stay searchable as aka.
+    const kept = byHost[at];
+    byHost[at] = { ...mergeInto(kept, c), aka: [...(kept.aka ?? []), c.name] };
   }
 
   // Name-merging can leave two *different* schools holding the same id — either
@@ -742,8 +818,7 @@ export const colleges: College[] = (() => {
   // saved analyses, so they must stay unique; suffix any collision rather than
   // merging two genuinely distinct schools together.
   const usedIds = new Set<string>();
-  return order.map((k) => {
-    const c = byName.get(k)!;
+  return byHost.map((c) => {
     if (!usedIds.has(c.id)) {
       usedIds.add(c.id);
       return c;
@@ -756,14 +831,44 @@ export const colleges: College[] = (() => {
   });
 })();
 
+/** Display name (lowercased) -> the other names that school was merged from. */
+const AKA_INDEX = new Map<string, string[]>(
+  colleges
+    .filter((c) => c.aka?.length)
+    .map((c) => [c.name.trim().toLowerCase(), c.aka!] as const)
+);
+
 /**
- * Look up a college by name, case-insensitively.
+ * Does this college match what the user typed?
  *
- * A student's saved target-university name is free text that has been through
- * a picker, so `colleges.find(c => c.name === name)` misses on nothing more
- * than a stray capital or a trailing space.
+ * Checks the display name and every name the school was merged from, so
+ * searching "UC San Diego" still finds the row now shown as "University of
+ * California, San Diego". Pickers deal in name strings rather than College
+ * objects, which is why this takes a name.
+ */
+export function collegeMatchesQuery(name: string, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  if (name.toLowerCase().includes(q)) return true;
+  const aka = AKA_INDEX.get(name.trim().toLowerCase());
+  return !!aka?.some((a) => a.toLowerCase().includes(q));
+}
+
+/** Name (canonical or merged-away alias) -> the College it now resolves to. */
+const COLLEGE_BY_NAME = new Map<string, College>(
+  colleges.flatMap((c) => [
+    [c.name.trim().toLowerCase(), c] as const,
+    ...(c.aka ?? []).map((a) => [a.trim().toLowerCase(), c] as const),
+  ]),
+);
+
+/**
+ * Look up a college by any name it's known under, including names the dedupe
+ * pass merged away ("UC San Diego" still resolves to the row now shown as
+ * "University of California, San Diego"). A student's saved target-university
+ * name can be a pre-merge alias, so `colleges.find(c => c.name === name)`
+ * silently misses it — use this instead.
  */
 export function findCollegeByName(name: string): College | undefined {
-  const key = name.trim().toLowerCase();
-  return colleges.find((c) => c.name.trim().toLowerCase() === key);
+  return COLLEGE_BY_NAME.get(name.trim().toLowerCase());
 }

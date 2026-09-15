@@ -22,7 +22,7 @@
  *     that is meant to feel instant. Everything else waits for the server, which
  *     keeps the mutation surface small enough to reason about.
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { useMutation, useQuery, useQueryClient, type QueryKey } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -33,6 +33,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { dateKey } from "@/lib/routine/dates";
 import type {
+  NewRoutineCalendar,
   NewRoutineClass,
   NewRoutineEvent,
   NewRoutineFocusSession,
@@ -42,8 +43,10 @@ import type {
   NewRoutineReminder,
   NewRoutineStudyBlock,
   NewRoutineTask,
+  RoutineCalendar,
   RoutineClass,
   RoutineEvent,
+  RoutineEventGuest,
   RoutineFocusSession,
   RoutineGoal,
   RoutineGoalMilestone,
@@ -516,6 +519,166 @@ export function useRoutineEvents() {
   };
 }
 
+// ── Calendars ──────────────────────────────────────────────────────────
+// "Work", "Personal", "Birthdays" — organizing buckets an event is filed
+// under, distinct from `category` (what kind of thing it is). No sharing or
+// membership: a calendar belongs to exactly one user.
+
+export function useRoutineCalendars() {
+  const { rows, loading, error, refetch } = useRoutineTable<RoutineCalendar>("routine_calendars", {
+    orderBy: "created_at",
+  });
+  const writes = useRoutineWrites<RoutineCalendar, NewRoutineCalendar>("routine_calendars");
+  const ensuredDefault = useRef(false);
+
+  // A brand-new user has no calendars yet — the backfill migration only
+  // covers accounts that already had events when it ran. Rather than every
+  // event-creation path having to check "does a calendar exist first," this
+  // hook guarantees one exists the moment anything reads the list.
+  useEffect(() => {
+    if (loading || rows.length > 0 || ensuredDefault.current) return;
+    ensuredDefault.current = true;
+    void writes.create.mutateAsync({ name: "My calendar", color: "blue", is_default: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, rows.length]);
+
+  return {
+    calendars: rows,
+    loading,
+    error,
+    refetch,
+    createCalendar: writes.create.mutateAsync,
+    updateCalendar: writes.update.mutateAsync,
+    deleteCalendar: writes.remove.mutateAsync,
+    saving: writes.create.isPending || writes.update.isPending || writes.remove.isPending,
+  };
+}
+
+// ── Event guests ───────────────────────────────────────────────────────
+// Inviting another Pathforge user, by email, to one specific event — not a
+// shared calendar, not a conversation. `routine_event_guests` has no
+// `user_id` column (it has inviter_id/invitee_id instead), so it deliberately
+// sits outside `useRoutineTable`/`useRoutineWrites` and the ROUTINE_TABLES
+// realtime fan-out, both of which assume that column. Refetch-on-mutation
+// instead of realtime for this one — an invite landing a few seconds late
+// isn't worth a bespoke channel filter.
+
+/** The guest list on one event, from its owner's side. */
+export function useEventGuests(eventId: string | null) {
+  const qc = useQueryClient();
+  const key = useMemo(() => ["routine_event_guests", eventId] as const, [eventId]);
+
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(eventId),
+    queryFn: async (): Promise<RoutineEventGuest[]> => {
+      const { data, error } = await routineDb
+        .from("routine_event_guests")
+        .select("*")
+        .eq("event_id", eventId!)
+        .order("created_at", { ascending: true });
+      if (error) throw error;
+      return (data ?? []) as RoutineEventGuest[];
+    },
+  });
+
+  const invalidate = useCallback(() => void qc.invalidateQueries({ queryKey: key }), [qc, key]);
+
+  const invite = useMutation({
+    mutationFn: async (email: string) => {
+      if (!eventId) throw new Error("Save the event before inviting anyone to it.");
+      // Resolve and create the invite privately. The RPC returns the same
+      // result for missing and unreachable accounts, preventing account
+      // discovery while still allowing invitations within a shared context.
+      const rpc = supabase.rpc as unknown as (
+        fn: "invite_event_guest_by_email",
+        args: { _event_id: string; _email: string },
+      ) => PromiseLike<{ data: boolean | null; error: { message: string } | null }>;
+      const { error } = await rpc(
+        "invite_event_guest_by_email",
+        { _event_id: eventId, _email: email },
+      );
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  const removeGuest = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await routineDb.from("routine_event_guests").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return {
+    guests: query.data ?? [],
+    loading: query.isPending && Boolean(eventId),
+    error: query.error as Error | null,
+    invite: invite.mutateAsync,
+    removeGuest: removeGuest.mutateAsync,
+    saving: invite.isPending || removeGuest.isPending,
+  };
+}
+
+/** Events someone else invited the signed-in user to, across every event. */
+export function useInvitedEvents() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const qc = useQueryClient();
+  const key = useMemo(() => ["routine_invited_events", userId] as const, [userId]);
+
+  const query = useQuery({
+    queryKey: key,
+    enabled: Boolean(userId),
+    queryFn: async (): Promise<{ guest: RoutineEventGuest; event: RoutineEvent }[]> => {
+      const { data: guestRows, error: guestError } = await routineDb
+        .from("routine_event_guests")
+        .select("*")
+        .eq("invitee_id", userId!)
+        .neq("status", "declined");
+      if (guestError) throw guestError;
+      const guests = (guestRows ?? []) as RoutineEventGuest[];
+      if (guests.length === 0) return [];
+
+      const { data: eventRows, error: eventError } = await routineDb
+        .from("routine_events")
+        .select("*")
+        .in("id", guests.map((g) => g.event_id));
+      if (eventError) throw eventError;
+      const eventById = new Map(
+        (eventRows ?? []).map((e) => [(e as RoutineEvent).id, e as RoutineEvent]),
+      );
+
+      return guests.flatMap((guest) => {
+        const event = eventById.get(guest.event_id);
+        return event ? [{ guest, event }] : [];
+      });
+    },
+  });
+
+  const invalidate = useCallback(() => void qc.invalidateQueries({ queryKey: key }), [qc, key]);
+
+  const respond = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: "accepted" | "declined" }) => {
+      const { error } = await routineDb
+        .from("routine_event_guests")
+        .update({ status } as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidate,
+  });
+
+  return {
+    invited: query.data ?? [],
+    loading: query.isPending && Boolean(userId),
+    error: query.error as Error | null,
+    respond: respond.mutateAsync,
+    saving: respond.isPending,
+  };
+}
+
 // ── Habits ───────────────────────────────────────────────────────────────
 
 export function useRoutineHabits() {
@@ -730,6 +893,7 @@ export function useRoutineSources() {
   const tasks = useRoutineTasks();
   const reminders = useRoutineReminders();
   const events = useRoutineEvents();
+  const calendars = useRoutineCalendars();
   const habits = useRoutineHabits();
   const goals = useRoutineGoals();
   const focus = useFocusSessions();
@@ -772,5 +936,18 @@ export function useRoutineSources() {
     classes.error ?? study.error ?? tasks.error ?? reminders.error ?? events.error ??
     habits.error ?? goals.error ?? focus.error ?? null;
 
-  return { sources, loading, error, classes, study, tasks, reminders, events, habits, goals, focus };
+  return {
+    sources,
+    loading,
+    error,
+    classes,
+    study,
+    tasks,
+    reminders,
+    events,
+    calendars,
+    habits,
+    goals,
+    focus,
+  };
 }

@@ -94,7 +94,7 @@ export default function Contact() {
   return (
     <div className="py-10 sm:py-16 relative overflow-hidden">
       <Seo
-        title='Contact — Pathforge'
+        title='Contact'
         description='Reach the Pathforge team for support, refunds, school and counsellor partnerships, bug reports and press. Most messages get a personal reply within 2–3 business days.'
         path='/contact'
         jsonLd={{

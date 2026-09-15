@@ -104,7 +104,7 @@ export default function About() {
   return (
     <div className="py-8 sm:py-12">
       <Seo
-        title="About — Pathforge"
+        title="About"
         description="Why we built Pathforge, how the four-phase Journey works, who it is for, the rules we hold our AI to, and the 2026 Global Recognition Award it won for Innovation."
         path="/about"
       />

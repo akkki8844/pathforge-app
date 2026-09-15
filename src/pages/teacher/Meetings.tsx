@@ -27,7 +27,7 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function TeacherMeetings() {
   const { students } = useTeacherRoster();
-  const { items: interactions, loading } = useCounsellorInteractions(undefined);
+  const { items: interactions, loading } = useCounsellorInteractions();
   const [view, setView] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
 

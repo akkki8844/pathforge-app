@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionError";
+import { isTrustedOAuthMessage } from "@/lib/oauthPopupMessage";
 
 export interface GitHubConnection {
   github_login: string | null;
@@ -37,6 +38,7 @@ export function useGitHubConnection() {
   useEffect(() => {
     const onFocus = () => void refresh();
     const onMessage = (e: MessageEvent) => {
+      if (!isTrustedOAuthMessage(e)) return;
       if (e?.data && (e.data as { type?: string }).type === "github-oauth-complete") void refresh();
     };
     window.addEventListener("focus", onFocus);

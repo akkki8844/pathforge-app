@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, Zap, KeyRound, Pencil, Copy, Terminal } from "lucide-react";
+import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, KeyRound, Pencil, Copy } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { useUsage } from "@/contexts/UsageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { GoogleCalendarMark } from "@/components/GoogleCalendarCard";
+import { ComposioMark } from "@/components/ComposioMark";
 import { ImportLinkedInModal } from "@/components/ImportLinkedInModal";
 import { SettingsSection } from "../SettingsShell";
 import linkedinLogo from "@/assets/linkedin-logo.png";
@@ -271,7 +272,7 @@ function GoogleCalendarConnector({ locked }: { locked?: boolean }) {
     <ConnectorCard
       icon={<GoogleCalendarMark className="h-5 w-5" />}
       name="Google Calendar"
-      description="Sync events from your Google Calendar into the Pathforge Weekly Planner, and push deadlines back to your calendar. Tokens are stored per-user and never leave the server."
+      description="Sync events from your Google Calendar into the Pathforge Calendar, and push deadlines back to your calendar. Tokens are stored per-user and never leave the server."
       status={loading ? "info" : connection ? "connected" : "disconnected"}
       meta={
         connection
@@ -566,9 +567,9 @@ function ComposioGmailConnector({ locked }: { locked?: boolean }) {
 
   return (
     <ConnectorCard
-      icon={<Zap className="h-5 w-5 text-foreground" />}
-      name="Gmail (for the Advisor)"
-      description="Connect your Gmail through Composio so the Advisor can send email from your account — for example, cold-emailing professors it finds for you. Uses your own free Composio API key, not a shared one."
+      icon={<img src="/logos/gmail.svg" alt="" aria-hidden className="h-5 w-5 object-contain" />}
+      name="Gmail (via Composio)"
+      description="Connect your Gmail through Composio so Pathforge can send email from your own account — cold emails to professors are sent this way. Uses your own free Composio API key, not a shared one."
       status={loading ? "info" : isActive ? "connected" : "disconnected"}
       meta={
         connection
@@ -596,7 +597,7 @@ function ComposioGmailConnector({ locked }: { locked?: boolean }) {
               variant={isActive ? "outline" : "default"}
               title={hasKey ? undefined : "Add your Composio API key above first"}
             >
-              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <Zap className="h-3.5 w-3.5 mr-2" />}
+              {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : <ComposioMark size={14} className="mr-2" />}
               {isActive ? "Reconnect" : "Connect Gmail"}
             </Button>
             {connection && (
@@ -644,6 +645,7 @@ function GoogleMark({ className = "" }: { className?: string }) {
   );
 }
 
+
 /**
  * The other direction: Pathforge as an MCP server, so Claude, ChatGPT or any
  * other MCP client can read this student's own Pathforge data when they ask
@@ -675,7 +677,7 @@ function McpConnector() {
 
   return (
     <ConnectorCard
-      icon={<Terminal className="h-5 w-5 text-foreground" />}
+      icon={<img src="/logos/mcp.svg" alt="" aria-hidden className="h-5 w-5 object-contain" />}
       name="Pathforge MCP server"
       description="Point Claude, ChatGPT or any MCP client at Pathforge and it can read your profile, journey score, tasks, timetable, goals, applications, check-ins and objectives — read-only, signed in as you, and nobody else's data. Free on every plan."
       status="info"

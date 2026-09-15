@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { COMPOSIO_APPS, COMPOSIO_GROUPS, type ComposioApp } from "@/lib/connectors/composioApps";
 import { cn } from "@/lib/utils";
 
+import { BrandLogo } from "@/components/BrandLogo";
 /**
  * Everything else Composio can connect.
  *
@@ -107,6 +108,16 @@ function ComposioAppCard({
   return (
     <div className={cn("rounded-xl border border-border bg-card p-4", (locked || !hasKey) && "opacity-70")}>
       <div className="flex flex-wrap items-center gap-2">
+        {/* The vendor's own mark: local SVG where we ship one, the brand's
+            domain otherwise. Never a generic plug glyph — a plug is not a
+            logo and nobody recognises one. */}
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-border bg-background p-1">
+          {app.logo ? (
+            <img src={app.logo} alt="" aria-hidden loading="lazy" decoding="async" className="h-full w-full object-contain" />
+          ) : (
+            <BrandLogo name={app.name} domain={app.domain} size={18} className="rounded-none" />
+          )}
+        </span>
         <h4 className="text-sm font-semibold text-foreground">{app.name}</h4>
         {!locked && isActive && (
           <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:text-emerald-400">
