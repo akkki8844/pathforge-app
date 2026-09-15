@@ -16,5 +16,13 @@
     "ui": "@/components/ui",
     "lib": "@/lib",
     "hooks": "@/hooks"
+  },
+  "registries": {
+    "@motion": {
+      "url": "https://api.motion.dev/ui/registry/{name}.json",
+      "headers": {
+        "Authorization": "Bearer ${MOTION_TOKEN}"
+      }
+    }
   }
 }
