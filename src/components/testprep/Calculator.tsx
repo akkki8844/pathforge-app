@@ -138,14 +138,27 @@ export function Calculator({ onClose }: { onClose: () => void }) {
 
 /**
  * expression := term (("+" | "-") term)*
- * term       := power (("*" | "/") power)*
- * power      := unary ("^" power)?          — right associative
- * unary      := ("-")? primary
+ * term       := unary (("*" | "/") unary)*
+ * unary      := "-" unary | power
+ * power      := primary ("^" unary)?        — right associative
  * primary    := number | "(" expression ")" | "sqrt" "(" expression ")"
+ *
+ * Unary minus sits ABOVE exponentiation here, not below it. Written the other
+ * way round — which is how this started — `-2^2` parses as `(-2)^2` and
+ * returns 4. Mathematical notation, a TI-84, Desmos and Python all agree it
+ * is `-(2^2)` and returns -4. A calculator that quietly disagrees with the
+ * calculator a student will sit the real exam with is worse than no
+ * calculator, because they have no reason to check it.
+ *
+ * `power` recursing into `unary` rather than itself is what keeps `2^-3`
+ * working, and makes the whole chain right-associative as exponentiation
+ * should be.
  */
 function parseExpression(input: string): number {
   let i = 0;
-  const src = input.replace(/\s+/g, "");
+  // Lowercased so "SQRT(9)" is the same as "sqrt(9)"; the keypad only ever
+  // produces lower case, but the field accepts typing.
+  const src = input.replace(/\s+/g, "").toLowerCase();
 
   const peek = () => src[i];
   const eat = (ch: string) => {
@@ -165,24 +178,15 @@ function parseExpression(input: string): number {
   }
 
   function term(): number {
-    let value = power();
+    let value = unary();
     while (peek() === "*" || peek() === "/") {
       const op = src[i];
       i += 1;
-      const rhs = power();
+      const rhs = unary();
       if (op === "/" && rhs === 0) throw new Error("divide by zero");
       value = op === "*" ? value * rhs : value / rhs;
     }
     return value;
-  }
-
-  function power(): number {
-    const base = unary();
-    if (peek() === "^") {
-      i += 1;
-      return base ** power();
-    }
-    return base;
   }
 
   function unary(): number {
@@ -190,7 +194,17 @@ function parseExpression(input: string): number {
       i += 1;
       return -unary();
     }
-    return primary();
+    return power();
+  }
+
+  function power(): number {
+    const base = primary();
+    if (peek() === "^") {
+      i += 1;
+      // Into `unary`, not `power`, so `2^-3` is a thing you can type.
+      return base ** unary();
+    }
+    return base;
   }
 
   function primary(): number {

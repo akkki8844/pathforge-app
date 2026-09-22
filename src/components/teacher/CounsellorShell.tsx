@@ -1,5 +1,6 @@
 import { ReactNode } from "react";
 import { CounsellorNavbar } from "@/components/teacher/CounsellorNavbar";
+import { CounsellorCommandPalette } from "@/components/teacher/CounsellorCommandPalette";
 
 /**
  * The counsellor workspace shell.
@@ -20,6 +21,9 @@ export function CounsellorShell({ children }: { children: ReactNode }) {
   return (
     <div className="relative flex min-h-[100svh] flex-col bg-background">
       <CounsellorNavbar />
+      {/* Mounted here rather than per page, so Cmd+K reaches the roster from
+          every counsellor surface — including any added later. */}
+      <CounsellorCommandPalette />
       <main className="min-w-0 flex-1">{children}</main>
     </div>
   );

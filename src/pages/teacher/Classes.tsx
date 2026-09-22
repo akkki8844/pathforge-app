@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Copy, Users } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
-import { BackToCommand } from "@/components/teacher/BackToCommand";
+import { Seo } from "@/components/Seo";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,7 @@ export default function TeacherClasses() {
     const { error } = await createClass(name.trim(), grade.trim() || undefined);
     setCreating(false);
     if (error) {
-      toast({ variant: "destructive", title: "Could not create class", description: error.message });
+      toast({ variant: "destructive", title: "Could not create cohort", description: error.message });
     } else {
       toast({ title: "Class created" });
       setName(""); setGrade(""); setOpen(false);
@@ -36,18 +36,23 @@ export default function TeacherClasses() {
 
   return (
     <TeacherLayout>
-      <BackToCommand />
+      <Seo
+        title="Cohorts"
+        description="Groups you have made."
+        path="/teacher/classes"
+        noindex
+      />
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Cohorts</h1>
-          <p className="text-sm text-muted-foreground mt-1">Group students for analytics. Share the invite code so they can join.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Cohorts</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Group students for analytics. Share the invite code so they can join.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="h-4 w-4 mr-1" /> New class</Button>
+            <Button><Plus className="h-4 w-4 mr-1" /> New cohort</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle>Create a class</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle>Create a cohort</DialogTitle></DialogHeader>
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label>Name</Label>

@@ -3,26 +3,34 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { lovable } from "@/integrations/lovable";
 import { toast } from "sonner";
-import { safeRedirectPath } from "@/lib/safeRedirect";
-
-const PENDING_OAUTH_REDIRECT_KEY = "pathforge_pending_oauth_redirect";
+import {
+  forgetPendingOAuth,
+  rememberPendingOAuth,
+  type OAuthPortal,
+} from "@/lib/auth/pendingOAuth";
 
 export function GoogleSignInButton({
   label = "Continue with Google",
   redirectTo,
   className,
+  portal = "student",
 }: {
   label?: string;
   redirectTo?: string;
   className?: string;
+  /**
+   * Which door this button is on. The counsellor portal is sign-in only, and
+   * a Google identity carries no record of where it was used, so the surface
+   * has to say so before the browser leaves.
+   */
+  portal?: OAuthPortal;
 }) {
   const [loading, setLoading] = useState(false);
 
   const handle = async () => {
     setLoading(true);
     try {
-      const nextPath = safeRedirectPath(redirectTo);
-      window.localStorage.setItem(PENDING_OAUTH_REDIRECT_KEY, nextPath);
+      rememberPendingOAuth(redirectTo, portal);
 
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: window.location.origin,
@@ -30,7 +38,7 @@ export function GoogleSignInButton({
       });
 
       if (result.error) {
-        window.localStorage.removeItem(PENDING_OAUTH_REDIRECT_KEY);
+        forgetPendingOAuth();
         toast.error("Google sign-in failed", {
           description: result.error.message || "Please try again.",
         });
@@ -38,8 +46,11 @@ export function GoogleSignInButton({
         return;
       }
       // If redirected, the browser is leaving — keep loading state.
-    } catch (e: any) {
-      toast.error("Google sign-in failed", { description: e?.message });
+    } catch (e) {
+      forgetPendingOAuth();
+      toast.error("Google sign-in failed", {
+        description: e instanceof Error ? e.message : "Please try again.",
+      });
       setLoading(false);
     }
   };

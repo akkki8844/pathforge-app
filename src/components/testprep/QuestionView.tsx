@@ -1,5 +1,5 @@
 import { motion, useReducedMotion } from "framer-motion";
-import { Bookmark, Eraser, Flag } from "lucide-react";
+import { Bookmark, Check, Eraser, Flag, Minus, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
@@ -17,9 +17,16 @@ import type { Question } from "@/lib/testprep/types";
  * wrong thing. The two modes differ in exactly one prop: `revealed`. Practice
  * marks each answer immediately; the exam never does.
  *
- * A choice has four states — untouched, selected, right, wrong — and each is
- * carried by border, ground and the letter badge together, so none of them
- * depends on colour alone.
+ * A choice has five states — untouched, selected, right, wrong, and skipped —
+ * and each is carried by border, ground, the letter badge, a mark and a word
+ * together, so none of them depends on colour alone.
+ *
+ * That last part used to be a nicety and is now structural. The section is
+ * restricted to the College Board palette, which has no green and no red, so
+ * `--success` resolves to the same Cerulean Blue as "selected" and
+ * `--destructive` to black. Hue can no longer tell you whether you were right.
+ * The check, the cross and the words "Correct"/"Incorrect"/"Skipped" are doing
+ * that work, which is what WCAG 1.4.1 asked for anyway.
  */
 export function QuestionView({
   question,
@@ -48,7 +55,35 @@ export function QuestionView({
   showMeta?: boolean;
 }) {
   const reduced = useReducedMotion();
-  const answeredCorrectly = revealed && value !== "" && isCorrect(question, value);
+
+  /**
+   * The outcome, as three states rather than two.
+   *
+   * This used to be a single `answeredCorrectly` boolean, so an unanswered
+   * question was indistinguishable from a wrong one: it said "Not quite" and
+   * drew a wrong-answer border round an empty box.
+   *
+   * Worth being exact about the status of the `skipped` branch, because the
+   * comment it replaced was not: it is defensive, not a live fix. Practice is
+   * the only mode that reveals anything, and `Session.check()` refuses to
+   * reveal until `hasAnswer`, so today `revealed` implies a non-empty value
+   * and this branch does not render. It is here because the guard and the
+   * display are in different files, and the day anything else reveals a
+   * question — an exam review screen being the obvious one, since the exam
+   * already records unanswered questions with `given: ""` — the wrong
+   * behaviour would come back silently.
+   *
+   * The same conflation in `historyIndex` was NOT theoretical: exam attempts
+   * really do store `""`, so the Question Bank marked questions the student
+   * never answered as ones they got wrong.
+   */
+  const outcome: "correct" | "incorrect" | "skipped" | null = !revealed
+    ? null
+    : value === ""
+      ? "skipped"
+      : isCorrect(question, value)
+        ? "correct"
+        : "incorrect";
 
   return (
     <motion.div
@@ -136,7 +171,11 @@ export function QuestionView({
                     right
                       ? "border-success bg-success/10 text-foreground"
                       : wrong
-                        ? "border-destructive bg-destructive/10 text-foreground"
+                        // Two pixels, not one. Black at 1px reads as an
+                        // ordinary border rather than as "this was your answer
+                        // and it was wrong" — the weight is carrying what red
+                        // used to carry.
+                        ? "border-2 border-destructive bg-destructive/[0.06] text-foreground"
                         : selected
                           ? "border-[hsl(var(--bb-blue))] bg-[hsl(var(--bb-blue-soft))] text-foreground"
                           : "border-border/70 hover:border-[hsl(var(--bb-blue)/0.5)] hover:bg-muted/40",
@@ -154,9 +193,33 @@ export function QuestionView({
                             : "border-border text-muted-foreground",
                     )}
                   >
-                    {choice.id}
+                    {/* The badge carries the letter until it has a verdict to
+                        carry instead. Swapping rather than adding keeps the
+                        row's measure identical before and after the reveal. */}
+                    {right ? (
+                      <Check className="h-3 w-3" strokeWidth={3} />
+                    ) : wrong ? (
+                      <X className="h-3 w-3" strokeWidth={3} />
+                    ) : (
+                      choice.id
+                    )}
                   </span>
-                  <span className="min-w-0 leading-relaxed">{choice.text}</span>
+                  <span
+                    className={cn(
+                      "min-w-0 leading-relaxed",
+                      // Struck through, because the sentence itself should look
+                      // discarded — that survives greyscale, zoom and every
+                      // form of colour blindness.
+                      wrong && "line-through decoration-1",
+                    )}
+                  >
+                    {choice.text}
+                  </span>
+                  {(right || wrong) && (
+                    <span className="ml-auto shrink-0 self-center pl-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                      {right ? (choice.id === value ? "Your answer · correct" : "Correct answer") : "Your answer"}
+                    </span>
+                  )}
                 </motion.button>
               </li>
             );
@@ -179,10 +242,11 @@ export function QuestionView({
             inputMode="text"
             className={cn(
               "tabular-nums",
-              revealed &&
-                (answeredCorrectly
-                  ? "border-success focus-visible:ring-success"
-                  : "border-destructive focus-visible:ring-destructive"),
+              // An empty box gets no verdict border at all. Marking a question
+              // the student never attempted as wrong is the app telling them
+              // off for something they didn't do.
+              outcome === "correct" && "border-success focus-visible:ring-success",
+              outcome === "incorrect" && "border-2 border-destructive focus-visible:ring-destructive",
             )}
           />
           <p className="mt-1.5 text-xs text-muted-foreground">
@@ -200,11 +264,24 @@ export function QuestionView({
         >
           <p
             className={cn(
-              "text-[10px] font-semibold uppercase tracking-[0.14em]",
-              answeredCorrectly ? "text-success" : "text-destructive",
+              "inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+              outcome === "correct"
+                ? "text-success"
+                : outcome === "incorrect"
+                  ? "text-destructive"
+                  : "text-muted-foreground",
             )}
           >
-            {answeredCorrectly ? "Correct" : "Not quite"}
+            {outcome === "correct" ? (
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            ) : outcome === "incorrect" ? (
+              <X className="h-3.5 w-3.5" strokeWidth={3} />
+            ) : (
+              <Minus className="h-3.5 w-3.5" strokeWidth={3} />
+            )}
+            {/* "Not quite" was the old copy for both wrong and skipped. It is
+                a euphemism in the first case and a falsehood in the second. */}
+            {outcome === "correct" ? "Correct" : outcome === "incorrect" ? "Incorrect" : "Skipped"}
           </p>
           {!question.choices && (
             <p className="mt-2 text-sm text-foreground">

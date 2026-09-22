@@ -342,7 +342,9 @@ export default function Pricing() {
               }`}
             >
               Annual
-              <span className="text-[10px] font-bold bg-green-500/15 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded">
+              {/* green-700, not green-600: at 10px this is small text and needs
+                  4.5:1. Measured 3.0:1 before, which fails WCAG AA. */}
+              <span className="text-[10px] font-bold bg-green-500/15 text-green-700 dark:text-green-300 px-1.5 py-0.5 rounded">
                 Save 35%
               </span>
             </button>
@@ -407,6 +409,7 @@ export default function Pricing() {
                   plan={plan}
                   badge={badge}
                   priceLabel={`$${price.displayUSD}`}
+                  priceValue={Number(price.displayUSD)}
                   priceSuffix={isPaid ? "/mo" : "/forever"}
                   strikeThroughUSD={off !== null && !annual && !isFreeUnlock ? plan.originalPriceUSD : null}
                   saveLabel={saveLabel}

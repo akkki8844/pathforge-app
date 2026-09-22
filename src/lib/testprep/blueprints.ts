@@ -145,7 +145,18 @@ export const SAT: TestBlueprint = {
   scoreStep: 10,
   subjects: [MATH, READING_WRITING],
   modules: SAT_MODULES,
-  available: false,
+  /**
+   * The SAT is the one test that is actually built.
+   *
+   * This was flipped to `false` in 05b2e151 as a side effect of generalising
+   * `TestNotAvailable` — that component used to hard-code a "go to SAT Prep"
+   * escape hatch, and turning SAT off was how the escape hatch stopped being
+   * special-cased. The copy was fixed in the same commit, so the flag had no
+   * reason to stay off, and leaving it off pointed every SAT route at a dead
+   * end reading "The SAT is not built out yet" on top of a 151-question bank,
+   * a four-module exam blueprint and five working pages.
+   */
+  available: true,
 };
 
 /**

@@ -36,7 +36,7 @@
  * current progress and re-sliced from the same `interpolate()` curve the
  * marker walks, so the drawn path and the marker's motion can never disagree.
  */
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Map as MapLibreMap,
   Marker,
@@ -114,6 +114,41 @@ function routeGeoJSON(origin: Airport, destination: Airport, clamped: number) {
   };
 }
 
+/**
+ * Can this browser actually run the map?
+ *
+ * MapLibre GL requires WebGL2 and THROWS from its constructor when it is
+ * missing — "WebGL2 is required to display this map". That throw happened
+ * inside an effect, so React tore the flight deck down and the bug reporter
+ * raised a red banner; then the cleanup ran `m.remove()` on a map that had
+ * never finished building and crashed again with "Cannot read properties of
+ * undefined (reading 'destroy')". Two banners, from one unsupported GPU.
+ *
+ * WebGL2 is missing more often than it sounds: software-rendering fallbacks,
+ * blocklisted drivers, privacy-hardened browsers, remote desktops, and older
+ * integrated GPUs all land here. It is an environment fact, not a Pathforge
+ * bug, so it must degrade rather than report.
+ *
+ * The probe result is cached because creating a context to ask the question
+ * is itself expensive, and the answer cannot change within a page session.
+ * The context is explicitly released — asking the question must not consume
+ * one of the browser's handful of live WebGL contexts.
+ */
+let webgl2Support: boolean | null = null;
+function hasWebGL2(): boolean {
+  if (webgl2Support !== null) return webgl2Support;
+  if (typeof document === "undefined") return false;
+  try {
+    const canvas = document.createElement("canvas");
+    const gl = canvas.getContext("webgl2");
+    webgl2Support = Boolean(gl);
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch {
+    webgl2Support = false;
+  }
+  return webgl2Support;
+}
+
 export function LiveRouteMap({
   origin,
   destination,
@@ -129,26 +164,46 @@ export function LiveRouteMap({
   const map = useRef<MapLibreMap | null>(null);
   const marker = useRef<Marker | null>(null);
   const loaded = useRef(false);
+  /** Flipped when this browser cannot run the map at all. */
+  const [unsupported, setUnsupported] = useState(() => !hasWebGL2());
 
   // Mount once per route. Rebuilding the whole map on every progress tick
   // would tear down tiles that are already loaded for no reason.
   useEffect(() => {
     if (!container.current) return;
+    if (!hasWebGL2()) {
+      setUnsupported(true);
+      return;
+    }
     loaded.current = false;
 
-    const m = new MapLibreMap({
-      container: container.current,
-      style: MAP_STYLE,
-      center: [origin.lon, origin.lat],
-      // Start pulled back and swoop in once tiles are up — a static cut
-      // straight to cruise zoom reads as a screenshot, not a live flight.
-      zoom: CHASE_ZOOM - 3,
-      pitch: 45,
-      attributionControl: false,
-      dragRotate: false,
-      touchPitch: false,
-    });
+    let m: MapLibreMap;
+    try {
+      m = new MapLibreMap({
+        container: container.current,
+        style: MAP_STYLE,
+        center: [origin.lon, origin.lat],
+        // Start pulled back and swoop in once tiles are up — a static cut
+        // straight to cruise zoom reads as a screenshot, not a live flight.
+        zoom: CHASE_ZOOM - 3,
+        pitch: 45,
+        attributionControl: false,
+        dragRotate: false,
+        touchPitch: false,
+      });
+    } catch {
+      // Context creation can still fail after the probe passed — the browser
+      // caps how many live WebGL contexts a page may hold, and the oldest is
+      // dropped when that ceiling is crossed. Degrade, do not report.
+      setUnsupported(true);
+      return;
+    }
     map.current = m;
+
+    // MapLibre emits tile and style failures through this event. Unhandled,
+    // it re-throws them onto window.onerror, which is a red banner for a
+    // basemap CDN hiccup the student would never otherwise notice.
+    m.on("error", () => {});
 
     m.on("load", () => {
       m.addSource("route", {
@@ -228,7 +283,15 @@ export function LiveRouteMap({
     return () => {
       marker.current = null;
       loaded.current = false;
-      m.remove();
+      try {
+        // `remove()` walks internals that a map which never reached `load`
+        // has not built yet, and throws on the way past them. The map is
+        // being discarded either way, so a failure here has nothing left to
+        // damage — but uncaught it would surface as a render crash.
+        m.remove();
+      } catch {
+        /* already torn down, or never finished building */
+      }
       map.current = null;
     };
     // Route identity only — a live progress update must not remount the map.
@@ -258,13 +321,46 @@ export function LiveRouteMap({
     });
   }, [origin, destination, progress]);
 
+  const pct = Math.round(Math.max(0, Math.min(1, progress)) * 100);
+  const label = `Live route from ${origin.country} to ${destination.country}, ${pct} percent complete`;
+
+  /*
+   * No WebGL2: the session is unaffected, only its scenery. The same three
+   * facts the map conveys — where you left, where you are heading, how far
+   * along you are — are shown as text on the surface the map would have
+   * filled, so the deck never renders as a blank rectangle.
+   */
+  if (unsupported) {
+    return (
+      <div
+        role="img"
+        aria-label={label}
+        className={cn(
+          "flex h-full w-full flex-col items-center justify-center gap-3 bg-muted/40 px-4 text-center",
+          className,
+        )}
+      >
+        <p className="text-sm font-medium text-foreground">
+          {origin.code} → {destination.code}
+        </p>
+        <div
+          className="h-1.5 w-full max-w-[14rem] overflow-hidden rounded-full bg-border"
+          aria-hidden="true"
+        >
+          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {pct}% there · live map needs WebGL, which this browser has turned off
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={container}
       role="img"
-      aria-label={`Live route from ${origin.country} to ${destination.country}, ${Math.round(
-        Math.max(0, Math.min(1, progress)) * 100,
-      )} percent complete`}
+      aria-label={label}
       className={cn("h-full w-full [&_.maplibregl-ctrl-logo]:hidden", className)}
     />
   );

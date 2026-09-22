@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { counsellorDb } from "@/integrations/supabase/counsellor";
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface CounsellorNote {
@@ -23,8 +23,7 @@ export function useCounsellorNotes(studentId: string | undefined) {
   const load = useCallback(async () => {
     if (!user || !studentId) return;
     setLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { data } = await (supabase.from as any)("counsellor_student_notes")
+    const { data } = await counsellorDb.from("counsellor_student_notes")
       .select("*")
       .eq("counsellor_id", user.id)
       .eq("student_id", studentId)
@@ -37,8 +36,7 @@ export function useCounsellorNotes(studentId: string | undefined) {
 
   const add = async (body: string) => {
     if (!user || !studentId) return { error: new Error("Not signed in") };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from as any)("counsellor_student_notes").insert({
+    const { error } = await counsellorDb.from("counsellor_student_notes").insert({
       counsellor_id: user.id,
       student_id: studentId,
       body,
@@ -48,8 +46,7 @@ export function useCounsellorNotes(studentId: string | undefined) {
   };
 
   const update = async (id: string, body: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from as any)("counsellor_student_notes")
+    const { error } = await counsellorDb.from("counsellor_student_notes")
       .update({ body, updated_at: new Date().toISOString() })
       .eq("id", id);
     if (!error) await load();
@@ -57,8 +54,7 @@ export function useCounsellorNotes(studentId: string | undefined) {
   };
 
   const remove = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from as any)("counsellor_student_notes").delete().eq("id", id);
+    await counsellorDb.from("counsellor_student_notes").delete().eq("id", id);
     await load();
   };
 

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Plus, Calendar, Target } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
-import { BackToCommand } from "@/components/teacher/BackToCommand";
+import { Seo } from "@/components/Seo";
 import { useTeacherAssignments } from "@/hooks/useAssignments";
 import { useTeacherClasses } from "@/hooks/useTeacherClasses";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
@@ -55,11 +55,16 @@ export default function TeacherAssignments() {
 
   return (
     <TeacherLayout>
-      <BackToCommand />
+      <Seo
+        title="Action plan"
+        description="Work set per student."
+        path="/teacher/assignments"
+        noindex
+      />
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold">Assignments</h1>
-          <p className="text-sm text-muted-foreground mt-1">Push tasks, activities, projects, or competitions into your students' Journey.</p>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Action plan</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Push tasks, activities, projects, or competitions into your students' Journey.</p>
         </div>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button><Plus className="h-4 w-4 mr-1" /> New assignment</Button></DialogTrigger>

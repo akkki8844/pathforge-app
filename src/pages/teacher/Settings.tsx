@@ -1,19 +1,22 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Loader2, Save, ShieldCheck, KeyRound, Briefcase, Globe, Award,
   GraduationCap, Building2, AlertCircle,
 } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
-import { BackToCommand } from "@/components/teacher/BackToCommand";
+import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -22,7 +25,6 @@ import { MultiCountryCombobox } from "@/components/MultiCountryCombobox";
 import { AvatarPicker } from "@/components/avatar/AvatarPicker";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
 import { resolveAvatar, serializeAvatar, type AvatarId } from "@/lib/avatars";
-import { X } from "lucide-react";
 
 const ROLES = [
   "School Counselor", "College Counselor", "Teacher", "Dean",
@@ -102,7 +104,7 @@ export default function CounsellorSettings() {
       .maybeSingle()
       .then(({ data }) => {
         setFullName(data?.full_name || "");
-        setAvatarUrl((data as any)?.avatar_url || null);
+        setAvatarUrl(data?.avatar_url || null);
       });
   }, [user]);
 
@@ -237,7 +239,12 @@ export default function CounsellorSettings() {
 
   return (
     <TeacherLayout>
-      <BackToCommand />
+      <Seo
+        title="Settings"
+        description="Your profile and school link."
+        path="/teacher/settings"
+        noindex
+      />
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -298,9 +305,32 @@ export default function CounsellorSettings() {
             </div>
             <div className="space-y-2">
               <Label className="flex items-center gap-1.5"><Building2 className="h-3.5 w-3.5" /> Organization / School</Label>
-              <Input value={schoolName} disabled placeholder="Linked by admin" />
+              <Input
+                value={schoolName}
+                disabled
+                placeholder={schoolName ? "" : "No school linked yet"}
+              />
+              {/* The old copy said linkage was admin-only and to contact
+                  support. That was only ever true of a change: a counsellor who
+                  has not linked a school at all does it themselves, on
+                  /teacher/onboarding, and sending them to support instead was
+                  the reason unverified accounts stalled here. */}
               <p className="text-[11px] text-muted-foreground">
-                School linkage is managed by an admin. Contact support to change.
+                {schoolName ? (
+                  <>Changing which school you are linked to is handled by an admin. Contact support.</>
+                ) : (
+                  <>
+                    You are not linked to a school yet, so no students can be assigned to
+                    you.{" "}
+                    <Link
+                      to="/teacher/onboarding"
+                      className="underline hover:text-foreground"
+                    >
+                      Link your school
+                    </Link>
+                    .
+                  </>
+                )}
               </p>
             </div>
             <div className="space-y-2">

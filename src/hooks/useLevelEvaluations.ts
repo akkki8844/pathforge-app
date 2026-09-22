@@ -132,7 +132,12 @@ export function useLevelEvaluations() {
             : ev
         )
       );
-      requested.current.delete(level);
+      // Deliberately NOT deleting `level` from `requested` here: doing so let
+      // the auto-trigger effect in Journey.tsx (which re-fires ensureFor on
+      // every render) immediately retry the same failing level, hammering the
+      // edge function in an unthrottled loop (observed: 60+ calls/sec). A
+      // failed generation now only retries via the explicit "Try again"
+      // button, which calls `generate(level, true)` directly.
       return { error: "Couldn't generate this report. Try again." };
     }
   }, [user, evaluations, load]);

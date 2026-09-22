@@ -538,7 +538,12 @@ export function PlacementTest({ open, onOpenChange, grade, overallScore, onPlace
                     }`}
                   />
                   <div className={`mt-1.5 text-[10px] uppercase tracking-wider font-semibold text-center ${i === sectionIdx ? "text-primary" : "text-muted-foreground"}`}>
-                    {s.title.split(" ")[0]}
+                    {/* First word of the section title, e.g. "Research" from
+                        "Research, Internships & Recognition" — `split(" ")`
+                        alone left the comma attached, so the tab read
+                        "RESEARCH," in the one section whose title has a comma
+                        right after its first word. */}
+                    {s.title.split(" ")[0].replace(/[,.:;]+$/, "")}
                   </div>
                 </div>
               ))}

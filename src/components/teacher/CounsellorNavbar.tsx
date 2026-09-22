@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronDown, Menu, ShieldCheck, ShieldAlert, X } from "lucide-react";
+import { ChevronDown, Menu, Search, ShieldCheck, ShieldAlert, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { NotificationBell } from "@/components/NotificationBell";
+import { openCounsellorCommandPalette } from "@/lib/teacher/commandPalette";
 import { NavPopout } from "@/components/layout/NavPopout";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
 import { VariableFontHover } from "@/components/ui/variable-font-hover";
@@ -202,6 +203,19 @@ export function CounsellorNavbar() {
   const navigate = useNavigate();
   const { user, profile, teacherProfile, signOut } = useAuth();
 
+  /*
+   * Which key the palette answers to, on this machine.
+   *
+   * Printing the wrong one is worse than printing none: a Windows counsellor
+   * told to press Cmd+K presses nothing. `userAgent` rather than the
+   * deprecated `platform`, and guarded for SSR because this bar is
+   * pre-rendered.
+   */
+  const shortcutLabel = useMemo(() => {
+    if (typeof navigator === "undefined") return "Ctrl K";
+    return /mac|iphone|ipad/i.test(navigator.userAgent) ? "⌘ K" : "Ctrl K";
+  }, []);
+
   const current = activeCounsellorHref(pathname);
   const otherHrefs = COUNSELLOR_OTHER.flatMap((g) => g.links.map((l) => l.href));
   const isOtherActive = !!current && otherHrefs.includes(current);
@@ -296,6 +310,28 @@ export function CounsellorNavbar() {
                 {verified ? "Verified" : "Unverified"}
               </span>
             )}
+
+            {/*
+              * The way in to Cmd+K.
+              *
+              * The palette is the fastest route to any of a counsellor's
+              * students, and a shortcut nobody is told about is a shortcut
+              * nobody uses — so the bar carries the affordance, with the key
+              * printed on it. Below `sm` it collapses to the icon, because the
+              * shortcut it advertises does not exist on a phone anyway.
+              */}
+            <button
+              type="button"
+              onClick={openCounsellorCommandPalette}
+              aria-label="Search students and pages"
+              className="hidden items-center gap-2 rounded-lg border border-border px-2.5 py-1.5 text-[13px] text-muted-foreground transition-colors hover:border-foreground/25 hover:text-foreground sm:flex"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="hidden lg:inline">Search</span>
+              <kbd className="ml-1 hidden rounded border border-border bg-muted px-1.5 py-0.5 font-sans text-[10px] font-medium lg:inline">
+                {shortcutLabel}
+              </kbd>
+            </button>
 
             {user && (
               <NavPopout label="Notifications">

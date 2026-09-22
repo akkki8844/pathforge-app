@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 export interface ServiceApiKeyInfo {
   service: string;
@@ -16,29 +17,44 @@ export interface ServiceApiKeyInfo {
  * only `key_last4` comes back.
  */
 export function useServiceApiKey(service: string) {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [keyInfo, setKeyInfo] = useState<ServiceApiKeyInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  /*
+   * Bound to the signed-in user rather than read from `auth.getUser()` inside
+   * the fetch. This state used to outlive a change of account within one tab,
+   * so after signing out and signing in as someone else - a shared laptop, a
+   * school machine - the card went on showing the previous person's connected
+   * account until something happened to refetch it. No row ever left its owner
+   * (RLS sees to that), but the screen was still showing one person another
+   * person's account.
+   */
   const refresh = useCallback(async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    if (!userId) {
       setKeyInfo(null);
       setLoading(false);
       return;
     }
+    setLoading(true);
     const { data } = await supabase
       .from("user_service_api_keys")
       .select("service, key_last4, updated_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("service", service)
       .maybeSingle();
     setKeyInfo((data as ServiceApiKeyInfo | null) ?? null);
     setLoading(false);
-  }, [service]);
+  }, [service, userId]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    // Drop the previous account's value before the new one is known, rather
+    // than leaving it on screen for the length of a round trip.
+    setKeyInfo(null);
+    void refresh();
+  }, [userId, refresh]);
 
   const save = useCallback(async (apiKey: string) => {
     const trimmed = apiKey.trim();

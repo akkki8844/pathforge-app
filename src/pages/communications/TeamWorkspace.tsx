@@ -188,7 +188,7 @@ export default function TeamWorkspace() {
           transition={{ duration: DURATION.base, ease: EASE_OUT_EXPO }}
           className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-sm"
         >
-          <div className={cn("h-24 bg-gradient-to-br sm:h-28", tint.header)} />
+          <div className={cn("h-24 sm:h-28", tint.header)} />
           <div className="-mt-10 flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end">
             <span
               className={cn(

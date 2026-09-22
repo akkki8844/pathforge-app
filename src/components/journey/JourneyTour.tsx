@@ -127,6 +127,17 @@ export function JourneyTour({
   const [index, setIndex] = useState(0);
   const [spot, setSpot] = useState<Box | null>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
+  /*
+   * Bumped every time the blocker eats a click.
+   *
+   * The blocker swallowing the page is correct — see below — but swallowing it
+   * *silently* is what made this tour look like a broken product. The spotlight
+   * lights a real control and dims everything around it, so the lit control
+   * reads as the one thing you are meant to press. Pressing it did nothing, with
+   * no feedback of any kind. Reported as "the Place My Level feature doesn't
+   * work"; the button was never broken, the tour was on top of it.
+   */
+  const [nudge, setNudge] = useState(0);
   const cardRef = useRef<HTMLDivElement | null>(null);
 
   /**
@@ -335,14 +346,20 @@ export function JourneyTour({
         <div className="fixed inset-0 z-[100]" role="dialog" aria-modal="true" aria-label="Journey walkthrough">
           {/* Click blocker. Sits under the spotlight so the page can't be
               operated mid-tour, and swallows taps rather than closing — an
-              accidental brush shouldn't end the walkthrough. */}
+              accidental brush shouldn't end the walkthrough. It now answers the
+              tap by pulsing the step card and changing the cursor, so the reader
+              learns the tour is modal instead of concluding the button under
+              their finger is dead. */}
           <motion.div
-            className="absolute inset-0"
+            className="absolute inset-0 cursor-not-allowed"
             initial={reduced ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={reduced ? undefined : { opacity: 0 }}
             transition={{ duration: dur, ease: EASE_OUT_EXPO }}
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setNudge((n) => n + 1);
+            }}
           />
 
           {/* The cutout. One element with an enormous spread shadow is a single
@@ -389,6 +406,27 @@ export function JourneyTour({
               "absolute w-[min(20rem,calc(100vw-1.5rem))] rounded-2xl border border-border bg-card p-4 shadow-[0_18px_40px_rgba(33,48,88,0.22)] outline-none"
             )}
           >
+            {nudge > 0 && !reduced && (
+              <motion.span
+                key={nudge}
+                aria-hidden
+                className="pointer-events-none absolute inset-0 rounded-2xl ring-2 ring-primary"
+                initial={{ opacity: 0.85, scale: 1 }}
+                animate={{ opacity: 0, scale: 1.035 }}
+                transition={{ duration: 0.45, ease: EASE_OUT_EXPO }}
+              />
+            )}
+
+            {/* Said out loud as well as drawn, for reduced motion and for anyone
+                who cannot see the ring flash. `alert` rather than `status` so it
+                interrupts — the reader has just pressed something that did
+                nothing and is owed an immediate reason. */}
+            {nudge > 0 && (
+              <p role="alert" className="sr-only">
+                The walkthrough is open. Finish it or skip it to use the page.
+              </p>
+            )}
+
             <div className="flex items-start justify-between gap-3">
               <span className="font-display text-[10px] font-bold uppercase tracking-[0.14em] text-primary">
                 {index + 1} of {total}

@@ -174,7 +174,7 @@ export default function About() {
               {phases.map((phase, i) => (
                 <li key={phase.name} className="grid gap-x-6 gap-y-2 py-6 sm:grid-cols-[auto_10rem_1fr]">
                   {/* Serif numerals, as everywhere else a figure appears. */}
-                  <span className="font-serif text-2xl leading-none text-muted-foreground/70 tabular-nums">
+                  <span className="font-serif text-2xl leading-none text-muted-foreground tabular-nums">
                     {String(i + 1).padStart(2, "0")}
                   </span>
                   <h3 className="font-display text-lg font-semibold tracking-tight text-foreground">
@@ -297,7 +297,7 @@ export default function About() {
                   variants={staggerItemVariants}
                   className="flex items-start gap-2.5 text-sm text-muted-foreground"
                 >
-                  <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" aria-hidden="true" />
+                  <X className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                   <span>{item}</span>
                 </motion.div>
               ))}

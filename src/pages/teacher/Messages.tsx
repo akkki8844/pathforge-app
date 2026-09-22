@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Loader2, Mail, Search } from "lucide-react";
 import { toast } from "sonner";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -84,9 +85,16 @@ export default function TeacherMessages() {
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Messages"
+        description="Direct messages with a student."
+        path="/teacher/messages"
+        noindex
+      />
+
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Messages</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Messages</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Direct messages with the students you support.
           </p>
@@ -170,7 +178,7 @@ export default function TeacherMessages() {
             ) : (
               <CardContent className="flex flex-1 items-center justify-center">
                 <div className="text-center">
-                  <Mail className="mx-auto mb-3 h-12 w-12 text-muted-foreground/20" />
+                  <Mail className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
                   <p className="font-medium text-muted-foreground">
                     Select a student
                   </p>

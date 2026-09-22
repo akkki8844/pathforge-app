@@ -12,6 +12,8 @@ import { z } from 'zod';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { GitHubSignInButton } from '@/components/auth/GitHubSignInButton';
 import { CounsellorRail } from '@/components/auth/CounsellorRail';
+import { AuthQuote } from '@/components/auth/AuthQuote';
+import { COUNSELLOR_AUTH_QUOTES } from '@/data/authQuotes';
 import { AuthShell, AuthHeading, AuthDivider } from '@/components/auth/AuthShell';
 import { Seo } from '@/components/Seo';
 
@@ -192,6 +194,36 @@ export default function TeacherAuth() {
       ? "Enter your counsellor email and we'll send you a verification code."
       : 'Use your school account, or the email your administrator set you up with.';
 
+  /**
+   * Turned away after signing in with Google or GitHub.
+   *
+   * `CounsellorOAuthGuard` sends them here when the identity that came back
+   * from the provider has not been provisioned as a counsellor. It is stated
+   * plainly rather than as a toast: a toast disappears, and this is the only
+   * explanation they will get for why a sign-in that visibly succeeded at
+   * Google did not sign them in here.
+   *
+   * The wording does not say whether the email exists in Pathforge, only that
+   * it is not a counsellor account — the page is public, and a message that
+   * distinguished "no such account" from "not a counsellor" would answer
+   * questions about other people's accounts for anyone who asked.
+   */
+  const notRegistered = searchParams.get('error') === 'not-registered';
+
+  const notRegisteredNote = notRegistered && !signedInAsNonCounsellor ? (
+    <div
+      role="alert"
+      className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-[12.5px] leading-relaxed"
+    >
+      <p className="mb-1 font-medium text-foreground">That account isn't registered</p>
+      <p className="text-muted-foreground">
+        Signing in worked, but this email isn't set up as a Pathforge counsellor account, so we
+        haven't created one. Counsellor accounts are only ever created by your school
+        administrator — ask them to add your email, then sign in again.
+      </p>
+    </div>
+  ) : null;
+
   const provisioningNote = (
     <div className="rounded-xl border border-border bg-card p-4 text-[12.5px] leading-relaxed text-muted-foreground">
       <p className="mb-1 font-medium text-foreground">Need a counsellor account?</p>
@@ -218,8 +250,14 @@ export default function TeacherAuth() {
         noindex={searchParams.has('redirect')}
       />
 
-      <AuthShell aside={<CounsellorRail />} eyebrow="Counsellor portal">
+      <AuthShell
+        aside={<CounsellorRail />}
+        eyebrow="Counsellor portal"
+        narrowAside={<AuthQuote quotes={COUNSELLOR_AUTH_QUOTES} />}
+      >
         <AuthHeading title={heading} sub={subheading} />
+
+        {notRegisteredNote && <div className="mb-5">{notRegisteredNote}</div>}
 
         {signedInAsNonCounsellor ? (
           <div className="space-y-3">
@@ -285,14 +323,20 @@ export default function TeacherAuth() {
                 that under five fields is what makes a portal feel like an
                 intranet. */}
             <div className="space-y-2.5">
+              {/* `portal` is what makes these sign-IN buttons rather than
+                  sign-in-or-quietly-sign-up buttons. Without it the provider
+                  creates an account for anyone who clicks, and this page has
+                  no sign-up to create one with. */}
               <GoogleSignInButton
                 label="Continue with Google"
                 redirectTo={redirectTo}
+                portal="counsellor"
                 className="h-11 text-sm font-medium"
               />
               <GitHubSignInButton
                 label="Continue with GitHub"
                 redirectTo={redirectTo}
+                portal="counsellor"
                 className="h-11 text-sm font-medium"
               />
             </div>

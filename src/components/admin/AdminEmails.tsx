@@ -528,7 +528,7 @@ export function AdminEmails() {
                 <div className="py-10 text-center"><Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground" /></div>
               ) : campaigns.length === 0 ? (
                 <div className="py-12 text-center">
-                  <Mail className="h-8 w-8 text-muted-foreground/60 mx-auto mb-3" />
+                  <Mail className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
                   <p className="text-sm text-muted-foreground">No campaigns sent yet.</p>
                 </div>
               ) : (
@@ -658,7 +658,7 @@ function PreviewBox({
           </a>
         )}
         <hr className="my-5 border-gray-200" />
-        <p className="text-[11px] text-gray-400">
+        <p className="text-[11px] text-gray-600">
           You received this because you have a Pathforge account. Unsubscribe link is appended automatically.
         </p>
       </div>

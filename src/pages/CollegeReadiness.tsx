@@ -33,6 +33,7 @@ import { toast } from "sonner";
 import { getMajorNames } from "@/lib/majors";
 import { getCollegeNames } from "@/lib/colleges";
 import { useReadinessHistory, type AnalysisResult } from "@/hooks/useReadinessHistory";
+import { sanitizeReport } from "@/lib/reportSanitize";
 import { useAuth } from "@/contexts/AuthContext";
 import { Seo } from "@/components/Seo";
 import { ReadinessReport } from "@/components/readiness/ReadinessReport";
@@ -152,10 +153,17 @@ export default function CollegeReadiness() {
       if (error) throw error;
 
       if (data.analysis) {
-        setAnalysis(data.analysis);
+        /*
+         * The prompt forbids emoji and the model mostly complies. "Mostly" is
+         * not a standard for a document a family pays for, so the guarantee
+         * lives here. Sanitising before the save means the stored copy is
+         * clean too, and every later read of this row is clean for free.
+         */
+        const analysis = sanitizeReport(data.analysis as AnalysisResult);
+        setAnalysis(analysis);
         notifyUsageConsumed();
         toast.success("Analysis complete!");
-        
+
         // Save to history if user is logged in
         if (user) {
           const saved = await saveAnalysis(
@@ -163,7 +171,7 @@ export default function CollegeReadiness() {
             targetUniversities.join(", "),
             shortTermGoals,
             pdfText,
-            data.analysis
+            analysis
           );
           if (saved?.id) setCurrentAnalysisId(saved.id);
         }
@@ -619,7 +627,7 @@ export default function CollegeReadiness() {
                   exit={{ opacity: 0 }}
                 >
                   <Panel className="text-center">
-                  <Upload className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
+                  <Upload className="h-16 w-16 text-muted-foreground mx-auto mb-4" />
                   <h3 className="text-lg font-semibold text-foreground mb-2">
                     Ready to Analyze
                   </h3>

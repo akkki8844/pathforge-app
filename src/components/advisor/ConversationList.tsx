@@ -1,22 +1,20 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useMemo, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Archive,
   ArchiveRestore,
   Check,
-  ChevronDown,
   ChevronRight,
   Download,
-  FileBox,
+  Folder,
   MessageSquare,
   MoreHorizontal,
   Pencil,
+  Pin,
   Plus,
   Trash2,
   X,
-  Zap,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DropdownMenu,
@@ -27,34 +25,29 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { transition } from "@/lib/motion";
+import {
+  ICON_SIZE,
+  ICON_STROKE,
+  SidebarCount,
+  SidebarIconButton,
+  SidebarLabel,
+  SidebarRow,
+} from "@/components/advisor/sidebarKit";
 import type { ConversationGroup, AdvisorProject } from "@/hooks/useAdvisorHistory";
 
-// One small-caps label for every section heading in this rail — Pinned,
-// Projects, Chats, the date buckets under it, and Archived all used to carry
-// slightly different sizes, weights and tracking, which is what made the list
-// read as several components stitched together rather than one list.
-const SECTION_EYEBROW = "text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground";
-// The date buckets ("Previous 7 days"...) sit one level under "Chats"; a
-// lighter, smaller label plus extra indent is what actually reads as nested
-// rather than another top-level section of equal weight.
-const SUBGROUP_LABEL = "text-[10px] font-medium uppercase tracking-[0.1em] text-muted-foreground/70";
-// The neutral count next to a project name — same pill shape as the primary-
-// tinted badges in the rail's workspace links, in muted ink since it is
-// informational rather than something new to look at.
-const COUNT_PILL = "inline-flex shrink-0 items-center rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground";
-
 /**
- * The advisor's chat history, without any surrounding chrome.
+ * The advisor's chat history — projects, pinned chats, date buckets, search
+ * results and the archive — with no chrome of its own.
  *
- * Extracted from ConversationSidebar so the hover-expanding rail
- * (SessionNavBar) can own the shell — header, workspace nav, identity footer —
- * while this file keeps the part that is genuinely about conversations:
- * search results, Pinned, Projects, date buckets, and Archived at the bottom
- * behind a disclosure, plus every per-row action (rename, pin, export, move to
- * project, archive, delete).
+ * Every row here is the shared `SidebarRow`, so a conversation and a Workspace
+ * entry are the same object at the same height with the same hover. This file
+ * used to draw its own rows, its own three different section-heading styles and
+ * its own count pills, which is why the sidebar looked like two products.
  *
- * `query` is owned by the parent because the collapsed rail needs a search
- * button that can put a query in flight before this list is even visible.
+ * `query` and `view` are both owned by the parent: the collapsed rail can put a
+ * search in flight before this list is visible, and Archived is a destination
+ * in the sidebar's pinned footer rather than a disclosure buried under a long
+ * scroll.
  */
 
 function groupByDate(conversations: ConversationGroup[]) {
@@ -87,6 +80,8 @@ export interface ConversationListProps {
   currentConversationId: string | null;
   /** Search text, owned by the rail so its collapsed search button can drive it. */
   query: string;
+  /** Which destination the scroll region is showing. */
+  view: "chats" | "archived";
   onSelect: (conv: ConversationGroup) => void;
   onRename: (conversationId: string, name: string) => void;
   onArchive: (conversationId: string, archived: boolean) => void;
@@ -97,9 +92,6 @@ export interface ConversationListProps {
   onNewProject: () => void;
   onRenameProject: (id: string, name: string) => void;
   onDeleteProject: (id: string) => void;
-  /** Archive disclosure, lifted so the rail's "Archived" button can open it. */
-  archivedOpen: boolean;
-  onArchivedOpenChange: (open: boolean) => void;
 }
 
 const PROJECTS_VISIBLE_COUNT = 5;
@@ -110,6 +102,7 @@ export function ConversationList({
   projects,
   currentConversationId,
   query,
+  view,
   onSelect,
   onRename,
   onArchive,
@@ -120,9 +113,8 @@ export function ConversationList({
   onNewProject,
   onRenameProject,
   onDeleteProject,
-  archivedOpen,
-  onArchivedOpenChange,
 }: ConversationListProps) {
+  const reduceMotion = useReducedMotion();
   const [collapsedProjects, setCollapsedProjects] = useState<Record<string, boolean>>({});
   const [editingConvId, setEditingConvId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
@@ -130,19 +122,6 @@ export function ConversationList({
   const [editProjectName, setEditProjectName] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [showAllProjects, setShowAllProjects] = useState(false);
-
-  const archivedAnchorRef = useRef<HTMLDivElement | null>(null);
-
-  // Opening the archive from the rail should also bring it into view — it
-  // lives at the very bottom of a long list.
-  useEffect(() => {
-    if (!archivedOpen) return;
-    const id = window.setTimeout(
-      () => archivedAnchorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      60,
-    );
-    return () => window.clearTimeout(id);
-  }, [archivedOpen]);
 
   const trimmedQuery = query.trim().toLowerCase();
   const searching = trimmedQuery.length > 0;
@@ -182,14 +161,25 @@ export function ConversationList({
     setEditName("");
   };
 
-  const renderConv = (conv: ConversationGroup) => {
+  /** Rows enter and leave, but never on first paint — a list that animates in on
+   *  every mount makes navigating back to the advisor feel slow. */
+  const rowMotion = reduceMotion
+    ? {}
+    : {
+        initial: { opacity: 0, height: 0 },
+        animate: { opacity: 1, height: "auto" as const },
+        exit: { opacity: 0, height: 0 },
+        transition: transition.fast,
+      };
+
+  const renderConv = (conv: ConversationGroup, depth = 0) => {
     const isActive = conv.conversation_id === currentConversationId;
     const isEditing = editingConvId === conv.conversation_id;
     const isConfirming = confirmDeleteId === conv.conversation_id;
 
     if (isEditing) {
       return (
-        <div key={conv.conversation_id} className="flex items-center gap-1 p-1.5">
+        <div key={conv.conversation_id} className="flex items-center gap-1 px-2 py-0.5">
           <Input
             value={editName}
             onChange={(e) => setEditName(e.target.value)}
@@ -197,27 +187,18 @@ export function ConversationList({
               if (e.key === "Enter") commitRename(conv.conversation_id);
               if (e.key === "Escape") setEditingConvId(null);
             }}
-            className="h-7 text-sm"
+            className="h-7 rounded-md px-2 text-[13px]"
             autoFocus
           />
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 shrink-0"
+          <SidebarIconButton
             onClick={() => commitRename(conv.conversation_id)}
             aria-label="Save conversation name"
           >
-            <Check className="h-3.5 w-3.5" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-7 w-7 shrink-0"
-            onClick={() => setEditingConvId(null)}
-            aria-label="Cancel rename"
-          >
-            <X className="h-3.5 w-3.5" />
-          </Button>
+            <Check size={14} strokeWidth={ICON_STROKE} />
+          </SidebarIconButton>
+          <SidebarIconButton onClick={() => setEditingConvId(null)} aria-label="Cancel rename">
+            <X size={14} strokeWidth={ICON_STROKE} />
+          </SidebarIconButton>
         </div>
       );
     }
@@ -226,282 +207,278 @@ export function ConversationList({
       return (
         <div
           key={conv.conversation_id}
-          className="rounded-lg border border-destructive/40 bg-destructive/5 px-2.5 py-2"
+          className="mx-2 rounded-md border border-destructive/30 bg-destructive/[0.06] px-2.5 py-2"
         >
-          <div className="truncate text-xs text-foreground">Delete "{conv.name}"?</div>
-          <div className="mt-1.5 flex items-center gap-1.5">
-            <Button
-              size="sm"
-              className="h-6 bg-destructive px-2 text-[11px] text-destructive-foreground hover:bg-destructive/90"
+          <p className="truncate text-[12px] text-foreground">Delete “{conv.name}”?</p>
+          <div className="mt-2 flex items-center gap-1.5">
+            <button
+              type="button"
+              className="rounded bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90"
               onClick={() => {
                 onDelete(conv.conversation_id);
                 setConfirmDeleteId(null);
               }}
             >
               Delete
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-6 px-2 text-[11px]"
+            </button>
+            <button
+              type="button"
+              className="rounded px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
               onClick={() => setConfirmDeleteId(null)}
             >
               Cancel
-            </Button>
+            </button>
           </div>
         </div>
       );
     }
 
     return (
-      <div
+      <SidebarRow
         key={conv.conversation_id}
-        className={cn(
-          "group/row relative flex min-h-9 items-center rounded-lg transition-colors",
-          isActive ? "bg-secondary" : "hover:bg-secondary/50",
-        )}
-      >
-        <button
-          onClick={() => onSelect(conv)}
-          className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
-        >
-          {conv.pinned ? (
-            <Zap className="h-4 w-4 shrink-0 fill-accent text-accent" />
+        depth={depth}
+        active={isActive}
+        onClick={() => onSelect(conv)}
+        label={conv.name}
+        title={conv.name}
+        leading={
+          conv.pinned ? (
+            <Pin size={ICON_SIZE} strokeWidth={ICON_STROKE} className="fill-current opacity-70" />
           ) : (
-            <MessageSquare className="h-4 w-4 shrink-0 text-muted-foreground" />
-          )}
-          <span className="flex-1 truncate text-[13px] font-medium">{conv.name}</span>
-        </button>
-        {/*
-         * Archive keeps its own always-visible control rather than living only
-         * inside the overflow menu: the menu trigger is hover-revealed on
-         * desktop, so nothing about a row would suggest it can be archived.
-         */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onArchive(conv.conversation_id, !conv.archived);
-          }}
-          className="rounded p-2 text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
-          aria-label={conv.archived ? `Restore "${conv.name}" from archive` : `Archive "${conv.name}"`}
-          title={conv.archived ? "Restore from archive" : "Archive"}
-        >
-          {conv.archived ? (
-            <ArchiveRestore className="h-3.5 w-3.5" />
-          ) : (
-            <Archive className="h-3.5 w-3.5" />
-          )}
-        </button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              onClick={(e) => e.stopPropagation()}
-              className="mr-1 rounded p-2 opacity-100 transition-opacity hover:bg-background focus:outline-none data-[state=open]:opacity-100 md:opacity-0 md:group-hover/row:opacity-100"
-              aria-label="Conversation options"
-            >
-              <MoreHorizontal className="h-3.5 w-3.5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuItem
-              onClick={() => onTogglePin(conv.conversation_id, !conv.pinned)}
-              className="gap-2 text-xs"
-            >
-              <Zap className="h-3.5 w-3.5" />
-              {conv.pinned ? "Unpin" : "Pin"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setEditingConvId(conv.conversation_id);
-                setEditName(conv.name);
+            <MessageSquare size={ICON_SIZE} strokeWidth={ICON_STROKE} />
+          )
+        }
+        tone="content"
+        actions={
+          <>
+            <SidebarIconButton
+              onClick={(e) => {
+                e.stopPropagation();
+                onArchive(conv.conversation_id, !conv.archived);
               }}
-              className="gap-2 text-xs"
-            >
-              <Pencil className="h-3.5 w-3.5" />
-              Rename
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onExport(conv.conversation_id)}
-              className="gap-2 text-xs"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Export as Markdown
-            </DropdownMenuItem>
-
-            <DropdownMenuSeparator />
-            <div className={cn("px-2 py-1", SECTION_EYEBROW)}>Move to project</div>
-            <DropdownMenuItem
-              onClick={() => onSetProject(conv.conversation_id, null)}
-              className="gap-2 text-xs"
-              disabled={!conv.project_id}
-            >
-              <X className="h-3.5 w-3.5" />
-              No project
-            </DropdownMenuItem>
-            {projects.map((p) => (
-              <DropdownMenuItem
-                key={p.id}
-                onClick={() => onSetProject(conv.conversation_id, p.id)}
-                className="gap-2 text-xs"
-                disabled={conv.project_id === p.id}
-              >
-                <FileBox className="h-3.5 w-3.5" />
-                <span className="truncate">{p.name}</span>
-              </DropdownMenuItem>
-            ))}
-            {projects.length === 0 && (
-              <DropdownMenuItem onClick={onNewProject} className="gap-2 text-xs">
-                <Plus className="h-3.5 w-3.5" />
-                Create project…
-              </DropdownMenuItem>
-            )}
-
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => onArchive(conv.conversation_id, !conv.archived)}
-              className="gap-2 text-xs"
+              aria-label={
+                conv.archived ? `Restore “${conv.name}” from archive` : `Archive “${conv.name}”`
+              }
+              title={conv.archived ? "Restore from archive" : "Archive"}
             >
               {conv.archived ? (
-                <ArchiveRestore className="h-3.5 w-3.5" />
+                <ArchiveRestore size={14} strokeWidth={ICON_STROKE} />
               ) : (
-                <Archive className="h-3.5 w-3.5" />
+                <Archive size={14} strokeWidth={ICON_STROKE} />
               )}
-              {conv.archived ? "Restore from archive" : "Archive"}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setConfirmDeleteId(conv.conversation_id)}
-              className="gap-2 text-xs text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+            </SidebarIconButton>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <SidebarIconButton
+                  onClick={(e) => e.stopPropagation()}
+                  aria-label={`Options for “${conv.name}”`}
+                >
+                  <MoreHorizontal size={14} strokeWidth={ICON_STROKE} />
+                </SidebarIconButton>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem
+                  onClick={() => onTogglePin(conv.conversation_id, !conv.pinned)}
+                  className="gap-2 text-xs"
+                >
+                  <Pin className="h-3.5 w-3.5" />
+                  {conv.pinned ? "Unpin" : "Pin"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setEditingConvId(conv.conversation_id);
+                    setEditName(conv.name);
+                  }}
+                  className="gap-2 text-xs"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Rename
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => onExport(conv.conversation_id)}
+                  className="gap-2 text-xs"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export as Markdown
+                </DropdownMenuItem>
+
+                <DropdownMenuSeparator />
+                <div className="px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                  Move to project
+                </div>
+                <DropdownMenuItem
+                  onClick={() => onSetProject(conv.conversation_id, null)}
+                  className="gap-2 text-xs"
+                  disabled={!conv.project_id}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  No project
+                </DropdownMenuItem>
+                {projects.map((p) => (
+                  <DropdownMenuItem
+                    key={p.id}
+                    onClick={() => onSetProject(conv.conversation_id, p.id)}
+                    className="gap-2 text-xs"
+                    disabled={conv.project_id === p.id}
+                  >
+                    <Folder className="h-3.5 w-3.5" />
+                    <span className="truncate">{p.name}</span>
+                  </DropdownMenuItem>
+                ))}
+                {projects.length === 0 && (
+                  <DropdownMenuItem onClick={onNewProject} className="gap-2 text-xs">
+                    <Plus className="h-3.5 w-3.5" />
+                    Create project…
+                  </DropdownMenuItem>
+                )}
+
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => onArchive(conv.conversation_id, !conv.archived)}
+                  className="gap-2 text-xs"
+                >
+                  {conv.archived ? (
+                    <ArchiveRestore className="h-3.5 w-3.5" />
+                  ) : (
+                    <Archive className="h-3.5 w-3.5" />
+                  )}
+                  {conv.archived ? "Restore from archive" : "Archive"}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => setConfirmDeleteId(conv.conversation_id)}
+                  className="gap-2 text-xs text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </>
+        }
+      />
     );
   };
 
-  const isEmpty = conversations.length === 0 && archivedConversations.length === 0;
+  /** A short, quiet line. Not an illustrated empty state with a call to action —
+   *  the call to action is the New chat button two inches above it. */
+  const emptyNote = (text: string) => (
+    <p className="px-2 py-3 text-[12px] leading-relaxed text-muted-foreground">{text}</p>
+  );
+
+  if (searching) {
+    return (
+      <div className="pb-2">
+        <SidebarLabel>
+          {searchResults.length === 0
+            ? "No matches"
+            : `${searchResults.length} result${searchResults.length > 1 ? "s" : ""}`}
+        </SidebarLabel>
+        {searchResults.length === 0
+          ? emptyNote(`Nothing matches “${query.trim()}”.`)
+          : searchResults.map((c) => renderConv(c))}
+      </div>
+    );
+  }
+
+  if (view === "archived") {
+    return (
+      <div className="pb-2">
+        <SidebarLabel>Archived</SidebarLabel>
+        {archivedConversations.length === 0
+          ? emptyNote(
+              "Nothing archived. Use the archive button on any chat to move it out of the list without deleting it.",
+            )
+          : archivedConversations.map((c) => renderConv(c))}
+      </div>
+    );
+  }
+
+  const nothingYet = conversations.length === 0;
 
   return (
-    <>
-      {searching ? (
-        <div>
-          <div className={cn("mb-1 px-2", SECTION_EYEBROW)}>
-            {searchResults.length === 0
-              ? "No matches"
-              : `${searchResults.length} result${searchResults.length > 1 ? "s" : ""}`}
-          </div>
-          {searchResults.length === 0 ? (
-            <p className="px-3 py-6 text-center text-sm text-muted-foreground">
-              Nothing matches "{query.trim()}".
-            </p>
-          ) : (
-            <div className="space-y-0.5">{searchResults.map(renderConv)}</div>
-          )}
-        </div>
-      ) : isEmpty ? (
-        <div className="px-3 py-10 text-center">
-          <MessageSquare className="mx-auto mb-2 h-5 w-5 text-muted-foreground/50" />
-          <p className="text-sm font-medium">No chats yet</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Ask the advisor anything — your history shows up here.
-          </p>
-        </div>
-      ) : (
-        <>
-          {pinned.length > 0 && (
-            <div className="mb-5">
-              <div className={cn("mb-1.5 flex items-center gap-1.5 px-2", SECTION_EYEBROW)}>
-                <Zap className="h-3 w-3" /> Pinned
-              </div>
-              <div className="space-y-0.5">{pinned.map(renderConv)}</div>
-            </div>
-          )}
+    <div className="pb-2">
+      {/* Projects */}
+      <SidebarLabel
+        action={
+          <SidebarIconButton
+            onClick={onNewProject}
+            aria-label="New project"
+            title="New project"
+            className="md:opacity-0 md:group-hover/label:opacity-100 md:focus-visible:opacity-100"
+          >
+            <Plus size={14} strokeWidth={ICON_STROKE} />
+          </SidebarIconButton>
+        }
+      >
+        Projects
+      </SidebarLabel>
 
-          <div className="mb-5 scroll-mt-2">
-            <div className="mb-1.5 flex items-center gap-1.5 px-2">
-              <ChevronDown className="h-3 w-3 shrink-0 text-muted-foreground" />
-              <span className={cn("flex-1", SECTION_EYEBROW)}>Projects</span>
-              <button
-                type="button"
-                onClick={onNewProject}
-                className="rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground"
-                aria-label="New project"
-                title="New project"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            {projects.length === 0 && (
-              <button
-                type="button"
-                onClick={onNewProject}
-                className="w-full rounded-lg px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-secondary/40"
-              >
-                No projects yet — create one.
-              </button>
-            )}
-            <div className="space-y-1">
-              {(showAllProjects ? projects : projects.slice(0, PROJECTS_VISIBLE_COUNT)).map((p) => {
-                const items = projectMap.get(p.id) || [];
-                const collapsed = !!collapsedProjects[p.id];
-                const isEditing = editingProjectId === p.id;
-                return (
-                  <div key={p.id} className="rounded-md">
-                    {isEditing ? (
-                      <div className="flex items-center gap-1 p-1.5">
-                        <Input
-                          value={editProjectName}
-                          onChange={(e) => setEditProjectName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              onRenameProject(p.id, editProjectName);
-                              setEditingProjectId(null);
-                            }
-                            if (e.key === "Escape") setEditingProjectId(null);
-                          }}
-                          className="h-7 text-sm"
-                          autoFocus
-                        />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7 shrink-0"
-                          onClick={() => {
-                            onRenameProject(p.id, editProjectName);
-                            setEditingProjectId(null);
-                          }}
-                          aria-label="Save project name"
-                        >
-                          <Check className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="group/proj flex items-center rounded px-2 py-1 hover:bg-secondary/40">
-                        <button
-                          onClick={() => setCollapsedProjects((s) => ({ ...s, [p.id]: !s[p.id] }))}
-                          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                        >
-                          <ChevronRight
-                            className={cn(
-                              "h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200",
-                              !collapsed && "rotate-90",
-                            )}
-                          />
-                          <FileBox className="h-4 w-4 shrink-0 text-accent" />
-                          <span className="flex-1 truncate text-[13px] font-medium">{p.name}</span>
-                          <span className={COUNT_PILL}>{items.length}</span>
-                        </button>
-                        <DropdownMenu>
+      {projects.length === 0
+        ? emptyNote("No projects yet. Group related chats to keep long threads together.")
+        : (showAllProjects ? projects : projects.slice(0, PROJECTS_VISIBLE_COUNT)).map((p) => {
+            const items = projectMap.get(p.id) || [];
+            const collapsed = !!collapsedProjects[p.id];
+            const isEditing = editingProjectId === p.id;
+
+            if (isEditing) {
+              return (
+                <div key={p.id} className="flex items-center gap-1 px-2 py-0.5">
+                  <Input
+                    value={editProjectName}
+                    onChange={(e) => setEditProjectName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        onRenameProject(p.id, editProjectName);
+                        setEditingProjectId(null);
+                      }
+                      if (e.key === "Escape") setEditingProjectId(null);
+                    }}
+                    className="h-7 rounded-md px-2 text-[13px]"
+                    autoFocus
+                  />
+                  <SidebarIconButton
+                    onClick={() => {
+                      onRenameProject(p.id, editProjectName);
+                      setEditingProjectId(null);
+                    }}
+                    aria-label="Save project name"
+                  >
+                    <Check size={14} strokeWidth={ICON_STROKE} />
+                  </SidebarIconButton>
+                </div>
+              );
+            }
+
+            return (
+              <div key={p.id}>
+                <SidebarRow
+                  label={p.name}
+                  title={p.name}
+                  onClick={() => setCollapsedProjects((s) => ({ ...s, [p.id]: !s[p.id] }))}
+                  leading={
+                    <ChevronRight
+                      size={ICON_SIZE}
+                      strokeWidth={ICON_STROKE}
+                      className={cn(
+                        "transition-transform duration-150",
+                        !collapsed && "rotate-90",
+                      )}
+                    />
+                  }
+                  trailing={<SidebarCount value={items.length} />}
+                  actions={
+                    <>
+                      <span className="pr-1">
+                        <SidebarCount value={items.length} />
+                      </span>
+                      <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <button
-                              className="ml-0.5 rounded p-2 opacity-100 transition-opacity hover:bg-background data-[state=open]:opacity-100 md:opacity-0 md:group-hover/proj:opacity-100"
-                              aria-label="Project options"
+                            <SidebarIconButton
+                              onClick={(e) => e.stopPropagation()}
+                              aria-label={`Options for project “${p.name}”`}
                             >
-                              <MoreHorizontal className="h-3.5 w-3.5" />
-                            </button>
+                              <MoreHorizontal size={14} strokeWidth={ICON_STROKE} />
+                            </SidebarIconButton>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
                             <DropdownMenuItem
@@ -520,96 +497,61 @@ export function ConversationList({
                               <Trash2 className="h-3.5 w-3.5" /> Delete project
                             </DropdownMenuItem>
                           </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    )}
-                    {!collapsed && items.length > 0 && (
-                      <div className="ml-3 mt-0.5 space-y-0.5 border-l border-border/60 pl-1.5">
-                        {items.map(renderConv)}
-                      </div>
-                    )}
-                    {!collapsed && items.length === 0 && (
-                      <div className="ml-5 px-2 py-1 text-[11px] text-muted-foreground">
-                        Empty — move a chat here.
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            {projects.length > PROJECTS_VISIBLE_COUNT && (
-              <button
-                type="button"
-                onClick={() => setShowAllProjects((v) => !v)}
-                className="mt-0.5 w-full rounded-lg px-2 py-1 text-left text-[11px] text-muted-foreground transition-colors hover:bg-secondary/40 hover:text-foreground"
-              >
-                {showAllProjects
-                  ? "Show less"
-                  : `Show more (${projects.length - PROJECTS_VISIBLE_COUNT})`}
-              </button>
-            )}
-          </div>
+                      </DropdownMenu>
+                    </>
+                  }
+                />
+                <AnimatePresence initial={false}>
+                  {!collapsed && (
+                    <motion.div {...rowMotion} className="overflow-hidden">
+                      {items.length > 0 ? (
+                        items.map((c) => renderConv(c, 1))
+                      ) : (
+                        <p className="py-1 pl-[42px] pr-2 text-[11.5px] text-muted-foreground">
+                          Empty — move a chat here.
+                        </p>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            );
+          })}
 
-          {(pinned.length > 0 || dateGroups.length > 0) && (
-            <div className={cn("mb-2 px-2", SECTION_EYEBROW)}>Chats</div>
-          )}
-          {dateGroups.map((g) => (
-            <div key={g.label} className="mb-3">
-              <div className={cn("mb-1 px-3", SUBGROUP_LABEL)}>{g.label}</div>
-              <div className="space-y-0.5">{g.items.map(renderConv)}</div>
-            </div>
-          ))}
+      {projects.length > PROJECTS_VISIBLE_COUNT && (
+        <button
+          type="button"
+          onClick={() => setShowAllProjects((v) => !v)}
+          className="mt-0.5 w-full rounded-md px-2 py-1 text-left text-[11.5px] text-muted-foreground transition-colors hover:text-foreground"
+        >
+          {showAllProjects ? "Show less" : `Show ${projects.length - PROJECTS_VISIBLE_COUNT} more`}
+        </button>
+      )}
+
+      {/* Pinned */}
+      {pinned.length > 0 && (
+        <>
+          <SidebarLabel className="mt-3">Pinned</SidebarLabel>
+          {pinned.map((c) => renderConv(c))}
         </>
       )}
 
-      {/* Rendered whether or not anything is archived — an archive that only
-          exists once you have used it cannot be discovered, and the rail's
-          Archived button needs somewhere to land. */}
-      {!searching && (
-        <div ref={archivedAnchorRef} className="mt-5 scroll-mt-2 border-t border-border pt-4">
-          <button
-            onClick={() => onArchivedOpenChange(!archivedOpen)}
-            className={cn(
-              "flex w-full items-center gap-1.5 px-2 py-1 transition-colors hover:text-foreground",
-              SECTION_EYEBROW,
-            )}
-            aria-expanded={archivedOpen}
-          >
-            {archivedOpen ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-            <Archive className="h-3 w-3" />
-            Archived
-            <span className="ml-auto font-normal normal-case text-muted-foreground/70">
-              {archivedConversations.length}
-            </span>
-          </button>
-          <AnimatePresence initial={false}>
-            {archivedOpen && (
-              <motion.div
-                initial={{ height: 0, opacity: 0 }}
-                animate={{ height: "auto", opacity: 1 }}
-                exit={{ height: 0, opacity: 0 }}
-                transition={transition.fast}
-                className="overflow-hidden"
-              >
-                {archivedConversations.length === 0 ? (
-                  <p className="px-3 py-3 text-[11px] leading-relaxed text-muted-foreground">
-                    Nothing archived. Use the archive button on any chat to move it out of the list
-                    without deleting it.
-                  </p>
-                ) : (
-                  <div className="mt-1 space-y-0.5 opacity-80">
-                    {archivedConversations.map(renderConv)}
-                  </div>
-                )}
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+      {/* Chats. The date buckets under it are only labelled when there is more
+          than one — a lone "Today" heading directly under "Chats" is a second
+          heading that adds a row of height and no information. */}
+      {(nothingYet || dateGroups.length <= 1) && (
+        <SidebarLabel className="mt-3">Chats</SidebarLabel>
       )}
-    </>
+      {nothingYet
+        ? emptyNote("No chats yet. Ask the advisor anything and it shows up here.")
+        : dateGroups.map((g, i) => (
+            <div key={g.label}>
+              {dateGroups.length > 1 && (
+                <SidebarLabel className={i === 0 ? "mt-3" : "mt-2"}>{g.label}</SidebarLabel>
+              )}
+              {g.items.map((c) => renderConv(c))}
+            </div>
+          ))}
+    </div>
   );
 }

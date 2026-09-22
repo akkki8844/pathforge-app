@@ -260,7 +260,7 @@ export function StepRail({
             <span
               className={cn(
                 "font-cluely text-[11px] font-semibold tabular-nums",
-                active ? "text-primary" : done ? "text-foreground/60" : "text-muted-foreground"
+                active ? "text-primary" : done ? "text-foreground/75" : "text-muted-foreground"
               )}
             >
               {String(i + 1).padStart(2, "0")}

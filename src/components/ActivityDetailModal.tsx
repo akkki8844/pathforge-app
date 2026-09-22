@@ -2,7 +2,12 @@ import { ExternalLink, X, MapPin, DollarSign, GraduationCap, Target, Trophy } fr
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Activity } from "@/lib/activities";
+// `import type`, not a value import. @/lib/activities is a 637KB module — 678
+// hardcoded records plus a dependency on the 140KB colleges table — and this
+// file only ever needs the interface. A value import of a type-only symbol is
+// not reliably elided by the bundler, so it can drag the whole catalogue into
+// whatever chunk this modal lands in. The type form cannot: it is erased.
+import type { Activity } from "@/lib/activities";
 
 interface ActivityDetailModalProps {
   activity: Activity | null;

@@ -187,7 +187,7 @@ export default function Essays() {
   };
 
   const scoreColor = (n: number) =>
-    n >= 80 ? "text-emerald-600 dark:text-emerald-400" : n >= 60 ? "text-amber-600 dark:text-amber-400" : "text-rose-600 dark:text-rose-400";
+    n >= 80 ? "text-success" : n >= 60 ? "text-warning" : "text-destructive";
 
   return (
     <div data-cluely className="min-h-svh bg-background py-8 font-cluely sm:py-12">
@@ -205,8 +205,8 @@ export default function Essays() {
         </ScrollReveal>
 
         {/* Disclaimer */}
-        <ScrollReveal delay={0.06} className="mb-8 flex gap-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-4">
-          <AlertTriangle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+        <ScrollReveal delay={0.06} className="mb-8 flex gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4">
+          <AlertTriangle className="h-5 w-5 shrink-0 text-warning mt-0.5" />
           <p className="text-sm text-foreground">
             <strong>We do not promote plagiarism.</strong> Essays generated or refined using this tool should only be used as a reference. Submitting AI-generated or copied essays may lead to rejection by colleges.
           </p>
@@ -386,12 +386,12 @@ export default function Essays() {
                 <motion.div variants={fadeUp} className="grid md:grid-cols-2 gap-6">
                   <Panel>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
-                      <ThumbsUp className="h-5 w-5 text-emerald-500" />What you did well
+                      <ThumbsUp className="h-5 w-5 text-success" />What you did well
                     </h4>
                     <ul className="space-y-2">
                       {analysis.did_well.map((s, i) => (
                         <li key={i} className="text-sm text-foreground flex gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                          <CheckCircle2 className="h-4 w-4 text-success shrink-0 mt-0.5" />
                           <span>{s}</span>
                         </li>
                       ))}
@@ -399,12 +399,12 @@ export default function Essays() {
                   </Panel>
                   <Panel>
                     <h4 className="font-semibold text-foreground flex items-center gap-2 mb-3">
-                      <ThumbsDown className="h-5 w-5 text-rose-500" />What to fix
+                      <ThumbsDown className="h-5 w-5 text-destructive" />What to fix
                     </h4>
                     <ul className="space-y-2">
                       {analysis.did_wrong.map((s, i) => (
                         <li key={i} className="text-sm text-foreground flex gap-2">
-                          <AlertTriangle className="h-4 w-4 text-rose-500 shrink-0 mt-0.5" />
+                          <AlertTriangle className="h-4 w-4 text-destructive shrink-0 mt-0.5" />
                           <span>{s}</span>
                         </li>
                       ))}
@@ -503,7 +503,7 @@ export default function Essays() {
           <ScrollReveal delay={0.16}>
             <Panel>
               <h3 className="font-semibold text-foreground flex items-center gap-2 mb-4">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />Common mistakes
+                <AlertTriangle className="h-5 w-5 text-warning" />Common mistakes
               </h3>
               <ul className="space-y-2">
                 {tipsMistakes.map((t, i) => (
@@ -515,7 +515,7 @@ export default function Essays() {
                     viewport={{ once: true }}
                     transition={{ delay: i * 0.06, duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                   >
-                    <ArrowRight className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" /><span>{t}</span>
+                    <ArrowRight className="h-4 w-4 text-warning shrink-0 mt-0.5" /><span>{t}</span>
                   </motion.li>
                 ))}
               </ul>

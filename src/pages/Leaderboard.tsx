@@ -13,7 +13,7 @@ import { fadeUp, staggerParent, staggerStep, transition } from "@/lib/motion";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { Eyebrow, Figure, Panel, Title } from "@/components/cluely/primitives";
 import {
-  AUTO_HANDLE_RE, STANDINGS_GRID, StandingRow, rankAccent, useLeaderboard,
+  AUTO_HANDLE_RE, STANDINGS_GRID, StandingRow, rankStyle, useLeaderboard,
   type LeaderboardRow, type LeaderboardScope,
 } from "@/components/journey/JourneyLeaderboard";
 
@@ -64,14 +64,17 @@ const PODIUM_LABELS = ["Champion", "Runner-up", "Third"];
 /**
  * The top three.
  *
- * The medal palette this used to carry — an amber ring over an amber glow, a
- * zinc one, an orange one — was three gradients and three hues restating the
- * ordinal printed directly beneath them. Cluely leads with a single lifted
- * surface instead of with colour, so first place is the page's one `lead`
- * panel and the other two are flat cards.
+ * This had no ranking colour at all: first place was indigo — the same indigo
+ * as every button on the page — and second and third were plain ink, which
+ * made the podium read as three ordinary cards that happened to be in a row.
+ * Each place now carries its metal on a hairline, a faint wash, and the
+ * medallion around the numeral. One hue per place and nothing else: the
+ * version before this one stacked a gradient ring over a gradient glow for
+ * each, which is three effects restating the number printed inside them.
  */
 function PodiumCard({ r, place }: { r: LeaderboardRow; place: number }) {
   const isFirst = place === 0;
+  const medal = rankStyle(r.rank);
   return (
     <motion.article variants={fadeUp}>
       <Panel
@@ -81,13 +84,27 @@ function PodiumCard({ r, place }: { r: LeaderboardRow; place: number }) {
           // The champion sits proud of the other two on desktop. On a phone the
           // three stack, so the lift is dropped rather than inverted.
           isFirst ? "sm:-mt-4 sm:pb-7" : "sm:mt-2",
+          medal.surface,
           r.is_me && !isFirst && "border-primary/30",
         )}
       >
-        <Eyebrow>{PODIUM_LABELS[place]}</Eyebrow>
+        <Eyebrow className={medal.text}>{PODIUM_LABELS[place]}</Eyebrow>
 
-        <p className={cn("mt-2", rankAccent(r.rank))}>
-          <Figure className={isFirst ? "text-[2.75rem]" : "text-[2.25rem]"}>{r.rank}</Figure>
+        {/* The numeral inside its medal. `aria-hidden` on the ring: the place is
+            already announced by the eyebrow above it, and "1" read twice in a
+            row is worse than not reading the decoration at all. */}
+        <p className="mt-3 flex justify-center">
+          <span
+            className={cn(
+              "flex items-center justify-center rounded-full ring-1",
+              medal.ring,
+              isFirst ? "h-16 w-16" : "h-14 w-14",
+            )}
+          >
+            <Figure className={cn(isFirst ? "text-[2rem]" : "text-[1.75rem]", medal.text)}>
+              {r.rank}
+            </Figure>
+          </span>
         </p>
 
         <p className="mt-3 truncate font-cluely text-base font-semibold tracking-[-0.01em] text-foreground">
@@ -274,7 +291,7 @@ export default function Leaderboard() {
           </Panel>
         ) : rows.length === 0 ? (
           <Panel className="px-6 py-16 text-center">
-            <Trophy className="mx-auto h-6 w-6 text-muted-foreground/60" />
+            <Trophy className="mx-auto h-6 w-6 text-muted-foreground" />
             <Title className="mt-4">{empty.title}</Title>
             <p className="mx-auto mt-2 max-w-[46ch] text-sm leading-relaxed text-muted-foreground">
               {empty.body}
@@ -328,7 +345,7 @@ export default function Leaderboard() {
                     A mid-pack rank is otherwise unreachable without paging. */}
                 {me && !meOnScreen && (
                   <>
-                    <div className="my-2 flex items-center gap-2 px-3 font-cluely text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+                    <div className="my-2 flex items-center gap-2 px-3 font-cluely text-[9px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       <span className="h-px flex-1 bg-border" />
                       Your rank
                       <span className="h-px flex-1 bg-border" />

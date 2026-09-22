@@ -18,6 +18,30 @@ export default {
       },
     },
     extend: {
+      // Durations and easings have to be registered rather than written inline
+      // as `duration-[320ms]` / `ease-[cubic-bezier(...)]`. Both core Tailwind
+      // and tailwindcss-animate claim the `duration-*` and `ease-*` namespaces
+      // (transition-* and animation-*), so an arbitrary value is ambiguous —
+      // Tailwind reports it and then emits no rule at all. Every dialog, sheet
+      // and alert-dialog was silently falling back to default timing, and none
+      // of these easing curves reached the page. Named here, they resolve.
+      transitionDuration: {
+        "250": "250ms",
+        "320": "320ms",
+        "600": "600ms",
+        "800": "800ms",
+        "1400": "1400ms",
+      },
+      transitionTimingFunction: {
+        // Decelerating: things arriving on screen.
+        entrance: "cubic-bezier(0.16, 1, 0.3, 1)",
+        // Accelerating: things leaving.
+        exit: "cubic-bezier(0.4, 0, 1, 1)",
+        swift: "cubic-bezier(0.23, 1, 0.32, 1)",
+        // Slight overshoot, for a control that should feel springy.
+        overshoot: "cubic-bezier(0.34, 1.56, 0.64, 1)",
+        glide: "cubic-bezier(0.19, 1, 0.22, 1)",
+      },
       fontFamily: {
         sans: ["Plus Jakarta Sans", "Work Sans", "system-ui", "sans-serif"],
         // Display / headings: Sora — a clean, open geometric sans that reads
@@ -29,10 +53,11 @@ export default {
         // loaded anywhere in the app, so every `font-serif` figure and heading
         // was silently rendering as Georgia while claiming to be editorial.
         serif: ['"Fraunces Variable"', "Fraunces", "ui-serif", "Georgia", "serif"],
-        // Geist — Cluely's face, self-hosted from their desktop bundle and
-        // @font-face'd in index.css. Used by the Outcomes route only, which is
-        // why it is its own family rather than a change to `sans`/`display`.
-        cluely: ['"Geist Variable"', "Geist", "Inter", "system-ui", "sans-serif"],
+        // The Outcomes route keeps Cluely's layout (the panels, the ledgers,
+        // the zinc palette in index.css) but reads in the same face as the
+        // signed-in home rather than Cluely's own Geist — one student account,
+        // one typeface, not two products stitched together.
+        cluely: ["Inter Variable", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"],
         // The printed résumé wants a book serif, not a display one. Instrument
         // Serif is lazy-loaded by that route alone (see Resume.tsx).
         document: ['"Instrument Serif"', "ui-serif", "Georgia", "serif"],
@@ -81,6 +106,12 @@ export default {
         warning: {
           DEFAULT: "hsl(var(--warning))",
           foreground: "hsl(var(--warning-foreground))",
+        },
+        // Podium places. Categorical identity, not severity — see index.css.
+        medal: {
+          gold: "hsl(var(--medal-gold))",
+          silver: "hsl(var(--medal-silver))",
+          bronze: "hsl(var(--medal-bronze))",
         },
         info: {
           DEFAULT: "hsl(var(--info))",
@@ -134,6 +165,17 @@ export default {
           "0%": { transform: "translateX(0)" },
           "100%": { transform: "translateX(-50%)" },
         },
+        // The `--duration`/`--gap` driven pair used by `components/ui/3d-testimonails`.
+        // Kept separate from `marquee` above, which CollegeLogosMarquee runs on
+        // at a fixed 50s and a -50% translate; merging them would retime it.
+        "marquee-x": {
+          from: { transform: "translateX(0)" },
+          to: { transform: "translateX(calc(-100% - var(--gap)))" },
+        },
+        "marquee-y": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(calc(-100% - var(--gap)))" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -141,11 +183,19 @@ export default {
         "fade-up": "fade-up 0.5s ease-out forwards",
         "fade-in": "fade-in 0.3s ease-out forwards",
         marquee: "marquee 50s linear infinite",
+        "marquee-x": "marquee-x var(--duration, 40s) linear infinite",
+        "marquee-y": "marquee-y var(--duration, 40s) linear infinite",
       },
       boxShadow: {
         glow: "0 0 0 1px hsl(226 65% 56% / 0.14), 0 18px 48px -38px hsl(226 65% 56% / 0.5)",
       },
     },
   },
-  plugins: [require("tailwindcss-animate"), require("@tailwindcss/typography")],
+  plugins: [
+    require("tailwindcss-animate"),
+    require("@tailwindcss/typography"),
+    // AgentTrace sizes its name gutter and result column off the card it sits in,
+    // not the viewport, so it stays readable in a narrow settings column.
+    require("@tailwindcss/container-queries"),
+  ],
 } satisfies Config;

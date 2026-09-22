@@ -17,8 +17,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Eyebrow, ColumnHead, Tag } from "@/components/cluely/primitives";
 import {
-  activities, avoidActivities, calculatePriority, generatePriorityExplanation,
-  isActivityAvailableInCountry, Activity,
+  isActivityAvailableInCountry, loadActivityCatalogue,
+  type Activity, type ActivityCatalogue,
 } from "@/lib/activities";
 import {
   competitionCalendar, getCompetitionStatusInfo, daysUntil, formatDate,
@@ -35,8 +35,26 @@ import { useAuth } from "@/contexts/AuthContext";
 import { findCollegeByName } from "@/lib/colleges";
 import { Seo } from "@/components/Seo";
 import { useActivityRefresh, MANUAL_REFRESH_LIMIT } from "@/hooks/useActivityRefresh";
+import { HostLogo } from "@/components/HostLogo";
+import { ListPager } from "@/components/activities/ListPager";
+import { useDiscoveredActivities } from "@/hooks/useDiscoveredActivities";
 import { listItem, staggerParent, staggerStep, transition, viewportOnce } from "@/lib/motion";
 import { toast } from "sonner";
+import { safeExternalUrl } from "@/lib/safeUrl";
+
+/**
+ * Activity links can come from the live-web discovery pass, i.e. from a model
+ * reading a page we do not control. Never hand such a string to window.open()
+ * unchecked — a `javascript:` URI would run in the signed-in student's origin.
+ */
+function openActivityUrl(raw: string | null | undefined) {
+  const url = safeExternalUrl(raw);
+  if (!url) {
+    toast.error("This link isn't available");
+    return;
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+}
 
 type CostType = "all" | "free" | "paid";
 type DifficultyType = "all" | "Beginner" | "Intermediate" | "Advanced";
@@ -181,6 +199,16 @@ function describeChange(before: string, after: string): string | null {
 // ── Card ───────────────────────────────────────────────────────────────
 // forwardRef because AnimatePresence attaches a ref for exit measurement.
 
+/**
+ * Cards per page.
+ *
+ * Twelve fills three rows at the widest breakpoint and six rows at the
+ * narrowest, so the grid stays rectangular rather than ending in a ragged
+ * half-row at any common width. It is also small enough that the pager is
+ * reachable without a long scroll, which is the point of paging at all.
+ */
+const PAGE_SIZE = 12;
+
 const ActivityCard = forwardRef<HTMLDivElement, {
   activity: SignedActivity & { explanation?: string };
   userMajor: string;
@@ -205,10 +233,27 @@ const ActivityCard = forwardRef<HTMLDivElement, {
       ref={ref}
       layout
       variants={listItem}
-      exit="exit"
+      /*
+       * The exit is written out here rather than referenced as the
+       * `"exit"` label on `listItem`.
+       *
+       * These cards sit inside a `motion.div` that runs the stagger, and a
+       * motion parent driving its children by variant label also drives
+       * their exit. The parent never leaves the tree, so a child asking for
+       * the `"exit"` label was waiting on an animation that never started:
+       * AnimatePresence popped it out of flow, set it to `position:
+       * absolute`, and then held it there at full opacity forever. Removing
+       * one card by filter left one ghost sitting on top of the grid, which
+       * is why this went unnoticed — paging the list turns that single
+       * ghost into twelve, stacked over the page you just moved to.
+       *
+       * An exit given as an object is applied directly and does not go
+       * through the parent's variant propagation.
+       */
+      exit={{ opacity: 0, scale: 0.96, transition: transition.fast }}
       onClick={() => onClick(activity)}
       className={[
-        "group relative flex cursor-pointer flex-col rounded-[0.75rem] border p-4 transition-colors",
+        "group relative flex cursor-pointer flex-col rounded-[0.875rem] border p-5 transition-colors",
         done
           ? "border-foreground/20 bg-muted/40"
           : "border-border bg-card hover:border-foreground/25 hover:bg-muted/20",
@@ -258,7 +303,7 @@ const ActivityCard = forwardRef<HTMLDivElement, {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                window.open(activity.learnMoreUrl, "_blank", "noopener,noreferrer");
+                openActivityUrl(activity.learnMoreUrl);
                 setActionsOpen(false);
               }}
               className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-muted"
@@ -270,39 +315,54 @@ const ActivityCard = forwardRef<HTMLDivElement, {
         </Popover>
       </div>
 
-      {activity.explanation ? (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <h3 className="mt-2.5 cursor-help font-cluely text-[14.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-foreground decoration-border underline-offset-4 hover:underline">
+      {/*
+        * The organiser's mark, the way the scholarships page leads with the
+        * provider's. It is derived from the activity's own learnMoreUrl rather
+        * than from a stored field — see HostLogo for why — so it covers the
+        * whole catalogue with nothing to maintain.
+        */}
+      <div className="mt-3.5 flex items-start gap-3.5">
+        <HostLogo
+          name={activity.name}
+          urls={[activity.learnMoreUrl, activity.applyUrl]}
+          size={40}
+        />
+        <div className="min-w-0 flex-1">
+          {activity.explanation ? (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <h3 className="cursor-help font-cluely text-[15.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-foreground decoration-border underline-offset-4 hover:underline">
+                  {activity.name}
+                </h3>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" align="start" className="max-w-[260px]" onClick={(e) => e.stopPropagation()}>
+                {activity.explanation}
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <h3 className="font-cluely text-[15.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-foreground">
               {activity.name}
             </h3>
-          </TooltipTrigger>
-          <TooltipContent side="bottom" align="start" className="max-w-[260px]" onClick={(e) => e.stopPropagation()}>
-            {activity.explanation}
-          </TooltipContent>
-        </Tooltip>
-      ) : (
-        <h3 className="mt-2.5 font-cluely text-[14.5px] font-semibold leading-[1.3] tracking-[-0.012em] text-foreground">
-          {activity.name}
-        </h3>
-      )}
+          )}
 
-      <p className="mt-1 truncate font-cluely text-[11.5px] text-muted-foreground">
-        {activity.category} · {activity.difficulty} · {activity.cost}
-      </p>
+          <p className="mt-1 truncate font-cluely text-[12px] text-muted-foreground">
+            {activity.category} · {activity.difficulty} · {activity.cost}
+          </p>
+        </div>
+      </div>
 
-      <p className="mt-2 line-clamp-2 text-[12.5px] leading-snug text-muted-foreground">
+      <p className="mt-3 line-clamp-3 text-[13px] leading-relaxed text-muted-foreground">
         {activity.description}
       </p>
 
       {fits && activity.whyRelevant && (
-        <p className="mt-2 line-clamp-2 border-l-2 border-border pl-2.5 text-[11.5px] leading-snug text-muted-foreground">
+        <p className="mt-3 line-clamp-2 border-l-2 border-border pl-3 text-[12px] leading-snug text-muted-foreground">
           {activity.whyRelevant}
         </p>
       )}
 
       {/* Deadline — deliberately the loudest line on the card. */}
-      <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-3">
+      <div className="mt-auto flex items-end justify-between gap-3 border-t border-border pt-4">
         <div className="min-w-0">
           <ColumnHead>{deadline.label}</ColumnHead>
           <div className="mt-1 truncate font-cluely text-[13.5px] font-semibold tabular-nums tracking-[-0.01em] text-foreground">
@@ -345,9 +405,37 @@ function HeaderStat({ label, value, accent = false }: { label: string; value: nu
 
 // ── Page ───────────────────────────────────────────────────────────────
 
+/** Stable identities, so a memo does not re-run every render while loading. */
+const EMPTY_ACTIVITIES: Activity[] = [];
+const EMPTY_AVOID: { name: string; reason: string }[] = [];
+
 export default function Activities() {
   const navigate = useNavigate();
   const { onboardingData, loading, user, refreshOnboardingData } = useAuth();
+  /*
+   * The 678-record catalogue arrives as its own chunk.
+   *
+   * It used to be imported statically, which welded 637KB into this route's
+   * bundle — so nothing on the page, not the header or the filters or the tab
+   * bar, could paint until all of it had downloaded and been evaluated.
+   * Measured on production: 800 DOM nodes and 2 blurred elements against a
+   * 6.3s load. This page was never paint-bound; it was waiting on the import.
+   *
+   * Now the shell paints immediately and the list fills when the data lands,
+   * which is the shape the discovered-activities fetch already had.
+   */
+  const [catalogue, setCatalogue] = useState<ActivityCatalogue | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void loadActivityCatalogue().then((mod) => {
+      if (alive) setCatalogue(mod);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const activities = catalogue?.activities ?? EMPTY_ACTIVITIES;
+  const avoidActivities = catalogue?.avoidActivities ?? EMPTY_AVOID;
   const userMajor = onboardingData?.intended_major || "";
   const userCountry = onboardingData?.country || "";
   const targetUniversities = useMemo(
@@ -371,6 +459,18 @@ export default function Activities() {
   const [explorePriority, setExplorePriority] = useState<"all" | "Medium" | "Low">("all");
   const [exploreSearch, setExploreSearch] = useState("");
 
+  /*
+   * Paging state, one page cursor per list.
+   *
+   * Both cursors are 1-based because that is what the control renders; a
+   * 0-based cursor would mean every read and every label had to add one, and
+   * the off-by-one would eventually be written in only some of them.
+   */
+  const [recommendedPage, setRecommendedPage] = useState(1);
+  const recommendedGridRef = useRef<HTMLDivElement>(null);
+  const exploreGridRef = useRef<HTMLDivElement>(null);
+  const [explorePage, setExplorePage] = useState(1);
+
   const [bookmarkedIds, setBookmarkedIds] = useState<string[]>(() => getBookmarks().map((b) => b.id));
   const [showBookmarks, setShowBookmarks] = useState(false);
   const [completedIds, setCompletedIds] = useState<string[]>(() => getCompleted().map((b) => b.id));
@@ -381,17 +481,44 @@ export default function Activities() {
   const [refreshTick, setRefreshTick] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
+  /*
+   * Live discovery, layered on top of the curated array.
+   *
+   * `discovered` starts empty, so first paint is always the curated set and
+   * nothing about this can make the page slower or emptier than it was.
+   */
+  const { discovered, discover } = useDiscoveredActivities();
+
+  /*
+   * Curated array plus whatever live discovery has returned this session.
+   *
+   * Deduped on name, curated winning: a hand-scored entry carries a real
+   * priorityFactors weighting and a vetted description, and the discovered
+   * copy of the same competition would otherwise appear as a second card.
+   */
+  const activityPool = useMemo(() => {
+    if (discovered.length === 0) return activities;
+    const seen = new Set(activities.map((a) => a.name.toLowerCase().replace(/[^a-z0-9]+/g, "")));
+    const extra = discovered.filter(
+      (d) => !seen.has(d.name.toLowerCase().replace(/[^a-z0-9]+/g, "")),
+    );
+    return [...activities, ...extra];
+  }, [discovered, activities]);
+
   // Recommended — High priority only.
   const personalizedActivities = useMemo(() => {
-    if (!userMajor) return [];
-    const pool = activities
+    // Scoring closes over the catalogue, so it cannot run before it lands.
+    if (!userMajor || !catalogue) return [];
+    const pool = activityPool
       .filter((a) => a.type === "Competition")
       .filter((a) => isActivityAvailableInCountry(a, userCountry))
       .filter((a) => a.relevantMajors.includes(userMajor));
 
     const withPriority = pool.map((activity) => {
-      const priority = calculatePriority(activity, userMajor, primaryTargetCollege);
-      const explanation = generatePriorityExplanation(activity, priority, userMajor, primaryTargetCollege);
+      const priority = catalogue.calculatePriority(activity, userMajor, primaryTargetCollege);
+      const explanation = catalogue.generatePriorityExplanation(
+        activity, priority, userMajor, primaryTargetCollege,
+      );
       return { ...activity, priority, explanation };
     });
 
@@ -422,11 +549,18 @@ export default function Activities() {
     });
     // refreshTick is a deliberate cache-buster for the clock-dependent reads.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userMajor, userCountry, primaryTargetCollege, costFilter, difficultyFilter, statusFilter, refreshTick]);
+  }, [userMajor, userCountry, primaryTargetCollege, costFilter, difficultyFilter, statusFilter, refreshTick, activityPool, catalogue]);
 
   // Explore — Medium + Low, fuzzily related to the major.
   const exploreActivities = useMemo(() => {
-    if (!userMajor) return [];
+    /*
+     * `catalogue` guard, not just `userMajor`.
+     *
+     * activityPool is the catalogue PLUS anything the discovery function has
+     * already cached, so it can be non-empty while the catalogue chunk is
+     * still in flight. Scoring those rows would call through a null module.
+     */
+    if (!userMajor || !catalogue) return [];
 
     const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
     const userTokens = new Set(norm(userMajor).split(" ").filter((t) => t.length > 2));
@@ -443,11 +577,11 @@ export default function Activities() {
       });
     };
 
-    let result = activities
+    let result = activityPool
       .filter((a) => a.type === "Competition")
       .filter((a) => isActivityAvailableInCountry(a, userCountry))
       .filter(isMajorRelated)
-      .map((a) => ({ ...a, priority: calculatePriority(a, userMajor, primaryTargetCollege) }))
+      .map((a) => ({ ...a, priority: catalogue.calculatePriority(a, userMajor, primaryTargetCollege) }))
       .filter((a) => a.priority === "Medium" || a.priority === "Low");
 
     if (explorePriority !== "all") result = result.filter((a) => a.priority === explorePriority);
@@ -464,7 +598,45 @@ export default function Activities() {
     const order = { Medium: 0, Low: 1 };
     return result.sort((a, b) => (order[a.priority as "Medium" | "Low"] ?? 0) - (order[b.priority as "Medium" | "Low"] ?? 0));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userMajor, userCountry, primaryTargetCollege, explorePriority, exploreDifficulty, exploreSearch, refreshTick]);
+  }, [userMajor, userCountry, primaryTargetCollege, explorePriority, exploreDifficulty, exploreSearch, refreshTick, activityPool, catalogue]);
+
+  /*
+   * Page the two lists.
+   *
+   * The cursor is clamped on read rather than corrected in an effect. A
+   * filter that shrinks the list from nine pages to two can leave the cursor
+   * on page seven for one render, and an unclamped slice would return an
+   * empty array — the student would see "no competitions match" for a
+   * filter that matched plenty. Clamping here means the worst case is landing
+   * on the last page, which is what they would expect.
+   */
+  const recommendedPageCount = Math.max(1, Math.ceil(personalizedActivities.length / PAGE_SIZE));
+  const explorePageCount = Math.max(1, Math.ceil(exploreActivities.length / PAGE_SIZE));
+  const recommendedCursor = Math.min(recommendedPage, recommendedPageCount);
+  const exploreCursor = Math.min(explorePage, explorePageCount);
+  const recommendedPageItems = useMemo(
+    () => personalizedActivities.slice((recommendedCursor - 1) * PAGE_SIZE, recommendedCursor * PAGE_SIZE),
+    [personalizedActivities, recommendedCursor],
+  );
+  const explorePageItems = useMemo(
+    () => exploreActivities.slice((exploreCursor - 1) * PAGE_SIZE, exploreCursor * PAGE_SIZE),
+    [exploreActivities, exploreCursor],
+  );
+
+  /*
+   * Changing a filter puts you back on page one.
+   *
+   * Staying put would be worse than it sounds: the student narrows the list,
+   * the page they were on no longer exists, and the clamp above drops them on
+   * the last page of the new result set — so a filter meant to show them the
+   * best matches opens on the weakest ones.
+   */
+  useEffect(() => {
+    setRecommendedPage(1);
+  }, [userMajor, costFilter, difficultyFilter, statusFilter]);
+  useEffect(() => {
+    setExplorePage(1);
+  }, [userMajor, explorePriority, exploreDifficulty, exploreSearch]);
 
   /** What the whole tracked set looks like right now. Real numbers, not decoration. */
   const pulse = useMemo(() => {
@@ -509,6 +681,38 @@ export default function Activities() {
       await refreshOnboardingData();
       setBookmarkedIds(getBookmarks().map((b) => b.id));
       setCompletedIds(getCompleted().map((b) => b.id));
+
+      /*
+       * The part that was missing.
+       *
+       * Everything above re-reads local state and re-derives the clock; none
+       * of it could ever produce a competition that was not already compiled
+       * into the bundle. This asks the web.
+       *
+       * A manual press forces a fresh crawl; the weekly automatic run is happy
+       * with a cached answer, because two students in the same field in the
+       * same week want the same result and the crawl is the expensive part.
+       *
+       * Deliberately not awaited inside the try/catch that toasts a failure:
+       * discovery is additive, and a discovery outage must not make a refresh
+       * that correctly updated deadlines report itself as broken.
+       */
+      if (userMajor) {
+        const outcome = await discover(userMajor, userCountry ?? "", kind === "manual");
+        if (outcome.error) {
+          toast.error(outcome.error);
+        } else if (outcome.added > 0) {
+          toast.success(
+            `${outcome.added} new ${outcome.added === 1 ? "competition" : "competitions"} found` +
+              (outcome.cached ? " (from this week's search)" : ""),
+          );
+        } else if (kind === "manual" && outcome.note) {
+          // Said plainly. A refresh that legitimately found nothing is not a
+          // failure, but silence would read as one.
+          toast(outcome.note);
+        }
+      }
+
       setRefreshTick((t) => t + 1);
     } catch (err) {
       console.error("activities refresh failed:", err);
@@ -517,7 +721,7 @@ export default function Activities() {
     } finally {
       setRefreshing(false);
     }
-  }, [refreshing, refreshOnboardingData]);
+  }, [refreshing, refreshOnboardingData, discover, userMajor, userCountry]);
 
   const handleManualRefresh = () => {
     if (refreshing) return;
@@ -613,7 +817,7 @@ export default function Activities() {
   };
 
   const handleActivityClick = (activity: Activity) => {
-    window.open(activity.learnMoreUrl, "_blank", "noopener,noreferrer");
+    openActivityUrl(activity.learnMoreUrl);
   };
 
   const bookmarkedActivities = getBookmarks();
@@ -658,7 +862,16 @@ export default function Activities() {
     );
   }
 
-  const gridClass = "grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5";
+  /*
+   * One column fewer at every breakpoint than this grid used to carry, and a
+   * wider gap. At five across on a 1800px canvas a card was ~330px, which put
+   * the organiser logo, the title, the category line and the deadline into a
+   * column too narrow for any of them: titles wrapped to three lines and the
+   * description clamped to two lines showed about nine words. Four across is
+   * ~430px, which is enough for a two-line title and a description worth
+   * reading. Paging the list is what pays for the extra height.
+   */
+  const gridClass = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
 
   return (
     <div data-cluely className="min-h-svh bg-background font-cluely">
@@ -842,18 +1055,28 @@ export default function Activities() {
 
               <span className="ml-auto text-[12px] tabular-nums text-muted-foreground">
                 {personalizedActivities.length} matched · soonest deadline first
+                {recommendedPageCount > 1 && ` · page ${recommendedCursor} of ${recommendedPageCount}`}
               </span>
             </div>
 
             <motion.div
+              /*
+               * Keyed on the page, so moving page unmounts the old cards
+               * outright instead of animating them away. Twelve cards
+               * leaving while twelve arrive is not a transition worth
+               * watching, and it is the case where a stuck exit does the
+               * most damage.
+               */
+              key={`recommended-${recommendedCursor}`}
+              ref={recommendedGridRef}
               className={gridClass}
               variants={staggerParent}
-              custom={staggerStep(personalizedActivities.length)}
+              custom={staggerStep(recommendedPageItems.length)}
               initial="hidden"
               animate="visible"
             >
               <AnimatePresence mode="popLayout">
-                {personalizedActivities.map((a) => (
+                {recommendedPageItems.map((a) => (
                   <ActivityCard
                     key={a.id}
                     activity={a}
@@ -868,6 +1091,27 @@ export default function Activities() {
                 ))}
               </AnimatePresence>
             </motion.div>
+
+            {/*
+              * Paging the list, not lazy-loading it: a student comparing two
+              * competitions needs to be able to get back to the one they saw,
+              * and an infinite scroll loses that position the moment they
+              * follow a link out to an organiser and come back.
+              *
+              * Moving page scrolls the window to the top of the grid. Without
+              * it, clicking "3" from the bottom of page two leaves you looking
+              * at the last row of the new page with no idea the list changed.
+              */}
+            <ListPager
+              className="mt-7"
+              label="Recommended competitions"
+              page={recommendedCursor}
+              pageCount={recommendedPageCount}
+              onPageChange={(next) => {
+                setRecommendedPage(next);
+                recommendedGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
 
             {personalizedActivities.length === 0 && (
               <div className="rounded-[0.75rem] border border-dashed border-border py-12 text-center">
@@ -944,18 +1188,21 @@ export default function Activities() {
 
               <span className="ml-auto text-[12px] tabular-nums text-muted-foreground">
                 {exploreActivities.length} supporting
+                {explorePageCount > 1 && ` · page ${exploreCursor} of ${explorePageCount}`}
               </span>
             </div>
 
             <motion.div
+              key={`explore-${exploreCursor}`}
+              ref={exploreGridRef}
               className={gridClass}
               variants={staggerParent}
-              custom={staggerStep(exploreActivities.length)}
+              custom={staggerStep(explorePageItems.length)}
               initial="hidden"
               animate="visible"
             >
               <AnimatePresence mode="popLayout">
-                {exploreActivities.map((a) => (
+                {explorePageItems.map((a) => (
                   <ActivityCard
                     key={a.id}
                     activity={a}
@@ -970,6 +1217,17 @@ export default function Activities() {
                 ))}
               </AnimatePresence>
             </motion.div>
+
+            <ListPager
+              className="mt-7"
+              label="Explore competitions"
+              page={exploreCursor}
+              pageCount={explorePageCount}
+              onPageChange={(next) => {
+                setExplorePage(next);
+                exploreGridRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+              }}
+            />
 
             {exploreActivities.length === 0 && (
               <div className="rounded-[0.75rem] border border-dashed border-border py-12 text-center">

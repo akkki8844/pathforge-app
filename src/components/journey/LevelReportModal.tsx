@@ -22,11 +22,11 @@ interface Props {
 // Band the score so the headline colour carries the verdict at a glance,
 // matching the calibration the evaluator prompt is anchored to.
 function bandFor(score: number) {
-  if (score >= 85) return { label: "Exceptional", cls: "text-emerald-600", ring: "#10b981" };
-  if (score >= 70) return { label: "Solid", cls: "text-sky-600", ring: "#0284c7" };
-  if (score >= 55) return { label: "Adequate", cls: "text-amber-600", ring: "#d97706" };
-  if (score >= 40) return { label: "Weak", cls: "text-orange-600", ring: "#ea580c" };
-  return { label: "Needs work", cls: "text-rose-600", ring: "#e11d48" };
+  if (score >= 85) return { label: "Exceptional", cls: "text-success", ring: "hsl(var(--success))" };
+  if (score >= 70) return { label: "Solid", cls: "text-info", ring: "hsl(var(--info))" };
+  if (score >= 55) return { label: "Adequate", cls: "text-warning", ring: "hsl(var(--warning))" };
+  if (score >= 40) return { label: "Weak", cls: "text-destructive/80", ring: "hsl(var(--destructive) / 0.8)" };
+  return { label: "Needs work", cls: "text-destructive", ring: "hsl(var(--destructive))" };
 }
 
 function ScoreRing({ score }: { score: number }) {
@@ -63,14 +63,14 @@ function Section({
 }) {
   if (!items.length) return null;
   const dot = tone === "positive"
-    ? "bg-emerald-500"
+    ? "bg-success"
     : tone === "negative"
-    ? "bg-amber-500"
+    ? "bg-warning"
     : "bg-primary";
   const iconCls = tone === "positive"
-    ? "text-emerald-600"
+    ? "text-success"
     : tone === "negative"
-    ? "text-amber-600"
+    ? "text-warning"
     : "text-primary";
 
   return (
@@ -169,7 +169,7 @@ export function LevelReportModal({ open, onOpenChange, level, evaluation, onRege
               </div>
             ) : status === "failed" ? (
               <div className="py-10 flex flex-col items-center text-center gap-3">
-                <AlertCircle className="h-7 w-7 text-amber-500" />
+                <AlertCircle className="h-7 w-7 text-warning" />
                 <div className="text-sm font-semibold">Couldn't generate the report</div>
                 <p className="text-xs text-muted-foreground max-w-xs leading-relaxed">
                   {evaluation.error || "Something went wrong. Your level progress is safe — this is just the report."}

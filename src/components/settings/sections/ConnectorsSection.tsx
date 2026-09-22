@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, KeyRound, Pencil, Copy } from "lucide-react";
+import { Mail, Loader2, Check, Unplug, Upload, ExternalLink, Lock, Sparkles, RefreshCw, KeyRound, Pencil, Copy, Clock } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +18,7 @@ import { ImportLinkedInModal } from "@/components/ImportLinkedInModal";
 import { SettingsSection } from "../SettingsShell";
 import linkedinLogo from "@/assets/linkedin-logo.png";
 import { ComposioAppDirectory } from "./ComposioAppDirectory";
+import { isConnectorAvailable } from "@/lib/connectors/availability";
 import { planTierFromString, tierSatisfies } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
@@ -46,7 +47,7 @@ export function ConnectorsSection() {
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-semibold text-foreground">Connectors are a Pro feature</h3>
               <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-                Here's what you'll unlock on Pro: LinkedIn, GitHub, Google Calendar, your Google account, email, and the Composio apps below — Notion, Google Docs and Sheets, Drive, Todoist, Trello, Slack and the rest. Your free plan still keeps full AI access for everything else, and the Pathforge MCP server is free on every plan.
+                Here's what you'll unlock on Pro: LinkedIn, Google Calendar, your Google account, email, and the Composio apps below — Notion, Google Docs and Sheets, Drive, Todoist, Trello, Slack and the rest. Your free plan still keeps full AI access for everything else, and the Pathforge MCP server is free on every plan.
               </p>
               <div className="mt-4 flex flex-wrap items-center gap-2">
                 <Button asChild size="sm" className="btn-accent">
@@ -89,6 +90,15 @@ function LockedAction() {
   );
 }
 
+/**
+ * `comingSoon` outranks `locked` deliberately.
+ *
+ * A card that is not ready yet must not offer "Upgrade to unlock", because
+ * upgrading would not unlock it — that is selling something that does not
+ * exist. It also swallows the connect actions entirely rather than disabling
+ * them, so there is nothing to press and nothing to start an OAuth flow that
+ * would only be abandoned.
+ */
 function ConnectorCard({
   icon,
   name,
@@ -97,6 +107,7 @@ function ConnectorCard({
   meta,
   actions,
   locked,
+  comingSoon,
 }: {
   icon: React.ReactNode;
   name: string;
@@ -105,9 +116,15 @@ function ConnectorCard({
   meta?: string;
   actions: React.ReactNode;
   locked?: boolean;
+  comingSoon?: boolean;
 }) {
   return (
-    <div className={cn("rounded-xl border border-border bg-card p-5 sm:p-6", locked && "opacity-70")}>
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-card p-5 sm:p-6",
+        (locked || comingSoon) && "opacity-70",
+      )}
+    >
       <div className="flex items-start gap-4">
         <div className="h-10 w-10 rounded-xl bg-muted/60 border border-border flex items-center justify-center flex-shrink-0">
           {icon}
@@ -115,7 +132,11 @@ function ConnectorCard({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-sm font-semibold text-foreground">{name}</h3>
-            {locked ? (
+            {comingSoon ? (
+              <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                <Clock className="h-2.5 w-2.5" /> Coming soon
+              </span>
+            ) : locked ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">
                 <Lock className="h-2.5 w-2.5" /> Pro
               </span>
@@ -135,8 +156,14 @@ function ConnectorCard({
             )}
           </div>
           <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{description}</p>
-          {meta && !locked && <p className="text-[11px] text-muted-foreground mt-2">{meta}</p>}
-          <div className="mt-4 flex flex-wrap items-center gap-2">{locked ? <LockedAction /> : actions}</div>
+          {meta && !locked && !comingSoon && (
+            <p className="text-[11px] text-muted-foreground mt-2">{meta}</p>
+          )}
+          {!comingSoon && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              {locked ? <LockedAction /> : actions}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -180,6 +207,7 @@ function GitHubConnector({ locked }: { locked?: boolean }) {
       status={loading ? "info" : connection ? "connected" : "disconnected"}
       meta={connection ? `Connected as @${connection.github_login ?? "unknown"}` : undefined}
       locked={locked}
+      comingSoon={!isConnectorAvailable("github")}
       actions={
         <>
           <Button onClick={handleConnect} disabled={busy} size="sm" variant={connection ? "outline" : "default"}>

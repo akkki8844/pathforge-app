@@ -216,7 +216,7 @@ export function useDashboardData(): DashboardData {
       supabase.from("full_applications").select("university,status,updated_at").eq("user_id", uid).order("updated_at", { ascending: false }),
       supabase.from("recommenders").select("id,name,status,subject,due_date,submitted_at,strength").eq("user_id", uid),
       supabase.from("requirements_reports").select("college,updated_at").eq("user_id", uid),
-      supabase.from("advisor_artifacts").select("id,title,kind,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(6),
+      supabase.from("advisor_artifacts").select("id,title,kind,created_at").eq("user_id", uid).neq("kind", "image").order("created_at", { ascending: false }).limit(6),
       supabase.from("user_activity_logs").select("created_at").eq("user_id", uid).gte("created_at", since.toISOString()),
       supabase.from("readiness_analyses").select("name,sequence_number,analysis_result,created_at").eq("user_id", uid).order("sequence_number", { ascending: true }),
       supabase.from("admissions_data").select("analysis_results,created_at").eq("user_id", uid).order("created_at", { ascending: false }).limit(1),

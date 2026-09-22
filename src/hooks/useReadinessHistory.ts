@@ -24,6 +24,8 @@ export interface AnalysisResult {
   };
   subjectScores?: Array<{
     subject: string;
+    /** The grade exactly as it appears on the report card ("A-", "87%", "6"). */
+    rawGrade?: string;
     score: number;
     trend: "up" | "flat" | "down";
     note?: string;
@@ -31,14 +33,57 @@ export interface AnalysisResult {
   actionPlan?: Array<{
     title: string;
     why?: string;
+    /** The first concrete step, so the action is not just a label. */
+    how?: string;
     horizon: "This Month" | "This Quarter" | "This Year";
     priority: "High" | "Medium" | "Low";
+    /** A real month and year, always in the future. */
+    targetDate?: string;
   }>;
   collegeFit?: Array<{
     university: string;
     fit: "Reach" | "Match" | "Safety";
     notes?: string;
   }>;
+
+  /*
+   * Everything below is new depth. All optional, because reports generated
+   * before this change are still in the database and must keep rendering —
+   * the page reads these with `?.` and simply omits the section when absent
+   * rather than showing an empty panel.
+   */
+
+  /** The one finding the whole report exists to deliver. */
+  headline?: string;
+
+  /** Non-obvious findings: the part a student could not read off the card. */
+  insights?: Array<{
+    title: string;
+    finding: string;
+    soWhat: string;
+    confidence: "high" | "medium" | "low";
+  }>;
+
+  /** Where the record is heading, with the evidence that establishes it. */
+  trajectory?: {
+    direction: "improving" | "steady" | "declining" | "mixed";
+    evidence: string;
+    projection: string;
+  };
+
+  /** Whether the academic record actually supports the intended major. */
+  majorAlignment?: {
+    verdict: "Strong" | "Moderate" | "Needs Work" | "Misaligned";
+    explanation: string;
+    requiredSubjects?: string[];
+    gapsToClose?: string[];
+  };
+
+  /**
+   * What the report card could not show. Stated so the student reads the
+   * assessment with its limits visible rather than as the whole truth.
+   */
+  dataGaps?: string[];
 }
 
 export interface ReadinessAnalysis {

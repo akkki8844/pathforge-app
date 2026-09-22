@@ -359,7 +359,7 @@ function SectionEditor({
             onChange={(e) => onInputChange(e.target.value)}
             className="min-h-[160px] resize-y"
           />
-          <p className="mt-1.5 text-[11px] text-muted-foreground/80 italic">
+          <p className="mt-1.5 text-[11px] text-muted-foreground italic">
             Example: {section.placeholder.replace(/^e\.g\.\s*/i, "").replace(/^"|"$/g, "")}
           </p>
         </div>

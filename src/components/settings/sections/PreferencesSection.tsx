@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Languages } from "lucide-react";
+import { Compass, Languages } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import {
   Select,
@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/select";
 import { SettingsSection, SettingsCard, SettingsRow } from "../SettingsShell";
 import { useSettingsForm } from "../SettingsFormContext";
+import { useProductTour } from "@/components/tour/TourProvider";
 
 /**
  * Every control in this section used to be plain `useState` with no write
@@ -24,6 +25,7 @@ import { useSettingsForm } from "../SettingsFormContext";
  */
 export function PreferencesSection() {
   const { draft, set, isDirty, loading } = useSettingsForm();
+  const { start: startTour } = useProductTour();
 
   return (
     <SettingsSection
@@ -87,6 +89,21 @@ export function PreferencesSection() {
             onCheckedChange={(v) => set("show_tips", v)}
             disabled={loading}
           />
+        </SettingsRow>
+        {/* Not a draft field: the tour starts immediately rather than on Save,
+            because "replay" that waits for a Save button is not a replay. */}
+        <SettingsRow
+          label="Replay the product tour"
+          description="Walks every section of Pathforge again, one page at a time. Leave at any point with Esc."
+        >
+          <button
+            type="button"
+            onClick={startTour}
+            className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted/60"
+          >
+            <Compass className="h-3.5 w-3.5" />
+            Start tour
+          </button>
         </SettingsRow>
       </SettingsCard>
 

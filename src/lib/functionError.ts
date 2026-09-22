@@ -32,7 +32,17 @@ export async function parseFunctionError(error: unknown): Promise<FunctionErrorI
     let message = "";
     try {
       const body = await ctx.clone().json();
-      if (body && typeof body.error === "string") message = body.error;
+      // `message` wins over `error` when both are present. Functions that
+      // distinguish the two use `error` as a machine code ("OUT_OF_CREDITS",
+      // "RATE_LIMITED") and `message` as the sentence written for a student —
+      // showing the code was a bug you only noticed the first time a toast said
+      // "INTERVIEWER_UNAVAILABLE". Functions that send only `error` still carry
+      // their human string there, so that path is unchanged.
+      if (body && typeof body.message === "string" && body.message.trim()) {
+        message = body.message;
+      } else if (body && typeof body.error === "string") {
+        message = body.error;
+      }
     } catch {
       try {
         message = (await ctx.clone().text()).slice(0, 200);

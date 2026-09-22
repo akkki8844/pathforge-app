@@ -16,6 +16,8 @@ import { z } from 'zod';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { GitHubSignInButton } from '@/components/auth/GitHubSignInButton';
 import { ReviewsRail } from '@/components/auth/ReviewsRail';
+import { AuthQuote } from '@/components/auth/AuthQuote';
+import { STUDENT_AUTH_QUOTES } from '@/data/authQuotes';
 import { AuthShell, AuthHeading, AuthDivider } from '@/components/auth/AuthShell';
 import { Seo } from '@/components/Seo';
 
@@ -101,7 +103,7 @@ export default function Auth() {
   const [showPassword, setShowPassword] = useState(false);
   const [stayLoggedIn, setStayLoggedIn] = useState(false);
   // Counsellor accounts are provisioned only by admins. Public signup is always student.
-  const accountType: 'student' = 'student';
+  const accountType = 'student' as const;
   const [loading, setLoading] = useState(false);
 
   // React to URL param changes (e.g. landing CTAs while on /auth)
@@ -322,7 +324,12 @@ export default function Auth() {
       />
       {/* Same split shell the counsellor portal uses: what the product is on
           the left, the form on the right, and on a phone only the form. */}
-      <AuthShell aside={<ReviewsRail />} eyebrow="Student" tone="muted">
+      <AuthShell
+      aside={<ReviewsRail />}
+      eyebrow="Student"
+      tone="muted"
+      narrowAside={<AuthQuote quotes={STUDENT_AUTH_QUOTES} />}
+    >
           <AuthHeading
             title={isForgot ? 'Reset your password' : isSignUp ? 'Create your account' : 'Welcome back'}
             sub={

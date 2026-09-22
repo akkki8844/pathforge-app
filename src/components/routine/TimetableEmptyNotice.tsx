@@ -15,6 +15,20 @@ import { cn } from "@/lib/utils";
  * `tone="bare"` is for slots that already sit inside a panel (the dashboard
  * card, Today's agenda column), where a second dashed box would be a box in a
  * box.
+ *
+ * COLOUR IS INHERITED, NOT NAMED — and that is the whole fix here.
+ *
+ * The bare tone hardcoded `text-muted-foreground` for the sentence and
+ * `text-accent` for the link. On the dashboard the panel it drops into is the
+ * blue `bg-primary` "Today" card, where `--accent` and `--primary` are the
+ * same indigo: the link rendered rgb(70,104,216) on an rgb(70,104,216)
+ * background. Measured contrast 1.00 — the word "Timetable" was invisible, and
+ * the muted sentence around it was barely better.
+ *
+ * A component that can be dropped into "whatever panel" cannot name its own
+ * ink. It inherits the host's colour and earns its emphasis from weight and an
+ * underline instead, so it is legible on a white card and on a saturated one
+ * without either caller knowing about the other.
  */
 export function TimetableEmptyNotice({
   tone = "panel",
@@ -28,7 +42,7 @@ export function TimetableEmptyNotice({
       You don&rsquo;t have a set timetable. Set one at &lsquo;
       <Link
         to="/routine/timetable"
-        className="font-semibold text-accent underline-offset-4 hover:underline focus-visible:underline"
+        className="font-semibold underline decoration-current/40 underline-offset-4 transition-[text-decoration-color] hover:decoration-current focus-visible:decoration-current"
       >
         Timetable
       </Link>
@@ -38,9 +52,9 @@ export function TimetableEmptyNotice({
 
   if (tone === "bare") {
     return (
-      <p className={cn("text-[13px] leading-relaxed text-muted-foreground", className)}>
-        {sentence}
-      </p>
+      /* No colour of its own: 80% of whatever the host panel already sets
+         reads as secondary on a white card and on a blue one alike. */
+      <p className={cn("text-[13px] leading-relaxed opacity-80", className)}>{sentence}</p>
     );
   }
 

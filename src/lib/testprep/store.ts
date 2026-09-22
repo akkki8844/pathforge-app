@@ -125,8 +125,28 @@ export function toggleBookmark(questionId: string) {
  * question is a real event, not a correction of an earlier one.
  */
 export function recordAnswer(answer: AnswerRecord) {
+  recordAnswers([answer]);
+}
+
+/**
+ * Record a whole sitting's worth of answers in one write.
+ *
+ * `persist` copies the answers array, serialises the entire profile, writes it
+ * to localStorage synchronously and re-renders every subscriber. Calling it
+ * once per answer is fine for practice, where answers arrive one at a time
+ * seconds apart. It is not fine for an exam: a full sitting submits 98 answers
+ * in a loop, which meant 98 array copies of a growing array, 98 serialisations
+ * of a profile that may already hold thousands of records, and 98 synchronous
+ * disk-backed writes — quadratic work, on the main thread, at the exact moment
+ * a student finishes a two-hour exam and the page has to navigate.
+ *
+ * One call, one write. The singular form delegates here so there is only one
+ * path to keep correct.
+ */
+export function recordAnswers(answers: AnswerRecord[]) {
+  if (answers.length === 0) return;
   const current = load();
-  persist({ ...current, answers: [...current.answers, answer] });
+  persist({ ...current, answers: [...current.answers, ...answers] });
 }
 
 export function saveSession(session: SessionState) {

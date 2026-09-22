@@ -1,0 +1,437 @@
+/*
+ * The document itself: the sheet, the text on it, and the paper it prints on.
+ *
+ * Tailwind's preflight flattens headings, lists and tables to nothing, which is
+ * right for an application and wrong for a document — so everything inside
+ * `.pf-doc` is restated here. These are document styles, not app styles: they
+ * are measured in ems against the page's own type size, so changing the base
+ * size in Layout scales the whole document the way a word processor does.
+ *
+ * Printing is the same styles at a different size. The `@page` rule is written
+ * into the head from `lib/documents/page.ts`, and everything on screen that is
+ * not the sheet is hidden by visibility, which keeps the sheet's own layout
+ * intact — `display: none` on an ancestor would take it with them.
+ */
+
+/* ── The sheet ──────────────────────────────────────────────────────── */
+
+.pf-sheet {
+  background: #ffffff;
+  color: #111111;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.08),
+    0 12px 32px -12px rgba(0, 0, 0, 0.18);
+}
+
+.dark .pf-sheet {
+  background: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -12px rgba(0, 0, 0, 0.6);
+}
+
+/* The dashed rule marking where the paper will break. */
+.pf-page-guide {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed hsl(var(--border));
+  pointer-events: none;
+}
+
+.pf-page-guide::after {
+  content: attr(data-label);
+  position: absolute;
+  right: 8px;
+  top: 4px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+/* The ribbon scrolls, but without drawing a bar under the toolbar. */
+.pf-ribbon {
+  scrollbar-width: none;
+}
+
+.pf-ribbon::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── The document ───────────────────────────────────────────────────── */
+
+.pf-doc.ProseMirror {
+  outline: none;
+  word-wrap: break-word;
+  white-space: pre-wrap;
+  -webkit-font-variant-ligatures: none;
+  font-variant-ligatures: none;
+}
+
+.pf-doc > * {
+  margin: 0 0 var(--pf-para-space, 10px);
+}
+
+.pf-doc > *:last-child {
+  margin-bottom: 0;
+}
+
+.pf-doc h1,
+.pf-doc h2,
+.pf-doc h3,
+.pf-doc h4 {
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 1.1em;
+  text-wrap: balance;
+}
+
+.pf-doc h1 { font-size: 2em; }
+.pf-doc h2 { font-size: 1.5em; }
+.pf-doc h3 { font-size: 1.25em; }
+.pf-doc h4 { font-size: 1.1em; }
+
+.pf-doc > h1:first-child,
+.pf-doc > h2:first-child,
+.pf-doc > h3:first-child {
+  margin-top: 0;
+}
+
+.pf-doc ul,
+.pf-doc ol {
+  padding-left: 1.6em;
+}
+
+.pf-doc ul { list-style: disc; }
+.pf-doc ul ul { list-style: circle; }
+.pf-doc ul ul ul { list-style: square; }
+.pf-doc ol { list-style: decimal; }
+.pf-doc ol ol { list-style: lower-alpha; }
+.pf-doc ol ol ol { list-style: lower-roman; }
+
+.pf-doc li > p {
+  margin: 0;
+}
+
+.pf-doc li + li {
+  margin-top: 0.25em;
+}
+
+.pf-doc blockquote {
+  border-left: 3px solid hsl(var(--border));
+  padding-left: 1em;
+  color: inherit;
+  opacity: 0.88;
+  font-style: italic;
+}
+
+.pf-doc a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.pf-doc code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.92em;
+  background: hsl(var(--muted));
+  border-radius: 4px;
+  padding: 0.12em 0.32em;
+}
+
+.pf-doc pre {
+  background: hsl(var(--muted));
+  border-radius: 8px;
+  padding: 0.9em 1em;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.pf-doc pre code {
+  background: none;
+  padding: 0;
+  font-size: 0.88em;
+}
+
+.pf-doc hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin: 1.4em 0;
+}
+
+.pf-doc img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 2px;
+}
+
+.pf-doc img.ProseMirror-selectednode {
+  outline: 2px solid hsl(var(--primary));
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────── */
+
+.pf-doc table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0 0 1em;
+  overflow: hidden;
+}
+
+.pf-doc th,
+.pf-doc td {
+  border: 1px solid hsl(var(--border));
+  padding: 0.4em 0.6em;
+  vertical-align: top;
+  position: relative;
+  min-width: 2em;
+}
+
+.pf-doc th {
+  background: hsl(var(--muted));
+  font-weight: 600;
+  text-align: left;
+}
+
+.pf-doc .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: hsl(var(--primary) / 0.14);
+  pointer-events: none;
+}
+
+.pf-doc .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: hsl(var(--primary));
+  pointer-events: none;
+}
+
+.pf-editor-shell.resize-cursor {
+  cursor: col-resize;
+}
+
+/* ── Task lists ─────────────────────────────────────────────────────── */
+
+.pf-doc ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0.2em;
+}
+
+.pf-doc ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5em;
+}
+
+.pf-doc ul[data-type="taskList"] li > label {
+  margin-top: 0.22em;
+  user-select: none;
+}
+
+.pf-doc ul[data-type="taskList"] li > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.pf-doc ul[data-type="taskList"] li[data-checked="true"] > div {
+  text-decoration: line-through;
+  opacity: 0.6;
+}
+
+/* ── Page break ─────────────────────────────────────────────────────── */
+
+.pf-doc .pf-page-break {
+  position: relative;
+  height: 0;
+  border-top: 1px dashed hsl(var(--border));
+  margin: 1.6em 0;
+  break-after: page;
+}
+
+.pf-doc .pf-page-break::after {
+  content: "Page break";
+  position: absolute;
+  right: 0;
+  top: -0.7em;
+  padding: 0 0.5em;
+  background: inherit;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: hsl(var(--muted-foreground));
+}
+
+.pf-doc .pf-page-break.ProseMirror-selectednode {
+  border-top-color: hsl(var(--primary));
+}
+
+/* ── Editor affordances ─────────────────────────────────────────────── */
+
+.pf-doc p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+  color: hsl(var(--muted-foreground));
+}
+
+.pf-find {
+  background: rgba(250, 204, 21, 0.45);
+  border-radius: 2px;
+}
+
+.pf-find-active {
+  background: rgba(249, 115, 22, 0.6);
+  box-shadow: 0 0 0 1px rgba(249, 115, 22, 0.9);
+}
+
+.ProseMirror-gapcursor {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+}
+
+.ProseMirror-gapcursor::after {
+  content: "";
+  display: block;
+  position: absolute;
+  top: -2px;
+  width: 20px;
+  border-top: 1px solid currentColor;
+  animation: pf-caret-blink 1.1s steps(2, start) infinite;
+}
+
+.ProseMirror-focused .ProseMirror-gapcursor {
+  display: block;
+}
+
+@keyframes pf-caret-blink {
+  to {
+    visibility: hidden;
+  }
+}
+
+/* ── Print ──────────────────────────────────────────────────────────── */
+
+@media print {
+  /*
+   * What prints is the sheet, at the size it is drawn, and nothing else.
+   *
+   * Hiding the rest by visibility is not enough. An invisible box still takes
+   * its space, so the outline pane and the fixed-width canvas made the printed
+   * page wider than the paper, and Chrome's answer to that is to scale the
+   * whole document down until it fits: the text came out about two thirds of
+   * its size and the pages broke in places the editor's guides never showed.
+   * So the boxes between the shell and the sheet are flattened to plain blocks
+   * of automatic width, and everything beside them is taken out of the layout
+   * altogether.
+   */
+  html,
+  body,
+  #root {
+    width: auto !important;
+    min-width: 0 !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    background: #ffffff !important;
+  }
+
+  body * {
+    visibility: hidden !important;
+  }
+
+  .pf-print-root,
+  .pf-print-root * {
+    visibility: visible !important;
+  }
+
+  .pf-editor-shell,
+  .pf-print-keep {
+    display: block !important;
+    position: static !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: visible !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    background: none !important;
+    flex: none !important;
+  }
+
+  /* The ribbon, the bars, the panes, the ruler: not part of the document. */
+  .pf-editor-shell > *:not(.pf-print-keep),
+  .pf-print-keep > *:not(.pf-print-keep):not(.pf-print-root) {
+    display: none !important;
+  }
+
+  .pf-print-root {
+    position: static !important;
+    width: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    /* The zoom is a way of looking at the page, not a property of it. */
+    transform: none !important;
+    zoom: 1 !important;
+  }
+
+  .pf-page-guide,
+  .pf-table-tools,
+  .pf-doc .pf-page-break::after {
+    display: none !important;
+  }
+
+  .pf-doc .pf-page-break {
+    border-top: 0 !important;
+    margin: 0 !important;
+  }
+
+  .pf-doc a {
+    color: #000000 !important;
+  }
+
+  .pf-doc h1,
+  .pf-doc h2,
+  .pf-doc h3,
+  .pf-doc h4,
+  .pf-doc li,
+  .pf-doc tr,
+  .pf-doc img {
+    break-inside: avoid;
+  }
+
+  .pf-doc h1,
+  .pf-doc h2,
+  .pf-doc h3 {
+    break-after: avoid;
+  }
+
+  /* Highlights and table shading are content, not decoration. */
+  .pf-doc mark,
+  .pf-doc th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+}

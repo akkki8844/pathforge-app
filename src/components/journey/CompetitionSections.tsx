@@ -86,7 +86,7 @@ function CompetitionCard({ comp, isOngoing, isClosed, reopenInfo }: { comp: Comp
             </p>
           )}
           {comp.notes && (
-            <p className="text-[11px] text-muted-foreground/80 leading-relaxed mb-2">{comp.notes}</p>
+            <p className="text-[11px] text-muted-foreground leading-relaxed mb-2">{comp.notes}</p>
           )}
           {isClosed && reopenInfo && (
             <p className="text-[11px] text-accent font-medium mb-2 inline-flex items-center gap-1">
@@ -143,7 +143,7 @@ function CompetitionCard({ comp, isOngoing, isClosed, reopenInfo }: { comp: Comp
             size="sm"
             variant="outline"
             className="text-[10px] h-7 gap-1"
-            onClick={() => window.open(comp.url, "_blank")}
+            onClick={() => window.open(comp.url, "_blank", "noopener,noreferrer")}
           >
             Info <ExternalLink className="h-2.5 w-2.5" />
           </Button>
@@ -151,7 +151,7 @@ function CompetitionCard({ comp, isOngoing, isClosed, reopenInfo }: { comp: Comp
             <Button
               size="sm"
               className="text-[10px] h-7 gap-1 btn-accent"
-              onClick={() => window.open(comp.applyUrl!, "_blank")}
+              onClick={() => window.open(comp.applyUrl!, "_blank", "noopener,noreferrer")}
             >
               Register <ArrowRight className="h-2.5 w-2.5" />
             </Button>

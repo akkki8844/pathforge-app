@@ -452,7 +452,7 @@ export function Composer({
         </div>
       </div>
 
-      <p className="mx-auto mt-2 w-full max-w-[62rem] px-3 text-[0.625rem] text-muted-foreground/80">
+      <p className="mx-auto mt-2 w-full max-w-[62rem] px-3 text-[0.625rem] text-muted-foreground">
         {isTouch
           ? "Use @ to mention someone · swipe a message right to reply"
           : "Enter to send · Shift + Enter for a new line · @ to mention · double-click a message to reply"}

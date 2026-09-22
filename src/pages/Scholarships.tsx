@@ -31,6 +31,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveWebSearch } from "@/components/LiveWebSearch";
 import { Seo } from "@/components/Seo";
+import { useActivityRefresh, MANUAL_REFRESH_LIMIT } from "@/hooks/useActivityRefresh";
+import { RefreshCw } from "lucide-react";
 import { ColumnHead, Eyebrow, Figure, Panel, Title } from "@/components/cluely/primitives";
 import { fadeUp, transition } from "@/lib/motion";
 
@@ -216,6 +218,18 @@ function ComparisonView({ items, onClose }: { items: Scholarship[]; onClose: () 
 // === MAIN PAGE ===
 export default function Scholarships() {
   const { user } = useAuth();
+
+  /*
+   * Refresh state.
+   *
+   * `scholarshipTick` is a deliberate cache-buster for every memo that reads
+   * the clock. The scholarship set itself is static, so incrementing this is
+   * what actually re-derives open/closed status, days-to-deadline and the
+   * closing-soon bucket against the current time.
+   */
+  const [scholarshipTick, setScholarshipTick] = useState(0);
+  const [scholarshipRefreshing, setScholarshipRefreshing] = useState(false);
+
   const [search, setSearch] = useState("");
   const [countryFilter, setCountryFilter] = useState("all");
   const [gradeFilter, setGradeFilter] = useState("all");
@@ -228,6 +242,31 @@ export default function Scholarships() {
   const [compareList, setCompareList] = useState<string[]>([]);
   const [showCompare, setShowCompare] = useState(false);
   const [activeView, setActiveView] = useState<"grid" | "calendar" | "map">("grid");
+
+  const scholarshipRefresh = useActivityRefresh({
+    userId: user?.id ?? null,
+    enabled: true,
+    // Same weekly cadence as activities, its own allowance.
+    namespace: "scholarship",
+    onAutoRefresh: () => setScholarshipTick((n) => n + 1),
+  });
+  const { markRefreshed: markScholarshipsRefreshed } = scholarshipRefresh;
+
+  const runScholarshipRefresh = useCallback(async () => {
+    if (scholarshipRefreshing) return;
+    if (!scholarshipRefresh.spendManual()) return;
+    setScholarshipRefreshing(true);
+    try {
+      setScholarshipTick((n) => n + 1);
+      // A visible beat. The re-derivation is synchronous and finishes in a
+      // frame, and a spinner that vanishes instantly reads as a button that
+      // did nothing at all.
+      await new Promise((r) => setTimeout(r, 450));
+      markScholarshipsRefreshed();
+    } finally {
+      setScholarshipRefreshing(false);
+    }
+  }, [scholarshipRefreshing, scholarshipRefresh, markScholarshipsRefreshed]);
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [userProfile, setUserProfile] = useState<{ country?: string; grade?: string; major?: string } | undefined>();
   const [checklist, setChecklist] = useState<Record<string, string[]>>({});
@@ -274,12 +313,20 @@ export default function Scholarships() {
   const countries = useMemo(() => getScholarshipCountries(), []);
   const fields = useMemo(() => getFieldCategories(), []);
   const types = useMemo(() => getScholarshipTypes(), []);
-  const featuredScholarships = useMemo(() => scholarships.filter(s => s.featured && getScholarshipStatus(s.deadline) !== "closed"), []);
+  /*
+   * scholarshipTick is the dependency that makes the refresh button mean
+   * something. getScholarshipStatus reads Date.now(), so without it these
+   * memos would serve a cached answer computed when the page mounted and a
+   * refresh would visibly change nothing.
+   */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const featuredScholarships = useMemo(() => scholarships.filter(s => s.featured && getScholarshipStatus(s.deadline) !== "closed"), [scholarshipTick]);
 
   const closingSoon = useMemo(() =>
     scholarships.filter(s => getScholarshipStatus(s.deadline) === "closing-soon")
       .sort((a, b) => new Date(a.deadline).getTime() - new Date(b.deadline).getTime()),
-  []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [scholarshipTick]);
 
   const filtered = useMemo(() =>
     scholarships.filter(s => {
@@ -297,14 +344,19 @@ export default function Scholarships() {
       if (deadlineFilter === "90days" && getDaysUntilDeadline(s.deadline) > 90) return false;
       return true;
     }),
-  [search, countryFilter, gradeFilter, fieldFilter, typeFilter, deadlineFilter]);
+  // scholarshipTick is not read in the body — it is a deliberate cache-buster
+  // for getScholarshipStatus and getDaysUntilDeadline, which both read the
+  // clock. eslint cannot see that, hence the disable.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  [search, countryFilter, gradeFilter, fieldFilter, typeFilter, deadlineFilter, scholarshipTick]);
 
   const activeFilterCount = [countryFilter, gradeFilter, fieldFilter, typeFilter, deadlineFilter].filter(f => f !== "all").length;
   const clearFilters = () => { setCountryFilter("all"); setGradeFilter("all"); setFieldFilter("all"); setTypeFilter("all"); setDeadlineFilter("all"); setSearch(""); };
 
   // Stats
   const totalValue = useMemo(() => scholarships.reduce((sum, s) => sum + (s.amountNumeric || 0), 0), []);
-  const openCount = useMemo(() => scholarships.filter(s => getScholarshipStatus(s.deadline) !== "closed").length, []);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const openCount = useMemo(() => scholarships.filter(s => getScholarshipStatus(s.deadline) !== "closed").length, [scholarshipTick]);
   const scholarshipsByCountry = useMemo(() => {
     const map: Record<string, number> = {};
     scholarships.forEach(s => { map[s.country] = (map[s.country] || 0) + 1; });
@@ -347,14 +399,44 @@ export default function Scholarships() {
           not a centred column with paper down both sides. */}
       <div className="pad-safe-x pad-safe-bottom mx-auto w-full max-w-[1440px] px-4 pb-24 pt-8 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <Eyebrow>Funding</Eyebrow>
-          <h1 className="mt-2 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
-            Scholarships
-          </h1>
-          <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
-            Matched to your major, region and grade — with match scores, deadlines and application tracking.
-          </p>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+          <div className="min-w-0">
+            <Eyebrow>Funding</Eyebrow>
+            <h1 className="mt-2 max-w-[20ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+              Scholarships
+            </h1>
+            <p className="mt-3 max-w-[70ch] text-[14px] leading-relaxed text-muted-foreground">
+              Matched to your major, region and grade — with match scores, deadlines and application tracking.
+            </p>
+          </div>
+
+          {/*
+            * Refresh, on the same weekly cadence the activities page uses.
+            *
+            * The label says "Recheck deadlines" rather than "Refresh
+            * scholarships" because that is what actually happens: the
+            * catalogue is a static dataset, and what a refresh genuinely
+            * changes is everything derived from the clock — open vs closed,
+            * days remaining, the closing-soon bucket, and match scores against
+            * the current profile. A button that claims to fetch new
+            * scholarships and does not is worse than no button.
+            */}
+          <div className="shrink-0 text-right">
+            <button
+              type="button"
+              onClick={runScholarshipRefresh}
+              disabled={scholarshipRefreshing || !scholarshipRefresh.canManualRefresh}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3.5 py-2 text-[13px] font-medium transition-colors hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${scholarshipRefreshing ? "animate-spin" : ""}`} />
+              {scholarshipRefreshing ? "Rechecking" : "Recheck deadlines"}
+            </button>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              {scholarshipRefresh.canManualRefresh
+                ? `${scholarshipRefresh.manualRemaining} of ${MANUAL_REFRESH_LIMIT} left this week`
+                : `Next check ${scholarshipRefresh.nextResetLabel}`}
+            </p>
+          </div>
         </div>
 
         {/* ===== STATS DASHBOARD ===== */}
@@ -720,7 +802,7 @@ export default function Scholarships() {
         {/* Empty state */}
         {activeView === "grid" && filtered.length === 0 && (
           <div className="text-center py-16">
-            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+            <GraduationCap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="font-medium text-foreground mb-1">No scholarships found</h3>
             <p className="text-sm text-muted-foreground">Try adjusting your filters or search terms</p>
           </div>

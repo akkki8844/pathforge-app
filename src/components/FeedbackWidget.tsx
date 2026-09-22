@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Megaphone, X, Send, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -54,14 +55,26 @@ export function FeedbackWidget() {
       if (user) {
         const { error } = await supabase.from("admin_feedback").insert({
           user_id: user.id,
-          type: "general",
+          // "general" is not one of the four values `admin_feedback_type_check`
+          // allows (bug, feature, feedback, complaint), so every insert here was
+          // rejected with 23514 and the widget surfaced a raw Postgres error. The
+          // table held no rows at all, which is how total the failure was.
+          type: "feedback",
           title: trimmed.slice(0, 80),
           description: withRating,
           status: "pending",
           priority: "medium",
           admin_notes: contactEmail ? `Reply-to: ${contactEmail}` : null,
         });
-        if (error) throw error;
+        if (error) {
+          // Never hand a database error to the user. The 23514 incident showed
+          // up as a raw PostgrestError in a toast; the constraint that caused
+          // it is fixed, but any future rejection - an expired session hitting
+          // RLS, a new NOT NULL - would read the same way. Log the real thing,
+          // show a sentence.
+          console.error("admin_feedback insert failed:", error);
+          throw new Error("We could not save your feedback just now. Please try again in a moment.");
+        }
       }
 
       // 2) Notify the team. Previously this called `send-transactional-email`
@@ -206,6 +219,14 @@ export function FeedbackWidget() {
                     Leave blank to use the email on your account.
                   </p>
                 </div>
+
+                {/* What happens to what you just typed, said before you send
+                    it rather than in a policy you would have to go and find. */}
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  We use your message, and the email if you leave one, to act on your feedback and
+                  reply. Nothing here is sold or used for advertising. See our{" "}
+                  <Link to="/privacy" className="underline hover:text-foreground">Privacy Notice</Link>.
+                </p>
 
                 <Button
                   className="w-full"

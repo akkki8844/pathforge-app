@@ -26,6 +26,15 @@ function norm(s: string) {
   return s.toLowerCase().replace(/[^a-z ]/g, "").trim();
 }
 
+/**
+ * The value the dataset uses where reporting never said.
+ *
+ * It is a real string in a required field rather than an absent one, because
+ * `major` drives the filter dropdown and the card's pills, and those want
+ * something to print. Scoring has to know it is an absence, not a subject.
+ */
+const UNREPORTED = "not publicly reported";
+
 /** Loose field match — "Computer Science" should hit "Computer Engineering". */
 function majorAffinity(a: string, b: string): number {
   const x = norm(a);
@@ -61,7 +70,13 @@ export function admitSimilarity(
   let score = 0;
   let weight = 0;
 
-  if (viewer.intended_major) {
+  // Skipped when either side is unknown, the way GPA and test scores already
+  // are below. Otherwise a student whose major simply was not reported scores
+  // 0 out of the 30 points this dimension carries and sinks in the default
+  // "Most similar to me" sort — penalised for what an outlet left out rather
+  // than for anything about them. The audit of the dataset made this worse by
+  // correctly replacing several invented majors with the sentinel.
+  if (viewer.intended_major && norm(admit.major) !== UNREPORTED) {
     score += majorAffinity(viewer.intended_major, admit.major) * 30;
     weight += 30;
   }

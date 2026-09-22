@@ -605,7 +605,7 @@ function WeekGrid({
                 <span className="font-display text-[11px] font-bold uppercase tracking-[0.14em] text-muted-foreground group-hover:text-accent">
                   {WEEKDAY_LABELS[d]}
                 </span>
-                <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground/70">
+                <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground">
                   {byDay.get(d)?.length ?? 0}
                 </span>
               </button>

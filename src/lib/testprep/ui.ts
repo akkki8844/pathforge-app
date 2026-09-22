@@ -29,8 +29,33 @@ export const EYEBROW_ACCENT =
 /* Bluebook — the digital-testing look, scoped to Exam and Session      */
 /* ------------------------------------------------------------------ */
 
-/** The navy toolbar every timed/practice runner opens with. */
-export const BB_TOOLBAR = "border-b border-[hsl(var(--bb-navy))] bg-[hsl(var(--bb-navy))]";
+/**
+ * The blue toolbar every timed/practice runner opens with.
+ *
+ * Blue field, yellow rule, white paper. The rule is three pixels of School bus
+ * Yellow along the bottom edge, and it is the one place in the section where
+ * the third colour is structural rather than a state — which is what makes a
+ * module read as College Board at a glance instead of only under inspection.
+ */
+export const BB_TOOLBAR =
+  "border-b-[3px] border-[hsl(var(--bb-rule))] bg-[hsl(var(--bb-navy))]";
+
+/**
+ * The same yellow rule on its own, for any bar that needs to close with it.
+ *
+ * A separate export rather than a repeated literal because Tailwind's scanner
+ * only sees whole strings: an interpolated class never reaches the stylesheet.
+ */
+export const BB_RULE = "border-b-[3px] border-[hsl(var(--bb-rule))]";
+
+/**
+ * The short yellow bar under a page title.
+ *
+ * Every SAT page draws one. It is the section's signature at rest — the
+ * toolbars only exist inside a running module, so without this a student
+ * browsing the question bank never sees the yellow at all.
+ */
+export const BB_TITLE_RULE = "mt-2.5 h-[3px] w-10 rounded-full bg-[hsl(var(--bb-rule))]";
 
 /** Toolbar text/icon colour, for anything sitting directly on `BB_TOOLBAR`. */
 export const BB_TOOLBAR_FG = "text-[hsl(var(--bb-navy-foreground))]";
@@ -58,9 +83,16 @@ export const BB_TOPBAR_BUTTON =
 /** Same button, pressed/active state. */
 export const BB_TOPBAR_BUTTON_ACTIVE = "bg-[hsl(var(--bb-blue-soft))] text-[hsl(var(--bb-blue))]";
 
-/** The navy banner under the top bar, stating the sitting's kind. */
+/**
+ * The banner under the top bar, stating the sitting's kind.
+ *
+ * Yellow with black on it, which is the only legible way round: #FDDB00 on
+ * white is about 1.5:1, so it can be a field but never a text colour. It sits
+ * directly under the light top bar, so the runner reads white, yellow, white
+ * down the screen with the blue toolbar above all of it.
+ */
 export const BB_BANNER =
-  "bg-[hsl(var(--bb-navy))] py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--bb-navy-foreground))]";
+  "bg-[hsl(var(--bb-rule))] py-1.5 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-[hsl(var(--bb-flag-foreground))]";
 
 /** One cell of the question-navigator grid: unvisited/unanswered. */
 export const BB_NAV_CIRCLE =
@@ -78,8 +110,9 @@ export const BB_NAV_CIRCLE_ANSWERED =
 export const BB_NAV_FLAG =
   "absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[hsl(var(--bb-flag))] text-[hsl(var(--bb-flag-foreground))]";
 
-/** A score-report card's solid navy header strip (Practice Exams' past attempts). */
-export const BB_SCORE_CARD_HEADER = "bg-[hsl(var(--bb-navy))] px-5 py-3 text-[hsl(var(--bb-navy-foreground))]";
+/** A score-report card's solid blue header strip (Practice Exams' past attempts). */
+export const BB_SCORE_CARD_HEADER =
+  "border-b-[3px] border-[hsl(var(--bb-rule))] bg-[hsl(var(--bb-navy))] px-5 py-3 text-[hsl(var(--bb-navy-foreground))]";
 
 /** The card's second bar — attempt label and date, under the navy header. */
 export const BB_SCORE_CARD_SUBBAR =

@@ -44,11 +44,17 @@ export const TEST_PREP_TESTS: TestPrepNavItem[] = BLUEPRINTS.map((b) => ({
 /**
  * The SAT sidebar.
  *
- * Five destinations in three groups, because they are three different kinds of
- * errand: where am I (Overview), what do I do now (Practice, Question Bank,
- * Practice Exams), and how is it going (Progress). The group boundaries are the
- * only structure — there are no section headings beyond "SAT Prep" itself,
- * because five items do not need labelling into named categories.
+ * Five destinations in four groups, because they are four different kinds of
+ * errand: where am I (Overview), doing the work (Practice, Question Bank),
+ * sitting a test (Practice Exams), and how is it going (Progress). The group
+ * boundaries are the only structure — there are no section headings beyond
+ * "SAT Prep" itself, because five items do not need labelling into named
+ * categories.
+ *
+ * Practice Exams was previously grouped with Question Bank, which put the one
+ * destination that takes over the whole screen for an hour next to the one you
+ * browse for two minutes. It sits on its own now, which also matches the fact
+ * that starting a sitting leaves the shell entirely.
  *
  * Icons: the sidebar renders as a collapsed icon rail that expands on hover,
  * so each item needs a glyph that reads on its own before a label appears
@@ -65,10 +71,10 @@ export interface TestSectionItem {
 
 export const SAT_SECTIONS: TestSectionItem[] = [
   { segment: "", label: "Overview", group: 1, icon: LayoutDashboard },
-  { segment: "practice", label: "Practice", group: 1, icon: BookOpenCheck },
+  { segment: "practice", label: "Practice", group: 2, icon: BookOpenCheck },
   { segment: "question-bank", label: "Question Bank", group: 2, icon: Database },
-  { segment: "exams", label: "Practice Exams", group: 2, icon: ClipboardList },
-  { segment: "progress", label: "Progress", group: 3, icon: LineChart },
+  { segment: "exams", label: "Practice Exams", group: 3, icon: ClipboardList },
+  { segment: "progress", label: "Progress", group: 4, icon: LineChart },
 ];
 
 /** The href for a section of a given test. */

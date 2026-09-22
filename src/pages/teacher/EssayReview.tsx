@@ -1,41 +1,56 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
 import {
-  FileText, Search, CheckCircle2, Clock, AlertTriangle, Flag,
-  ChevronRight, MessageSquare, ThumbsUp, ThumbsDown, Eye,
+  FileText,
+  Search,
+  CheckCircle2,
+  Clock,
+  Flag,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Eye,
 } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import {
+  FollowupComposer,
+  type FollowupDraft,
+} from "@/components/teacher/FollowupComposer";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { TONE_BADGE, TONE_TEXT, essayTone } from "@/lib/teacher/status";
+import {
+  counsellorDb,
+  type EssaySubmissionRow as EssaySubmission,
+} from "@/integrations/supabase/counsellor";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { BellPlus, Loader2 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
-interface EssaySubmission {
-  id: string;
-  student_id: string;
-  title: string;
-  content: string;
-  status: "pending" | "reviewed" | "flagged" | "revision_requested";
-  ai_score: number | null;
-  grammar_score: number | null;
-  readability_score: number | null;
-  counselor_comments: string | null;
-  created_at: string;
-  updated_at: string;
-}
 
 const statusConfig = {
-  pending: { label: "Pending Review", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", icon: Clock },
-  reviewed: { label: "Reviewed", color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20", icon: CheckCircle2 },
-  flagged: { label: "AI Flagged", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", icon: Flag },
-  revision_requested: { label: "Revision Requested", color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", icon: MessageSquare },
+  pending: { label: "Pending Review", color: TONE_BADGE[essayTone("pending")], icon: Clock },
+  reviewed: { label: "Reviewed", color: TONE_BADGE[essayTone("reviewed")], icon: CheckCircle2 },
+  flagged: { label: "AI Flagged", color: TONE_BADGE[essayTone("flagged")], icon: Flag },
+  revision_requested: {
+    label: "Revision Requested",
+    color: TONE_BADGE[essayTone("revision_requested")],
+    icon: MessageSquare,
+  },
 };
+
+/** Whole days since submission, floored. */
+function daysWaiting(iso: string): number {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return 0;
+  return Math.max(0, Math.floor((Date.now() - then) / 86_400_000));
+}
 
 export default function TeacherEssayReview() {
   const { students } = useTeacherRoster();
@@ -52,17 +67,35 @@ export default function TeacherEssayReview() {
 
   const studentIds = useMemo(() => students.map((s) => s.user_id), [students]);
 
+  const queryClient = useQueryClient();
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [followupDraft, setFollowupDraft] = useState<FollowupDraft | undefined>();
+
+  /** Opens the follow-up composer against one draft, written for it. */
+  const chase = (essay: EssaySubmission) => {
+    const name = nameMap.get(essay.student_id) || "this student";
+    setFollowupDraft({
+      studentId: essay.student_id,
+      note: `Essay "${essay.title || "Untitled"}": chase the next draft`,
+      context: `From ${name}'s essay, submitted ${new Date(essay.created_at).toLocaleDateString()}.`,
+    });
+    setFollowupOpen(true);
+  };
+
+  const { toast } = useToast();
+  const [saving, setSaving] = useState<null | "approve" | "revision">(null);
+
   const { data: essays = [], isLoading } = useQuery({
     queryKey: ["counselor-essays", studentIds],
     queryFn: async () => {
       if (studentIds.length === 0) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await counsellorDb
         .from("essay_submissions")
         .select("*")
         .in("student_id", studentIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data || []) as EssaySubmission[];
+      return data ?? [];
     },
     enabled: studentIds.length > 0,
   });
@@ -87,31 +120,90 @@ export default function TeacherEssayReview() {
     revision_requested: essays.filter((e) => e.status === "revision_requested").length,
   }), [essays]);
 
-  const handleApprove = async (essayId: string) => {
-    await (supabase as any)
-      .from("essay_submissions")
-      .update({ status: "reviewed", counselor_comments: comment || null, updated_at: new Date().toISOString() })
-      .eq("id", essayId);
-    setSelectedEssay(null);
-    setComment("");
+  /*
+   * Writing a review used to be fire-and-forget.
+   *
+   * Both handlers awaited the update, ignored the error it returns, then
+   * closed the dialog and cleared the box. A write rejected by RLS or dropped
+   * by the network looked exactly like a successful one, and the comment the
+   * counsellor had just typed was gone. Neither handler invalidated the query
+   * either, so even a write that did land left the essay sitting in Pending on
+   * screen until the page was reloaded - which reads as the save having
+   * failed, and invites a second one.
+   *
+   * The student sees the result through the essay itself: `status` and
+   * `counselor_comments` are what their own essay page reads. There is no
+   * separate notification to keep in step.
+   */
+  const review = async (
+    essayId: string,
+    next: "reviewed" | "revision_requested",
+  ) => {
+    const body = comment.trim();
+    if (next === "revision_requested" && !body) {
+      toast({
+        variant: "destructive",
+        title: "Say what needs changing",
+        description: "A revision request without a comment gives the student nothing to act on.",
+      });
+      return;
+    }
+
+    setSaving(next === "reviewed" ? "approve" : "revision");
+    try {
+      const { error } = await counsellorDb
+        .from("essay_submissions")
+        .update({
+          status: next,
+          counselor_comments: body || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", essayId);
+
+      if (error) {
+        toast({
+          variant: "destructive",
+          title: "Review not saved",
+          description: error.message,
+        });
+        return;
+      }
+
+      await queryClient.invalidateQueries({ queryKey: ["counselor-essays"] });
+      toast({
+        title: next === "reviewed" ? "Marked as reviewed" : "Revision requested",
+        description: body ? "Your comments are on the student's essay." : undefined,
+      });
+      setSelectedEssay(null);
+      setComment("");
+    } finally {
+      setSaving(null);
+    }
   };
 
-  const handleRequestRevision = async (essayId: string) => {
-    if (!comment.trim()) return;
-    await (supabase as any)
-      .from("essay_submissions")
-      .update({ status: "revision_requested", counselor_comments: comment, updated_at: new Date().toISOString() })
-      .eq("id", essayId);
-    setSelectedEssay(null);
-    setComment("");
-  };
+  const handleApprove = (essayId: string) => review(essayId, "reviewed");
+  const handleRequestRevision = (essayId: string) => review(essayId, "revision_requested");
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Essays"
+        description="Drafts waiting on your read."
+        path="/teacher/essays"
+        noindex
+      />
+
+      <FollowupComposer
+        open={followupOpen}
+        onOpenChange={setFollowupOpen}
+        students={students}
+        draft={followupDraft}
+      />
+
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Essay Review Center</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Essay Review Center</h1>
           <p className="text-sm text-muted-foreground mt-1">Review, comment, and approve student essays</p>
         </div>
 
@@ -164,24 +256,37 @@ export default function TeacherEssayReview() {
                 ))
               ) : filtered.length === 0 ? (
                 <div className="text-center py-8">
-                  <FileText className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+                  <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                   <p className="text-sm text-muted-foreground">No essays found</p>
                 </div>
               ) : (
                 filtered.map((essay) => {
                   const cfg = statusConfig[essay.status] || statusConfig.pending;
-                  const Icon = cfg.icon;
                   const isSelected = selectedEssay?.id === essay.id;
+                  const waiting = daysWaiting(essay.created_at);
                   return (
-                    <motion.div
+                    /*
+                     * A real control, not a div that happens to have onClick.
+                     * This list is how a counsellor moves between drafts, and
+                     * it was unreachable by keyboard. It also no longer fades
+                     * in on every render - see Applications.
+                     */
+                    <div
                       key={essay.id}
-                      initial={{ opacity: 0, y: 4 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className={cn(
-                        "card-elevated p-3 cursor-pointer transition-all hover:border-accent/30",
-                        isSelected && "border-accent/50 bg-accent/5"
-                      )}
+                      role="button"
+                      tabIndex={0}
+                      aria-pressed={isSelected}
                       onClick={() => setSelectedEssay(essay)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelectedEssay(essay);
+                        }
+                      }}
+                      className={cn(
+                        "card-elevated cursor-pointer p-3 outline-none transition-colors hover:border-accent/30 focus-visible:ring-2 focus-visible:ring-ring",
+                        isSelected && "border-accent/50 bg-accent/5",
+                      )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
@@ -190,8 +295,10 @@ export default function TeacherEssayReview() {
                             {nameMap.get(essay.student_id) || "Student"}
                           </p>
                         </div>
-                        <Badge variant="outline" className={cn("text-[10px] shrink-0", cfg.color)}>
-                          <Icon className="h-2.5 w-2.5 mr-0.5" />
+                        {/* No icon. At 10px it is a smudge, and the badge's
+                            tone already carries the severity the glyph was
+                            repeating. */}
+                        <Badge variant="outline" className={cn("shrink-0 text-[10px]", cfg.color)}>
                           {cfg.label}
                         </Badge>
                       </div>
@@ -203,8 +310,29 @@ export default function TeacherEssayReview() {
                           <span>Grammar: {essay.grammar_score}/100</span>
                         )}
                         <span>{new Date(essay.created_at).toLocaleDateString()}</span>
+                        {/* How long it has been sitting, which is the number
+                            that decides whether this is the one to open next. */}
+                        {essay.status !== "reviewed" && waiting >= 3 && (
+                          <span className={cn("font-medium", TONE_TEXT[waiting >= 7 ? "bad" : "warn"])}>
+                            waiting {waiting}d
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            // The card behind this opens the essay; chasing is
+                            // a different intent and must not also select it.
+                            e.stopPropagation();
+                            chase(essay);
+                          }}
+                          className="ml-auto text-muted-foreground transition-colors hover:text-foreground"
+                          aria-label={`Add a follow-up about ${nameMap.get(essay.student_id) || "this student"}'s essay`}
+                          title="Add a follow-up"
+                        >
+                          <BellPlus className="h-3.5 w-3.5" />
+                        </button>
                       </div>
-                    </motion.div>
+                    </div>
                   );
                 })
               )}
@@ -282,17 +410,26 @@ export default function TeacherEssayReview() {
                     <Button
                       className="flex-1"
                       onClick={() => handleApprove(selectedEssay.id)}
+                      disabled={saving !== null}
                     >
-                      <ThumbsUp className="h-4 w-4 mr-2" />
+                      {saving === "approve" ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ThumbsUp className="h-4 w-4 mr-2" />
+                      )}
                       Approve
                     </Button>
                     <Button
                       variant="outline"
                       className="flex-1"
                       onClick={() => handleRequestRevision(selectedEssay.id)}
-                      disabled={!comment.trim()}
+                      disabled={saving !== null || !comment.trim()}
                     >
-                      <ThumbsDown className="h-4 w-4 mr-2" />
+                      {saving === "revision" ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <ThumbsDown className="h-4 w-4 mr-2" />
+                      )}
                       Request Revision
                     </Button>
                   </div>
@@ -301,7 +438,7 @@ export default function TeacherEssayReview() {
             ) : (
               <Card className="border-border/60 h-full flex items-center justify-center min-h-[400px]">
                 <div className="text-center">
-                  <Eye className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                  <Eye className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                   <p className="text-muted-foreground font-medium">Select an essay to review</p>
                   <p className="text-xs text-muted-foreground mt-1">Choose from the list on the left</p>
                 </div>

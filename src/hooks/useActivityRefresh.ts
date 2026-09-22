@@ -61,12 +61,17 @@ const emptyRecord = (cycle: string): RefreshRecord => ({
   lastRefreshAt: null,
 });
 
-const storageKey = (userId: string | null) =>
-  `pathforge_activity_refresh_${userId ?? "guest"}`;
+/*
+ * Namespaced so a second catalogue can reuse this throttle without sharing an
+ * allowance with the first. Defaults to "activity" so every key written before
+ * scholarships existed still resolves to the same slot.
+ */
+const storageKey = (userId: string | null, namespace = "activity") =>
+  `pathforge_${namespace}_refresh_${userId ?? "guest"}`;
 
-function readRecord(userId: string | null, cycle: string): RefreshRecord {
+function readRecord(userId: string | null, cycle: string, namespace?: string): RefreshRecord {
   try {
-    const raw = window.localStorage.getItem(storageKey(userId));
+    const raw = window.localStorage.getItem(storageKey(userId, namespace));
     if (!raw) return emptyRecord(cycle);
     const parsed = JSON.parse(raw) as Partial<RefreshRecord> | null;
     // A record from a previous week is not migrated, it's replaced — that IS
@@ -86,9 +91,9 @@ function readRecord(userId: string | null, cycle: string): RefreshRecord {
   }
 }
 
-function writeRecord(userId: string | null, record: RefreshRecord) {
+function writeRecord(userId: string | null, record: RefreshRecord, namespace?: string) {
   try {
-    window.localStorage.setItem(storageKey(userId), JSON.stringify(record));
+    window.localStorage.setItem(storageKey(userId, namespace), JSON.stringify(record));
   } catch {
     // Nothing to do — the in-memory guards below still hold for this session.
   }
@@ -118,11 +123,17 @@ export function useActivityRefresh({
   userId,
   enabled,
   onAutoRefresh,
+  namespace,
 }: {
   userId: string | null;
   /** Hold everything off until auth and the profile have settled. */
   enabled: boolean;
   onAutoRefresh: () => void;
+  /**
+   * Which catalogue this allowance belongs to. Omit for activities, which is
+   * the default and keeps every key written before this parameter existed.
+   */
+  namespace?: string;
 }): ActivityRefreshApi {
   // Kept in a ref so a new callback identity each render can't re-trigger the
   // automatic refresh effect.
@@ -130,13 +141,14 @@ export function useActivityRefresh({
   autoRef.current = onAutoRefresh;
 
   const [cycle, setCycle] = useState(() => cycleStartFor().toISOString());
-  const [record, setRecord] = useState<RefreshRecord>(() => readRecord(userId, cycleStartFor().toISOString()));
+  const [record, setRecord] = useState<RefreshRecord>(() =>
+    readRecord(userId, cycleStartFor().toISOString(), namespace));
 
   // Re-hydrate when the account resolves (userId arrives after auth settles)
   // or when the week rolls over.
   useEffect(() => {
-    setRecord(readRecord(userId, cycle));
-  }, [userId, cycle]);
+    setRecord(readRecord(userId, cycle, namespace));
+  }, [userId, cycle, namespace]);
 
   // Roll the cycle over while the page is sitting open across Sunday noon.
   useEffect(() => {
@@ -168,25 +180,25 @@ export function useActivityRefresh({
     autoFiredFor.current = cycle;
     const next: RefreshRecord = { ...record, autoAt: new Date().toISOString() };
     setRecord(next);
-    writeRecord(userId, next);
+    writeRecord(userId, next, namespace);
     autoRef.current();
-  }, [enabled, cycle, record, userId]);
+  }, [enabled, cycle, record, userId, namespace]);
 
   const spendManual = useCallback((): boolean => {
     if (record.manualUsed >= MANUAL_REFRESH_LIMIT) return false;
     const next: RefreshRecord = { ...record, manualUsed: record.manualUsed + 1 };
     setRecord(next);
-    writeRecord(userId, next);
+    writeRecord(userId, next, namespace);
     return true;
-  }, [record, userId]);
+  }, [record, userId, namespace]);
 
   const markRefreshed = useCallback(() => {
     setRecord((prev) => {
       const next: RefreshRecord = { ...prev, lastRefreshAt: new Date().toISOString() };
-      writeRecord(userId, next);
+      writeRecord(userId, next, namespace);
       return next;
     });
-  }, [userId]);
+  }, [userId, namespace]);
 
   const nextResetAt = useMemo(() => nextCycleStartFor(new Date(cycle)), [cycle]);
 

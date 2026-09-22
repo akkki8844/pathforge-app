@@ -21,19 +21,46 @@ export function TeacherLayout({
 }) {
   const { teacherProfile } = useAuth();
   const verified = !!teacherProfile?.verified;
+  /*
+   * Two different states wore the same banner.
+   *
+   * A counsellor who has never linked a school and one whose link is sitting
+   * in the review queue were both told "awaiting verification" and sent to
+   * /teacher/settings — where the school field is disabled and reads
+   * "Linked by admin". The first of those two has something to do and was
+   * given nowhere to do it: the page that takes the link and the proof is
+   * /teacher/onboarding, which until now had no route at all.
+   */
+  const linked = !!teacherProfile?.school_id;
 
   const notice = !verified && (
     <div className="mb-6 flex gap-3 rounded-xl border border-border bg-card p-4">
       <ShieldAlert className="mt-0.5 h-5 w-5 flex-shrink-0 text-muted-foreground" />
       <div>
-        <p className="text-sm font-medium text-foreground">Awaiting verification</p>
+        <p className="text-sm font-medium text-foreground">
+          {linked ? "Awaiting verification" : "Link your school to see students"}
+        </p>
         <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-          Student data unlocks once your school link is verified. You can still create
-          cohorts and draft action plans.{" "}
-          <Link to="/teacher/settings" className="underline hover:text-foreground">
-            Check your school link
-          </Link>
-          .
+          {linked ? (
+            <>
+              Your school link is with us for review. Student data unlocks once it is
+              approved, and you can still create cohorts and draft action plans in the
+              meantime.{" "}
+              <Link to="/teacher/onboarding" className="underline hover:text-foreground">
+                Add more proof
+              </Link>
+              .
+            </>
+          ) : (
+            <>
+              Nobody is linked to you yet because your account is not attached to a
+              school. It takes a minute and many schools verify instantly.{" "}
+              <Link to="/teacher/onboarding" className="underline hover:text-foreground">
+                Link your school
+              </Link>
+              .
+            </>
+          )}
         </p>
       </div>
     </div>

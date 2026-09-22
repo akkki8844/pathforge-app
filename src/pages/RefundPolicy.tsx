@@ -160,7 +160,13 @@ export default function RefundPolicy() {
             pathforge.co@gmail.com
           </a>{" "}
           or use our{" "}
-          <Link to="/contact" className="text-accent underline">contact page</Link>.
+          <Link to="/contact" className="text-accent underline">contact page</Link>. For a billing
+          dispute you would rather raise directly with the owner, Pathforge is owned and operated by
+          Govind Mulchandani —{" "}
+          <a href="mailto:mulchandaniakshay39@gmail.com" className="text-accent underline">
+            mulchandaniakshay39@gmail.com
+          </a>{" "}
+          or <a href="tel:+918888918844" className="text-accent underline">+91 88889 18844</a>.
         </p>
 
         <p className="mt-8">

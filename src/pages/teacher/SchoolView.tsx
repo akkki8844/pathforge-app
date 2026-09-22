@@ -4,7 +4,7 @@ import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
 } from "recharts";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
-import { BackToCommand } from "@/components/teacher/BackToCommand";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
@@ -84,6 +84,13 @@ export default function CounselorSchoolView() {
   if (!teacherProfile?.school_id) {
     return (
       <TeacherLayout>
+      <Seo
+        title="School view"
+        description="The whole school, not just your list."
+        path="/teacher/school"
+        noindex
+      />
+
         <div className="card-elevated p-8 text-center">
           <School className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
           <h1 className="text-lg font-semibold text-foreground">No school linked yet</h1>
@@ -97,10 +104,9 @@ export default function CounselorSchoolView() {
 
   return (
     <TeacherLayout>
-      <BackToCommand />
       <div className="space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
             {/* The school's own mark when its record carries a domain; the
                 generic glyph only when there is nothing to show. */}
             {schoolName && schoolDomain ? (

@@ -2,17 +2,21 @@
 // Fraunces everywhere else; this is the one surface that is not, and scoping
 // the import to this chunk means no other page pays for the file.
 import "@fontsource-variable/inter";
+import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
+import { useAuth } from "@/contexts/AuthContext";
 import { useWeeklyCheckins } from "@/hooks/useWeeklyCheckins";
 import { Seo } from "@/components/Seo";
 import { CollegeList, GridField, News, Timetable } from "@/components/dashboard/deck";
 import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
+import { DraggableWidgetGrid, type WidgetItem } from "@/components/ui/draggable-widget-grid";
+import { DASHBOARD_WIDGETS, renderDashboardWidget } from "@/components/dashboard/widgets";
 
 /**
  * The signed-in home.
  *
- * Four blocks and nothing else: today's classes, the college list, the news,
+ * Five blocks: today's classes, the college list, the widget board, the news,
  * and the weekly check-in. Everything else this page used to carry — a
  * readiness index, a next task, a deadline column, counts of essays and
  * letters and portfolio entries — was a restatement of a page that already
@@ -26,9 +30,61 @@ import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
  * Everything is set in Inter and drawn in flat colour. See
  * `components/dashboard/deck.tsx` for why.
  */
+/**
+ * Where a student's own arrangement of the board is kept.
+ *
+ * Per account, so two people sharing a browser do not inherit each other's
+ * layout, and local rather than a table because it is a preference about this
+ * screen on this device — losing it costs a drag, not data.
+ */
+function layoutKey(userId: string | undefined): string {
+  return `pf_dash_widgets_${userId ?? "anon"}`;
+}
+
+/**
+ * The saved order, checked against the widgets that actually exist.
+ *
+ * A saved list is only an order: sizes and labels always come from the code, so
+ * renaming or resizing a widget takes effect for everyone. Ids that no longer
+ * exist are dropped and new ones are appended, which is what stops a release
+ * that adds a widget from hiding it from every existing student.
+ */
+function readLayout(userId: string | undefined): WidgetItem[] {
+  try {
+    const raw = localStorage.getItem(layoutKey(userId));
+    if (!raw) return DASHBOARD_WIDGETS;
+    const ids = JSON.parse(raw) as unknown;
+    if (!Array.isArray(ids)) return DASHBOARD_WIDGETS;
+    const known = new Map(DASHBOARD_WIDGETS.map((w) => [w.id, w]));
+    const ordered = ids
+      .map((id) => (typeof id === "string" ? known.get(id) : undefined))
+      .filter((w): w is WidgetItem => w !== undefined);
+    const rest = DASHBOARD_WIDGETS.filter((w) => !ordered.includes(w));
+    return [...ordered, ...rest];
+  } catch {
+    return DASHBOARD_WIDGETS;
+  }
+}
+
 export default function Dashboard() {
   const d = useDashboardData();
   const week = useWeeklyCheckins();
+  const { user } = useAuth();
+
+  const initialWidgets = useMemo(() => readLayout(user?.id), [user?.id]);
+  const [widgetKey] = useState(() => Math.random().toString(36).slice(2));
+
+  const saveLayout = useCallback(
+    (next: WidgetItem[]) => {
+      try {
+        localStorage.setItem(layoutKey(user?.id), JSON.stringify(next.map((w) => w.id)));
+      } catch {
+        // A browser with storage blocked keeps the arrangement for this visit
+        // only. Nothing else depends on it.
+      }
+    },
+    [user?.id],
+  );
 
   if (d.loading) {
     return (
@@ -80,6 +136,26 @@ export default function Dashboard() {
                 <CollegeList colleges={d.colleges} />
               </div>
             </div>
+
+            {/*
+             * The board.
+             *
+             * Above the news because it is about this student and the news is
+             * about the world; below today and the list because those are the
+             * two blocks read every morning. Every tile is drawn from the same
+             * data the rest of the page uses — see `dashboard/widgets.tsx`.
+             */}
+            <DraggableWidgetGrid
+              key={`${widgetKey}-${user?.id ?? "anon"}`}
+              items={initialWidgets}
+              onChange={saveLayout}
+              renderItem={(item, size) => renderDashboardWidget(item, size, d)}
+              maxColumns={4}
+              cellSize={260}
+              rowHeight={190}
+              gap={16}
+              radius={16}
+            />
 
             <News />
 

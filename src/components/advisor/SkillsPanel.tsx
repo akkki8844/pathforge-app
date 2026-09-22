@@ -179,7 +179,7 @@ export function SkillsPanel({
                               <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
                                 {skill.description}
                               </p>
-                              <code className="mt-1.5 inline-block text-[11px] text-muted-foreground/80">
+                              <code className="mt-1.5 inline-block text-[11px] text-muted-foreground">
                                 @{skill.slug}
                               </code>
                             </div>

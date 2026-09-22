@@ -744,6 +744,102 @@ export type Database = {
         }
         Relationships: []
       }
+      bug_reports: {
+        Row: {
+          admin_notes: string | null
+          affected_users: string[]
+          app_version: string | null
+          breadcrumbs: Json
+          component_stack: string | null
+          context: Json
+          created_at: string
+          description: string | null
+          error_message: string | null
+          error_stack: string | null
+          fingerprint: string
+          first_seen_at: string
+          function_name: string | null
+          http_status: number | null
+          id: string
+          last_seen_at: string
+          occurrences: number
+          reporter_email: string | null
+          reporter_id: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          route: string | null
+          severity: string
+          source: string
+          status: string
+          title: string
+          updated_at: string
+          user_agent: string | null
+          viewport: string | null
+        }
+        Insert: {
+          admin_notes?: string | null
+          affected_users?: string[]
+          app_version?: string | null
+          breadcrumbs?: Json
+          component_stack?: string | null
+          context?: Json
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          fingerprint: string
+          first_seen_at?: string
+          function_name?: string | null
+          http_status?: number | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          reporter_email?: string | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          source: string
+          status?: string
+          title: string
+          updated_at?: string
+          user_agent?: string | null
+          viewport?: string | null
+        }
+        Update: {
+          admin_notes?: string | null
+          affected_users?: string[]
+          app_version?: string | null
+          breadcrumbs?: Json
+          component_stack?: string | null
+          context?: Json
+          created_at?: string
+          description?: string | null
+          error_message?: string | null
+          error_stack?: string | null
+          fingerprint?: string
+          first_seen_at?: string
+          function_name?: string | null
+          http_status?: number | null
+          id?: string
+          last_seen_at?: string
+          occurrences?: number
+          reporter_email?: string | null
+          reporter_id?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          route?: string | null
+          severity?: string
+          source?: string
+          status?: string
+          title?: string
+          updated_at?: string
+          user_agent?: string | null
+          viewport?: string | null
+        }
+        Relationships: []
+      }
       class_members: {
         Row: {
           class_id: string
@@ -1391,6 +1487,134 @@ export type Database = {
         }
         Relationships: []
       }
+      discovered_activities: {
+        Row: {
+          apply_url: string | null
+          category: string
+          cost: string
+          countries: string[]
+          deadline: string | null
+          description: string
+          detailed_description: string | null
+          difficulty: string
+          discovered_at: string
+          fingerprint: string
+          grade_suitability: string | null
+          id: string
+          learn_more_url: string
+          name: string
+          relevant_majors: string[]
+          search_country: string | null
+          search_field: string | null
+          source_url: string | null
+          type: string
+          updated_at: string
+          why_relevant: string | null
+        }
+        Insert: {
+          apply_url?: string | null
+          category?: string
+          cost?: string
+          countries?: string[]
+          deadline?: string | null
+          description?: string
+          detailed_description?: string | null
+          difficulty?: string
+          discovered_at?: string
+          fingerprint: string
+          grade_suitability?: string | null
+          id?: string
+          learn_more_url: string
+          name: string
+          relevant_majors?: string[]
+          search_country?: string | null
+          search_field?: string | null
+          source_url?: string | null
+          type?: string
+          updated_at?: string
+          why_relevant?: string | null
+        }
+        Update: {
+          apply_url?: string | null
+          category?: string
+          cost?: string
+          countries?: string[]
+          deadline?: string | null
+          description?: string
+          detailed_description?: string | null
+          difficulty?: string
+          discovered_at?: string
+          fingerprint?: string
+          grade_suitability?: string | null
+          id?: string
+          learn_more_url?: string
+          name?: string
+          relevant_majors?: string[]
+          search_country?: string | null
+          search_field?: string | null
+          source_url?: string | null
+          type?: string
+          updated_at?: string
+          why_relevant?: string | null
+        }
+        Relationships: []
+      }
+      documents: {
+        Row: {
+          content: string | null
+          created_at: string
+          file_path: string | null
+          file_size: number | null
+          id: string
+          kind: string
+          mime_type: string | null
+          parent_id: string | null
+          starred: boolean
+          title: string
+          trashed_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          kind?: string
+          mime_type?: string | null
+          parent_id?: string | null
+          starred?: boolean
+          title: string
+          trashed_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          file_path?: string | null
+          file_size?: number | null
+          id?: string
+          kind?: string
+          mime_type?: string | null
+          parent_id?: string | null
+          starred?: boolean
+          title?: string
+          trashed_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "documents_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "documents"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_campaign_recipients: {
         Row: {
           campaign_id: string
@@ -1860,6 +2084,181 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      interview_reports: {
+        Row: {
+          authenticity: number | null
+          clarity: number | null
+          confidence: number | null
+          consistency: number | null
+          consistency_notes: Json
+          created_at: string
+          error: string | null
+          headline: string | null
+          id: string
+          improvements: Json
+          model: string | null
+          moments: Json
+          next_actions: Json
+          overall_score: number | null
+          session_id: string
+          specificity: number | null
+          status: string
+          strengths: Json
+          summary: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          authenticity?: number | null
+          clarity?: number | null
+          confidence?: number | null
+          consistency?: number | null
+          consistency_notes?: Json
+          created_at?: string
+          error?: string | null
+          headline?: string | null
+          id?: string
+          improvements?: Json
+          model?: string | null
+          moments?: Json
+          next_actions?: Json
+          overall_score?: number | null
+          session_id: string
+          specificity?: number | null
+          status?: string
+          strengths?: Json
+          summary?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          authenticity?: number | null
+          clarity?: number | null
+          confidence?: number | null
+          consistency?: number | null
+          consistency_notes?: Json
+          created_at?: string
+          error?: string | null
+          headline?: string | null
+          id?: string
+          improvements?: Json
+          model?: string | null
+          moments?: Json
+          next_actions?: Json
+          overall_score?: number | null
+          session_id?: string
+          specificity?: number | null
+          status?: string
+          strengths?: Json
+          summary?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_reports_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: true
+            referencedRelation: "interview_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_sessions: {
+        Row: {
+          created_at: string
+          duration_seconds: number | null
+          ended_at: string | null
+          format: string
+          grounding: Json | null
+          id: string
+          interviewer_key: string
+          school_id: string
+          school_name: string
+          started_at: string | null
+          status: string
+          turn_count: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          format: string
+          grounding?: Json | null
+          id?: string
+          interviewer_key: string
+          school_id: string
+          school_name: string
+          started_at?: string | null
+          status?: string
+          turn_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          duration_seconds?: number | null
+          ended_at?: string | null
+          format?: string
+          grounding?: Json | null
+          id?: string
+          interviewer_key?: string
+          school_id?: string
+          school_name?: string
+          started_at?: string | null
+          status?: string
+          turn_count?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      interview_turns: {
+        Row: {
+          created_at: string
+          id: string
+          idx: number
+          intent: string | null
+          session_id: string
+          source_ref: string | null
+          speaker: string
+          text: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          idx: number
+          intent?: string | null
+          session_id: string
+          source_ref?: string | null
+          speaker: string
+          text: string
+          user_id?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          idx?: number
+          intent?: string | null
+          session_id?: string
+          source_ref?: string | null
+          speaker?: string
+          text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_turns_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "interview_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       journey_personalizations: {
         Row: {
@@ -2646,6 +3045,7 @@ export type Database = {
           country: string
           created_at: string
           curriculum: string
+          curriculum_programme: string | null
           extracurricular_level: string
           gpa: string | null
           gpa_range: string | null
@@ -2663,6 +3063,7 @@ export type Database = {
           standardized_test_score: string | null
           standardized_test_type: string | null
           study_destinations: string[] | null
+          subjects: Json | null
           target_universities: string[] | null
           updated_at: string
           user_id: string
@@ -2677,6 +3078,7 @@ export type Database = {
           country: string
           created_at?: string
           curriculum: string
+          curriculum_programme?: string | null
           extracurricular_level: string
           gpa?: string | null
           gpa_range?: string | null
@@ -2694,6 +3096,7 @@ export type Database = {
           standardized_test_score?: string | null
           standardized_test_type?: string | null
           study_destinations?: string[] | null
+          subjects?: Json | null
           target_universities?: string[] | null
           updated_at?: string
           user_id: string
@@ -2708,6 +3111,7 @@ export type Database = {
           country?: string
           created_at?: string
           curriculum?: string
+          curriculum_programme?: string | null
           extracurricular_level?: string
           gpa?: string | null
           gpa_range?: string | null
@@ -2725,6 +3129,7 @@ export type Database = {
           standardized_test_score?: string | null
           standardized_test_type?: string | null
           study_destinations?: string[] | null
+          subjects?: Json | null
           target_universities?: string[] | null
           updated_at?: string
           user_id?: string
@@ -3230,6 +3635,36 @@ export type Database = {
         }
         Relationships: []
       }
+      routine_calendars: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          is_default: boolean
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name: string
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       routine_classes: {
         Row: {
           color: string
@@ -3311,6 +3746,7 @@ export type Database = {
       routine_events: {
         Row: {
           all_day: boolean
+          calendar_id: string | null
           category: string
           created_at: string
           description: string | null
@@ -3324,6 +3760,7 @@ export type Database = {
         }
         Insert: {
           all_day?: boolean
+          calendar_id?: string | null
           category?: string
           created_at?: string
           description?: string | null
@@ -3337,6 +3774,7 @@ export type Database = {
         }
         Update: {
           all_day?: boolean
+          calendar_id?: string | null
           category?: string
           created_at?: string
           description?: string | null
@@ -3348,7 +3786,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "routine_events_calendar_id_fkey"
+            columns: ["calendar_id"]
+            isOneToOne: false
+            referencedRelation: "routine_calendars"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       routine_focus_flights: {
         Row: {
@@ -5077,7 +5523,6 @@ export type Database = {
         Args: { _plan: string; _stored_limit: number; _user_id: string }
         Returns: number
       }
-      email_infra_healthcheck: { Args: never; Returns: Json }
       email_is_verified: { Args: { _user_id: string }; Returns: boolean }
       evaluate_feature_flag: { Args: { flag_name: string }; Returns: boolean }
       get_admin_stats: { Args: never; Returns: Json }
@@ -5176,6 +5621,7 @@ export type Database = {
       prune_reminder_deliveries: { Args: never; Returns: number }
       redeem_coupon: { Args: { _code: string }; Returns: Json }
       refund_credit: { Args: never; Returns: boolean }
+      report_bug: { Args: { _payload: Json }; Returns: string }
       revert_all_expired_subscriptions: { Args: never; Returns: number }
       revert_to_free_plan: {
         Args: { target_user_id: string }

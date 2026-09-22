@@ -187,7 +187,7 @@ export function ComposeProfessorEmailDialog({
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">
                   Anything specific to include?{" "}
-                  <span className="text-muted-foreground/70">Optional</span>
+                  <span className="text-muted-foreground">Optional</span>
                 </Label>
                 <Textarea
                   rows={3}
@@ -204,7 +204,7 @@ export function ComposeProfessorEmailDialog({
           ) : (
             <>
               {thinProfile && (
-                <p className="rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">
+                <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
                   Your profile is nearly empty, so this draft is thin. Fill in your background in
                   Profile Builder and regenerate for a much stronger email.
                 </p>

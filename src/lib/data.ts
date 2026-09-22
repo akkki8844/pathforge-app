@@ -3,17 +3,25 @@ export { colleges as collegeObjects, getCollegesByCountry, getCollegeNames } fro
 export type { College } from './colleges';
 export { majors as majorObjects, getMajorNames, getMajorsByCategory, searchMajors } from './majors';
 export type { Major } from './majors';
-export { 
-  activities, 
-  calculatePriority, 
-  generatePriorityExplanation,
+/*
+ * The activity catalogue is no longer re-exported as a value here.
+ *
+ * It is 637KB, and a barrel that hands it out synchronously invites any page
+ * to pull it in by accident — this file is imported by Onboarding, Settings,
+ * Essays and ProfileBuilder, none of which want it. (Rollup was in fact
+ * shaking it out correctly today; this keeps it that way by construction
+ * rather than by luck.) Reach it through `loadActivityCatalogue()`, which
+ * fetches it as its own chunk and caches the parse.
+ *
+ * The pure helpers stay synchronous: they are small and are called per item
+ * while rendering.
+ */
+export {
   isActivityAvailableInCountry,
-  getActivitiesByMajor,
-  getActivitiesByCountry,
   getActivityTypes,
-  getActivityCategories,
-  avoidActivities
+  loadActivityCatalogue,
 } from './activities';
+export type { ActivityCatalogue } from './activities';
 export type { Activity } from './activities';
 
 // Legacy exports for backward compatibility

@@ -94,7 +94,7 @@ const chip = (selected: boolean, disabled = false) =>
     selected
       ? 'border-accent bg-accent/15 text-foreground font-medium'
       : disabled
-        ? 'border-border bg-muted/40 text-muted-foreground/60 cursor-not-allowed'
+        ? 'border-border bg-muted/40 text-muted-foreground cursor-not-allowed'
         : 'border-border bg-card text-muted-foreground hover:border-accent/60 hover:text-foreground'
   }`;
 
@@ -520,7 +520,7 @@ export function OnboardingSurvey() {
                           ? 'border-accent bg-accent text-accent-foreground'
                           : done
                             ? 'border-accent/50 bg-accent/15 text-accent'
-                            : 'border-border bg-card text-muted-foreground/60'
+                            : 'border-border bg-card text-muted-foreground'
                       }`}
                     >
                       {done ? <Check className="h-4 w-4" /> : <Icon className="h-4 w-4" />}
@@ -528,12 +528,12 @@ export function OnboardingSurvey() {
                     <span className="min-w-0 pt-1">
                       <span
                         className={`block font-display text-sm font-semibold leading-none transition-colors ${
-                          active ? 'text-foreground' : done ? 'text-foreground/80' : 'text-muted-foreground/70'
+                          active ? 'text-foreground' : done ? 'text-foreground/80' : 'text-muted-foreground'
                         }`}
                       >
                         {s.title}
                       </span>
-                      <span className="mt-1 block text-xs leading-snug text-muted-foreground/70">
+                      <span className="mt-1 block text-xs leading-snug text-muted-foreground">
                         {s.description}
                       </span>
                     </span>
@@ -827,7 +827,7 @@ export function OnboardingSurvey() {
                                         selected
                                           ? 'border-accent bg-accent/15 font-medium text-foreground'
                                           : disabled
-                                            ? 'cursor-not-allowed border-border bg-muted/40 text-muted-foreground/60'
+                                            ? 'cursor-not-allowed border-border bg-muted/40 text-muted-foreground'
                                             : 'border-border bg-card text-muted-foreground hover:border-accent/60 hover:text-foreground'
                                       }`}
                                     >

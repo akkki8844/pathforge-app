@@ -42,6 +42,10 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { SmoothTabs } from "@/components/ui/smooth-tabs";
+import { motion } from "framer-motion";
+import { ChevronRight } from "lucide-react";
+import { Liftable, SectionRule, Surface } from "@/components/lor/lorSurface";
+import { useStagger } from "@/lib/lorMotion";
 import { cn } from "@/lib/utils";
 import {
   RecommenderStatus,
@@ -217,21 +221,24 @@ export default function LOR() {
       <Seo
         title="Professors"
         description="Find professors, track recommenders, statuses, and deadlines for your college recommendation letters in one place."
-        path="/lor"
+        path="/professors"
       />
 
-      <div className="section-container max-w-5xl py-10">
-        <header className="mb-8 flex flex-wrap items-start justify-between gap-x-8 gap-y-4">
+      {/* 1400px, not 1024. The page was using 64% of a 1600px viewport with
+          288px of dead gutter on each side, so a two-pane workspace had
+          nowhere to go and every panel was a full-width band of mostly air. */}
+      <div className="mx-auto w-full max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8">
+        <header className="mb-7 flex flex-wrap items-end justify-between gap-x-8 gap-y-5">
           <div className="min-w-0">
-            <h1 className="max-w-[22ch] text-balance font-cluely text-[clamp(1.7rem,5vw,2.4rem)] font-semibold leading-[1.08] tracking-[-0.035em]">
+            <h1 className="max-w-[22ch] text-balance font-cluely text-[clamp(1.9rem,4vw,2.75rem)] font-semibold leading-[1.04] tracking-[-0.04em]">
               Professors
             </h1>
-            <p className="mt-2 max-w-[62ch] text-[14px] leading-relaxed text-muted-foreground">
+            <p className="mt-2.5 max-w-[62ch] text-[14.5px] leading-relaxed text-muted-foreground">
               Track who is writing your letters, and find faculty worth emailing.
             </p>
           </div>
           {action && (
-            <Button className="shrink-0" onClick={action.onClick}>
+            <Button size="lg" className="shrink-0" onClick={action.onClick}>
               <Plus className="mr-2 h-4 w-4" /> {action.label}
             </Button>
           )}
@@ -252,45 +259,69 @@ export default function LOR() {
           ]}
         />
 
+        {/*
+          * Two panes, not one column.
+          *
+          * The roster is the work and takes the wide side. Standing and the AI
+          * ranking are reference: you consult them, act in the list, and glance
+          * back. Stacking them above the list meant you scrolled past your own
+          * summary to reach the thing it summarised, and on a 1600px screen the
+          * summary was a 1024px-wide band holding three short facts.
+          *
+          * One column below xl, rail first there, because on a narrow screen
+          * "what is my situation" genuinely does come before "here is the list".
+          */}
         {tab === "recommenders" && (
-          <div className="mt-0 space-y-3">
-            <LetterStanding items={items} />
+          <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+            {/*
+              * min-w-0 is load-bearing, not tidiness. A grid item defaults to
+              * min-width:auto, so it refuses to shrink below the min-content
+              * width of what is inside it. A recommender's meta line ("Research
+              * supervisor - Molecular Biology - Northlake University") is wider
+              * than a phone, so the track grew to 484px inside a 390px viewport
+              * and the cards were clipped by the overflow-x:hidden on <html>.
+              * Silent, because the clip hides its own evidence.
+              */}
+            <div className="order-last min-w-0 space-y-5 lg:order-1 lg:col-span-8">
+              {showSearch && (
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name, subject, or school"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    className="h-11 rounded-xl pl-10"
+                    aria-label="Search recommenders"
+                  />
+                </div>
+              )}
 
-            {showSearch && (
-              <div className="relative">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search by name, subject, or school"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  className="pl-9"
-                  aria-label="Search recommenders"
-                />
-              </div>
-            )}
+              {list.isLoading ? (
+                <LoadingRows />
+              ) : filtered.length === 0 ? (
+                <EmptyState onAdd={openCreate} hasAny={items.length > 0} />
+              ) : (
+                <div className="space-y-6">
+                  {stages.map(({ status, rows }, groupIndex) => (
+                    <StageGroup
+                      key={status}
+                      label={STATUS_LABELS[status]}
+                      count={rows.length}
+                      rows={rows}
+                      groupIndex={groupIndex}
+                      onOpen={openEdit}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
 
-            <StrategyCard disabled={items.length === 0} />
-
-            {list.isLoading ? (
-              <LoadingRows />
-            ) : filtered.length === 0 ? (
-              <EmptyState onAdd={openCreate} hasAny={items.length > 0} />
-            ) : (
-              <div className="space-y-5">
-                {stages.map(({ status, rows }) => (
-                  <section key={status}>
-                    <h2 className="px-1 pb-2 font-cluely text-[11px] font-semibold uppercase tracking-[0.11em] text-muted-foreground">
-                      {STATUS_LABELS[status]} ({rows.length})
-                    </h2>
-                    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
-                      {rows.map((r) => (
-                        <RecommenderRow key={r.id} r={r} onOpen={() => openEdit(r)} />
-                      ))}
-                    </div>
-                  </section>
-                ))}
-              </div>
-            )}
+            {/* Order 1 on a phone: "where do I stand" genuinely does come
+                before the roster when you can only see one of them at a time. */}
+            <aside className="order-first min-w-0 space-y-4 lg:sticky lg:top-6 lg:order-2 lg:col-span-4">
+              <LetterStanding items={items} />
+              <StrategyCard disabled={items.length === 0} />
+            </aside>
           </div>
         )}
 
@@ -468,11 +499,57 @@ export default function LOR() {
 }
 
 /**
+ * One stage of the pipeline, and the people currently in it.
+ *
+ * The heading is a labelled rule rather than the uppercase micro-label it was.
+ * Five stacked uppercase tracking labels down one column is the templated
+ * rhythm that makes a page look generated. A name, a count and a hairline
+ * running to the edge does the same job and gives the column structure.
+ */
+function StageGroup({
+  label,
+  count,
+  rows,
+  groupIndex,
+  onOpen,
+}: {
+  label: string;
+  count: number;
+  rows: Recommender[];
+  groupIndex: number;
+  onOpen: (r: Recommender) => void;
+}) {
+  const stagger = useStagger();
+
+  return (
+    <section>
+      <SectionRule as="h2" count={count}>
+        {label}
+      </SectionRule>
+
+      <div className="space-y-2">
+        {rows.map((r, i) => (
+          <motion.div key={r.id} {...stagger(groupIndex * 2 + i)}>
+            <RecommenderRow r={r} onOpen={() => onOpen(r)} />
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/**
  * One recommender.
  *
- * No status chip: the stage heading above the group already says it, and
+ * A card per person rather than a row in a hairline-divided block. Each of
+ * these opens an editor, and a flat list of divided rows gives no sign of
+ * that. A card that lifts under the pointer does. It also lets the school
+ * logo, the person and the deadline sit at three different weights instead of
+ * competing on one line.
+ *
+ * Still no status chip: the stage heading above the group says it, and
  * repeating it per row is what produced a column of five different colours.
- * No "updated 3 minutes ago" either, which was the row's most prominent
+ * Still no "updated 3 minutes ago", which was the row's most prominent
  * right-hand figure and told a student nothing about what to do next.
  */
 function RecommenderRow({ r, onOpen }: { r: Recommender; onOpen: () => void }) {
@@ -480,37 +557,48 @@ function RecommenderRow({ r, onOpen }: { r: Recommender; onOpen: () => void }) {
   const detail = [r.position, r.subject].filter(Boolean).join(" · ");
 
   return (
-    <button
-      onClick={onOpen}
-      className="flex w-full items-center gap-4 px-5 py-4 text-left transition-colors hover:bg-muted/40"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-muted font-cluely text-sm font-medium">
-        {personInitials(r.name)}
-      </span>
+    <Liftable>
+      <button
+        onClick={onOpen}
+        className="group flex w-full items-center gap-4 rounded-2xl border border-border/70 bg-card px-4 py-3.5 text-left shadow-[0_1px_2px_rgba(16,24,40,0.04)] transition-colors hover:border-primary/30 hover:bg-primary/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:px-5"
+      >
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 font-cluely text-[13px] font-semibold text-primary">
+          {personInitials(r.name)}
+        </span>
 
-      <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">{r.name}</span>
-        {(detail || r.school) && (
-          <span className="flex min-w-0 items-center gap-1.5 text-sm text-muted-foreground">
-            {detail && <span className="truncate">{detail}</span>}
-            {detail && r.school && <span aria-hidden>·</span>}
-            {r.school && (
-              <>
-                <CollegeLogo name={r.school} size={14} className="rounded-[3px]" hideWhenUnknown />
-                <span className="truncate">{r.school}</span>
-              </>
-            )}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate font-cluely text-[15px] font-medium tracking-[-0.01em]">
+            {r.name}
+          </span>
+          {(detail || r.school) && (
+            <span className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[13px] text-muted-foreground">
+              {detail && <span className="truncate">{detail}</span>}
+              {detail && r.school && <span aria-hidden>·</span>}
+              {r.school && (
+                <>
+                  <CollegeLogo name={r.school} size={14} className="rounded-[3px]" hideWhenUnknown />
+                  <span className="truncate">{r.school}</span>
+                </>
+              )}
+            </span>
+          )}
+          <span className="sr-only">{display}</span>
+        </span>
+
+        {r.due_date && r.status !== "submitted" && (
+          <span className="hidden shrink-0 sm:block">
+            <DeadlineChip dueDate={r.due_date} />
           </span>
         )}
-        <span className="sr-only">{display}</span>
-      </span>
 
-      {r.due_date && r.status !== "submitted" && (
-        <span className="hidden shrink-0 sm:block">
-          <DeadlineChip dueDate={r.due_date} />
-        </span>
-      )}
-    </button>
+        {/* The affordance the flat rows were missing. Muted until hover so it
+            never competes with the deadline beside it. */}
+        <ChevronRight
+          aria-hidden
+          className="h-4 w-4 shrink-0 text-muted-foreground transition-colors group-hover:text-muted-foreground"
+        />
+      </button>
+    </Liftable>
   );
 }
 
@@ -534,13 +622,16 @@ function Field({
   );
 }
 
-/** Skeleton rows in the shape of the real ones, not a centred spinner. */
+/** Skeletons in the shape of the real cards, not a centred spinner. */
 function LoadingRows() {
   return (
-    <div className="divide-y divide-border overflow-hidden rounded-xl border border-border bg-card">
+    <div className="space-y-2">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="flex items-center gap-4 px-5 py-4">
-          <div className="h-10 w-10 shrink-0 animate-pulse rounded-full bg-muted" />
+        <div
+          key={i}
+          className="flex items-center gap-4 rounded-2xl border border-border/70 bg-card px-5 py-3.5"
+        >
+          <div className="h-11 w-11 shrink-0 animate-pulse rounded-full bg-muted" />
           <div className="min-w-0 flex-1 space-y-2">
             <div className="h-3.5 w-40 animate-pulse rounded bg-muted" />
             <div className="h-3 w-56 animate-pulse rounded bg-muted" />
@@ -553,21 +644,24 @@ function LoadingRows() {
 
 function EmptyState({ onAdd, hasAny }: { onAdd: () => void; hasAny: boolean }) {
   return (
-    <div className="rounded-xl border border-border bg-card px-6 py-12 text-center">
-      <h3 className="mb-1 text-base font-medium">
+    <Surface className="px-6 py-14 text-center">
+      <span className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+        <UserRound className="h-5 w-5" strokeWidth={1.75} />
+      </span>
+      <h3 className="font-cluely text-[17px] font-semibold tracking-[-0.015em]">
         {hasAny ? "No matches" : "Add your first recommender"}
       </h3>
-      <p className="mx-auto mb-5 max-w-sm text-sm text-muted-foreground">
+      <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-muted-foreground">
         {hasAny
           ? "Try a different search."
           : "Start with the teacher, mentor, or supervisor most likely to write you a strong letter."}
       </p>
       {!hasAny && (
-        <Button onClick={onAdd} variant="outline">
+        <Button onClick={onAdd} className="mt-5">
           <Plus className="mr-2 h-4 w-4" /> Add recommender
         </Button>
       )}
-    </div>
+    </Surface>
   );
 }
 

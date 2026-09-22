@@ -54,7 +54,7 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
       <div className="space-y-2">
         <StatusBox tone="success" icon={CheckCircle2}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
-            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+            <span className="font-semibold text-success">
               Evidence verified — you can claim this stage.
             </span>
             {submission?.ai_confidence !== null && submission?.ai_confidence !== undefined && (
@@ -142,9 +142,9 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
         <>
           <StatusBox tone="error" icon={XCircle}>
             <div>
-              <div className="font-semibold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+              <div className="font-semibold text-destructive flex items-center gap-2">
                 Rejected
-                <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 text-[9px]">
+                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[9px]">
                   Re-upload required
                 </Badge>
               </div>
@@ -161,7 +161,7 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
         <>
           <StatusBox tone="warn" icon={AlertCircle}>
             <div>
-              <div className="font-semibold text-amber-600 dark:text-amber-400">Sent to admin review</div>
+              <div className="font-semibold text-warning">Sent to admin review</div>
               <p className="text-[11px] text-muted-foreground mt-1">
                 We couldn't auto-verify this with high confidence. An admin will review shortly. You can also upload a clearer file below.
               </p>
@@ -214,7 +214,7 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
       {/* Note field — required by verification flow */}
       <div className="space-y-1">
         <label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
-          Short note <span className="text-rose-500">*</span>
+          Short note <span className="text-destructive">*</span>
           <span className="font-normal text-muted-foreground">(1–2 sentences explaining what this proof shows)</span>
         </label>
         <Textarea
@@ -294,10 +294,10 @@ function SubmittedFileLink({ submission }: { submission: ProofSubmission }) {
 
 type Tone = "success" | "info" | "error" | "warn";
 const TONE_CLASSES: Record<Tone, { box: string; icon: string }> = {
-  success: { box: "bg-emerald-500/5 border-emerald-500/30", icon: "text-emerald-500" },
+  success: { box: "bg-success/5 border-success/30", icon: "text-success" },
   info:    { box: "bg-primary/5 border-primary/30",         icon: "text-primary" },
-  error:   { box: "bg-rose-500/5 border-rose-500/30",       icon: "text-rose-500" },
-  warn:    { box: "bg-amber-500/5 border-amber-500/30",     icon: "text-amber-500" },
+  error:   { box: "bg-destructive/5 border-destructive/30",       icon: "text-destructive" },
+  warn:    { box: "bg-warning/5 border-warning/30",     icon: "text-warning" },
 };
 
 function StatusBox({

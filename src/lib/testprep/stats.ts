@@ -11,7 +11,16 @@
  * printing a confident number derived from three questions.
  */
 
-import { SAT, SAT_DOMAINS, SAT_SKILLS } from "./blueprints";
+// Aliased: `stats.ts` already declares a local `domainName` helper inside
+// `skillStats`, and importing the blueprint one under its own name would
+// shadow it there — legal, but the kind of legal that costs someone an hour.
+import {
+  SAT,
+  SAT_DOMAINS,
+  SAT_SKILLS,
+  domainName as domainLabel,
+  subjectName as subjectLabel,
+} from "./blueprints";
 import { QUESTION_COUNT_BY_DOMAIN, QUESTION_COUNT_BY_SKILL, questionById } from "./questions";
 import type { AnswerRecord, Difficulty, SubjectId, TestPrepProfile } from "./types";
 
@@ -106,7 +115,14 @@ export function skillStats(profile: TestPrepProfile): SkillStats[] {
   return SAT_SKILLS.map((skill) => {
     const records = grouped.get(skill.id) ?? [];
     const distinct = new Set(records.map((r) => r.questionId));
-    const totalMs = records.reduce((n, r) => n + r.elapsedMs, 0);
+    // Only the records that carry a measurement, for the reason given on
+    // `overallStats`: an exam stores every unanswered question with
+    // `elapsedMs: 0`, and averaging those in reports a pace nobody worked at.
+    // Nothing reads this field today; it is kept correct so that whoever does
+    // read it next is not handed a number that quietly deflates with every
+    // question left blank.
+    const timedRecords = records.filter((r) => Number.isFinite(r.elapsedMs) && r.elapsedMs > 0);
+    const totalMs = timedRecords.reduce((n, r) => n + r.elapsedMs, 0);
     return {
       skillId: skill.id,
       name: skill.name,
@@ -117,7 +133,7 @@ export function skillStats(profile: TestPrepProfile): SkillStats[] {
       mastery: masteryOf(records),
       completed: distinct.size,
       available: QUESTION_COUNT_BY_SKILL[skill.id] ?? 0,
-      avgMs: records.length ? Math.round(totalMs / records.length) : null,
+      avgMs: timedRecords.length ? Math.round(totalMs / timedRecords.length) : null,
     };
   });
 }
@@ -220,7 +236,21 @@ export function overallStats(profile: TestPrepProfile): OverallStats {
   const totalAttempts = subjects.reduce((n, s) => n + s.attempts, 0);
   const totalCorrect = subjects.reduce((n, s) => n + s.correct, 0);
   const bothScored = subjects.every((s) => s.score !== null);
-  const totalMs = profile.answers.reduce((n, a) => n + a.elapsedMs, 0);
+  /*
+   * Pace, over the answers that were actually timed.
+   *
+   * An exam records every unanswered question, deliberately — a blank on a
+   * timed module is information about pacing. Those records carry
+   * `elapsedMs: 0`, because the student never opened the question. Averaging
+   * them in would report a pace nobody worked at: leave twenty blank and the
+   * mean drops toward zero, and `nextBestAction` then estimates its
+   * recommended set at a couple of minutes.
+   *
+   * So the divisor is the number of measurements, not the number of answers.
+   * Same floor the timing breakdown uses, for the same reason.
+   */
+  const timed = profile.answers.filter((a) => Number.isFinite(a.elapsedMs) && a.elapsedMs > 0);
+  const totalMs = timed.reduce((n, a) => n + a.elapsedMs, 0);
 
   return {
     subjects,
@@ -233,7 +263,7 @@ export function overallStats(profile: TestPrepProfile): OverallStats {
     estimatedScore: bothScored
       ? subjects.reduce((n, s) => n + (s.score ?? 0), 0)
       : null,
-    avgSeconds: totalAttempts ? Math.round(totalMs / totalAttempts / 1000) : null,
+    avgSeconds: timed.length ? Math.round(totalMs / timed.length / 1000) : null,
   };
 }
 
@@ -360,6 +390,85 @@ export function accuracyByDifficulty(
 }
 
 /* ------------------------------------------------------------------ */
+/* Timing breakdown                                                    */
+/* ------------------------------------------------------------------ */
+
+/** One row of the timing table: where the time actually goes. */
+export interface TimingRow {
+  id: string;
+  label: string;
+  answers: number;
+  /** Mean milliseconds per question in this group. */
+  avgMs: number;
+  /** Share of answers in this group that were right, or null below the floor. */
+  accuracy: number | null;
+}
+
+/** Below this, an average of two questions is an anecdote, not a pace. */
+const TIMING_MIN_ANSWERS = 3;
+
+/**
+ * How long the student takes, grouped by subject and by domain.
+ *
+ * `overallStats` already reported one `avgSeconds` across everything, which
+ * answers "am I slow" but not the question a student actually has, which is
+ * "slow at what". Every ingredient was already on the record —
+ * `AnswerRecord.elapsedMs` per answer, and `questionById` resolving the
+ * subject and domain — so this groups what was there rather than measuring
+ * anything new.
+ *
+ * Groups under `TIMING_MIN_ANSWERS` are dropped rather than shown at zero,
+ * for the same reason mastery returns null below its floor: a number the
+ * student cannot act on is worse than an absence they can read.
+ */
+function timingBy(
+  profile: TestPrepProfile,
+  key: (questionId: string) => { id: string; label: string } | null,
+): TimingRow[] {
+  const acc = new Map<string, { label: string; answers: number; ms: number; correct: number }>();
+  for (const a of profile.answers) {
+    const group = key(a.questionId);
+    if (!group) continue;
+    // A zero or negative elapsed time is a runner that never started its clock,
+    // not a question answered instantly. Counting it would drag the mean down
+    // and make the student look faster than they are.
+    if (!Number.isFinite(a.elapsedMs) || a.elapsedMs <= 0) continue;
+    const row = acc.get(group.id) ?? { label: group.label, answers: 0, ms: 0, correct: 0 };
+    row.answers += 1;
+    row.ms += a.elapsedMs;
+    if (a.correct) row.correct += 1;
+    acc.set(group.id, row);
+  }
+
+  return [...acc.entries()]
+    .filter(([, r]) => r.answers >= TIMING_MIN_ANSWERS)
+    .map(([id, r]) => ({
+      id,
+      label: r.label,
+      answers: r.answers,
+      avgMs: Math.round(r.ms / r.answers),
+      accuracy: r.answers >= MASTERY_MIN_ATTEMPTS ? r.correct / r.answers : null,
+    }))
+    .sort((a, b) => b.avgMs - a.avgMs);
+}
+
+export function timingBySubject(profile: TestPrepProfile): TimingRow[] {
+  return timingBy(profile, (questionId) => {
+    const q = questionById(questionId);
+    if (!q) return null;
+    return { id: q.subjectId, label: subjectLabel(q.subjectId) };
+  });
+}
+
+export function timingByDomain(profile: TestPrepProfile): TimingRow[] {
+  return timingBy(profile, (questionId) => {
+    const q = questionById(questionId);
+    if (!q) return null;
+    return { id: q.domainId, label: domainLabel(q.domainId) };
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* Misc formatting shared across the section                           */
 /* ------------------------------------------------------------------ */
 
@@ -402,11 +511,21 @@ export function daysUntil(isoDate: string): number | null {
  * Lives here rather than beside the components that use it so that the
  * component file exports only components, which is what fast refresh needs.
  */
+/**
+ * Which of the three mastery steps a figure sits in.
+ *
+ * Returns `accent` / `partial` / `warning` rather than the old
+ * `success` / `accent` / `warning`, because under the SAT palette `--success`
+ * and the section's blue are the same colour — the top two steps were drawing
+ * the same bar. Same three thresholds, three fills that are actually
+ * distinguishable. Every bar is still paired with its percentage, so the
+ * colour was never the only carrier; it just stopped being informative.
+ */
 export function masteryTone(
   mastery: number | null,
-): "accent" | "success" | "warning" | "muted" {
+): "accent" | "partial" | "warning" | "muted" {
   if (mastery === null) return "muted";
-  if (mastery >= 0.8) return "success";
-  if (mastery >= 0.55) return "accent";
+  if (mastery >= 0.8) return "accent";
+  if (mastery >= 0.55) return "partial";
   return "warning";
 }

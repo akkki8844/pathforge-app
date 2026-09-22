@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionError";
 import { isTrustedOAuthMessage } from "@/lib/oauthPopupMessage";
 
@@ -11,14 +12,15 @@ export interface GoogleConnection {
 }
 
 export function useGoogleCalendar() {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [connection, setConnection] = useState<GoogleConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    if (!userId) {
       setConnection(null);
       setLoading(false);
       return;
@@ -32,12 +34,12 @@ export function useGoogleCalendar() {
       supabase
         .from("user_google_tokens")
         .select("google_email, expires_at, scope")
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .maybeSingle(),
       supabase
         .from("user_google_tokens")
         .select("user_id", { count: "exact", head: true })
-        .eq("user_id", user.id)
+        .eq("user_id", userId)
         .not("refresh_token", "is", null),
     ]);
 
@@ -52,9 +54,15 @@ export function useGoogleCalendar() {
       setConnection(null);
     }
     setLoading(false);
-  }, []);
+  }, [userId]);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    // Drop the previous account's connection before the new one is known: this
+    // state used to survive a change of account within one tab and go on naming
+    // the previous person's Google address. See `useGitHubConnection`.
+    setConnection(null);
+    void refresh();
+  }, [userId, refresh]);
 
   // Refresh on window focus and on postMessage from the OAuth popup
   useEffect(() => {
@@ -106,21 +114,20 @@ export function useGoogleCalendar() {
   const disconnect = useCallback(async () => {
     setBusy(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("You're signed out.");
+      if (!userId) throw new Error("You're signed out.");
       // An RLS denial here used to be discarded, so "Disconnected from Google
       // Calendar" was shown for a delete that removed nothing and the card
       // flipped straight back to Connected on the next refresh.
       const { error } = await supabase
         .from("user_google_tokens")
         .delete()
-        .eq("user_id", user.id);
+        .eq("user_id", userId);
       if (error) throw new Error(error.message);
       await refresh();
     } finally {
       setBusy(false);
     }
-  }, [refresh]);
+  }, [refresh, userId]);
 
   const addEvent = useCallback(async (event: {
     summary: string;

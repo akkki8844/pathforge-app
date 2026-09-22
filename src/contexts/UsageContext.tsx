@@ -197,7 +197,25 @@ export function UsageProvider({ children }: { children: ReactNode }) {
     try {
       const { data, error } = await supabase.rpc("get_credits");
       if (error) {
-        console.error("Error fetching usage:", error);
+        /*
+         * 42501 is "permission denied for function get_credits", and it is an
+         * expired session rather than a fault. `get_credits()` grants EXECUTE
+         * to `authenticated` and deliberately not to `anon`, so once the JWT
+         * lapses PostgREST runs the call as anon and refuses it — while `user`
+         * is still set in React state, which is why the guard above does not
+         * catch it. The auth layer refreshes and the next fetch succeeds.
+         *
+         * It mattered because `console.error` within a few seconds of a click
+         * is exactly what the bug reporter treats as user-visible, so a lapsed
+         * token raised a red banner about a thing that fixed itself. Logged as
+         * a warning so it is still visible in the console without being
+         * captured.
+         */
+        if ((error as { code?: string }).code === "42501") {
+          console.warn("Usage unavailable: session not authenticated yet");
+        } else {
+          console.error("Error fetching usage:", error);
+        }
         setLoading(false);
         return;
       }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { counsellorDb } from "@/integrations/supabase/counsellor";
 import { useAuth } from "@/contexts/AuthContext";
 
 export type InteractionKind = "call" | "email" | "meeting" | "chat" | "other";
@@ -36,8 +36,7 @@ export function useCounsellorInteractions(studentId?: string) {
       return;
     }
     setLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let query = (supabase.from as any)("counsellor_interactions")
+    let query = counsellorDb.from("counsellor_interactions")
       .select("*")
       .eq("counsellor_id", user.id);
     if (studentId) query = query.eq("student_id", studentId);
@@ -48,12 +47,29 @@ export function useCounsellorInteractions(studentId?: string) {
 
   useEffect(() => { load(); }, [load]);
 
-  const log = async (input: { kind: InteractionKind; summary: string; occurred_at?: string }) => {
-    if (!user || !studentId) return { error: new Error("Not signed in") };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from as any)("counsellor_interactions").insert({
+  /**
+   * Record an interaction.
+   *
+   * `student_id` is optional and defaults to the id this hook was opened with,
+   * which is how a student's own timeline calls it. The calendar at
+   * /teacher/meetings opens the hook with no id — it wants every meeting,
+   * not one student's — and so had no way to write one: `log` returned
+   * "Not signed in" for a signed-in counsellor whose only mistake was being on
+   * the page that shows all of them. Passing the student explicitly is what
+   * makes booking from the calendar possible.
+   */
+  const log = async (input: {
+    kind: InteractionKind;
+    summary: string;
+    occurred_at?: string;
+    student_id?: string;
+  }) => {
+    const target = input.student_id ?? studentId;
+    if (!user) return { error: new Error("Not signed in") };
+    if (!target) return { error: new Error("Pick a student first") };
+    const { error } = await counsellorDb.from("counsellor_interactions").insert({
       counsellor_id: user.id,
-      student_id: studentId,
+      student_id: target,
       kind: input.kind,
       summary: input.summary,
       occurred_at: input.occurred_at ?? new Date().toISOString(),
@@ -63,8 +79,7 @@ export function useCounsellorInteractions(studentId?: string) {
   };
 
   const remove = async (id: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await (supabase.from as any)("counsellor_interactions").delete().eq("id", id);
+    await counsellorDb.from("counsellor_interactions").delete().eq("id", id);
     await load();
   };
 

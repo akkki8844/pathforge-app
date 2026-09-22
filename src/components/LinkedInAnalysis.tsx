@@ -241,9 +241,9 @@ function formatAnalyzedAt(value: string | null): string | null {
 
 function RatingBadge({ score }: { score: number }) {
   const getColor = (s: number) => {
-    if (s >= 8) return "bg-green-500/20 text-green-600 border-green-500/30";
-    if (s >= 6) return "bg-amber-500/20 text-amber-600 border-amber-500/30";
-    return "bg-red-500/20 text-red-600 border-red-500/30";
+    if (s >= 8) return "bg-success/20 text-success border-success/30";
+    if (s >= 6) return "bg-warning/20 text-warning border-warning/30";
+    return "bg-destructive/20 text-destructive border-destructive/30";
   };
 
   return (
@@ -510,7 +510,7 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                <ShieldCheck className="h-4 w-4 text-success" />
                 <h3 className="font-medium text-foreground">Saved analysis</h3>
               </div>
               <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
@@ -841,20 +841,20 @@ export default function LinkedInAnalysis({ onNavigateToSection }: LinkedInAnalys
 
                             <div className="grid gap-3">
                               {insight.working && (
-                                <div className="p-3 rounded-lg bg-green-500/5 border border-green-500/10">
+                                <div className="p-3 rounded-lg bg-success/5 border border-success/10">
                                   <div className="flex items-center gap-1.5 mb-1">
-                                    <CheckCircle2 className="h-3.5 w-3.5 text-green-600" />
-                                    <span className="text-xs font-semibold text-green-600">What's Working</span>
+                                    <CheckCircle2 className="h-3.5 w-3.5 text-success" />
+                                    <span className="text-xs font-semibold text-success">What's Working</span>
                                   </div>
                                   <p className="text-sm text-muted-foreground">{insight.working}</p>
                                 </div>
                               )}
 
                               {insight.missing && (
-                                <div className="p-3 rounded-lg bg-amber-500/5 border border-amber-500/10">
+                                <div className="p-3 rounded-lg bg-warning/5 border border-warning/10">
                                   <div className="flex items-center gap-1.5 mb-1">
-                                    <AlertCircle className="h-3.5 w-3.5 text-amber-600" />
-                                    <span className="text-xs font-semibold text-amber-600">What's Missing</span>
+                                    <AlertCircle className="h-3.5 w-3.5 text-warning" />
+                                    <span className="text-xs font-semibold text-warning">What's Missing</span>
                                   </div>
                                   <p className="text-sm text-muted-foreground">{insight.missing}</p>
                                 </div>

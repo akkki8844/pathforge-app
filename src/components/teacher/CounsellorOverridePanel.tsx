@@ -22,7 +22,7 @@ const TYPE_LABEL: Record<OverrideType, string> = {
 const PRIORITY_TONE: Record<OverridePriority, string> = {
   low: "bg-muted text-muted-foreground",
   medium: "bg-accent/10 text-accent",
-  high: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+  high: "bg-warning/10 text-warning",
   urgent: "bg-destructive/10 text-destructive",
 };
 

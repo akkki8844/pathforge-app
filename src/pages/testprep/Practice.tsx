@@ -278,7 +278,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   <SelectItem value="all">Both sections</SelectItem>
                   {SAT.subjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
@@ -300,7 +300,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   <SelectItem value="all">Any domain</SelectItem>
                   {domains.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
@@ -316,7 +316,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   <SelectItem value="all">Any skill</SelectItem>
                   {skills.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
@@ -335,7 +335,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   <SelectItem value="mixed">Mixed</SelectItem>
                   <SelectItem value="easy">Easy</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
@@ -349,7 +349,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   {["5", "10", "15", "20", "30"].map((n) => (
                     <SelectItem key={n} value={n}>
                       {n}
@@ -364,7 +364,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bluebook">
                   <SelectItem value="none">Untimed</SelectItem>
                   {["10", "15", "20", "30", "45"].map((n) => (
                     <SelectItem key={n} value={n}>

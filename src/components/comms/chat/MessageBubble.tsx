@@ -173,7 +173,7 @@ export function MessageBubble({
     <span
       className={cn(
         "pointer-events-none float-right ml-2 mt-[0.4rem] flex translate-y-px items-center gap-1 text-[0.625rem] tabular-nums leading-none",
-        isOwn ? "text-accent-foreground/65" : "text-muted-foreground/70",
+        isOwn ? "text-accent-foreground/65" : "text-muted-foreground",
       )}
     >
       {isPinned && <Pin className="h-2.5 w-2.5" aria-label="Pinned" />}
@@ -385,7 +385,7 @@ export function MessageBubble({
                   <span>{message.body}</span>
                   <span
                     className={cn(
-                      "mt-1 flex items-center gap-1 text-[0.625rem] tabular-nums text-muted-foreground/70",
+                      "mt-1 flex items-center gap-1 text-[0.625rem] tabular-nums text-muted-foreground",
                       isOwn && "justify-end",
                     )}
                   >

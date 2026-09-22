@@ -4,15 +4,23 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { safeRedirectPath } from "@/lib/safeRedirect";
+import {
+  forgetPendingOAuth,
+  rememberPendingOAuth,
+  type OAuthPortal,
+} from "@/lib/auth/pendingOAuth";
 
 export function GitHubSignInButton({
   label = "Continue with GitHub",
   redirectTo,
   className,
+  portal = "student",
 }: {
   label?: string;
   redirectTo?: string;
   className?: string;
+  /** See the same prop on `GoogleSignInButton`. */
+  portal?: OAuthPortal;
 }) {
   const [loading, setLoading] = useState(false);
 
@@ -29,8 +37,13 @@ export function GitHubSignInButton({
       if (error) throw error;
       const url = (data as { url?: string })?.url;
       if (!url) throw new Error("No authorization URL returned");
+      // Recorded only once there is somewhere to go: a marker left behind by a
+      // handoff that never happened would make the next ordinary page load
+      // look like the tail of an OAuth round trip.
+      rememberPendingOAuth(redirectTo, portal);
       window.location.assign(url);
     } catch (e) {
+      forgetPendingOAuth();
       toast.error("GitHub sign-in failed", {
         description: e instanceof Error ? e.message : "Please try again.",
       });

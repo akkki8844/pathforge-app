@@ -18,6 +18,8 @@ import { setTargetScore, setTestDate, useTestPrep } from "@/lib/testprep/store";
 import { daysUntil, nextBestAction, overallStats, pct } from "@/lib/testprep/stats";
 import { EYEBROW_ACCENT } from "@/lib/testprep/ui";
 import { Panel, PageHeader, TestPrepShell } from "@/components/testprep/TestPrepShell";
+import { resultsHref } from "@/lib/testprep/nav";
+import { cn } from "@/lib/utils";
 import { LabelledBar, Stat, StatGrid, TopicRow } from "@/components/testprep/primitives";
 import { AnimatedNumber, Reveal } from "@/components/testprep/motion";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
@@ -38,6 +40,22 @@ export default function TestPrepOverview() {
   const profile = useTestPrep();
   const stats = useMemo(() => overallStats(profile), [profile]);
   const next = useMemo(() => nextBestAction(profile), [profile]);
+
+  /**
+   * The last six sittings that produced a score, oldest first.
+   *
+   * Only exam attempts carry a composite — a fifteen-question drill has no
+   * business appearing on a line that reads as "your score over time" — so
+   * anything without one is dropped rather than plotted at zero.
+   */
+  const scored = useMemo(
+    () =>
+      profile.attempts
+        .filter((a) => a.kind === "exam" && typeof a.score === "number")
+        .slice(0, 6)
+        .reverse(),
+    [profile.attempts],
+  );
 
   if (!blueprint) return <TestNotAvailable name="Test Prep" subtitle="Unknown test" />;
   if (!blueprint.available)
@@ -168,6 +186,58 @@ export default function TestPrepOverview() {
           ))}
         </div>
 
+        {/*
+          Score over time.
+
+          Two sittings is the minimum: a single bar is a number that has been
+          drawn, not a trend, and the status strip above already shows it.
+          Deliberately the same bar shape Results uses for the same data, so
+          moving between the two pages reads as one chart rather than two
+          charts that disagree about how tall a 1200 is.
+        */}
+        {scored.length > 1 && (
+          <Reveal delay={0.06}>
+            <Panel title="Score over time" description="Your last six full sittings.">
+              <div className="flex items-end gap-2">
+                {scored.map((a, i) => {
+                  const value = ((a.score ?? 400) - 400) / 1200;
+                  const latest = i === scored.length - 1;
+                  return (
+                    <Link
+                      key={a.id}
+                      to={resultsHref(blueprint.id, a.id)}
+                      className="flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <span
+                        className={cn(
+                          "text-[11px] tabular-nums",
+                          latest ? "font-semibold text-foreground" : "text-muted-foreground",
+                        )}
+                      >
+                        {a.score}
+                      </span>
+                      <span
+                        aria-hidden
+                        style={{ height: `${Math.max(6, value * 96)}px` }}
+                        className={cn(
+                          "w-full rounded-t-sm transition-colors",
+                          latest ? "bg-[hsl(var(--bb-blue))]" : "bg-muted-foreground/20",
+                        )}
+                      />
+                      <span className="w-full truncate text-center text-[10px] text-muted-foreground">
+                        {new Date(a.finishedAt).toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                        })}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </Panel>
+          </Reveal>
+        )}
+
         <p className="text-xs leading-relaxed text-muted-foreground">
           Questions are written by Pathforge to the published digital SAT specification. They are
           not College Board material.{" "}
@@ -270,7 +340,7 @@ function TargetsDialog() {
           Edit target and date
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-sm">
+      <DialogContent className="bluebook sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>Target and test date</DialogTitle>
           <DialogDescription>

@@ -20,7 +20,15 @@ interface Accent {
   text: string;
   /** `bg-` only, for dots, unread badges and progress fills. */
   dot: string;
-  /** Soft two-stop wash for a team header — the one place a gradient earns its keep. */
+  /**
+   * Flat tint for a team header band.
+   *
+   * It was a two-stop wash (`from-x/20 via-x/5 to-transparent`). A gradient
+   * fading into nothing behind a title is the default decoration of every
+   * generated dashboard, and it made a team header look like a template rather
+   * than like this product. A single flat tint says the same thing - this team
+   * is the cyan one - without the ramp.
+   */
   header: string;
   /** Tinted ring/border for a selected card. */
   ring: string;
@@ -33,7 +41,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-indigo-500/10 text-indigo-700 border-indigo-300 dark:text-indigo-300 dark:border-indigo-800",
     text: "text-indigo-600 dark:text-indigo-300",
     dot: "bg-indigo-500",
-    header: "from-indigo-500/20 via-indigo-500/5 to-transparent",
+    header: "bg-indigo-500/10",
     ring: "ring-indigo-500/40 border-indigo-400/50",
     avatar: "bg-indigo-500 text-white",
   },
@@ -41,7 +49,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-violet-500/10 text-violet-700 border-violet-300 dark:text-violet-300 dark:border-violet-800",
     text: "text-violet-600 dark:text-violet-300",
     dot: "bg-violet-500",
-    header: "from-violet-500/20 via-violet-500/5 to-transparent",
+    header: "bg-violet-500/10",
     ring: "ring-violet-500/40 border-violet-400/50",
     avatar: "bg-violet-500 text-white",
   },
@@ -49,7 +57,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-emerald-500/10 text-emerald-700 border-emerald-300 dark:text-emerald-300 dark:border-emerald-800",
     text: "text-emerald-600 dark:text-emerald-300",
     dot: "bg-emerald-500",
-    header: "from-emerald-500/20 via-emerald-500/5 to-transparent",
+    header: "bg-emerald-500/10",
     ring: "ring-emerald-500/40 border-emerald-400/50",
     avatar: "bg-emerald-500 text-white",
   },
@@ -57,7 +65,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-amber-500/10 text-amber-700 border-amber-300 dark:text-amber-300 dark:border-amber-800",
     text: "text-amber-600 dark:text-amber-300",
     dot: "bg-amber-500",
-    header: "from-amber-500/20 via-amber-500/5 to-transparent",
+    header: "bg-amber-500/10",
     ring: "ring-amber-500/40 border-amber-400/50",
     avatar: "bg-amber-500 text-white",
   },
@@ -65,7 +73,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-rose-500/10 text-rose-700 border-rose-300 dark:text-rose-300 dark:border-rose-800",
     text: "text-rose-600 dark:text-rose-300",
     dot: "bg-rose-500",
-    header: "from-rose-500/20 via-rose-500/5 to-transparent",
+    header: "bg-rose-500/10",
     ring: "ring-rose-500/40 border-rose-400/50",
     avatar: "bg-rose-500 text-white",
   },
@@ -73,7 +81,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-cyan-500/10 text-cyan-700 border-cyan-300 dark:text-cyan-300 dark:border-cyan-800",
     text: "text-cyan-600 dark:text-cyan-300",
     dot: "bg-cyan-500",
-    header: "from-cyan-500/20 via-cyan-500/5 to-transparent",
+    header: "bg-cyan-500/10",
     ring: "ring-cyan-500/40 border-cyan-400/50",
     avatar: "bg-cyan-500 text-white",
   },
@@ -81,7 +89,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-orange-500/10 text-orange-700 border-orange-300 dark:text-orange-300 dark:border-orange-800",
     text: "text-orange-600 dark:text-orange-300",
     dot: "bg-orange-500",
-    header: "from-orange-500/20 via-orange-500/5 to-transparent",
+    header: "bg-orange-500/10",
     ring: "ring-orange-500/40 border-orange-400/50",
     avatar: "bg-orange-500 text-white",
   },
@@ -89,7 +97,7 @@ const ACCENTS: Record<TeamAccent, Accent> = {
     chip: "bg-slate-500/10 text-slate-700 border-slate-300 dark:text-slate-300 dark:border-slate-700",
     text: "text-slate-600 dark:text-slate-300",
     dot: "bg-slate-500",
-    header: "from-slate-500/20 via-slate-500/5 to-transparent",
+    header: "bg-slate-500/10",
     ring: "ring-slate-500/40 border-slate-400/50",
     avatar: "bg-slate-500 text-white",
   },

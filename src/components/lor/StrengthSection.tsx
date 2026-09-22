@@ -6,10 +6,17 @@ import { cn } from "@/lib/utils";
 import { useRecommenderStrength } from "@/hooks/useRecommenderStrength";
 import type { Recommender } from "@/hooks/useRecommenders";
 
+/*
+ * Three ratings, drawn from the palette this route already has rather than
+ * from emerald / amber / rose, which were three hues imported for one badge
+ * and appear nowhere else on the page. Strong reads as the accent, weak as
+ * the same destructive tint the overdue deadline uses, and average — the
+ * rating you do nothing about — stays neutral, which is the point of it.
+ */
 const tone: Record<string, string> = {
-  strong: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-300",
-  average: "bg-amber-500/10 text-amber-600 dark:text-amber-300",
-  weak: "bg-rose-500/10 text-rose-600 dark:text-rose-300",
+  strong: "border-primary/30 bg-primary/10 text-primary",
+  average: "border-border bg-muted text-muted-foreground",
+  weak: "border-destructive/30 bg-destructive/10 text-destructive",
 };
 
 export function StrengthSection({ recommender }: { recommender: Recommender }) {

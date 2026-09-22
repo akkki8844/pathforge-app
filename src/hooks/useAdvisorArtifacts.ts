@@ -50,7 +50,17 @@ export function useAdvisorArtifacts(conversationId: string | null) {
       .eq("conversation_id", conversationId)
       .order("created_at", { ascending: false })
       .limit(50);
-    setArtifacts((data as any) || []);
+    /*
+     * Images are shown in the conversation, not filed in the Artifacts panel.
+     *
+     * A generated picture is part of the reply that produced it - you look at
+     * it, and that is the whole interaction. Filing it alongside the documents,
+     * decks and PDFs a student is actually building made the panel a dumping
+     * ground and buried the things they go back to. The row still exists,
+     * because it is what holds the storage path the chat renders from; it just
+     * does not appear in the list.
+     */
+    setArtifacts(((data as AdvisorArtifact[]) || []).filter((a) => a.kind !== "image"));
     setLoading(false);
   }, [user, conversationId]);
 

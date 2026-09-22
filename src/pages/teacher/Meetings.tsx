@@ -1,13 +1,11 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Video,
-  MapPin, Plus, Users, FileText, CheckCircle2,
-} from "lucide-react";
+import { Link } from "react-router-dom";
+import { ChevronLeft, ChevronRight, Clock, Plus, Trash2, Users } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
+import { MeetingComposer, type MeetingDraft } from "@/components/teacher/MeetingComposer";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { useCounsellorInteractions } from "@/hooks/useCounsellorInteractions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -27,9 +25,21 @@ function getFirstDayOfMonth(year: number, month: number) {
 
 export default function TeacherMeetings() {
   const { students } = useTeacherRoster();
-  const { items: interactions, loading } = useCounsellorInteractions();
+  const { items: interactions, log, remove } = useCounsellorInteractions();
   const [view, setView] = useState<ViewMode>("week");
   const [currentDate, setCurrentDate] = useState(new Date());
+  /*
+   * The composer is opened from three places - the header button, a calendar
+   * cell, and nothing else yet - and each one seeds it differently, so the
+   * draft travels with the open state rather than living inside the dialog.
+   */
+  const [composerOpen, setComposerOpen] = useState(false);
+  const [draft, setDraft] = useState<MeetingDraft | undefined>(undefined);
+
+  const openComposer = (seed?: MeetingDraft) => {
+    setDraft(seed);
+    setComposerOpen(true);
+  };
 
   const nameMap = useMemo(
     () => new Map(students.map((s) => [s.user_id, s.full_name || s.email || "Student"])),
@@ -118,14 +128,35 @@ export default function TeacherMeetings() {
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Meetings"
+        description="Sessions booked and logged with your students."
+        path="/teacher/meetings"
+        noindex
+      />
+
+      <MeetingComposer
+        open={composerOpen}
+        onOpenChange={setComposerOpen}
+        students={students}
+        draft={draft}
+        onSubmit={(input) => log(input)}
+      />
+
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Meetings</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage your counseling sessions</p>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Meetings</h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Every session you have booked or logged. Click any day to add one.
+            </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => openComposer()}>
+              <Plus className="mr-1.5 h-4 w-4" />
+              Book session
+            </Button>
             <div className="flex bg-muted rounded-lg p-0.5">
               <button
                 onClick={() => setView("week")}
@@ -184,7 +215,7 @@ export default function TeacherMeetings() {
                         m.date.getDate() === d.getDate()
                       );
                       return (
-                        <div key={i} className={cn("border-r border-border last:border-r-0 min-h-[200px]", isToday && "bg-accent/5")}>
+                        <div key={i} className={cn("group/day border-r border-border last:border-r-0 min-h-[200px]", isToday && "bg-accent/5")}>
                           <div className={cn("p-2 text-center border-b border-border", isToday && "bg-accent/10")}>
                             <p className="text-xs text-muted-foreground uppercase">{DAYS[i]}</p>
                             <p className={cn("text-lg font-semibold", isToday ? "text-accent" : "text-foreground")}>
@@ -193,14 +224,26 @@ export default function TeacherMeetings() {
                           </div>
                           <div className="p-1 space-y-1">
                             {dayMeetings.map((m) => (
-                              <div
+                              <Link
                                 key={m.id}
-                                className="p-1.5 rounded bg-accent/10 border-l-2 border-accent text-xs"
+                                to={`/teacher/students/${m.student_id}`}
+                                className="block p-1.5 rounded bg-accent/10 border-l-2 border-accent text-xs transition-colors hover:bg-accent/20"
                               >
                                 <p className="font-medium text-foreground truncate">{m.studentName}</p>
                                 <p className="text-muted-foreground">{formatTime(m.date)}</p>
-                              </div>
+                              </Link>
                             ))}
+                            {/* The empty part of a day is the affordance: a
+                                counsellor looking at a gap in their week is
+                                already thinking about filling it. */}
+                            <button
+                              type="button"
+                              onClick={() => openComposer({ date: d })}
+                              className="w-full rounded px-1.5 py-1 text-left text-[11px] text-muted-foreground opacity-0 transition-opacity hover:bg-muted focus-visible:opacity-100 group-hover/day:opacity-100"
+                              aria-label={`Book a session on ${d.toDateString()}`}
+                            >
+                              + Add
+                            </button>
                           </div>
                         </div>
                       );
@@ -223,10 +266,25 @@ export default function TeacherMeetings() {
                         return (
                           <div
                             key={i}
+                            role={day ? "button" : undefined}
+                            tabIndex={day ? 0 : undefined}
+                            onClick={day ? () => openComposer({ date: new Date(year, month, day) }) : undefined}
+                            onKeyDown={
+                              day
+                                ? (e) => {
+                                    if (e.key === "Enter" || e.key === " ") {
+                                      e.preventDefault();
+                                      openComposer({ date: new Date(year, month, day) });
+                                    }
+                                  }
+                                : undefined
+                            }
+                            aria-label={day ? `Book a session on ${MONTHS[month]} ${day}` : undefined}
                             className={cn(
                               "border-r border-b border-border last:border-r-0 min-h-[80px] p-1",
                               isToday && "bg-accent/5",
-                              !day && "bg-muted/20"
+                              !day && "bg-muted/20",
+                              day && "cursor-pointer outline-none transition-colors hover:bg-muted/40 focus-visible:ring-2 focus-visible:ring-ring",
                             )}
                           >
                             {day && (
@@ -265,22 +323,48 @@ export default function TeacherMeetings() {
               </CardHeader>
               <CardContent className="space-y-3">
                 {upcomingMeetings.length === 0 ? (
-                  <p className="text-xs text-muted-foreground text-center py-4">No upcoming meetings</p>
+                  <div className="py-3 text-center">
+                    <p className="text-xs text-muted-foreground">Nothing booked ahead</p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-2.5 h-7 text-xs"
+                      onClick={() => openComposer()}
+                    >
+                      Book a session
+                    </Button>
+                  </div>
                 ) : (
                   upcomingMeetings.map((m) => (
-                    <div key={m.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center text-accent text-xs font-bold shrink-0">
+                    <div
+                      key={m.id}
+                      className="group/row flex items-start gap-3 rounded-lg p-2 transition-colors hover:bg-muted/30"
+                    >
+                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/10 text-xs font-bold text-accent">
                         {m.studentName[0].toUpperCase()}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{m.studentName}</p>
+                      <Link
+                        to={`/teacher/students/${m.student_id}`}
+                        className="min-w-0 flex-1"
+                      >
+                        <p className="truncate text-sm font-medium text-foreground">{m.studentName}</p>
                         <p className="text-xs text-muted-foreground">
                           {m.date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} at {formatTime(m.date)}
                         </p>
                         {m.summary && (
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{m.summary}</p>
+                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{m.summary}</p>
                         )}
-                      </div>
+                      </Link>
+                      {/* Cancelling is the other half of booking. Without it a
+                          mistyped date stays on the calendar forever. */}
+                      <button
+                        type="button"
+                        onClick={() => remove(m.id)}
+                        aria-label={`Cancel the session with ${m.studentName}`}
+                        className="mt-0.5 shrink-0 rounded p-1 text-muted-foreground opacity-0 transition-opacity hover:text-destructive focus-visible:opacity-100 group-hover/row:opacity-100"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   ))
                 )}

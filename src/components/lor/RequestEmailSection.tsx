@@ -51,7 +51,7 @@ export function RequestEmailSection({ recommender }: { recommender: Recommender 
           <h4 className="text-sm font-medium">Request email</h4>
         </div>
         {recommender.requested_at && (
-          <span className="inline-flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+          <span className="inline-flex items-center gap-1 text-xs text-primary">
             <CheckCircle2 className="h-3 w-3" />
             Sent {format(new Date(recommender.requested_at), "MMM d")}
           </span>

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays, MessageSquare } from "lucide-react";
+import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays, MessageSquare, Video } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FlowButton } from "@/components/ui/flow-button";
@@ -47,13 +47,13 @@ export const NAVBAR_MAIN_LINKS: NavItem[] = [
   { href: "/journey", label: "Journey", icon: Map },
   { href: "/advisor", label: "Advisor", icon: Mic },
   { href: "/outcomes", label: "Outcomes", icon: Briefcase },
-  { href: "/lor", label: "Professors", icon: FileSignature },
+  { href: "/professors", label: "Professors", icon: FileSignature },
   { href: "/communications/chats", label: "Chats", icon: MessageSquare },
   { href: "/activities", label: "Activities", icon: Compass },
   // Renamed from "Planner" so it stops reading as the same thing as Routine's
   // Study Planner — this page is the calendar/scheduling view, not the
   // subject-priority planner.
-  { href: "/weekly-planner", label: "Calendar", icon: CalendarDays },
+  { href: "/routine/calendar", label: "Calendar", icon: CalendarDays },
 ];
 
 // Everything that isn't a top-seven link, folded into the one "Other"
@@ -73,6 +73,9 @@ const baseOtherGroups: NavGroup[] = [
   {
     title: "Preparation",
     links: [
+      // Built and deployed, but gated to admins until it has been tested — see
+      // InterviewGate in App.tsx. Listed so students can see it is coming.
+      { href: "/interview", label: "Interview Simulator", icon: Video, disabled: true },
       { href: "/admissions-probability", label: "Admissions", icon: Target },
       { href: "/requirements", label: "Requirements", icon: BookOpen },
       { href: "/college-readiness", label: "Readiness", icon: GraduationCap },
@@ -146,12 +149,30 @@ const mainLinks = NAVBAR_MAIN_LINKS;
 const navLinks: NavItem[] = mainLinks;
 
 /** The sliding underline shared by every top-level nav item. */
+/**
+ * Which page you are on.
+ *
+ * This was a 2px accent hairline pinned under the navbar's bottom edge. The
+ * shared-layout motion was already correct — one `layoutId` means the marker
+ * slides between links rather than cross-fading — but two pixels of colour at
+ * the very bottom of the bar is a marker you have to go looking for, and on a
+ * cream background against an accent-coloured label it was doing almost
+ * nothing.
+ *
+ * Now it is the surface the label sits on, the same treatment SmoothTabs uses
+ * on the Professors and Outcomes routes, so the navbar and the in-page tabs
+ * finally say "you are here" the same way. `inset-0` with a negative z-index
+ * puts it behind the text without needing a wrapper element, and `zIndex: -1`
+ * is set inline because Tailwind has no negative z utility by default.
+ */
 function ActiveIndicator() {
   return (
-    <motion.div
+    <motion.span
+      aria-hidden
       layoutId="navbar-indicator"
-      className="absolute inset-x-0 -bottom-[17px] h-0.5 bg-accent"
-      transition={{ type: "spring", bounce: 0.2, duration: 0.3 }}
+      style={{ zIndex: -1 }}
+      className="absolute inset-0 rounded-full border border-foreground/15 bg-foreground/[0.06] shadow-[inset_0_1px_0_hsl(var(--background)/0.6)] dark:border-foreground/20 dark:bg-foreground/[0.10]"
+      transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.7 }}
     />
   );
 }
@@ -207,8 +228,8 @@ function NavDropdown({
       onMouseLeave={() => setOpen(false)}
     >
       <button
-        className={`relative px-3 py-2 text-sm font-medium transition-colors hover:font-semibold flex items-center gap-1.5 outline-none ${
-          isActive ? "text-accent" : "text-muted-foreground hover:text-foreground"
+        className={`relative isolate flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium outline-none transition-colors hover:font-semibold ${
+          isActive ? "text-foreground" : "text-muted-foreground hover:text-foreground"
         }`}
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
@@ -252,8 +273,9 @@ function NavDropdown({
             >
               {groups.map((group) => (
                 <div key={group.title} className="min-w-0">
-                  <p className="mb-2.5 border-b border-accent/30 pb-1.5 font-display text-[11px] font-bold uppercase tracking-[0.14em] text-accent">
+                  <p className="mb-2.5 flex items-center gap-2 pb-1.5 font-display text-[12.5px] font-semibold tracking-[-0.01em] text-foreground">
                     {group.title}
+                    <span aria-hidden className="h-px flex-1 bg-border" />
                   </p>
                   <div className="space-y-0.5">
                     {group.links.map((l) => {
@@ -266,7 +288,7 @@ function NavDropdown({
                           <motion.div key={l.href} variants={menuItem}>
                             <span
                               aria-disabled="true"
-                              className="flex cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-sm leading-tight text-muted-foreground/60"
+                              className="flex cursor-default items-center gap-2.5 rounded-md px-2 py-2 text-sm leading-tight text-muted-foreground"
                             >
                               <span className="truncate">{l.label}</span>
                               <span className="ml-auto shrink-0 text-[10px] uppercase tracking-wide">
@@ -409,7 +431,7 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden lg:flex items-center gap-2.5">
+          <div data-tour="nav:bar" className="hidden lg:flex items-center gap-2.5">
             {mainLinks.map((link) => {
               const isActive = location.pathname === link.href;
               return (
@@ -419,9 +441,10 @@ export function Navbar() {
                   data-tour={`nav:${link.href}`}
                   onMouseEnter={() => preloadRoute(link.href)}
                   onFocus={() => preloadRoute(link.href)}
-                  className={`group relative px-3 py-2 text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                  aria-current={isActive ? "page" : undefined}
+                  className={`group relative isolate flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-medium transition-colors ${
                     isActive
-                      ? "text-accent"
+                      ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   }`}
                 >
@@ -440,19 +463,28 @@ export function Navbar() {
             {/* Other hover dropdown — every link that isn't in the top seven,
                 grouped into departments (Communications and Routine when
                 signed in, Builders, Preparation, Resources) */}
-            <NavDropdown
-              label="Other"
-              groups={otherGroups}
-              isActive={isOthersActive}
-              align="right"
-            />
+            {/* Wrapped so the product tour has something to spotlight: the
+                dropdown renders its own trigger internally and takes no ref.
+                inline-flex, NOT `contents` — a display:contents box has no
+                layout of its own, so getBoundingClientRect returns 0x0 and the
+                tour spotlight would collapse to a point. */}
+            <div data-tour="nav:other" className="inline-flex items-center">
+              <NavDropdown
+                label="Other"
+                groups={otherGroups}
+                isActive={isOthersActive}
+                align="right"
+              />
+            </div>
           </div>
 
           {/* Theme Toggle & User Menu */}
           <div className="flex items-center gap-2">
             {user && (
               <NavPopout label="Notifications">
-                <NotificationBell />
+                <span data-tour="nav:notifications">
+                  <NotificationBell />
+                </span>
               </NavPopout>
             )}
 
@@ -472,6 +504,7 @@ export function Navbar() {
                       matter what size class it is given. */}
                   <button
                     type="button"
+                    data-tour="nav:account"
                     aria-label="User menu"
                     className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background active:scale-95"
                   >
@@ -586,7 +619,7 @@ export function Navbar() {
                         <div
                           key={o.href}
                           aria-disabled="true"
-                          className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground/60"
+                          className="flex min-h-[44px] items-center gap-2 rounded-lg px-3 py-3 text-sm font-medium text-muted-foreground"
                         >
                           {o.label}
                           <span className="ml-auto text-[10px] uppercase tracking-wide">Soon</span>

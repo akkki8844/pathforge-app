@@ -51,7 +51,14 @@ export default function Chats() {
   const isMobile = useIsMobile();
   const reduced = useReducedMotion();
 
-  const [newChatOpen, setNewChatOpen] = useState(false);
+  /*
+   * `?new=1` opens the New chat dialog on arrival, so "start a chat" can be a
+   * link from anywhere - the dock, an empty state, a notification - instead of
+   * landing the user on this page to hunt for the button themselves. The
+   * parameter is consumed immediately so a refresh, or a Back to this page,
+   * does not reopen a dialog the user has already dismissed.
+   */
+  const [newChatOpen, setNewChatOpen] = useState(() => params.get("new") === "1");
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [jumpTo, setJumpTo] = useState<string | null>(null);
 
@@ -67,6 +74,19 @@ export default function Chats() {
     () => conversations.find((c) => c.id === selectedId),
     [conversations, selectedId],
   );
+
+  // Consume `?new=1`, so the dialog opens once rather than on every return.
+  useEffect(() => {
+    if (params.get("new") !== "1") return;
+    setParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("new");
+        return next;
+      },
+      { replace: true },
+    );
+  }, [params, setParams]);
 
   const select = useCallback(
     (id: string | undefined) => {

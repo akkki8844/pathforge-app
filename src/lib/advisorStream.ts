@@ -44,7 +44,12 @@ export interface AdvisorStreamCallbacks {
   onStart?: () => void;
   onReasoning?: (delta: string) => void;
   onText?: (delta: string) => void;
-  onStatus?: (label: string) => void;
+  /**
+   * A progress line from the server. `kind` says what is being waited on
+   * ("image", "file"), so the UI can pick a waiting state rather than parse the
+   * label. Older deployments send no kind at all, hence optional.
+   */
+  onStatus?: (label: string, kind?: string) => void;
   onTool?: (call: StreamedToolCall) => void;
   onArtifact?: (artifact: unknown) => void;
   /** Skills loaded for this turn, announced with the first frame. */
@@ -102,6 +107,8 @@ interface StreamFrame {
   type?: string;
   delta?: unknown;
   label?: unknown;
+  /** On a status frame: what the server is waiting on ("image", "file"). */
+  kind?: unknown;
   id?: unknown;
   name?: unknown;
   args?: unknown;
@@ -270,7 +277,12 @@ export async function streamAdvisor(
             }
             break;
           case "status":
-            if (typeof frame.label === "string") callbacks.onStatus?.(frame.label);
+            if (typeof frame.label === "string") {
+              callbacks.onStatus?.(
+                frame.label,
+                typeof frame.kind === "string" ? frame.kind : undefined,
+              );
+            }
             break;
           case "tool": {
             const call: StreamedToolCall = {

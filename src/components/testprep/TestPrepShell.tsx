@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
 import { SAT_SECTIONS, activeSection, sectionHref } from "@/lib/testprep/nav";
-import { EYEBROW, FOCUS, SURFACE } from "@/lib/testprep/ui";
+import { BB_TITLE_RULE, EYEBROW, FOCUS, SURFACE } from "@/lib/testprep/ui";
 
 /**
  * The frame every SAT page renders inside.
@@ -51,9 +51,30 @@ export function TestPrepShell({
         path={path}
         noindex
       />
-      <div className="bluebook mx-auto w-full max-w-[100rem] px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="lg:grid lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:gap-10">
-          <TestPrepSidebar testId={testId} testName={testName} />
+      {/*
+        The bottom padding clears the message dock.
+
+        The dock is `fixed bottom-6` and about 56px tall, so it covers roughly
+        the last 80px of the viewport. With the page ending in `py-8`, the last
+        row of every list on these pages sat underneath it — on Practice Exams
+        it was sitting on the "Start" button of the Reading & Writing section
+        test. The dock is deliberately not suppressed here (an ordinary page
+        does not own the bottom edge), so the page leaves room for it instead.
+      */}
+      {/*
+        The section paints its own paper.
+
+        `.bluebook` redefines `--background` to white, but the page body behind
+        this shell is painted by the app's own warm cream, which showed around
+        and below the content — so an SAT page read as College Board blue and
+        yellow on Atlas cream. The wrapper carries the scope and fills the
+        viewport with the section's own background, which is what makes the
+        four-colour rule true of the whole screen rather than of the cards on it.
+      */}
+      <div className="bluebook min-h-svh bg-background">
+        <div className="mx-auto w-full max-w-[100rem] px-4 pb-28 pt-6 sm:px-6 sm:pb-32 sm:pt-8 lg:px-8">
+          <div className="lg:grid lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:gap-10">
+            <TestPrepSidebar testId={testId} testName={testName} />
           {/*
             The route transition. Each SAT page is its own lazy chunk, so the
             shell is rebuilt on navigation and there is no outgoing element to
@@ -71,6 +92,7 @@ export function TestPrepShell({
           >
             {children}
           </motion.div>
+          </div>
         </div>
       </div>
     </>
@@ -105,8 +127,19 @@ function TestPrepSidebar({ testId, testName }: { testId: string; testName: strin
 
   return (
     <nav aria-label={`${testName} sections`}>
-      {/* Desktop rail */}
-      <div className="sticky top-24 hidden lg:block">
+      {/*
+        Desktop rail.
+
+        The stacking order lives on this wrapper, not on the panel inside it.
+        `position: sticky` always opens a stacking context, so the flyout's own
+        z-index only ever ordered it against its siblings inside this box — and
+        this box, at `z-index: auto`, tied with every positioned element in the
+        content column and lost the tie on document order. The search field sits
+        in a `relative` wrapper, so it painted straight through the open flyout.
+        Numbering the wrapper lifts the whole context, and stays under the global
+        navbar at z-50.
+      */}
+      <div className="sticky top-24 z-30 hidden lg:block">
         <motion.div
           onMouseEnter={() => setExpanded(true)}
           onMouseLeave={() => setExpanded(false)}
@@ -239,8 +272,12 @@ export function PageHeader({
         <h1 className="font-display text-[22px] font-bold leading-tight tracking-tight text-foreground sm:text-2xl">
           {title}
         </h1>
+        {/* The section's yellow, at rest. The blue-and-yellow bars only exist
+            inside a running module, so a student on the question bank or the
+            practice exam list would otherwise never see the third colour. */}
+        <div aria-hidden="true" className={BB_TITLE_RULE} />
         {purpose && (
-          <p className="mt-1.5 max-w-2xl text-sm leading-snug text-muted-foreground">{purpose}</p>
+          <p className="mt-3 max-w-2xl text-sm leading-snug text-muted-foreground">{purpose}</p>
         )}
       </div>
       {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}

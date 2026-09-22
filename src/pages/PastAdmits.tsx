@@ -1,23 +1,20 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
-import {
-  Search, ExternalLink, GraduationCap, MapPin, Award,
-  Sparkles, ShieldCheck, School, Quote, ArrowUpDown,
-} from "lucide-react";
+import { Search, ArrowUpDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Seo } from "@/components/Seo";
 import { cn } from "@/lib/utils";
 import { pastAdmits, admitSchools, admitMajors, type PastAdmit } from "@/data/pastAdmits";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { AdmitCard } from "@/components/admits/AdmitCard";
+import { AdmitDetail } from "@/components/admits/AdmitDetail";
 import { admitSimilarity } from "@/lib/admitSimilarity";
 import { useAuth } from "@/contexts/AuthContext";
-import { DetailOverlay, DetailSection } from "@/components/DetailOverlay";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
 import { AnimatedCounter } from "@/components/animations/AnimatedCounter";
 import { transition } from "@/lib/motion";
 import { Eyebrow } from "@/components/cluely/primitives";
+import { ListPager } from "@/components/activities/ListPager";
 
 type SortKey = "similarity" | "acceptances" | "recent" | "name";
 
@@ -28,46 +25,15 @@ const SORTS: { key: SortKey; label: string }[] = [
   { key: "name", label: "A–Z" },
 ];
 
-function Stat({ label, value, index = 0 }: { label: string; value: string; index?: number }) {
-  // Only the leading number counts up. Everything after it — "/ 2400",
-  // "(weighted %)" — stays put, since animating a scale or a qualifier reads
-  // as a glitch rather than a flourish.
-  const match = value.match(/^(\d+(?:\.\d+)?)(.*)$/);
-  const lead = match?.[1];
-  const rest = match?.[2] ?? "";
-  const decimals = lead?.includes(".") ? lead.split(".")[1].length : 0;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ ...transition.base, delay: 0.05 + index * 0.06 }}
-      className="rounded-lg bg-muted/50 border border-border/60 px-3 py-2 text-center"
-    >
-      <div className="text-sm font-bold tabular-nums text-foreground">
-        {lead ? (
-          <>
-            <AnimatedCounter target={Number(lead)} duration={1.1} decimals={decimals} />
-            {rest && <span className="text-muted-foreground font-medium">{rest}</span>}
-          </>
-        ) : (
-          value
-        )}
-      </div>
-      <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">{label}</div>
-    </motion.div>
-  );
-}
-
-function statsFor(a: PastAdmit) {
-  const out: { label: string; value: string }[] = [];
-  if (a.gpa) out.push({ label: "GPA", value: a.gpa });
-  // Always the current 1600 scale — pre-2016 scores are converted in the data
-  // layer so students never have to mentally rescale a 2250.
-  if (a.sat) out.push({ label: "SAT", value: `${a.sat} / 1600` });
-  if (a.act) out.push({ label: "ACT", value: `${a.act} / 36` });
-  return out;
-}
+/**
+ * Profiles per page.
+ *
+ * Ten rather than the Activities page's twelve, because these cards are one
+ * per row and considerably taller — twelve of them is a scroll long enough
+ * that the pager at the bottom stops being findable. Ten keeps the whole list
+ * within about three screens on a laptop.
+ */
+const PAGE_SIZE = 10;
 
 /** Named schools we can list, plus any unnamed extras the reporting counted. */
 function acceptanceCount(a: PastAdmit) {
@@ -111,215 +77,6 @@ function FilterChip({
   );
 }
 
-function AdmitDetail({
-  admit,
-  onClose,
-  onPrev,
-  onNext,
-  position,
-}: {
-  admit: PastAdmit;
-  onClose: () => void;
-  onPrev?: () => void;
-  onNext?: () => void;
-  position?: string;
-}) {
-  const stats = statsFor(admit);
-  return (
-    <DetailOverlay
-      onClose={onClose}
-      onPrev={onPrev}
-      onNext={onNext}
-      position={position}
-      contentKey={admit.id}
-      ariaLabel={`Admissions profile for ${admit.name}`}
-    >
-      {/* Right padding clears the floating nav/close controls. */}
-      <DetailSection className="p-6 pb-4 pr-32 border-b border-border">
-        <h2 className="text-xl font-bold tracking-tight text-foreground">{admit.name}</h2>
-        <p className="text-sm text-muted-foreground mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
-          <span className="inline-flex items-center gap-1">
-            <School className="h-3 w-3" />{admit.highSchool}
-          </span>
-          <span className="inline-flex items-center gap-1">
-            <MapPin className="h-3 w-3" />{admit.location}
-          </span>
-          <span>Class of {admit.gradYear}</span>
-        </p>
-      </DetailSection>
-
-      <div className="p-6 space-y-5">
-        <DetailSection>
-          <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-3">
-            <p className="text-sm text-foreground font-medium">{admit.headline}</p>
-          </div>
-        </DetailSection>
-
-        <DetailSection>
-          {stats.length > 0 ? (
-            <div className={cn("grid gap-2", stats.length === 1 ? "grid-cols-1" : stats.length === 2 ? "grid-cols-2" : "grid-cols-3")}>
-              {stats.map((s, i) => <Stat key={s.label} {...s} index={i} />)}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">
-              Test scores and GPA were not publicly reported for this student.
-            </p>
-          )}
-          {admit.satConverted && admit.satOriginal && (
-            <p className="text-[11px] text-muted-foreground mt-2">
-              Reported as {admit.satOriginal} on the pre-2016 SAT; shown converted to the
-              current 1600 scale so it's comparable to yours.
-            </p>
-          )}
-        </DetailSection>
-
-        <DetailSection>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-            Accepted to · {acceptanceCount(admit)} total
-          </h3>
-          <div className="flex flex-wrap gap-1.5">
-            {admit.acceptedTo.map((c, i) => (
-              <motion.div
-                key={c}
-                initial={{ opacity: 0, scale: 0.85 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ ...transition.fast, delay: 0.1 + i * 0.025 }}
-              >
-                <Badge variant="secondary" className="text-[10px] gap-1 pl-1">
-                  <CollegeLogo name={c} size={12} />
-                  {c}
-                </Badge>
-              </motion.div>
-            ))}
-          </div>
-          {admit.alsoAccepted && admit.alsoAccepted.length > 0 && (
-            <>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground mt-3 mb-1.5">
-                Also accepted
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {admit.alsoAccepted.map((c) => (
-                  <Badge key={c} variant="outline" className="text-[10px]">{c}</Badge>
-                ))}
-              </div>
-            </>
-          )}
-          {admit.acceptancesNote && (
-            <p className="text-[11px] text-muted-foreground mt-2.5 leading-relaxed italic">
-              {admit.acceptancesNote}
-            </p>
-          )}
-        </DetailSection>
-
-        <DetailSection>
-          <div className="rounded-xl border border-border bg-muted/40 px-4 py-3">
-            <div className="flex items-center gap-2 mb-1">
-              <GraduationCap className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Chose
-              </span>
-            </div>
-            <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-              <CollegeLogo name={admit.chose} size={20} />
-              {admit.chose}
-            </p>
-            {admit.choiceReason && (
-              <p className="text-xs text-muted-foreground mt-1.5 leading-relaxed">
-                {admit.choiceReason}
-              </p>
-            )}
-          </div>
-        </DetailSection>
-
-        {admit.intendedFocus && (
-          <DetailSection>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Intended focus
-            </h3>
-            <p className="text-sm text-foreground">{admit.intendedFocus}</p>
-          </DetailSection>
-        )}
-
-        {admit.activities.length > 0 && (
-          <DetailSection>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-              Activities
-            </h3>
-            <ul className="space-y-1.5">
-              {admit.activities.map((a) => (
-                <li key={a} className="flex items-start gap-2 text-sm text-foreground">
-                  <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">{a}</span>
-                </li>
-              ))}
-            </ul>
-          </DetailSection>
-        )}
-
-        {admit.awards && admit.awards.length > 0 && (
-          <DetailSection>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-              Awards & recognition
-            </h3>
-            <ul className="space-y-1.5">
-              {admit.awards.map((a) => (
-                <li key={a} className="flex items-start gap-2 text-sm text-foreground">
-                  <Award className="h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" />
-                  <span className="leading-relaxed">{a}</span>
-                </li>
-              ))}
-            </ul>
-          </DetailSection>
-        )}
-
-        {admit.background && (
-          <DetailSection>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1.5">
-              Background
-            </h3>
-            <p className="text-sm text-foreground leading-relaxed">{admit.background}</p>
-          </DetailSection>
-        )}
-
-        {admit.essayNote && (
-          <DetailSection>
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2">
-              Their essay
-            </h3>
-            <blockquote className="relative rounded-xl bg-muted/50 border border-border/60 p-4 pl-10">
-              <Quote className="absolute left-3 top-4 h-4 w-4 text-primary/60" />
-              <p className="text-sm leading-relaxed text-foreground">{admit.essayNote}</p>
-            </blockquote>
-          </DetailSection>
-        )}
-
-        <DetailSection>
-          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
-            Sources
-          </h3>
-          <div className="space-y-1.5">
-            {admit.sources.map((s) => (
-              <motion.a
-                key={s.url}
-                href={s.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                whileHover={{ x: 2 }}
-                transition={transition.fast}
-                className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-xs text-foreground hover:bg-muted transition-colors"
-              >
-                <span className="min-w-0">{s.label}</span>
-                <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-              </motion.a>
-            ))}
-          </div>
-        </DetailSection>
-      </div>
-    </DetailOverlay>
-  );
-}
-
 export default function PastAdmits() {
   const { onboardingData } = useAuth();
   const [query, setQuery] = useState("");
@@ -327,6 +84,8 @@ export default function PastAdmits() {
   const [major, setMajor] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("similarity");
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   // Similarity is viewer-relative, so it's computed once per profile rather
   // than inside the card — sorting needs it before anything renders.
@@ -373,16 +132,56 @@ export default function PastAdmits() {
     });
   }, [query, chose, major, sort, similarityById]);
 
+  /**
+   * Page the list.
+   *
+   * The cursor is clamped on every render rather than corrected in an effect,
+   * because a filter that shrinks the list from nine pages to two can leave
+   * `page` at seven for one render, and an unclamped slice would return an
+   * empty array — a list that looks like "no results" when there are results.
+   * Clamping lands them on the last page of the new set instead.
+   */
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const cursor = Math.min(page, pageCount);
+  const pageItems = useMemo(
+    () => filtered.slice((cursor - 1) * PAGE_SIZE, cursor * PAGE_SIZE),
+    [filtered, cursor],
+  );
+
+  /**
+   * Changing a filter or the sort order puts you back on page one — the
+   * clamp above would otherwise drop you on the last page of the new set,
+   * so a search meant to show you the best match would open on the worst.
+   */
+  useEffect(() => { setPage(1); }, [query, chose, major, sort]);
+
   const activeIndex = filtered.findIndex((a) => a.id === activeId);
   const active = activeIndex >= 0 ? filtered[activeIndex] : null;
 
   const step = useCallback(
     (delta: number) => {
-      const next = filtered[activeIndex + delta];
-      if (next) setActiveId(next.id);
+      const nextIndex = activeIndex + delta;
+      const next = filtered[nextIndex];
+      if (!next) return;
+      setActiveId(next.id);
+      // The overlay walks the whole filtered list, not just the visible page,
+      // so stepping past a page boundary has to move the page with it —
+      // otherwise closing the overlay leaves you looking at a list that does
+      // not contain the profile you were just reading.
+      setPage(Math.floor(nextIndex / PAGE_SIZE) + 1);
     },
     [filtered, activeIndex],
   );
+
+  /**
+   * Moving page scrolls back to the top of the list. Without it, clicking "3"
+   * from the bottom of page two leaves you looking at the last row of the new
+   * page with no sign that anything changed.
+   */
+  const goToPage = useCallback((next: number) => {
+    setPage(next);
+    listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, []);
 
   const totalAcceptances = useMemo(
     () => pastAdmits.reduce((sum, a) => sum + acceptanceCount(a), 0),
@@ -434,8 +233,10 @@ export default function PastAdmits() {
 
         {/* Integrity note */}
         <ScrollReveal delay={0.08} className="mb-6">
-          <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/40 px-4 py-3">
-            <ShieldCheck className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 mt-0.5" />
+          {/* A green shield used to sit here. A badge that says "trust this"
+              is the weakest possible evidence for the claim beside it, so the
+              claim stands on its own, marked as an aside by a rule. */}
+          <div className="rounded-xl border border-border bg-muted/40 px-4 py-3 border-l-[3px] border-l-emerald-500 dark:border-l-emerald-400">
             <p className="text-xs text-muted-foreground leading-relaxed">
               <strong className="text-foreground">Every profile here is publicly documented.</strong>{" "}
               These students went public with their results through named news outlets. We don't
@@ -520,6 +321,7 @@ export default function PastAdmits() {
                   {filtered.length}
                 </motion.span>{" "}
                 {filtered.length === 1 ? "profile" : "profiles"}
+                {pageCount > 1 && ` · page ${cursor} of ${pageCount}`}
               </span>
               <AnimatePresence>
                 {(query || chose || major) && (
@@ -553,6 +355,7 @@ export default function PastAdmits() {
         </div>
 
         {/* List */}
+        <div ref={listRef} className="scroll-mt-6" />
         {filtered.length === 0 ? (
           <motion.div
             initial={{ opacity: 0, scale: 0.98 }}
@@ -565,16 +368,32 @@ export default function PastAdmits() {
             </p>
           </motion.div>
         ) : (
-          <div className="flex flex-col gap-4">
-            {filtered.map((admit) => (
-              <AdmitCard
-                key={admit.id}
-                admit={admit}
-                similarity={similarityById[admit.id]}
-                onOpen={() => setActiveId(admit.id)}
-              />
-            ))}
-          </div>
+          <>
+            {/*
+              Keyed on the page so moving page unmounts the old cards rather
+              than re-labelling them in place — without the key, the ten cards
+              of page two animate in as edits to page one's rows, which reads
+              as a glitch rather than as a new page.
+            */}
+            <div key={cursor} className="flex flex-col gap-4">
+              {pageItems.map((admit) => (
+                <AdmitCard
+                  key={admit.id}
+                  admit={admit}
+                  similarity={similarityById[admit.id]}
+                  onOpen={() => setActiveId(admit.id)}
+                />
+              ))}
+            </div>
+
+            <ListPager
+              page={cursor}
+              pageCount={pageCount}
+              onPageChange={goToPage}
+              label="Past admits"
+              className="mt-8"
+            />
+          </>
         )}
 
         {/* Honest limitation footer */}

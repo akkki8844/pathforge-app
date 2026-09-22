@@ -61,35 +61,56 @@ export function useTeamAnnouncements(teamId: string | undefined) {
     },
   });
 
+  /** See `useAnnouncementsFeed`: without this the Acknowledge button never left. */
+  const acksQuery = useQuery({
+    queryKey: ["comms", "team-announcement-acks", teamId ?? "none", user?.id ?? "anon"],
+    enabled: !!teamId && !!user?.id && announcements.length > 0,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await commsDb
+        .from("announcement_acknowledgements")
+        .select("announcement_id")
+        .eq("user_id", user!.id)
+        .in("announcement_id", announcements.map((a) => a.id));
+      if (error) throw error;
+      return (data ?? []).map((r) => r.announcement_id);
+    },
+  });
+
   return {
     announcements,
     readIds: useMemo(() => new Set(readsQuery.data ?? []), [readsQuery.data]),
+    ackedIds: useMemo(() => new Set(acksQuery.data ?? []), [acksQuery.data]),
     authorIds: useMemo(() => announcements.map((a) => a.author_id), [announcements]),
     isLoading: query.isLoading,
   };
 }
 
 /**
- * The global feed: every team announcement across the teams the user belongs
- * to, plus platform announcements (`admin_announcements`) read alongside them.
- * Two different tables, rendered as one sorted list — the platform side is
- * read-only here and never merged into `announcements`, so the admin panel and
- * `AnnouncementBanner` keep working untouched.
+ * The global feed: every announcement the reader is entitled to see, plus
+ * platform announcements (`admin_announcements`) read alongside them.
+ *
+ * WHY THIS DOES NOT FILTER BY TEAM
+ *
+ * It used to take the reader's team ids and query `team_id IN (...)`, which
+ * quietly made the feed team-only: a class announcement from a teacher, or a
+ * school-wide one, passed RLS and was then filtered out on the client. Someone
+ * in no teams at all saw an empty page however much had been announced to them.
+ * `announcements_select` already encodes exactly who may read what - team
+ * membership, class membership, school, or authorship - so the client asks for
+ * everything and lets the policy decide. Expiry is in that policy too, which is
+ * why there is no `expires_at` check here.
  */
-export function useAnnouncementsFeed(teamIds: string[]) {
+export function useAnnouncementsFeed() {
   const { user } = useAuth();
-  const sortedTeamIds = useMemo(() => [...teamIds].sort(), [teamIds]);
 
   const teamQuery = useQuery({
-    queryKey: [...commsKeys.announcements(user?.id), sortedTeamIds.join(",")],
-    enabled: sortedTeamIds.length > 0,
+    queryKey: commsKeys.announcements(user?.id),
+    enabled: !!user?.id,
     queryFn: async (): Promise<Announcement[]> => {
       const { data, error } = await commsDb
         .from("announcements")
         .select("*")
-        .in("team_id", sortedTeamIds)
         .eq("is_active", true)
-        .order("pinned", { ascending: false })
         .order("published_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -101,25 +122,52 @@ export function useAnnouncementsFeed(teamIds: string[]) {
   const platformQuery = useQuery({
     queryKey: ["comms", "platform-announcements"],
     queryFn: async (): Promise<PlatformAnnouncement[]> => {
+      // `show_until` is the admin panel's expiry. Nothing enforced it here, so
+      // a notice about a maintenance window that closed in March stayed at the
+      // top of the feed for good.
       const { data, error } = await supabase
         .from("admin_announcements")
         .select("id,title,content,type,created_at")
         .eq("is_active", true)
+        .or(`show_until.is.null,show_until.gt.${new Date().toISOString()}`)
         .order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
   });
 
+  const ids = useMemo(() => teamAnnouncements.map((a) => a.id), [teamAnnouncements]);
+
   const readsQuery = useQuery({
-    queryKey: ["comms", "feed-announcement-reads", user?.id ?? "anon", sortedTeamIds.join(",")],
-    enabled: !!user?.id && teamAnnouncements.length > 0,
+    queryKey: ["comms", "feed-announcement-reads", user?.id ?? "anon", ids.length],
+    enabled: !!user?.id && ids.length > 0,
     queryFn: async (): Promise<string[]> => {
       const { data, error } = await commsDb
         .from("announcement_reads")
         .select("announcement_id")
         .eq("user_id", user!.id)
-        .in("announcement_id", teamAnnouncements.map((a) => a.id));
+        .in("announcement_id", ids);
+      if (error) throw error;
+      return (data ?? []).map((r) => r.announcement_id);
+    },
+  });
+
+  /*
+   * Which of these the reader has already acknowledged.
+   *
+   * Without it the Acknowledge button never went away: you pressed it, the row
+   * was written, and the card went on asking. "Requires acknowledgement" is
+   * only meaningful if the interface can tell you it has been given.
+   */
+  const acksQuery = useQuery({
+    queryKey: ["comms", "feed-announcement-acks", user?.id ?? "anon", ids.length],
+    enabled: !!user?.id && ids.length > 0,
+    queryFn: async (): Promise<string[]> => {
+      const { data, error } = await commsDb
+        .from("announcement_acknowledgements")
+        .select("announcement_id")
+        .eq("user_id", user!.id)
+        .in("announcement_id", ids);
       if (error) throw error;
       return (data ?? []).map((r) => r.announcement_id);
     },
@@ -129,9 +177,42 @@ export function useAnnouncementsFeed(teamIds: string[]) {
     teamAnnouncements,
     platformAnnouncements: platformQuery.data ?? [],
     readIds: useMemo(() => new Set(readsQuery.data ?? []), [readsQuery.data]),
+    ackedIds: useMemo(() => new Set(acksQuery.data ?? []), [acksQuery.data]),
     authorIds: useMemo(() => teamAnnouncements.map((a) => a.author_id), [teamAnnouncements]),
     isLoading: teamQuery.isLoading || platformQuery.isLoading,
   };
+}
+
+/**
+ * How many people have acknowledged each of the announcements the reader wrote.
+ *
+ * `announcement_acks_select` lets an author read the acknowledgements on their
+ * own announcements and nobody else's, so this returns counts for the author's
+ * rows and silently nothing for the rest - which is the same answer the policy
+ * gives, not a client-side guess at it.
+ */
+export function useAcknowledgementCounts(announcementIds: string[]) {
+  const { user } = useAuth();
+  const key = useMemo(() => [...announcementIds].sort().join(","), [announcementIds]);
+
+  const query = useQuery({
+    queryKey: ["comms", "announcement-ack-counts", user?.id ?? "anon", key],
+    enabled: !!user?.id && announcementIds.length > 0,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const { data, error } = await commsDb
+        .from("announcement_acknowledgements")
+        .select("announcement_id")
+        .in("announcement_id", announcementIds);
+      if (error) throw error;
+      const counts: Record<string, number> = {};
+      for (const row of data ?? []) {
+        counts[row.announcement_id] = (counts[row.announcement_id] ?? 0) + 1;
+      }
+      return counts;
+    },
+  });
+
+  return query.data ?? {};
 }
 
 export function useAnnouncementActions(teamId?: string) {
@@ -140,11 +221,14 @@ export function useAnnouncementActions(teamId?: string) {
 
   const invalidate = useCallback(() => {
     void qc.invalidateQueries({ queryKey: ["comms", "team-announcements", teamId ?? "none"] });
+    void qc.invalidateQueries({ queryKey: ["comms", "team-announcement-acks", teamId ?? "none"] });
     void qc.invalidateQueries({ queryKey: commsKeys.announcements(user?.id) });
     // The global feed's read-state query is keyed by team-id set, not by
     // `teamId` alone, so a prefix match on its own name is what actually
     // reaches it from a team-scoped action.
     void qc.invalidateQueries({ queryKey: ["comms", "feed-announcement-reads"] });
+    void qc.invalidateQueries({ queryKey: ["comms", "feed-announcement-acks"] });
+    void qc.invalidateQueries({ queryKey: ["comms", "announcement-ack-counts"] });
   }, [qc, teamId, user?.id]);
 
   const publish = useMutation({

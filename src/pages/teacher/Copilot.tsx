@@ -1,165 +1,435 @@
-import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
-  Bot, Send, Sparkles, User, FileText, Users, GraduationCap,
-  AlertTriangle, Calendar, Target, Loader2,
+  AlertTriangle,
+  ArrowUpRight,
+  Bot,
+  Calendar,
+  Check,
+  Copy,
+  FileText,
+  Loader2,
+  Send,
+  Target,
+  Trash2,
+  User,
 } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { cn } from "@/lib/utils";
+
+/**
+ * The copilot.
+ *
+ * WHAT THIS PAGE USED TO BE
+ *
+ * It answered its own questions. A local `getAIResponse(query)` matched a few
+ * keywords against the question and returned one of four hardcoded paragraphs
+ * after a 1500ms `setTimeout` whose only job was to look like thinking. Asked
+ * who was at risk, it replied "Based on your roster, here are the students
+ * requiring immediate attention" and then listed three generic categories. It
+ * had never read the roster and could not have: the page imported no data hook
+ * at all. It then offered to draft outreach emails, which it also could not do.
+ *
+ * A counsellor who believed any of that was acting on nothing while being told
+ * it came from their own cohort. So the canned replies are gone. The page now
+ * calls `counsellor-copilot`, which assembles the caller's real roster, their
+ * open follow-ups, the essays actually waiting on them and their upcoming
+ * meetings, and answers only from that.
+ *
+ * Two consequences are deliberate and visible here:
+ *
+ *  - A counsellor with nobody linked to them is told so, by the function,
+ *    before a credit is spent. There is no cohort to reason about and the page
+ *    says that rather than producing advice-shaped text.
+ *  - Answers name real students, so the reply carries a link to each one. The
+ *    references come back resolved against the roster, not parsed out of the
+ *    prose, which means a name the model invented resolves to nothing and
+ *    never appears as a link.
+ */
+
+interface Reference {
+  id: string;
+  name: string;
+}
 
 interface Message {
   role: "user" | "assistant";
   content: string;
-  timestamp: Date;
+  /** Students this answer refers to, resolved server-side against the roster. */
+  students?: Reference[];
+  at: Date;
 }
 
+/**
+ * The starting questions.
+ *
+ * Each one is answerable from the snapshot the function builds - roster with
+ * scores and standing, open follow-ups, unread essays, upcoming meetings - so
+ * none of them can produce an apology about missing data on a cohort that has
+ * some. The old page's prompts included an essay quality check and a
+ * university recommender, neither of which anything behind the page could do.
+ */
 const QUICK_PROMPTS = [
-  { label: "Summarize at-risk students", icon: AlertTriangle, prompt: "Give me a summary of all students who are at risk or falling behind, with specific concerns for each." },
-  { label: "Draft meeting agenda", icon: Calendar, prompt: "Help me draft a meeting agenda for my next counseling session with a student who needs help with college list finalization." },
-  { label: "Suggest next actions", icon: Target, prompt: "What are the top 5 most important actions I should take this week for my students?" },
-  { label: "Find missing documents", icon: FileText, prompt: "Which students have missing documents or incomplete application materials?" },
-  { label: "Essay quality check", icon: Sparkles, prompt: "Review the recent essay submissions and flag any that need immediate attention." },
-  { label: "University recommendations", icon: GraduationCap, prompt: "Suggest universities for students who haven't finalized their college lists yet, based on their profiles." },
-];
+  {
+    label: "Who is falling behind",
+    icon: AlertTriangle,
+    prompt:
+      "Which students are marked behind, or have the lowest profile scores? For each, say what the score is and what you would look at first.",
+  },
+  {
+    label: "What needs me this week",
+    icon: Target,
+    prompt:
+      "Rank what needs my attention in the next seven days across open follow-ups, essays waiting on a review, and booked meetings. Name the student for each item.",
+  },
+  {
+    label: "Essays waiting on me",
+    icon: FileText,
+    prompt:
+      "List the essays waiting on my review, oldest first, with the student's name and how long each has been sitting.",
+  },
+  {
+    label: "Prep my next meeting",
+    icon: Calendar,
+    prompt:
+      "Take my next booked meeting. Tell me what the workspace knows about that student and what I should raise with them.",
+  },
+] as const;
 
 export default function TeacherCopilot() {
+  const { toast } = useToast();
+  const { students, loading: rosterLoading } = useTeacherRoster();
+
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [copied, setCopied] = useState<number | null>(null);
+
   const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages, sending]);
 
-  const sendMessage = async (text: string) => {
-    if (!text.trim() || loading) return;
+  const cohortLine = useMemo(() => {
+    if (rosterLoading) return null;
+    if (!students.length) return "No students linked to you yet";
+    const behind = students.filter((s) => s.status === "behind").length;
+    const noun = students.length === 1 ? "student" : "students";
+    return behind
+      ? `Reading ${students.length} ${noun}, ${behind} marked behind`
+      : `Reading ${students.length} ${noun}`;
+  }, [students, rosterLoading]);
 
-    const userMsg: Message = { role: "user", content: text, timestamp: new Date() };
-    setMessages((prev) => [...prev, userMsg]);
+  const send = async (text: string) => {
+    const question = text.trim();
+    if (!question || sending) return;
+
+    /*
+     * The history sent up is the conversation before this question, which is
+     * also the state the UI is about to leave behind. Reading it here rather
+     * than from the post-append state keeps the two in step without a ref.
+     */
+    const history = messages.map((m) => ({ role: m.role, content: m.content }));
+
+    setMessages((prev) => [...prev, { role: "user", content: question, at: new Date() }]);
     setInput("");
-    setLoading(true);
+    setSending(true);
 
-    // Simulate AI response (in production, this would call an edge function)
-    setTimeout(() => {
-      const response = getAIResponse(text);
-      setMessages((prev) => [...prev, { role: "assistant", content: response, timestamp: new Date() }]);
-      setLoading(false);
-    }, 1500);
+    try {
+      const { data, error } = await supabase.functions.invoke("counsellor-copilot", {
+        body: { message: question, history },
+      });
+
+      /*
+       * `invoke` reports any non-2xx as a generic FunctionsHttpError, so the
+       * function's own message - out of credits, not verified, rate limited -
+       * is only in the body. Read it before falling back to the generic text,
+       * otherwise every failure reads the same to the counsellor.
+       */
+      const payload = data as
+        | { answer?: string; students?: Reference[]; error?: string }
+        | null;
+
+      if (error || payload?.error) {
+        const detail =
+          payload?.error ??
+          (await readFunctionError(error)) ??
+          "The copilot could not answer that. Try again in a moment.";
+        toast({ variant: "destructive", title: "Copilot", description: detail });
+        // The question stays in the transcript; a failed answer does not get
+        // written as one. Put the text back so it can be retried as typed.
+        setMessages((prev) => prev.slice(0, -1));
+        setInput(question);
+        return;
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: payload?.answer ?? "",
+          students: payload?.students ?? [],
+          at: new Date(),
+        },
+      ]);
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
+    }
   };
 
-  const getAIResponse = (query: string): string => {
-    const q = query.toLowerCase();
-    if (q.includes("at risk") || q.includes("behind")) {
-      return "Based on your roster, here are the students requiring immediate attention:\n\n1. **Students with declining scores** — Review their journey scores and identify specific weak areas.\n2. **Inactive students** — Students who haven't logged in recently may need a check-in email.\n3. **Upcoming deadlines** — Prioritize students with application deadlines in the next 2 weeks.\n\nWould you like me to draft outreach emails for any of these students?";
+  const copyAnswer = async (index: number, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(index);
+      setTimeout(() => setCopied((c) => (c === index ? null : c)), 1600);
+    } catch {
+      toast({ variant: "destructive", title: "Could not copy" });
     }
-    if (q.includes("meeting") || q.includes("agenda")) {
-      return "Here's a suggested meeting agenda:\n\n1. **Check-in** (5 min) — How are you feeling about the process?\n2. **Progress review** (10 min) — Review completed tasks and milestones\n3. **College list** (10 min) — Discuss target/reach/safety schools\n4. **Action items** (5 min) — Set clear next steps with deadlines\n5. **Questions** (5 min) — Address any concerns\n\nShall I customize this for a specific student?";
-    }
-    if (q.includes("document") || q.includes("missing")) {
-      return "I'll scan your students' profiles for missing documents. Common gaps include:\n\n- **Transcripts** — Not yet uploaded\n- **Recommendation letters** — Requested but not received\n- **Test scores** — SAT/ACT/IELTS not reported\n- **Essays** — Drafts not started\n\nCheck the individual student profiles for specific missing items. Would you like me to send reminders?";
-    }
-    return "I can help you with:\n\n- **Student summaries** — Get quick overviews of your roster\n- **Meeting preparation** — Draft agendas and talking points\n- **Action planning** — Identify priority tasks\n- **Document tracking** — Find missing materials\n- **Essay review** — Flag essays needing attention\n- **University matching** — Suggest colleges based on student profiles\n\nWhat would you like to focus on?";
   };
+
+  const empty = messages.length === 0;
 
   return (
     <TeacherLayout>
-      <div className="flex flex-col h-[calc(100svh-8rem)]">
-        {/* Header */}
-        <div className="mb-4">
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-            <Bot className="h-6 w-6 text-accent" />
-            AI Copilot
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">Your intelligent assistant for student management</p>
-        </div>
+      <Seo
+        title="Copilot"
+        description="Ask about your own cohort's data."
+        path="/teacher/copilot"
+        noindex
+      />
 
-        {/* Quick prompts */}
-        {messages.length === 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4">
-            {QUICK_PROMPTS.map((qp) => (
-              <button
-                key={qp.label}
-                onClick={() => sendMessage(qp.prompt)}
-                className="flex items-center gap-2 p-3 rounded-lg border border-border hover:border-accent/30 hover:bg-accent/5 transition-all text-left"
-              >
-                <qp.icon className="h-4 w-4 text-accent shrink-0" />
-                <span className="text-sm text-foreground">{qp.label}</span>
-              </button>
-            ))}
+      <div className="flex h-[calc(100svh-9rem)] flex-col">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Copilot</h1>
+            {/* What it is reading, stated before it is asked anything. The
+                counsellor should never have to guess whether an answer covers
+                their whole list. */}
+            {cohortLine === null ? (
+              <Skeleton className="mt-2 h-4 w-48" />
+            ) : (
+              <p className="mt-1 text-sm text-muted-foreground">
+                {cohortLine}. It reads your roster, follow-ups, essay queue and booked
+                meetings, and answers from those only.
+              </p>
+            )}
           </div>
-        )}
 
-        {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4">
-          {messages.map((msg, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={cn("flex gap-3", msg.role === "user" ? "justify-end" : "justify-start")}
+          {!empty && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setMessages([])}
+              className="shrink-0 text-muted-foreground"
             >
-              {msg.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center shrink-0">
-                  <Bot className="h-4 w-4 text-accent" />
-                </div>
-              )}
-              <div className={cn(
-                "max-w-[80%] p-3 rounded-xl text-sm",
-                msg.role === "user"
-                  ? "bg-accent text-accent-foreground"
-                  : "bg-muted border border-border"
-              )}>
-                <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
-                <p className={cn(
-                  "text-[10px] mt-2",
-                  msg.role === "user" ? "text-accent-foreground/60" : "text-muted-foreground"
-                )}>
-                  {msg.timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </p>
-              </div>
-              {msg.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-accent flex items-center justify-center shrink-0">
-                  <User className="h-4 w-4 text-accent-foreground" />
-                </div>
-              )}
-            </motion.div>
-          ))}
-          {loading && (
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-accent/10 flex items-center justify-center">
-                <Bot className="h-4 w-4 text-accent" />
-              </div>
-              <div className="bg-muted border border-border p-3 rounded-xl">
-                <div className="flex items-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Thinking...</span>
-                </div>
-              </div>
-            </div>
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
+              Clear
+            </Button>
           )}
         </div>
 
-        {/* Input */}
-        <div className="flex gap-2">
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && sendMessage(input)}
-            placeholder="Ask about your students, request summaries, draft emails..."
-            className="flex-1"
-            disabled={loading}
-          />
-          <Button onClick={() => sendMessage(input)} disabled={!input.trim() || loading}>
-            <Send className="h-4 w-4" />
-          </Button>
+        <div ref={scrollRef} className="min-h-0 flex-1 overflow-y-auto">
+          {empty && (
+            <div className="mx-auto max-w-2xl py-6">
+              <p className="text-[13px] font-medium text-muted-foreground">
+                Start with one of these, or ask anything about your cohort.
+              </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {QUICK_PROMPTS.map((qp) => (
+                  <button
+                    key={qp.label}
+                    type="button"
+                    onClick={() => send(qp.prompt)}
+                    disabled={sending || (!rosterLoading && students.length === 0)}
+                    className="flex items-start gap-3 rounded-lg border border-border p-3 text-left transition-colors hover:border-foreground/25 hover:bg-muted/50 disabled:pointer-events-none disabled:opacity-50"
+                  >
+                    <qp.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
+                    <span className="min-w-0">
+                      <span className="block text-sm font-medium text-foreground">
+                        {qp.label}
+                      </span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {!rosterLoading && students.length === 0 && (
+                <p className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-[13px] leading-relaxed text-muted-foreground">
+                  There is nothing to ask about yet. Students appear here once they join
+                  one of your cohorts, which you can set up under{" "}
+                  <Link to="/teacher/classes" className="underline underline-offset-2">
+                    Cohorts
+                  </Link>
+                  .
+                </p>
+              )}
+            </div>
+          )}
+
+          <div className="mx-auto max-w-2xl space-y-5 pb-4">
+            <AnimatePresence initial={false}>
+              {messages.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+                  className={cn("flex gap-3", msg.role === "user" && "justify-end")}
+                >
+                  {msg.role === "assistant" && (
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                      <Bot className="h-3.5 w-3.5 text-foreground" />
+                    </span>
+                  )}
+
+                  <div
+                    className={cn(
+                      "min-w-0 max-w-[85%] rounded-xl px-3.5 py-2.5 text-sm",
+                      msg.role === "user"
+                        ? "bg-foreground text-background"
+                        : "border border-border bg-card",
+                    )}
+                  >
+                    {msg.role === "assistant" ? (
+                      <div className="group/answer">
+                        <div className="prose prose-sm max-w-none dark:prose-invert [&_li]:my-0.5 [&_ol]:my-1 [&_p]:my-1 [&_ul]:my-1">
+                          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+
+                        {/* Every student the answer named, as a way into their
+                            file. This is the difference between being told who
+                            is behind and being able to go and do something
+                            about it. */}
+                        {!!msg.students?.length && (
+                          <div className="mt-3 flex flex-wrap gap-1.5 border-t border-border pt-3">
+                            {msg.students.map((s) => (
+                              <Link
+                                key={s.id}
+                                to={`/teacher/students/${s.id}`}
+                                className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[12px] font-medium text-foreground transition-colors hover:bg-muted"
+                              >
+                                {s.name}
+                                <ArrowUpRight className="h-3 w-3 opacity-60" />
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => copyAnswer(i, msg.content)}
+                          className="mt-2 inline-flex items-center gap-1 text-[11px] text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover/answer:opacity-100"
+                          aria-label="Copy this answer"
+                        >
+                          {copied === i ? (
+                            <>
+                              <Check className="h-3 w-3" />
+                              Copied
+                            </>
+                          ) : (
+                            <>
+                              <Copy className="h-3 w-3" />
+                              Copy
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="whitespace-pre-wrap leading-relaxed">{msg.content}</p>
+                    )}
+                  </div>
+
+                  {msg.role === "user" && (
+                    <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                      <User className="h-3.5 w-3.5 text-foreground" />
+                    </span>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+
+            {sending && (
+              <div className="flex gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border bg-muted">
+                  <Bot className="h-3.5 w-3.5 text-foreground" />
+                </span>
+                <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2.5">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Reading your cohort</span>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="mx-auto mt-4 w-full max-w-2xl">
+          <div className="flex items-end gap-2">
+            <Textarea
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send(input);
+                }
+              }}
+              placeholder="Ask about your cohort. Enter to send, Shift+Enter for a new line."
+              rows={1}
+              disabled={sending}
+              className="max-h-40 min-h-[2.75rem] resize-none"
+            />
+            <Button
+              onClick={() => send(input)}
+              disabled={!input.trim() || sending}
+              size="icon"
+              className="h-11 w-11 shrink-0"
+              aria-label="Send"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Answers come from your workspace data and can still be wrong. Check anything
+            you are about to act on against the student's file.
+          </p>
         </div>
       </div>
     </TeacherLayout>
   );
+}
+
+/**
+ * The function's own error message, dug out of a FunctionsHttpError.
+ *
+ * `supabase.functions.invoke` collapses every non-2xx into one error type
+ * whose `message` is always "Edge Function returned a non-2xx status code".
+ * The useful text is in the response body it carries, so pull that out before
+ * showing the counsellor something that tells them nothing.
+ */
+async function readFunctionError(error: unknown): Promise<string | null> {
+  const res = (error as { context?: Response })?.context;
+  if (!res || typeof res.json !== "function") return null;
+  try {
+    const body = await res.json();
+    return typeof body?.error === "string" ? body.error : null;
+  } catch {
+    return null;
+  }
 }

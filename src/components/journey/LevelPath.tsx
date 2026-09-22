@@ -63,6 +63,34 @@ function clayForLevel(level: LevelId): Clay {
   return LEVEL_CLAY[level] ?? LEVEL_CLAY[1];
 }
 
+/**
+ * A soft ellipse, painted rather than blurred.
+ *
+ * Every node on this path carried a ground shadow drawn as a flat-coloured
+ * ellipse under `filter: blur(12px)`, and each node also carried a gloss
+ * highlight under `blur(3px)`. The path renders every stage in the programme,
+ * so that was ~616 GPU blur passes and ~616 composited layers on one page.
+ * Measured on production: 618 blurred elements against 4,662 DOM nodes, which
+ * is what made scrolling the journey crawl. Load timing was never the problem
+ * — TTFB 305ms, DOMContentLoaded 598ms — it was paint.
+ *
+ * A radial gradient paints the same soft ellipse in the ordinary paint pass at
+ * effectively no cost, and composites nothing. The element is grown by about
+ * the old blur radius on each side, since a blur spreads beyond its box and a
+ * gradient is clipped to it; `bottom` shifts by half the added height so the
+ * shape stays centred where it was.
+ */
+function softEllipse(rgb: string, alpha: number) {
+  return (
+    `radial-gradient(50% 50% at 50% 50%, ` +
+    `rgba(${rgb},${alpha}) 0%, ` +
+    `rgba(${rgb},${(alpha * 0.55).toFixed(3)}) 45%, ` +
+    `rgba(${rgb},0) 100%)`
+  );
+}
+
+const SHADOW_RGB = "15,23,42";
+
 /** The level number, extruded on the same clay rules as the nodes it heads. */
 function LevelPlaque({ level }: { level: LevelId }) {
   const pal = clayForLevel(level);
@@ -72,8 +100,13 @@ function LevelPlaque({ level }: { level: LevelId }) {
     <div className="relative shrink-0" style={{ width: S, height: S + D }}>
       <span
         aria-hidden
-        className="absolute left-1/2 -translate-x-1/2 rounded-[50%] blur-md"
-        style={{ bottom: -1, width: S * 0.72, height: 7, background: "rgba(15,23,42,0.3)" }}
+        className="absolute left-1/2 -translate-x-1/2 rounded-[50%]"
+        style={{
+          bottom: -10,
+          width: S * 0.72 + 20,
+          height: 25,
+          background: softEllipse(SHADOW_RGB, 0.3),
+        }}
       />
       <span
         aria-hidden
@@ -233,8 +266,13 @@ export function LevelPath({
           <div className="relative" style={{ width: 64, height: 64 + 10 }}>
             <span
               aria-hidden
-              className="absolute left-1/2 -translate-x-1/2 rounded-[50%] blur-md"
-              style={{ bottom: -2, width: 50, height: 9, background: "rgba(15,23,42,0.35)" }}
+              className="absolute left-1/2 -translate-x-1/2 rounded-[50%]"
+              style={{
+                bottom: -11,
+                width: 70,
+                height: 27,
+                background: softEllipse(SHADOW_RGB, 0.35),
+              }}
             />
             <span
               aria-hidden
@@ -433,12 +471,12 @@ function StageNode({
         {/* Ground shadow */}
         <span
           aria-hidden
-          className="absolute left-1/2 -translate-x-1/2 rounded-[50%] blur-md"
+          className="absolute left-1/2 -translate-x-1/2 rounded-[50%]"
           style={{
-            bottom: -2,
-            width: W * 0.78,
-            height: 10,
-            background: "rgba(15,23,42,0.35)",
+            bottom: -11,
+            width: W * 0.78 + 20,
+            height: 28,
+            background: softEllipse(SHADOW_RGB, 0.35),
             opacity: isLocked ? 0.3 : isCurrent ? 0.7 : 0.5,
           }}
         />
@@ -490,13 +528,12 @@ function StageNode({
             aria-hidden
             className="pointer-events-none absolute rounded-full"
             style={{
-              top: "12%",
+              top: "4%",
               left: "50%",
               transform: "translateX(-50%)",
-              width: "58%",
-              height: "22%",
-              background: "rgba(255,255,255,0.5)",
-              filter: "blur(3px)",
+              width: "72%",
+              height: "38%",
+              background: softEllipse("255,255,255", 0.5),
               opacity: isLocked ? 0.5 : 0.85,
             }}
           />

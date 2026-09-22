@@ -112,10 +112,27 @@ export default function TestPrepResults() {
       ? attempt.score - previous.score
       : null;
   const accuracy = attempt.totalQuestions ? attempt.correct / attempt.totalQuestions : 0;
-  const history = profile.attempts
-    .filter((a) => a.kind === "exam" && a.score !== undefined)
-    .slice(0, 6)
-    .reverse();
+  /*
+   * The six sittings up to and including this one, oldest first.
+   *
+   * This used to take the six most recent sittings outright, which is only
+   * the same thing while you are looking at the newest report. Open an older
+   * one — the link is in Progress and in Practice Exams, so it happens — and
+   * the chart was drawn from a period that might not contain the attempt you
+   * were reading, with nothing highlighted as current because the id it looks
+   * for was not in the set.
+   *
+   * `profile.attempts` is newest-first (`saveAttempt` prepends), so the window
+   * starts at this attempt and walks backwards in time, matching how
+   * `previous` above is already resolved.
+   *
+   * An attempt that is not an exam gets no chart at all rather than a chart of
+   * somebody else's sittings: a practice set has no composite score, so score
+   * progression is not a thing that can be said about it.
+   */
+  const exams = profile.attempts.filter((a) => a.kind === "exam" && a.score !== undefined);
+  const here = exams.findIndex((a) => a.id === attempt.id);
+  const history = here >= 0 ? exams.slice(here, here + 6).reverse() : [];
 
   return (
     <TestPrepShell

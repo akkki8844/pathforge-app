@@ -496,19 +496,8 @@ export function buildAgenda(
 
   if (wants("testdate")) {
     for (const t of STANDARDIZED_TEST_DATES) {
-      if (parseDateKey(t.date).getTime() !== dayStart.getTime()) continue;
-      items.push({
-        key: `testdate:${t.id}`,
-        kind: "testdate",
-        sourceId: t.id,
-        title: t.label,
-        subtitle: t.note ?? "National test date",
-        start: dayStart,
-        allDay: true,
-        done: dayEnd < now,
-        overdue: false,
-        color: KIND_COLOR.testdate,
-      });
+      // The registration deadline falls weeks before the test itself, so it
+      // is checked outside the test-date guard below.
       const deadline = t.regularDeadline;
       if (deadline && parseDateKey(deadline).getTime() === dayStart.getTime()) {
         items.push({
@@ -524,6 +513,19 @@ export function buildAgenda(
           color: KIND_COLOR.testdate,
         });
       }
+      if (parseDateKey(t.date).getTime() !== dayStart.getTime()) continue;
+      items.push({
+        key: `testdate:${t.id}`,
+        kind: "testdate",
+        sourceId: t.id,
+        title: t.label,
+        subtitle: t.note ?? "National test date",
+        start: dayStart,
+        allDay: true,
+        done: dayEnd < now,
+        overdue: false,
+        color: KIND_COLOR.testdate,
+      });
     }
     const apSubjects = new Set(apSubjectsForMajor(options.intendedMajor));
     if (apSubjects.size > 0) {

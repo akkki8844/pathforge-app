@@ -97,10 +97,9 @@ export function StudentDeepDive({ studentId }: { studentId: string }) {
     (async () => {
       setLoading(true);
       setError(null);
-      const { data: rpc, error: err } = await supabase.rpc(
-        "get_student_deep_dive" as any,
-        { _student_id: studentId }
-      );
+      const { data: rpc, error: err } = await supabase.rpc("get_student_deep_dive", {
+        _student_id: studentId,
+      });
       if (cancelled) return;
       if (err) setError("Could not load deep-dive data.");
       else setData(rpc as unknown as DeepDive);

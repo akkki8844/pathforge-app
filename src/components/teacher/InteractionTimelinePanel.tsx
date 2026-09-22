@@ -3,11 +3,17 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Phone, Mail, Users, MessageCircle, MoreHorizontal, Plus, Trash2, Loader2, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { useCounsellorInteractions, type InteractionKind } from "@/hooks/useCounsellorInteractions";
+import {
+  useCounsellorInteractions,
+  type InteractionKind,
+} from "@/hooks/useCounsellorInteractions";
 import { useToast } from "@/hooks/use-toast";
 
 const KIND_META: Record<InteractionKind, { label: string; Icon: typeof Phone }> = {

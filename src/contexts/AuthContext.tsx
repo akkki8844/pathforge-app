@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { clearUserCaches, reconcileCacheOwner } from '@/lib/queryClient';
 import { logActivity } from '@/lib/activityLogger';
 import { syncTimezone } from '@/lib/routine/timezone';
 
@@ -106,7 +107,6 @@ function guestSessionExpired(user: User | null | undefined): boolean {
   if (!Number.isFinite(startedAt)) return false;
   return Date.now() - startedAt > GUEST_SESSION_MAX_AGE_MS;
 }
-const PENDING_TEACHER_KEY = 'pathforge_pending_teacher_signup';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -193,7 +193,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (error && error.code !== 'PGRST116') return;
       const row = Array.isArray(data) ? data[0] : null;
       if (row) {
-        setOnboardingData(row as OnboardingData);
+        // `subjects` is a free-form Json column in the generated types, so the
+        // narrower app-side shape needs the double cast.
+        setOnboardingData(row as unknown as OnboardingData);
         setOnboardingCompleted(row.onboarding_completed);
       } else {
         setOnboardingData(null);
@@ -207,19 +209,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await fetchOnboardingData(user.id);
       await fetchProfile(user.id);
     }
-  };
-
-  // After signup, if a pending teacher flag exists, write the user_roles entry.
-  const consumePendingTeacherSignup = async (userId: string) => {
-    if (typeof window === 'undefined') return;
-    if (localStorage.getItem(PENDING_TEACHER_KEY) !== 'true') return;
-    localStorage.removeItem(PENDING_TEACHER_KEY);
-    try {
-      // Insert teacher role (RLS allows because Non-admin INSERT is restrictive — service required normally,
-      // so we route through edge function). Fallback: rely on teacher-verify to set role.
-      // We attempt direct insert; if blocked, teacher-verify will upsert it server-side.
-      await supabase.from('user_roles').insert({ user_id: userId, role: 'teacher' as const });
-    } catch {}
   };
 
   useEffect(() => {
@@ -239,7 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setRoleLoading(false);
     }, SAFETY_MS);
 
-    const hydrateRoles = async (userId: string, isSignIn: boolean) => {
+    const hydrateRoles = async (userId: string) => {
       // Per-fetch timeout so one slow query can't wedge the UI.
       const withTimeout = <T,>(p: Promise<T>, ms = 5000): Promise<T | void> =>
         Promise.race([
@@ -252,7 +241,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         withTimeout(fetchTeacherStatus(userId)),
         withTimeout(checkAdminStatus()),
       ]);
-      if (isSignIn) consumePendingTeacherSignup(userId);
       // Deliberately not awaited and not inside the Promise.all above: the
       // deadline-reminder cron needs this, nothing on screen does, and it must
       // never be able to delay the auth gate.
@@ -282,12 +270,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setLoading(false);
             return;
           }
+          // A different account than the one this tab was serving. Everything
+          // cached in memory belongs to the previous user, and on a shared or
+          // school machine the next thing rendered would be their data - their
+          // connected accounts, their dashboard, their notifications - under
+          // somebody else's session. Drop it before anything can read it.
+          if (lastUserId && lastUserId !== session.user.id) clearUserCaches();
+          reconcileCacheOwner(session.user.id);
           lastUserId = session.user.id;
           setRoleLoading(true);
           if (initialHydrationStarted !== session.user.id) {
             initialHydrationStarted = session.user.id;
             // Defer to avoid deadlocks inside the auth callback.
-            setTimeout(() => { void hydrateRoles(session.user.id, event === 'SIGNED_IN'); }, 0);
+            setTimeout(() => { void hydrateRoles(session.user.id); }, 0);
           }
         } else {
           lastUserId = null;
@@ -328,7 +323,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         lastUserId = session.user.id;
         if (initialHydrationStarted !== session.user.id) {
           initialHydrationStarted = session.user.id;
-          void hydrateRoles(session.user.id, false);
+          void hydrateRoles(session.user.id);
         }
       } else {
         setRoleLoading(false);
@@ -360,9 +355,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signUp = async (email: string, password: string, accountType: 'student' | 'teacher' = 'student') => {
     const redirectUrl = `${window.location.origin}/`;
-    if (accountType === 'teacher') {
-      localStorage.setItem(PENDING_TEACHER_KEY, 'true');
-    }
     const { data, error } = await supabase.auth.signUp({
       email, password, options: { emailRedirectTo: redirectUrl },
     });
@@ -422,7 +414,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // (essay drafts, GPA, target colleges, bookmarks, planner, scholarships,
     // monthly focus) is not left behind on shared devices.
     try {
-      localStorage.removeItem('pathforge-rq-cache');
+      // Both copies: the persisted one on disk and the live one in memory.
+      // Removing only the first left every fetched row still readable by the
+      // next account to sign in on this tab without a reload.
+      clearUserCaches();
       // Fixed keys
       [
         'pathforge_profile',

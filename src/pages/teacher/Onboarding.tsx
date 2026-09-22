@@ -19,7 +19,6 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,7 +35,23 @@ const ROLES = ["School Counselor", "College Counselor", "Teacher", "Dean", "Head
 const YEARS = ["0-2", "3-5", "6-10", "10+"];
 const STUDENTS_HANDLED = ["1-10", "11-50", "51-200", "200+"];
 const GRADE_LEVELS = ["Grade 9", "Grade 10", "Grade 11", "Grade 12", "Post-grad / Gap year"];
-const CURRICULA = ["IB", "AP", "A-Levels", "CBSE / ISC", "State Boards", "Other"];
+// The programmes a counsellor works with. IGCSE, ICSE and the MYP were missing,
+// so anyone whose students are pre-16 had nothing to tick. The original six
+// labels are kept exactly as they were: they are stored verbatim on existing
+// teacher profiles, and renaming one would silently drop that counsellor's
+// saved selection the next time they opened this form.
+const CURRICULA = [
+  "IB",
+  "IB MYP",
+  "AP",
+  "A-Levels",
+  "IGCSE",
+  "CBSE / ISC",
+  "ICSE",
+  "US High School",
+  "State Boards",
+  "Other",
+];
 const SPECIALIZATIONS = ["Ivy League / T20 US", "UK (Oxbridge / Russell)", "Canada", "Europe", "Australia", "India top-tier", "Liberal Arts", "STEM-focused", "Business / Pre-Law", "Arts & Humanities"];
 // Full ISO country list — searchable in step 2
 const COUNTRIES = ALL_COUNTRY_NAMES;

@@ -189,11 +189,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which of the following describes all solutions to 5 − 3x ≥ 14?",
     choices: [
       { id: "A", text: "x ≥ −3" },
-      { id: "B", text: "x ≤ −3" },
+      { id: "B", text: "x ≤ 3" },
       { id: "C", text: "x ≥ 3" },
-      { id: "D", text: "x ≤ 3" },
+      { id: "D", text: "x ≤ −3" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "Subtract 5: −3x ≥ 9. Dividing by a negative reverses the inequality: x ≤ −3.",
   },
@@ -296,12 +296,12 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     prompt: "For x ≠ 3 and x ≠ −4, which expression is equivalent to (x² − 9)/(x² + x − 12)?",
     choices: [
-      { id: "A", text: "(x + 3)/(x + 4)" },
+      { id: "A", text: "9/12" },
       { id: "B", text: "(x − 3)/(x + 4)" },
       { id: "C", text: "(x + 3)/(x − 4)" },
-      { id: "D", text: "9/12" },
+      { id: "D", text: "(x + 3)/(x + 4)" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Factor both: (x − 3)(x + 3) over (x + 4)(x − 3). The (x − 3) cancels, leaving (x + 3)/(x + 4).",
   },
@@ -337,11 +337,11 @@ export const SAT_QUESTIONS: Question[] = [
       "A town's population is modelled by P(t) = 1,200(1.04)ᵗ, where t is years since 2020. What does 1.04 represent?",
     choices: [
       { id: "A", text: "The population grows by 104 people each year." },
-      { id: "B", text: "The population grows by 4% each year." },
+      { id: "B", text: "The population was 1.04 times its 2019 size." },
       { id: "C", text: "The population grows by 4 people each year." },
-      { id: "D", text: "The population was 1.04 times its 2019 size." },
+      { id: "D", text: "The population grows by 4% each year." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "In an exponential model the base is the growth factor. A factor of 1.04 is an increase of 0.04, or 4%, per year — a percentage, not a fixed number of people.",
   },
@@ -356,11 +356,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "If f(x) = (x − 2)(x + 5), for which values of x is f(x) < 0?",
     choices: [
       { id: "A", text: "x < −5 or x > 2" },
-      { id: "B", text: "−5 < x < 2" },
+      { id: "B", text: "x < 2" },
       { id: "C", text: "−2 < x < 5" },
-      { id: "D", text: "x < 2" },
+      { id: "D", text: "−5 < x < 2" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The parabola opens upward with roots at −5 and 2, so it is below the x-axis strictly between them.",
   },
@@ -423,7 +423,8 @@ export const SAT_QUESTIONS: Question[] = [
       { id: "D", text: "60" },
     ],
     answer: "C",
-    explanation: "4.5 × 12 = 54 km.",
+    explanation:
+      "The scale gives 12 km per centimetre, so 4.5 cm × 12 km/cm = 54 km.",
   },
   {
     id: "m-psd-03",
@@ -489,12 +490,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "A data set of 30 house prices has a mean of $310,000 and a median of $295,000. One further house, priced at $2.4 million, is added. Which statement is true?",
     choices: [
-      { id: "A", text: "The mean increases more than the median does." },
+      { id: "A", text: "Neither changes." },
       { id: "B", text: "The median increases more than the mean does." },
       { id: "C", text: "Both increase by the same amount." },
-      { id: "D", text: "Neither changes." },
+      { id: "D", text: "The mean increases more than the median does." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The mean uses every value, so an extreme outlier pulls it sharply. The median only shifts to the next ordered value, so it barely moves.",
   },
@@ -550,11 +551,11 @@ export const SAT_QUESTIONS: Question[] = [
       "A researcher surveyed people leaving a city gym and concluded that most residents exercise daily. Which change would most improve the reliability of that conclusion?",
     choices: [
       { id: "A", text: "Surveying more people at the same gym." },
-      { id: "B", text: "Surveying a random sample of all residents of the city." },
+      { id: "B", text: "Asking each person more questions." },
       { id: "C", text: "Surveying at several gyms rather than one." },
-      { id: "D", text: "Asking each person more questions." },
+      { id: "D", text: "Surveying a random sample of all residents of the city." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The sample is drawn from people already at a gym, so it cannot represent residents generally. Increasing the size of a biased sample does not remove the bias; only sampling randomly from the whole population does.",
   },
@@ -732,13 +733,13 @@ export const SAT_QUESTIONS: Question[] = [
       "Which finding, if true, would most strongly support the team's proposal?",
     choices: [
       { id: "A", text: "Swifts occupied boxes in the study at roughly the same rate as boxes elsewhere in the city." },
-      { id: "B", text: "Swifts occupied the unlined boxes far more often than the foam-lined ones." },
+      { id: "B", text: "Foam-lined boxes were warmer than unlined boxes by about two degrees." },
       { id: "C", text: "Swifts preferred boxes mounted higher on the building, regardless of lining." },
-      { id: "D", text: "Foam-lined boxes were warmer than unlined boxes by about two degrees." },
+      { id: "D", text: "Swifts occupied the unlined boxes far more often than the foam-lined ones." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
-      "The boxes differ only in how they sound, so a strong preference between them isolates acoustics as the deciding factor. C introduces a different variable, and D suggests a competing explanation rather than supporting the proposal.",
+      "The boxes differ only in how they sound, so a strong preference between them isolates acoustics as the deciding factor. C introduces a different variable, and B suggests a competing explanation rather than supporting the proposal.",
   },
   {
     id: "r-inf-03",
@@ -776,11 +777,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which choice most logically completes the text?",
     choices: [
       { id: "A", text: "the grasses were introduced to the region by human cultivation." },
-      { id: "B", text: "the shift toward drier conditions began no earlier than the eruption." },
+      { id: "B", text: "the lake dried out completely soon after the eruption." },
       { id: "C", text: "the eruption was the largest recorded in the region's history." },
-      { id: "D", text: "the lake dried out completely soon after the eruption." },
+      { id: "D", text: "the shift toward drier conditions began no earlier than the eruption." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The pollen appears only above the ash, and the ash settled quickly, so the drier-adapted vegetation cannot predate the eruption. The text gives no basis for claims about cultivation, eruption size or the lake drying.",
   },
@@ -821,12 +822,12 @@ export const SAT_QUESTIONS: Question[] = [
       "The committee's report was careful to ______ its recommendations: each was presented as provisional, contingent on data that would not arrive for another year.",
     prompt: "Which choice completes the text with the most logical and precise word?",
     choices: [
-      { id: "A", text: "qualify" },
+      { id: "A", text: "duplicate" },
       { id: "B", text: "publicize" },
       { id: "C", text: "abandon" },
-      { id: "D", text: "duplicate" },
+      { id: "D", text: "qualify" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The colon explains the blank: the recommendations were limited and made conditional. 'Qualify' means exactly that. The report did not drop them, so 'abandon' contradicts the sentence.",
   },
@@ -843,11 +844,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which choice completes the text with the most logical and precise word?",
     choices: [
       { id: "A", text: "deliberate" },
-      { id: "B", text: "inert" },
+      { id: "B", text: "recent" },
       { id: "C", text: "extensive" },
-      { id: "D", text: "recent" },
+      { id: "D", text: "inert" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "'Far from being ___' sets up a contrast with 'informative', so the blank needs a word meaning the opposite — lacking significance or activity. 'Inert' fits. 'Deliberate' is not the opposite of informative, and the rest of the sentence in fact argues some gaps were deliberate.",
   },
@@ -978,14 +979,14 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
-      { id: "A", text: "; " },
-      { id: "B", text: ", " },
-      { id: "C", text: " " },
-      { id: "D", text: ", and, " },
+      { id: "A", text: ";" },
+      { id: "B", text: "," },
+      { id: "C", text: "(no punctuation)" },
+      { id: "D", text: "and" },
     ],
     answer: "A",
     explanation:
-      "Both halves are independent clauses, so a comma alone (B) is a splice and no punctuation (C) is a run-on. A semicolon joins them correctly.",
+      "Both halves are independent clauses. A comma alone (B) is a splice, no punctuation (C) is a run-on, and a coordinating conjunction without a comma (D) is still a run-on. A semicolon joins them correctly.",
   },
   {
     id: "r-sec-02",
@@ -1001,11 +1002,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
       { id: "A", text: "survey; the restorers" },
-      { id: "B", text: "survey, the restorers" },
+      { id: "B", text: "survey: the restorers" },
       { id: "C", text: "survey the restorers" },
-      { id: "D", text: "survey: the restorers" },
+      { id: "D", text: "survey, the restorers" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The opening is a participial phrase, not an independent clause, so it takes a comma. A semicolon or colon would require a complete clause before it.",
   },
@@ -1045,11 +1046,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
       { id: "A", text: "has been" },
-      { id: "B", text: "had been" },
-      { id: "C", text: "is" },
+      { id: "B", text: "is" },
+      { id: "C", text: "had been" },
       { id: "D", text: "will have been" },
     ],
-    answer: "B",
+    answer: "C",
     explanation:
       "One past action completed before another past action takes the past perfect. 'Has been' would place it in the present.",
   },
@@ -1167,12 +1168,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "A line passes through the points (2, 5) and (4, 11). Which equation represents this line?",
     choices: [
-      { id: "A", text: "y = 3x − 1" },
+      { id: "A", text: "y = 3x + 5" },
       { id: "B", text: "y = 3x + 1" },
       { id: "C", text: "y = 2x + 1" },
-      { id: "D", text: "y = 3x + 5" },
+      { id: "D", text: "y = 3x − 1" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Slope = (11 − 5)/(4 − 2) = 3. Using the point (2, 5): 5 = 3(2) + b, so b = −1. The equation is y = 3x − 1.",
   },
@@ -1321,12 +1322,12 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     prompt: "Which of the following is the solution to 3x − 5 > 7?",
     choices: [
-      { id: "A", text: "x > 4" },
+      { id: "A", text: "x > −4" },
       { id: "B", text: "x < 4" },
       { id: "C", text: "x > 2" },
-      { id: "D", text: "x > −4" },
+      { id: "D", text: "x > 4" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Add 5 to both sides: 3x > 12. Divide by 3: x > 4.",
   },
@@ -1341,11 +1342,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which of the following is the solution to −2x + 7 ≤ 15?",
     choices: [
       { id: "A", text: "x ≤ −4" },
-      { id: "B", text: "x ≥ −4" },
+      { id: "B", text: "x ≥ 4" },
       { id: "C", text: "x ≤ 4" },
-      { id: "D", text: "x ≥ 4" },
+      { id: "D", text: "x ≥ −4" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "Subtract 7 from both sides: −2x ≤ 8. Dividing by −2 reverses the inequality: x ≥ −4.",
   },
@@ -1458,12 +1459,12 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     prompt: "Which expression is equivalent to (x + 3)(x − 5)?",
     choices: [
-      { id: "A", text: "x² − 2x − 15" },
+      { id: "A", text: "x² − 8x − 15" },
       { id: "B", text: "x² + 2x − 15" },
       { id: "C", text: "x² − 2x + 15" },
-      { id: "D", text: "x² − 8x − 15" },
+      { id: "D", text: "x² − 2x − 15" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "FOIL the expression: x² − 5x + 3x − 15 = x² − 2x − 15.",
   },
@@ -1498,11 +1499,11 @@ export const SAT_QUESTIONS: Question[] = [
       "A population of bacteria doubles every hour, starting at 200. Which function models the population, P, after t hours?",
     choices: [
       { id: "A", text: "P(t) = 200t²" },
-      { id: "B", text: "P(t) = 200(2)^t" },
+      { id: "B", text: "P(t) = 2(200)^t" },
       { id: "C", text: "P(t) = 200 + 2t" },
-      { id: "D", text: "P(t) = 2(200)^t" },
+      { id: "D", text: "P(t) = 200(2)^t" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "Doubling every hour from a starting value of 200 is modeled by P(t) = 200(2)^t.",
   },
@@ -1896,11 +1897,11 @@ export const SAT_QUESTIONS: Question[] = [
       "A researcher surveys a random sample of 400 students at a university and finds a margin of error of ±3% for the proportion who own a car. Which of the following would most likely reduce the margin of error?",
     choices: [
       { id: "A", text: "Decreasing the sample size" },
-      { id: "B", text: "Increasing the sample size" },
+      { id: "B", text: "Rounding percentages to the nearest whole number" },
       { id: "C", text: "Surveying only freshmen" },
-      { id: "D", text: "Rounding percentages to the nearest whole number" },
+      { id: "D", text: "Increasing the sample size" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The margin of error decreases as sample size increases, all else equal, because a larger sample gives a more precise estimate of the population proportion.",
   },
@@ -1916,11 +1917,11 @@ export const SAT_QUESTIONS: Question[] = [
       "A random sample of 150 packages from a factory's daily output found a mean weight of 4.2 kg with a margin of error of 0.15 kg at a 95% confidence level. Which statement is an appropriate conclusion?",
     choices: [
       { id: "A", text: "Exactly 95% of all packages weigh between 4.05 and 4.35 kg." },
-      { id: "B", text: "We can be 95% confident the true mean weight of all packages produced that day is between 4.05 kg and 4.35 kg." },
+      { id: "B", text: "The margin of error guarantees the population mean is 4.2 kg." },
       { id: "C", text: "95% of the sampled packages weighed exactly 4.2 kg." },
-      { id: "D", text: "The margin of error guarantees the population mean is 4.2 kg." },
+      { id: "D", text: "We can be 95% confident the true mean weight of all packages produced that day is between 4.05 kg and 4.35 kg." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "A confidence interval describes a range of plausible values for the population mean, not a claim about individual packages. Here that interval is 4.2 ± 0.15, or 4.05 to 4.35 kg, at 95% confidence.",
   },
@@ -1955,16 +1956,17 @@ export const SAT_QUESTIONS: Question[] = [
     skillId: "area-volume",
     difficulty: "medium",
     source: P,
-    prompt: "A cylinder has radius 3 and height 10. What is its volume in terms of π?",
+    prompt:
+      "A cylinder has a volume of 150π and a radius of 5. What is its height?",
     choices: [
-      { id: "A", text: "30π" },
-      { id: "B", text: "60π" },
-      { id: "C", text: "90π" },
-      { id: "D", text: "300π" },
+      { id: "A", text: "3" },
+      { id: "B", text: "6" },
+      { id: "C", text: "10" },
+      { id: "D", text: "30" },
     ],
-    answer: "C",
+    answer: "B",
     explanation:
-      "Volume = πr²h = π(3²)(10) = 90π.",
+      "Volume = πr²h, so 150π = π(5²)h = 25πh. Dividing both sides by 25π gives h = 6.",
   },
   {
     id: "m-geo-10",
@@ -2172,12 +2174,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "A circle has center (2, −1) and passes through the point (7, 11). Which equation represents the circle?",
     choices: [
-      { id: "A", text: "(x − 2)² + (y + 1)² = 169" },
+      { id: "A", text: "(x − 2)² + (y − 1)² = 169" },
       { id: "B", text: "(x − 2)² + (y + 1)² = 13" },
       { id: "C", text: "(x + 2)² + (y − 1)² = 169" },
-      { id: "D", text: "(x − 2)² + (y − 1)² = 169" },
+      { id: "D", text: "(x − 2)² + (y + 1)² = 169" },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "r² = (7 − 2)² + (11 − (−1))² = 25 + 144 = 169. The equation is (x − 2)² + (y + 1)² = 169.",
   },
@@ -2194,17 +2196,20 @@ export const SAT_QUESTIONS: Question[] = [
     difficulty: "medium",
     source: P,
     stimulus:
-      "Urban planner Dario Kessler studied traffic patterns across forty mid-sized cities and found that adding lanes to congested roads did not ease congestion for long: within five years, congestion returned to earlier levels, as the added capacity encouraged trips that would not otherwise have been made. Cities that instead invested in bus rapid transit saw commute times fall and stay lower.",
+      "For years the valley's air-quality monitors stood only beside major roads, where readings were highest. A volunteer team has since mounted low-cost sensors on rooftops across residential streets and found that pollution levels vary far more within a single neighbourhood than the roadside network had suggested. The older data, the team argues, was not so much wrong as unrepresentative: it measured the worst locations well and everywhere else not at all.",
     prompt: "Which choice best states the main idea of the text?",
     choices: [
-      { id: "A", text: "Wider roads are the most cost-effective way to reduce congestion." },
-      { id: "B", text: "Adding road capacity can worsen congestion, while transit investment can ease it." },
-      { id: "C", text: "Forty cities studied identical solutions to traffic problems." },
-      { id: "D", text: "Bus systems are always faster than driving in urban areas." },
+      { id: "A", text: "The valley's air is cleaner than the roadside monitors indicated." },
+      {
+        id: "B",
+        text: "A denser network of sensors showed that pollution varies widely within neighbourhoods, which the roadside monitors could not reveal.",
+      },
+      { id: "C", text: "The roadside monitors gave inaccurate readings at the places they measured." },
+      { id: "D", text: "Low-cost sensors are more accurate than professional monitoring equipment." },
     ],
     answer: "B",
     explanation:
-      "The text's central claim, supported by the study's findings, is that widening roads increased congestion while transit investment reduced commute times; choice B captures this contrast, while the others overstate or misstate the evidence.",
+      "The text contrasts what the old network could measure with what the denser one revealed. C contradicts the last sentence, which says the roadside readings were good where they were taken; A and D claim comparisons the text never makes.",
   },
   {
     id: "r-inf-07",
@@ -2219,11 +2224,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which choice best states the main finding described in the text?",
     choices: [
       { id: "A", text: "Sea turtles nest only once every three years." },
-      { id: "B", text: "Turtles tagged by Voss traveled farther between nesting sites than expected." },
+      { id: "B", text: "Turtles avoid remote coastlines during nesting season." },
       { id: "C", text: "Voss tagged turtles for the first time in the history of marine biology." },
-      { id: "D", text: "Turtles avoid remote coastlines during nesting season." },
+      { id: "D", text: "Turtles tagged by Voss traveled farther between nesting sites than expected." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The passage's key finding is the surprising travel distance the tags revealed. The other choices are not supported by, or contradict, the text.",
   },
@@ -2302,12 +2307,12 @@ export const SAT_QUESTIONS: Question[] = [
       "A nutritionist claims that eating breakfast improves concentration in elementary school students.",
     prompt: "Which choice, if true, would most weaken the nutritionist's claim?",
     choices: [
-      { id: "A", text: "A study found no significant difference in concentration test scores between students who ate breakfast and those who did not." },
+      { id: "A", text: "Breakfast foods vary widely in nutritional content." },
       { id: "B", text: "Most elementary schools offer a breakfast program." },
       { id: "C", text: "Students who skip breakfast often report feeling hungry by midmorning." },
-      { id: "D", text: "Breakfast foods vary widely in nutritional content." },
+      { id: "D", text: "A study found no significant difference in concentration test scores between students who ate breakfast and those who did not." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "A claim of improved concentration from eating breakfast is directly undermined by evidence showing no measurable difference in concentration outcomes.",
   },
@@ -2325,11 +2330,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which additional piece of information would be most useful in evaluating whether the wage increase, rather than some other factor, caused the outcomes described?",
     choices: [
       { id: "A", text: "The exact percentage by which the minimum wage increased." },
-      { id: "B", text: "Employment and income trends in a similar country that did not raise its minimum wage during the same period." },
+      { id: "B", text: "Public opinion polls about the minimum wage increase." },
       { id: "C", text: "The number of years Country X has had a minimum wage law." },
-      { id: "D", text: "Public opinion polls about the minimum wage increase." },
+      { id: "D", text: "Employment and income trends in a similar country that did not raise its minimum wage during the same period." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "To attribute the outcome to the policy rather than to other economic trends, a comparison with a similar country lacking the policy change is most useful for isolating the wage increase's effect.",
   },
@@ -2367,12 +2372,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "Which choice best describes the relationship between hours studied and exam scores shown in the data?",
     choices: [
-      { id: "A", text: "A positive association: as hours studied increased, scores tended to increase." },
+      { id: "A", text: "Scores decreased and then increased as hours studied increased." },
       { id: "B", text: "A negative association: as hours studied increased, scores tended to decrease." },
       { id: "C", text: "No clear association between the two variables." },
-      { id: "D", text: "Scores decreased and then increased as hours studied increased." },
+      { id: "D", text: "A positive association: as hours studied increased, scores tended to increase." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The listed scores rise steadily as the number of hours studied rises, indicating a positive association between the two variables.",
   },
@@ -2431,12 +2436,12 @@ export const SAT_QUESTIONS: Question[] = [
       "Every member of the chess club who entered the regional tournament last year has since been invited to the state tournament. Maria entered the regional tournament last year.",
     prompt: "Which choice most logically completes the text?",
     choices: [
-      { id: "A", text: "Maria has since been invited to the state tournament." },
+      { id: "A", text: "Maria will not enter next year's regional tournament." },
       { id: "B", text: "Maria did not enjoy the regional tournament." },
       { id: "C", text: "Maria is the president of the chess club." },
-      { id: "D", text: "Maria will not enter next year's regional tournament." },
+      { id: "D", text: "Maria has since been invited to the state tournament." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The passage states that every regional entrant was invited to state, and Maria was a regional entrant, so it logically follows that she was invited.",
   },
@@ -2452,12 +2457,12 @@ export const SAT_QUESTIONS: Question[] = [
       "A gardener noticed that the tomato plants in the shaded part of the garden consistently produced fewer tomatoes than the plants in full sun, even though both groups received identical soil, water, and fertilizer.",
     prompt: "Which choice is the most logical inference based on the text?",
     choices: [
-      { id: "A", text: "Shade likely played a role in reducing the shaded plants' tomato production." },
+      { id: "A", text: "The gardener used different fertilizer for each group." },
       { id: "B", text: "The shaded plants received less water than the sunny plants." },
       { id: "C", text: "Tomato plants cannot survive in shaded areas." },
-      { id: "D", text: "The gardener used different fertilizer for each group." },
+      { id: "D", text: "Shade likely played a role in reducing the shaded plants' tomato production." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Since every other variable was held constant and only sunlight exposure differed, shade is the most logical explanation for the difference in yield.",
   },
@@ -2473,12 +2478,12 @@ export const SAT_QUESTIONS: Question[] = [
       "A city's public library reported that checkouts of physical books declined by 15 percent over five years, while checkouts of e-books and audiobooks combined increased by 60 percent over the same period, and total checkouts, physical plus digital, rose overall.",
     prompt: "Which choice can most reasonably be inferred from the text?",
     choices: [
-      { id: "A", text: "The rise in digital checkouts more than offset the decline in physical checkouts." },
+      { id: "A", text: "The library increased its budget for physical books." },
       { id: "B", text: "Fewer people used the library overall." },
       { id: "C", text: "Physical books are no longer available at the library." },
-      { id: "D", text: "The library increased its budget for physical books." },
+      { id: "D", text: "The rise in digital checkouts more than offset the decline in physical checkouts." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Since total checkouts rose despite the drop in physical checkouts, the growth in digital checkouts must have more than made up for that decline.",
   },
@@ -2494,12 +2499,12 @@ export const SAT_QUESTIONS: Question[] = [
       "A geologist studying a canyon found sediment layers containing marine fossils near the canyon's rim, hundreds of feet above the nearest current shoreline. The layers showed no signs of having been transported there by later erosion or human activity.",
     prompt: "Which choice most reasonably explains the geologist's finding?",
     choices: [
-      { id: "A", text: "The area now forming the canyon's rim was once submerged under a sea or ocean." },
+      { id: "A", text: "The canyon was created entirely by wind erosion." },
       { id: "B", text: "Marine fossils can form in freshwater rivers." },
       { id: "C", text: "The fossils were placed there recently by researchers." },
-      { id: "D", text: "The canyon was created entirely by wind erosion." },
+      { id: "D", text: "The area now forming the canyon's rim was once submerged under a sea or ocean." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "Marine fossils embedded in undisturbed rock layers far above current sea level are best explained by the area having once been underwater, with the land later uplifted or the sea level having since dropped.",
   },
@@ -2520,11 +2525,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "As used in the text, “central” most nearly means",
     choices: [
       { id: "A", text: "geographic" },
-      { id: "B", text: "most important" },
+      { id: "B", text: "unresolved" },
       { id: "C", text: "shared" },
-      { id: "D", text: "unresolved" },
+      { id: "D", text: "most important" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "“Central demands” refers to the most important demands, not a geographic or literal center.",
   },
@@ -2541,11 +2546,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "As used in the text, “spare” most nearly means",
     choices: [
       { id: "A", text: "extra" },
-      { id: "B", text: "economical" },
+      { id: "B", text: "emotional" },
       { id: "C", text: "harsh" },
-      { id: "D", text: "emotional" },
+      { id: "D", text: "economical" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "“Spare prose” paired with “remarkably few words” indicates writing that is economical or sparing in its use of language, not writing that is extra or unused.",
   },
@@ -2562,11 +2567,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "As used in the text, “oblique” most nearly means",
     choices: [
       { id: "A", text: "direct" },
-      { id: "B", text: "indirect" },
+      { id: "B", text: "honest" },
       { id: "C", text: "aggressive" },
-      { id: "D", text: "honest" },
+      { id: "D", text: "indirect" },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The passage contrasts this approach with confronting the rival “directly” and with “open accusation,” so “oblique” must mean indirect.",
   },
@@ -2582,12 +2587,12 @@ export const SAT_QUESTIONS: Question[] = [
       "The essay begins by describing a single failed harvest in one farming village, then broadens to discuss drought patterns across the entire region, and ends by proposing a policy response at the national level.",
     prompt: "Which choice best describes the overall structure of the text?",
     choices: [
-      { id: "A", text: "It moves from a specific example to a broader issue to a proposed solution." },
+      { id: "A", text: "It refutes a commonly held belief." },
       { id: "B", text: "It compares two competing solutions to the same problem." },
       { id: "C", text: "It presents a chronological history of one village." },
-      { id: "D", text: "It refutes a commonly held belief." },
+      { id: "D", text: "It moves from a specific example to a broader issue to a proposed solution." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The text explicitly narrows from one village, to a regional pattern, to a national policy proposal, a specific-to-general-to-solution structure.",
   },
@@ -2625,12 +2630,12 @@ export const SAT_QUESTIONS: Question[] = [
       "The report first lists the benefits reported by early adopters of a new irrigation system, then devotes equal space to the system's maintenance costs and failure rates reported by the same group.",
     prompt: "Which choice best describes the overall structure of the text?",
     choices: [
-      { id: "A", text: "It presents both benefits and drawbacks of the irrigation system in balanced fashion." },
+      { id: "A", text: "It focuses exclusively on the system's costs." },
       { id: "B", text: "It argues that the irrigation system has no drawbacks." },
       { id: "C", text: "It traces the historical development of irrigation technology." },
-      { id: "D", text: "It focuses exclusively on the system's costs." },
+      { id: "D", text: "It presents both benefits and drawbacks of the irrigation system in balanced fashion." },
     ],
-    answer: "A",
+    answer: "D",
     explanation:
       "The passage gives roughly equal treatment to benefits and drawbacks, indicating a balanced structure rather than an argument favoring one side.",
   },
@@ -2710,11 +2715,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "How does the second team's finding relate to the first team's conclusion?",
     choices: [
       { id: "A", text: "It confirms the first team's conclusion exactly." },
-      { id: "B", text: "It complicates the claim of exclusive reliance on one pollinator by identifying other occasional visitors." },
+      { id: "B", text: "It is unrelated to the first team's research." },
       { id: "C", text: "It proves the orchid does not need any pollinator." },
-      { id: "D", text: "It is unrelated to the first team's research." },
+      { id: "D", text: "It complicates the claim of exclusive reliance on one pollinator by identifying other occasional visitors." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The second team's cameras documented other visiting species, which complicates, without fully disproving, the first team's claim of exclusive reliance on a single pollinator.",
   },
@@ -2756,11 +2761,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which choice completes the text with the most logical transition?",
     choices: [
       { id: "A", text: "For example," },
-      { id: "B", text: "Nevertheless," },
+      { id: "B", text: "As a result," },
       { id: "C", text: "Similarly," },
-      { id: "D", text: "As a result," },
+      { id: "D", text: "Nevertheless," },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The staff overcame the setback described in the first sentence, so a contrast transition like “Nevertheless” is needed, not a cause-effect or example transition.",
   },
@@ -2777,11 +2782,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which choice completes the text with the most logical transition?",
     choices: [
       { id: "A", text: "In contrast," },
-      { id: "B", text: "Ultimately," },
+      { id: "B", text: "For instance," },
       { id: "C", text: "Otherwise," },
-      { id: "D", text: "For instance," },
+      { id: "D", text: "Ultimately," },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The sentence describes the final step in a process that began with reviewing proposals, so “Ultimately” correctly signals the concluding step.",
   },
@@ -2798,11 +2803,11 @@ export const SAT_QUESTIONS: Question[] = [
     prompt: "Which choice completes the text with the most logical transition?",
     choices: [
       { id: "A", text: "Consequently," },
-      { id: "B", text: "In fact," },
+      { id: "B", text: "Specifically," },
       { id: "C", text: "Similarly," },
-      { id: "D", text: "Specifically," },
+      { id: "D", text: "In fact," },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
       "The second sentence reports an outcome that runs counter to the prediction in the first sentence, and “In fact” signals this correction, unlike the other options, which imply agreement or mere elaboration.",
   },
@@ -2864,13 +2869,13 @@ export const SAT_QUESTIONS: Question[] = [
       "The student wants to emphasize a contrast between two approaches to farming. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
     choices: [
       { id: "A", text: "Both farming methods are still used in the region today." },
-      { id: "B", text: "While traditional farming relies on manual labor and crop rotation, the newly introduced sensor-based method cut water usage by 30 percent in trials." },
+      { id: "B", text: "Farmers rotate crops to maintain soil health." },
       { id: "C", text: "The region has a long history of farming." },
-      { id: "D", text: "Farmers rotate crops to maintain soil health." },
+      { id: "D", text: "While traditional farming relies on manual labor and crop rotation, the newly introduced sensor-based method cut water usage by 30 percent in trials." },
     ],
-    answer: "B",
+    answer: "D",
     explanation:
-      "The goal is contrast. Choice B directly juxtaposes the traditional method's characteristics with the new method's water-saving results, unlike the other choices, which state only one fact or unrelated background.",
+      "The goal is contrast. Choice D directly juxtaposes the traditional method's characteristics with the new method's water-saving results, unlike the other choices, which state only one fact or unrelated background.",
   },
   {
     id: "r-exp-10",
@@ -2910,12 +2915,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
-      { id: "A", text: "fossils, artifacts, and interactive displays" },
+      { id: "A", text: "fossils, artifacts and, interactive displays" },
       { id: "B", text: "fossils artifacts, and interactive displays" },
-      { id: "C", text: "fossils, artifacts and, interactive displays" },
+      { id: "C", text: "fossils, artifacts, and interactive displays" },
       { id: "D", text: "fossils; artifacts; and interactive displays" },
     ],
-    answer: "A",
+    answer: "C",
     explanation:
       "Items in a series of three or more require commas separating each item, including before “and”: “fossils, artifacts, and interactive displays.”",
   },
@@ -2932,12 +2937,12 @@ export const SAT_QUESTIONS: Question[] = [
     prompt:
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
-      { id: "A", text: "which" },
+      { id: "A", text: "who" },
       { id: "B", text: "that" },
-      { id: "C", text: "who" },
+      { id: "C", text: "which" },
       { id: "D", text: "whom" },
     ],
-    answer: "A",
+    answer: "C",
     explanation:
       "The clause “many critics consider the author's finest work” is nonessential information about “the novel” and is correctly set off with commas and introduced by “which,” not “that,” which is used for essential clauses.",
   },
@@ -3019,11 +3024,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
       { id: "A", text: "were" },
-      { id: "B", text: "was" },
-      { id: "C", text: "are" },
+      { id: "B", text: "are" },
+      { id: "C", text: "was" },
       { id: "D", text: "have been" },
     ],
-    answer: "B",
+    answer: "C",
     explanation:
       "“Each” is singular regardless of the plural noun that follows it in the prepositional phrase, so the singular verb “was” is correct.",
   },
@@ -3084,11 +3089,11 @@ export const SAT_QUESTIONS: Question[] = [
       "Which choice completes the text so that it conforms to the conventions of Standard English?",
     choices: [
       { id: "A", text: ", require" },
-      { id: "B", text: "required" },
-      { id: "C", text: "requiring" },
+      { id: "B", text: "requiring" },
+      { id: "C", text: "required" },
       { id: "D", text: "require" },
     ],
-    answer: "B",
+    answer: "C",
     explanation:
       "The sentence needs a single main verb for its subject, “proposal.” “Required” completes the sentence as a grammatically complete independent clause, while the other options fail to form one.",
   },
@@ -3113,6 +3118,1422 @@ export const SAT_QUESTIONS: Question[] = [
     answer: "A",
     explanation:
       "“Having spent months restoring the old lighthouse” is an introductory participial phrase that must be set off from the independent clause with a comma; a semicolon or “and” would incorrectly treat the phrase as an independent clause.",
+  },
+  {
+    id: "r-cra-16",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "text-structure",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "A conservator noticed that one corner of the portrait had begun to crack in a pattern the rest of the canvas did not share. An X-ray taken to explain the cracking showed a second, earlier figure beneath the visible one, painted in a much thicker layer. The finding has reopened the question of who commissioned the work, since the painter is not known to have reused a canvas except when a sitter withdrew.",
+    prompt: "Which choice best describes the overall structure of the text?",
+    choices: [
+      {
+        id: "A",
+        text: "It argues that the portrait has been attributed to the wrong painter.",
+      },
+      { id: "B", text: "It compares two techniques for examining paintings and recommends one." },
+      { id: "C", text: "It traces the painting's ownership from its commission to the present." },
+      { id: "D", text: "It reports an unexplained detail, describes what investigating it revealed, and notes the question that revelation reopens." },
+    ],
+    answer: "D",
+    explanation:
+      "The text moves from an observation, the odd cracking, to the X-ray that explained it, to an open question the result raises. It recommends no technique, follows no ownership history, and stops short of claiming a misattribution.",
+  },
+  {
+    id: "r-cra-17",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Text 1: Ecologist Ruth Bamiro argues that street trees cool a city chiefly by shading pavement, and that planting should therefore be concentrated where pavement is widest.\n\nText 2: Ecologist Tomas Halvard does not dispute that shade lowers surface temperature during the day. He notes, however, that measurements taken after dark show the largest differences in air temperature between planted and unplanted streets, when no shade is being cast, which he attributes to water released by the leaves.",
+    prompt: "Based on the texts, how would Halvard most likely respond to Bamiro's planting proposal?",
+    choices: [
+      { id: "A", text: "By denying that shade has any measurable cooling effect." },
+      {
+        id: "B",
+        text: "By accepting that shade cools pavement while arguing that it is not the whole effect, so pavement width is the wrong thing to plant by.",
+      },
+      { id: "C", text: "By agreeing that planting should follow pavement width, for a different reason." },
+      { id: "D", text: "By arguing that street trees make city streets warmer overall." },
+    ],
+    answer: "B",
+    explanation:
+      "Halvard grants the daytime shading effect outright and objects only to its being the whole story, since the largest differences appear when no shade is cast. A contradicts his first sentence, and C and D attribute positions he never takes.",
+  },
+  {
+    id: "r-cra-18",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The new levees did not stop the flooding outright, but they checked the river's spread long enough for the low-lying farms to be cleared.",
+    prompt: "As used in the text, \u201cchecked\u201d most nearly means",
+    choices: [
+      { id: "A", text: "reversed" },
+      { id: "B", text: "inspected" },
+      { id: "C", text: "marked" },
+      { id: "D", text: "restrained" },
+    ],
+    answer: "D",
+    explanation:
+      "The levees slowed the spread without stopping it, so the word means held back. \u201cInspected\u201d and \u201cmarked\u201d are other senses of the same word that this sentence does not support, and \u201creversed\u201d contradicts \u201cdid not stop the flooding outright\u201d.",
+  },
+  {
+    id: "r-exp-11",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Sodium-ion cells are built from cheap and abundant materials, and they tolerate cold far better than the lithium cells now in most vehicles. ______ they store less energy for their weight, which is why their first commercial uses have been stationary storage rather than cars.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "Likewise," },
+      { id: "B", text: "In turn," },
+      { id: "C", text: "On the other hand," },
+      { id: "D", text: "For instance," },
+    ],
+    answer: "C",
+    explanation:
+      "The first sentence lists advantages and the second gives the drawback that limits where the cells are used, so the transition has to signal contrast. \u201cLikewise\u201d would add a further advantage, and \u201cin turn\u201d would make the drawback a consequence of the advantages.",
+  },
+  {
+    id: "r-exp-12",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "rhetorical-synthesis",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "While researching, a student took these notes:\n\u2022 A seed vault on an Arctic island stores duplicates of seed collections held elsewhere.\n\u2022 It holds more than a million samples from over eighty depositing institutions.\n\u2022 Depositors keep ownership of what they deposit and are the only ones who may withdraw it.\n\u2022 The first withdrawal was made by a gene bank that had to leave its own country.",
+    prompt:
+      "The student wants to explain the vault's purpose to an audience unfamiliar with it. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    choices: [
+      { id: "A", text: "The vault holds more than a million samples from over eighty institutions." },
+      {
+        id: "B",
+        text: "The vault is a backup: institutions deposit duplicates of their own seed collections, keep ownership of them, and withdraw them if their own collection becomes unreachable, as one gene bank did after leaving its country.",
+      },
+      { id: "C", text: "The seed vault is located on an Arctic island." },
+      { id: "D", text: "Only depositors may withdraw the seeds they have placed in the vault." },
+    ],
+    answer: "B",
+    explanation:
+      "Explaining the purpose means saying what the vault is for, not only what it holds. Only B joins the duplicate deposits, the ownership rule and the withdrawal into an account of why the vault exists; A, C and D each state a single fact without it.",
+  },
+  {
+    id: "r-sec-16",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "boundaries",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The crew brought only what the crossing required______ rope, a spare sail, and four weeks of water.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: ":" },
+      { id: "B", text: ";" },
+      { id: "C", text: "," },
+      { id: "D", text: "(no punctuation)" },
+    ],
+    answer: "A",
+    explanation:
+      "A complete clause followed by a list that spells it out takes a colon. A semicolon would require a second independent clause after it, and a comma or no punctuation would leave the list running on from the clause.",
+  },
+  {
+    id: "r-inf-21",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "central-ideas",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "For sixty years the standard account held that the city's medieval walls went up in a single campaign. A survey of mortar samples has now identified three distinct recipes, each matching a period decades apart, and the sections built with them meet at joins that earlier surveys read as later repairs. On this evidence the walls are the work of three generations rather than one.",
+    prompt: "Which choice best states the main idea of the text?",
+    choices: [
+      { id: "A", text: "The walls were repaired several times after being built in one campaign." },
+      {
+        id: "B",
+        text: "Mortar analysis indicates the walls were raised in three phases rather than all at once.",
+      },
+      { id: "C", text: "Medieval builders in the city used unusually poor mortar." },
+      { id: "D", text: "The survey was the first scientific study the walls had received." },
+    ],
+    answer: "B",
+    explanation:
+      "The finding and the conclusion drawn from it are the same point: three mortar recipes decades apart mean three building phases. A is the account the evidence overturns, and C and D are claims the text never makes.",
+  },
+  {
+    id: "r-inf-22",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "command-evidence",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "A research team proposes that a species of desert ant finds its way home by keeping a running count of its own steps rather than by using landmarks, which are scarce on the salt flats it crosses.",
+    prompt: "Which finding, if true, would most strongly support the team's proposal?",
+    choices: [
+      {
+        id: "A",
+        text: "Ants whose legs were lengthened before the return journey overshot the nest by a distance matching their longer stride.",
+      },
+      { id: "B", text: "Ants followed nearly the same route on consecutive days." },
+      { id: "C", text: "Ants moved faster in the early morning than at midday." },
+      { id: "D", text: "Nest entrances were usually within a few metres of a shrub." },
+    ],
+    answer: "A",
+    explanation:
+      "If the ants counted steps, changing the length of a step would change where the count runs out — which is exactly the error described. B is consistent with landmarks as well, C says nothing about navigation, and D points toward landmarks rather than away from them.",
+  },
+  {
+    id: "r-inf-23",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "quantitative-evidence",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "A school recorded the share of pupils cycling to school over four years: Year 1, 8%; Year 2, 9%; Year 3, 14%; Year 4, 22%. A protected cycle lane to the school opened halfway through Year 3.",
+    prompt:
+      "Which choice most effectively uses data from the record to support the claim that the lane increased cycling?",
+    choices: [
+      { id: "A", text: "In Year 4, 22% of pupils cycled to school." },
+      {
+        id: "B",
+        text: "Cycling rose by one percentage point across the two years before the lane opened and by thirteen across the two years spanning and following its opening.",
+      },
+      { id: "C", text: "In none of the four years did more than a quarter of pupils cycle." },
+      { id: "D", text: "The share of pupils cycling was at its lowest in Year 1." },
+    ],
+    answer: "B",
+    explanation:
+      "The claim is about the lane, so the evidence has to compare the period before it with the period after. B is the only choice that does. A, C and D each state a true figure that would look the same whether or not the lane had been built.",
+  },
+  {
+    id: "r-inf-24",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "inferences",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "An ice core from the glacier holds a band of volcanic glass at the depth corresponding to 1815. Tree rings in the valley below are unusually narrow for the three summers that followed. Rings from a sheltered grove two valleys away show no narrowing at all in those years.",
+    prompt: "Which choice most logically completes the text?",
+    choices: [
+      { id: "A", text: "the eruption must have occurred later than the ice core suggests." },
+      { id: "B", text: "the sheltered grove is older than the trees in the valley below." },
+      { id: "C", text: "volcanic glass prevents trees from growing." },
+      { id: "D", text: "the conditions recorded by the narrow rings did not reach every site in the region." },
+    ],
+    answer: "D",
+    explanation:
+      "Two sites, one eruption, and only one set of narrow rings: whatever the trees below were responding to, it did not reach the sheltered grove. Nothing in the text bears on the date of the eruption, the age of the grove, or any direct effect of the glass on growth.",
+  },
+  {
+    id: "r-cra-19",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "easy",
+    source: P,
+    stimulus:
+      "The composer's late works are admired for their economy: whole movements are built from a single unadorned figure, repeated and turned rather than added to.",
+    prompt: "As used in the text, \u201ceconomy\u201d most nearly means",
+    choices: [
+      { id: "A", text: "restraint in means" },
+      { id: "B", text: "affordability" },
+      { id: "C", text: "prosperity" },
+      { id: "D", text: "haste" },
+    ],
+    answer: "A",
+    explanation:
+      "The colon explains the word: a movement made from one small figure uses very little material. B and C are the financial senses of the word, which the sentence has nothing to do with, and D confuses using little with working quickly.",
+  },
+  {
+    id: "r-cra-20",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "text-structure",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The chapter opens with an inventory of what the expedition carried, sets it beside the inventory of an earlier expedition that ended in disaster, and then argues that the difference between the two lists explains very little about why one party returned and the other did not.",
+    prompt: "Which choice best describes the overall structure of the text?",
+    choices: [
+      {
+        id: "A",
+        text: "It lays out two sets of details and then argues against the conclusion usually drawn from them.",
+      },
+      { id: "B", text: "It narrates one expedition in the order its events occurred." },
+      { id: "C", text: "It gives instructions for equipping a modern expedition." },
+      { id: "D", text: "It argues that the earlier expedition failed because it was badly equipped." },
+    ],
+    answer: "A",
+    explanation:
+      "The chapter supplies the comparison and then refuses the inference from it. D is the conclusion the chapter rejects, and B and C describe things it does not do.",
+  },
+  {
+    id: "r-cra-21",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Text 1: Linguist Ada Ferreira argues that a written standard slows language change, because a fixed spelling gives every generation the same form to learn.\n\nText 2: Linguist Owen Marsh observes that in the six centuries since English spelling settled, pronunciation has moved so far from it that spelling and speech now disagree in most common words. What the written standard preserved, he argues, is the older form on the page, not the older sound in the mouth.",
+    prompt: "Based on the texts, how would Marsh most likely respond to Ferreira's argument?",
+    choices: [
+      { id: "A", text: "By denying that English spelling was ever standardised." },
+      {
+        id: "B",
+        text: "By accepting that a written standard preserves older forms while denying that it slowed the change of the spoken language.",
+      },
+      { id: "C", text: "By agreeing that a fixed spelling has held pronunciation steady." },
+      { id: "D", text: "By arguing that spelling should now be reformed to match speech." },
+    ],
+    answer: "B",
+    explanation:
+      "Marsh grants the preservation and locates it on the page rather than in speech, which is precisely a concession plus a limit. C is the claim he is arguing against, and A and D are positions he never takes.",
+  },
+  {
+    id: "r-cra-22",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "The report's tone is measured throughout, but its conclusions are anything but tentative: it names the failures, and it names who is answerable for them.",
+    prompt: "As used in the text, \u201cmeasured\u201d most nearly means",
+    choices: [
+      { id: "A", text: "rhythmic" },
+      { id: "B", text: "quantified" },
+      { id: "C", text: "restrained" },
+      { id: "D", text: "hesitant" },
+    ],
+    answer: "C",
+    explanation:
+      "The contrast is between how the report sounds and how firm it is, so the word describes a controlled manner. D would make the sentence contradict itself, since it goes on to say the conclusions are not tentative, and A and B are senses the sentence does not support.",
+  },
+  {
+    id: "r-exp-13",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "easy",
+    source: P,
+    stimulus:
+      "The museum has no lift, and its upper floors are reached by a single narrow stair. ______ the largest works in the collection are shown on the ground floor.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "In contrast," },
+      { id: "B", text: "However," },
+      { id: "C", text: "Nevertheless," },
+      { id: "D", text: "Accordingly," },
+    ],
+    answer: "D",
+    explanation:
+      "The second sentence states what follows from the first: a large work cannot go up a narrow stair, so it stays downstairs. The other three all signal a contrast that is not there.",
+  },
+  {
+    id: "r-exp-14",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "rhetorical-synthesis",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "While researching, a student took these notes:\n\u2022 A network of river gauges measures water level every fifteen minutes.\n\u2022 The readings are published publicly within an hour of being taken.\n\u2022 Flood warnings for towns downstream are issued from the readings.\n\u2022 Several gauges have been in place for more than eighty years.",
+    prompt:
+      "The student wants to explain to an audience unfamiliar with the network why its readings matter. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    choices: [
+      { id: "A", text: "Some of the river gauges have been in place for more than eighty years." },
+      {
+        id: "B",
+        text: "The gauges read the river every fifteen minutes and publish within the hour, which is what allows flood warnings to reach towns downstream in time.",
+      },
+      { id: "C", text: "The network measures the level of the river at regular intervals." },
+      { id: "D", text: "Readings from the gauges are available to the public." },
+    ],
+    answer: "B",
+    explanation:
+      "Why the readings matter is the warning they make possible, and that depends on how quickly they arrive. Only B connects the two. A, C and D each state a fact about the network without saying what it is for.",
+  },
+  {
+    id: "r-sec-17",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "form-structure-sense",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Because the harbour freezes for four months of the year, the ferry ______ by an ice road each winter.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "is replaced" },
+      { id: "B", text: "being replaced" },
+      { id: "C", text: "having been replaced" },
+      { id: "D", text: "to be replaced" },
+    ],
+    answer: "A",
+    explanation:
+      "The sentence opens with a subordinate clause, so the main clause needs a finite verb for its subject. Only \u201cis replaced\u201d supplies one; the other three are non-finite forms that leave the sentence without a main verb.",
+  },
+  {
+    id: "r-sec-18",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "subject-verb",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Among the documents recovered from the wreck ______ a ledger listing every passenger aboard.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "was" },
+      { id: "B", text: "were" },
+      { id: "C", text: "have been" },
+      { id: "D", text: "are" },
+    ],
+    answer: "A",
+    explanation:
+      "The sentence is inverted: the subject is \u201ca ledger\u201d, which is singular, and \u201camong the documents\u201d is a prepositional phrase. A plural verb agrees with the wrong noun.",
+  },
+  {
+    id: "r-inf-25",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "central-ideas",
+    difficulty: "easy",
+    source: P,
+    stimulus:
+      "Librarians at a regional archive spent four years cataloguing a collection of amateur photographs taken between 1910 and 1960. The pictures were not taken to record anything in particular, and that, the archivists argue, is what makes them useful: shop fronts, road surfaces and clothing appear in them incidentally, unposed and undated by any official purpose.",
+    prompt: "Which choice best states the main idea of the text?",
+    choices: [
+      { id: "A", text: "The photographs are valuable as historical evidence because of what they record by accident." },
+      { id: "B", text: "Amateur photographers of the period were more skilled than is usually assumed." },
+      { id: "C", text: "The archive took four years to catalogue the collection." },
+      { id: "D", text: "Official photographs of the period are unreliable." },
+    ],
+    answer: "A",
+    explanation:
+      "The archivists' point is that the pictures were not made as records, which is why what sits in the background of them can be trusted. B and D are comparisons the text does not make, and C is a detail rather than the idea.",
+  },
+  {
+    id: "r-inf-26",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "inferences",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "A bakery replaced the flour in one of its breads with flour from a different mill, changing nothing else about the recipe or the schedule. Over the following month the loaves rose less and took longer to prove. When the original flour was restored, both measurements returned to what they had been.",
+    prompt: "Which choice most logically completes the text?",
+    choices: [
+      { id: "A", text: "the change in the loaves is most reasonably attributed to the flour itself." },
+      { id: "B", text: "the bakery's ovens were running at the wrong temperature." },
+      { id: "C", text: "the second mill's flour is of lower quality in every respect." },
+      { id: "D", text: "the recipe had been written incorrectly from the start." },
+    ],
+    answer: "A",
+    explanation:
+      "One thing changed, the results changed with it, and they changed back when it was reversed. B and D would have to survive that reversal, and C claims more than a difference in rising time can show.",
+  },
+  {
+    id: "r-cra-23",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Rather than settling the dispute, the committee's ruling only compounded it: each side read the wording as a victory and returned to the argument with fresh confidence.",
+    prompt: "As used in the text, \u201ccompounded\u201d most nearly means",
+    choices: [
+      { id: "A", text: "worsened" },
+      { id: "B", text: "combined" },
+      { id: "C", text: "calculated" },
+      { id: "D", text: "settled" },
+    ],
+    answer: "A",
+    explanation:
+      "\u201cRather than settling\u201d sets the word against resolution, and the colon shows the argument getting worse. B and C are other senses of the word, and D is its opposite here.",
+  },
+  {
+    id: "r-cra-24",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "text-structure",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Swifts were arriving at their northern breeding grounds a week earlier than they had thirty years before. Two explanations were available: the birds were leaving earlier, or they were travelling faster. Tracking tags fitted to fifty birds showed departure dates almost unchanged and flight speeds sharply higher over the middle leg of the route.",
+    prompt: "Which choice best describes the overall structure of the text?",
+    choices: [
+      { id: "A", text: "It reports a change, sets out two possible causes, and gives evidence that distinguishes between them." },
+      { id: "B", text: "It reports a change and argues that its cause cannot be determined." },
+      { id: "C", text: "It compares two species and explains why one migrates earlier." },
+      { id: "D", text: "It describes a tracking method and recommends it for other species." },
+    ],
+    answer: "A",
+    explanation:
+      "Observation, two candidate causes, then data that picks one. B contradicts the last sentence, and C and D describe a text that would need a second species or a recommendation, neither of which is here.",
+  },
+  {
+    id: "r-cra-25",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "text-structure",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "The essay begins by defining a folk song as one whose author is unknown. It then turns to a song written in 1936 by a named writer, sung for decades with changed words by people who had never heard of him, and asks what the definition should say about it. It ends by proposing that the test is not anonymity but whether a song has been altered in the singing.",
+    prompt: "Which choice best describes the overall structure of the text?",
+    choices: [
+      { id: "A", text: "It states a definition, raises a case the definition handles badly, and revises the definition." },
+      { id: "B", text: "It traces the history of one song from its composition to the present." },
+      { id: "C", text: "It argues that folk songs have no authors." },
+      { id: "D", text: "It lists the features common to songs of the 1930s." },
+    ],
+    answer: "A",
+    explanation:
+      "The 1936 song is brought in because it fails the opening definition, and the last sentence replaces that definition with another. C is the position the essay abandons, and B and D describe texts with different purposes.",
+  },
+  {
+    id: "r-cra-26",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Text 1: Excavating a hillside settlement, archaeologist Ines Halloran identifies a small stone building as a granary, citing the raised floor and the charred grain found on it.\n\nText 2: Archaeologist Petr Vasek accepts the identification of the grain but notes that the building stands apart from the houses, faces the valley rather than the yard, and holds a bench along one wall. Storage, he argues, does not account for the siting, and a building may serve more than one purpose at once.",
+    prompt: "Based on the texts, how would Vasek most likely respond to Halloran's identification?",
+    choices: [
+      { id: "A", text: "By disputing that the charred material is grain." },
+      {
+        id: "B",
+        text: "By accepting that grain was kept there while arguing that storage alone does not explain the building.",
+      },
+      { id: "C", text: "By arguing that the building was a house." },
+      { id: "D", text: "By claiming that the raised floor has been misdated." },
+    ],
+    answer: "B",
+    explanation:
+      "Vasek's first clause grants the grain and his last sentence leaves room for a second use, so he adds to the identification rather than replacing it. A contradicts what he explicitly accepts, and C and D are claims he never makes.",
+  },
+  {
+    id: "r-cra-27",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Text 1: Biologist Ruth Nakamura reports that sparrows raised in isolation still produce a song with the species' basic structure, which she takes as evidence that the song is inherited rather than learned.\n\nText 2: Biologist Sam Oduya does not question the isolation results. He notes, however, that the isolated birds' songs lack the local variations heard in every wild population, and that a young bird moved between valleys grows up singing the songs of the valley it was moved to.",
+    prompt: "Which choice best describes a key difference between the two accounts?",
+    choices: [
+      {
+        id: "A",
+        text: "Nakamura treats the inherited structure as the whole of the song, while Oduya treats it as a frame that learning fills in.",
+      },
+      { id: "B", text: "Oduya denies that any part of the song is inherited." },
+      { id: "C", text: "Nakamura studied wild birds and Oduya studied captive ones." },
+      { id: "D", text: "The two disagree about whether isolated birds sing at all." },
+    ],
+    answer: "A",
+    explanation:
+      "Oduya accepts the isolation result and adds the local variation it cannot explain, which is a disagreement about how much the inheritance accounts for. B overstates him, and C and D describe differences the texts do not report.",
+  },
+  {
+    id: "r-exp-15",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Steel loses strength well below its melting point, so a fire does not have to melt a beam to bring it down. ______ building codes specify how long a structure must resist collapse rather than how hot its materials may become.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "Admittedly," },
+      { id: "B", text: "All the same," },
+      { id: "C", text: "By comparison," },
+      { id: "D", text: "For this reason," },
+    ],
+    answer: "D",
+    explanation:
+      "The second sentence states what follows from the first: if the failure is not melting, the rule cannot be written in terms of melting. The other three would signal a contrast or a concession, and no contrast is being drawn.",
+  },
+  {
+    id: "r-exp-16",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "The survey found that four in five respondents supported the new parking rules. The sample, however, was drawn from people who had written to the council about parking. ______ the figure describes the people most exercised by the question rather than the town.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "For example," },
+      { id: "B", text: "Even so," },
+      { id: "C", text: "Likewise," },
+      { id: "D", text: "In short," },
+    ],
+    answer: "D",
+    explanation:
+      "The final sentence sums up what the sampling problem means for the figure. \u201cEven so\u201d would set it against the previous sentence when it follows from it, and the other two signal addition or illustration.",
+  },
+  {
+    id: "r-exp-17",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "rhetorical-synthesis",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "While researching, a student took these notes:\n\u2022 A city replaced the sodium street lamps on twelve streets with narrow-spectrum amber ones.\n\u2022 The amber lamps were chosen because insects are drawn to them far less strongly.\n\u2022 Moth counts under the new lamps fell to about a third of the counts under the old ones.\n\u2022 Residents reported no difference in how well lit the streets felt.",
+    prompt:
+      "The student wants to emphasise that the change achieved its goal without a cost to residents. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    choices: [
+      { id: "A", text: "The city replaced sodium lamps with narrow-spectrum amber ones on twelve streets." },
+      {
+        id: "B",
+        text: "Moth counts under the amber lamps fell to roughly a third of those under the old lamps, while residents reported no difference in how well lit the streets felt.",
+      },
+      { id: "C", text: "Insects are drawn far less strongly to narrow-spectrum amber light." },
+      { id: "D", text: "Residents reported no difference in how well lit the streets felt." },
+    ],
+    answer: "B",
+    explanation:
+      "The goal has two halves, the result and the absence of a cost, and only B states both. C gives the reason for the choice rather than its outcome, and A and D each cover one half at most.",
+  },
+  {
+    id: "r-sec-19",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "boundaries",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The rehearsal ran three hours over______ however, nobody left before the end.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: ";" },
+      { id: "B", text: "," },
+      { id: "C", text: "(no punctuation)" },
+      { id: "D", text: "and" },
+    ],
+    answer: "A",
+    explanation:
+      "\u201cHowever\u201d is a conjunctive adverb, not a conjunction, so it cannot join two independent clauses with a comma in front of it. A semicolon before it does the joining. D would need the comma to fall before \u201cand\u201d rather than after \u201chowever\u201d.",
+  },
+  {
+    id: "r-sec-20",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "boundaries",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "The island's only industry, a cannery that employed most of the village______ closed in 1974.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "," },
+      { id: "B", text: ";" },
+      { id: "C", text: ":" },
+      { id: "D", text: "(no punctuation)" },
+    ],
+    answer: "A",
+    explanation:
+      "The phrase naming the industry interrupts the sentence between its subject and its verb, and a phrase set off with a comma at the front needs one at the back as well. A semicolon or colon would require a complete clause before it, and leaving it unpunctuated strands the opening comma.",
+  },
+  {
+    id: "r-sec-21",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "form-structure-sense",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The surveyors, who had mapped the ridge in 1954, ______ that the summit was forty feet lower than the published figure.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "concluding" },
+      { id: "B", text: "to conclude" },
+      { id: "C", text: "concluded" },
+      { id: "D", text: ", concluding" },
+    ],
+    answer: "C",
+    explanation:
+      "The relative clause set off by commas is not the main verb, so the sentence still needs one for \u201cthe surveyors\u201d. Only the finite \u201cconcluded\u201d supplies it.",
+  },
+  {
+    id: "r-sec-22",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "form-structure-sense",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Although the two recordings were made a decade apart, the later one is by far ______ of the pair.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "the clearer" },
+      { id: "B", text: "clearer" },
+      { id: "C", text: "the clearest" },
+      { id: "D", text: "most clear" },
+    ],
+    answer: "A",
+    explanation:
+      "Two things are being compared, so the comparative is correct, and \u201cof the pair\u201d calls for the definite article with it. C and D are superlatives, which need three or more, and B drops the article the phrase requires.",
+  },
+  {
+    id: "r-sec-23",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "subject-verb",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Each of the twelve panels in the window ______ a different scene from the town's history.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "show" },
+      { id: "B", text: "shows" },
+      { id: "C", text: "have shown" },
+      { id: "D", text: "were showing" },
+    ],
+    answer: "B",
+    explanation:
+      "\u201cEach\u201d is the subject and is singular; \u201cof the twelve panels\u201d is a prepositional phrase and does not change that. A and C agree with the plural noun inside the phrase, and D puts a standing description into the past.",
+  },
+  {
+    id: "m-alg-26",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-eq-1var",
+    difficulty: "medium",
+    source: P,
+    prompt: "If 4(x + 2) \u2212 3 = 2(x + 7), what is the value of x?",
+    choices: [
+      { id: "A", text: "3" },
+      { id: "B", text: "4.5" },
+      { id: "C", text: "5.5" },
+      { id: "D", text: "9" },
+    ],
+    answer: "B",
+    explanation:
+      "Expand both sides: 4x + 8 \u2212 3 = 2x + 14, so 4x + 5 = 2x + 14. Subtract 2x and 5: 2x = 9, so x = 4.5.",
+  },
+  {
+    id: "m-alg-27",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-eq-1var",
+    difficulty: "hard",
+    source: P,
+    prompt: "If x/3 + x/4 = 7, what is the value of x?",
+    choices: [
+      { id: "A", text: "6" },
+      { id: "B", text: "7" },
+      { id: "C", text: "12" },
+      { id: "D", text: "14" },
+    ],
+    answer: "C",
+    explanation:
+      "Multiply every term by 12, the LCD: 4x + 3x = 84. Combine: 7x = 84, so x = 12.",
+  },
+  {
+    id: "m-alg-28",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-eq-2var",
+    difficulty: "medium",
+    source: P,
+    prompt: "The line 2x \u2212 5y = 30 is graphed in the xy-plane. What is its y-intercept?",
+    choices: [
+      { id: "A", text: "(0, \u22126)" },
+      { id: "B", text: "(0, 6)" },
+      { id: "C", text: "(15, 0)" },
+      { id: "D", text: "(0, \u221230)" },
+    ],
+    answer: "A",
+    explanation:
+      "Set x = 0: \u22125y = 30, so y = \u22126. C is the x-intercept, which is what the equation gives when y is set to 0 instead.",
+  },
+  {
+    id: "m-alg-29",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-functions",
+    difficulty: "medium",
+    source: P,
+    prompt: "The linear function f satisfies f(2) = 7 and f(6) = 19. What is the value of f(10)?",
+    choices: [
+      { id: "A", text: "25" },
+      { id: "B", text: "28" },
+      { id: "C", text: "31" },
+      { id: "D", text: "34" },
+    ],
+    answer: "C",
+    explanation:
+      "The slope is (19 \u2212 7)/(6 \u2212 2) = 3. From f(6) = 19, four more steps of 3 give f(10) = 19 + 12 = 31.",
+  },
+  {
+    id: "m-alg-30",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-functions",
+    difficulty: "hard",
+    source: P,
+    prompt:
+      "A tank drains at a constant rate. Three minutes after draining began it held 42 litres, and eight minutes after it began it held 27 litres. How many minutes after draining began will the tank be empty?",
+    choices: [
+      { id: "A", text: "14" },
+      { id: "B", text: "17" },
+      { id: "C", text: "19" },
+      { id: "D", text: "21" },
+    ],
+    answer: "B",
+    explanation:
+      "The rate is (27 \u2212 42)/(8 \u2212 3) = \u22123 litres per minute. Working back from 42 litres at 3 minutes, the tank held 51 litres at the start, and 51 \u00f7 3 = 17 minutes to empty.",
+  },
+  {
+    id: "m-alg-31",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "systems-linear",
+    difficulty: "medium",
+    source: P,
+    prompt: "If 5x + 3y = 29 and x = y + 1, what is the value of y?",
+    choices: [
+      { id: "A", text: "2" },
+      { id: "B", text: "3" },
+      { id: "C", text: "4" },
+      { id: "D", text: "5" },
+    ],
+    answer: "B",
+    explanation:
+      "Substitute x = y + 1: 5(y + 1) + 3y = 29, so 8y + 5 = 29 and y = 3. (Then x = 4, but the question asks for y.)",
+  },
+  {
+    id: "m-alg-32",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "algebra",
+    skillId: "linear-inequalities",
+    difficulty: "medium",
+    source: P,
+    prompt:
+      "A van may carry at most 1,200 kilograms. It is already loaded with 450 kilograms. If each crate weighs 35 kilograms, what is the greatest number of crates that can be added?",
+    choices: [
+      { id: "A", text: "20" },
+      { id: "B", text: "21" },
+      { id: "C", text: "22" },
+      { id: "D", text: "25" },
+    ],
+    answer: "B",
+    explanation:
+      "450 + 35c \u2264 1200 gives 35c \u2264 750, so c \u2264 21.4. Crates come whole, and 22 crates would put the van over the limit, so the greatest number is 21.",
+  },
+  {
+    id: "m-adv-22",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "quadratics",
+    difficulty: "medium",
+    source: P,
+    prompt: "What is the smaller solution to x\u00b2 \u2212 10x + 21 = 0?",
+    choices: [
+      { id: "A", text: "3" },
+      { id: "B", text: "7" },
+      { id: "C", text: "10" },
+      { id: "D", text: "21" },
+    ],
+    answer: "A",
+    explanation:
+      "Factor: (x \u2212 3)(x \u2212 7) = 0, so x = 3 or x = 7. The smaller solution is 3.",
+  },
+  {
+    id: "m-adv-23",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "quadratics",
+    difficulty: "hard",
+    source: P,
+    prompt:
+      "The graph of y = x\u00b2 + bx + 9 touches the x-axis at exactly one point, and b is positive. What is the value of b?",
+    answer: "6",
+    explanation:
+      "Touching at exactly one point means the discriminant is zero: b\u00b2 \u2212 4(1)(9) = 0, so b\u00b2 = 36 and b = 6 for positive b.",
+  },
+  {
+    id: "m-adv-24",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "quadratics",
+    difficulty: "hard",
+    source: P,
+    prompt: "What is the product of the solutions to 2x\u00b2 \u2212 7x \u2212 15 = 0?",
+    choices: [
+      { id: "A", text: "\u22127.5" },
+      { id: "B", text: "\u22123.5" },
+      { id: "C", text: "3.5" },
+      { id: "D", text: "7.5" },
+    ],
+    answer: "A",
+    explanation:
+      "For ax\u00b2 + bx + c = 0 the product of the solutions is c/a = \u221215/2 = \u22127.5. (C is the sum, \u2212b/a = 3.5.)",
+  },
+  {
+    id: "m-adv-25",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "nonlinear-functions",
+    difficulty: "medium",
+    source: P,
+    prompt: "The function g is defined by g(x) = x\u00b2 \u2212 4x + 1. What is the value of g(\u22121)?",
+    choices: [
+      { id: "A", text: "\u22122" },
+      { id: "B", text: "4" },
+      { id: "C", text: "6" },
+      { id: "D", text: "8" },
+    ],
+    answer: "C",
+    explanation:
+      "g(\u22121) = (\u22121)\u00b2 \u2212 4(\u22121) + 1 = 1 + 4 + 1 = 6. The middle term becomes positive because a negative is being subtracted.",
+  },
+  {
+    id: "m-adv-26",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "nonlinear-functions",
+    difficulty: "hard",
+    source: P,
+    prompt:
+      "The graph of y = f(x) crosses the x-axis at x = \u22123, x = 0 and x = 2, and nowhere else. Which of the following could define f?",
+    choices: [
+      { id: "A", text: "f(x) = x(x + 3)(x \u2212 2)" },
+      { id: "B", text: "f(x) = x(x \u2212 3)(x + 2)" },
+      { id: "C", text: "f(x) = (x + 3)(x \u2212 2)" },
+      { id: "D", text: "f(x) = x(x + 3)(x + 2)" },
+    ],
+    answer: "A",
+    explanation:
+      "Each zero corresponds to a factor that is zero there: x for 0, (x + 3) for \u22123 and (x \u2212 2) for 2. B and D have their signs reversed, and C has no zero at x = 0.",
+  },
+  {
+    id: "m-adv-27",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "nonlinear-functions",
+    difficulty: "medium",
+    source: P,
+    prompt: "What is the maximum value of the function h(x) = \u22122(x + 1)\u00b2 + 8?",
+    choices: [
+      { id: "A", text: "\u22122" },
+      { id: "B", text: "1" },
+      { id: "C", text: "8" },
+      { id: "D", text: "10" },
+    ],
+    answer: "C",
+    explanation:
+      "The squared term is never negative, so \u22122(x + 1)\u00b2 is never positive and is largest, at 0, when x = \u22121. The maximum value of h is therefore 8.",
+  },
+  {
+    id: "m-adv-28",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "equivalent-expressions",
+    difficulty: "medium",
+    source: P,
+    prompt: "Which expression is equivalent to (2x + 5)(x \u2212 3)?",
+    choices: [
+      { id: "A", text: "2x\u00b2 \u2212 x \u2212 15" },
+      { id: "B", text: "2x\u00b2 + x \u2212 15" },
+      { id: "C", text: "2x\u00b2 \u2212 11x \u2212 15" },
+      { id: "D", text: "2x\u00b2 \u2212 6x \u2212 15" },
+    ],
+    answer: "A",
+    explanation:
+      "Multiply out: 2x\u00b2 \u2212 6x + 5x \u2212 15. The middle terms combine to \u2212x, giving 2x\u00b2 \u2212 x \u2212 15.",
+  },
+  {
+    id: "m-adv-29",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "equivalent-expressions",
+    difficulty: "hard",
+    source: P,
+    prompt: "For x \u2260 \u22124/3, which expression is equivalent to (9x\u00b2 \u2212 16)/(3x + 4)?",
+    choices: [
+      { id: "A", text: "3x \u2212 4" },
+      { id: "B", text: "3x + 4" },
+      { id: "C", text: "9x \u2212 4" },
+      { id: "D", text: "3x \u2212 16" },
+    ],
+    answer: "A",
+    explanation:
+      "9x\u00b2 \u2212 16 is a difference of squares: (3x \u2212 4)(3x + 4). Dividing by (3x + 4) leaves 3x \u2212 4.",
+  },
+  {
+    id: "m-adv-30",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "equivalent-expressions",
+    difficulty: "medium",
+    source: P,
+    prompt: "Which expression is equivalent to (x\u00b2y\u00b3)(x\u2074y\u207b\u00b9), where x and y are positive?",
+    choices: [
+      { id: "A", text: "x\u2076y\u00b2" },
+      { id: "B", text: "x\u2078y\u00b3" },
+      { id: "C", text: "x\u2076y\u207b\u00b3" },
+      { id: "D", text: "x\u2078y\u00b2" },
+    ],
+    answer: "A",
+    explanation:
+      "Multiplying powers of the same base adds the exponents: x\u00b2\u207a\u2074 = x\u2076 and y\u00b3\u207a\u207d\u207b\u00b9\u207e = y\u00b2. B and D multiply the exponents instead of adding them.",
+  },
+  {
+    id: "m-adv-31",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "exponential",
+    difficulty: "medium",
+    source: P,
+    prompt:
+      "A culture of 50 cells triples every 4 hours. How many cells are there after 12 hours?",
+    choices: [
+      { id: "A", text: "150" },
+      { id: "B", text: "450" },
+      { id: "C", text: "1,350" },
+      { id: "D", text: "4,050" },
+    ],
+    answer: "C",
+    explanation:
+      "12 hours is three triplings: 50 \u2192 150 \u2192 450 \u2192 1,350. A and B stop after one and two triplings.",
+  },
+  {
+    id: "m-adv-32",
+    testId: "sat",
+    subjectId: "math",
+    domainId: "advanced-math",
+    skillId: "exponential",
+    difficulty: "hard",
+    source: P,
+    prompt:
+      "The mass, in grams, of a sample after t days is modelled by f(t) = 120(0.5)^(t/30). How many days does the sample take to fall to half its mass?",
+    choices: [
+      { id: "A", text: "0.5" },
+      { id: "B", text: "30" },
+      { id: "C", text: "60" },
+      { id: "D", text: "120" },
+    ],
+    answer: "B",
+    explanation:
+      "The mass is multiplied by 0.5 once for every 30 days, since that is what makes the exponent 1. So it halves every 30 days.",
+  },
+  {
+    id: "r-inf-27",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "command-evidence",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "A geologist proposes that the scattered boulders on the plateau were carried there by a glacier rather than by a flood.",
+    prompt: "Which finding, if true, would most strongly support the geologist's proposal?",
+    choices: [
+      {
+        id: "A",
+        text: "The boulders match an outcrop sixty kilometres up-valley and sit on fine sediment that moving water would have stripped away.",
+      },
+      { id: "B", text: "Boulders of similar size are found on plateaus in many parts of the world." },
+      { id: "C", text: "The plateau stands well above the valley's present river." },
+      { id: "D", text: "Several of the boulders weigh more than ten tonnes." },
+    ],
+    answer: "A",
+    explanation:
+      "A tells us where the rock came from and rules out the flood by what is underneath it. B says nothing about this plateau, C is consistent with either explanation, and D is a fact about the boulders that neither carrier excludes.",
+  },
+  {
+    id: "r-inf-28",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "information-ideas",
+    skillId: "quantitative-evidence",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Average night-time noise, in decibels, at four monitoring points before and after a lorry curfew: Point 1, 62 then 54; Point 2, 58 then 57; Point 3, 61 then 52; Point 4, 59 then 58. Points 1 and 3 stand on the curfewed route; Points 2 and 4 do not.",
+    prompt:
+      "Which choice most effectively uses data from the monitoring to support the claim that the curfew reduced night-time noise?",
+    choices: [
+      { id: "A", text: "Noise fell at all four monitoring points after the curfew." },
+      {
+        id: "B",
+        text: "The two points on the curfewed route fell by 8 and 9 decibels, while the two points away from it fell by 1 each.",
+      },
+      { id: "C", text: "Point 1 recorded the highest reading before the curfew, at 62 decibels." },
+      { id: "D", text: "After the curfew, no point recorded more than 58 decibels." },
+    ],
+    answer: "B",
+    explanation:
+      "The claim is that the curfew did it, so the evidence has to separate the curfewed route from everywhere else. A is true but would look the same if something else had quietened the whole town, and C and D report single figures that carry no comparison.",
+  },
+  {
+    id: "r-cra-28",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Her account of the trial is scrupulous: where the record is silent, she says so, and she never fills the gap with what the participants would probably have said.",
+    prompt: "As used in the text, \u201cscrupulous\u201d most nearly means",
+    choices: [
+      { id: "A", text: "reluctant" },
+      { id: "B", text: "doubtful" },
+      { id: "C", text: "apologetic" },
+      { id: "D", text: "exacting" },
+    ],
+    answer: "D",
+    explanation:
+      "The colon gives the evidence: she marks every gap and invents nothing. That is care taken over detail, not doubt, apology or reluctance.",
+  },
+  {
+    id: "r-cra-29",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "words-in-context",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "The new wing does not so much extend the old building as answer it, borrowing its proportions while refusing its ornament.",
+    prompt: "As used in the text, \u201canswer\u201d most nearly means",
+    choices: [
+      { id: "A", text: "respond to" },
+      { id: "B", text: "solve" },
+      { id: "C", text: "match exactly" },
+      { id: "D", text: "replace" },
+    ],
+    answer: "A",
+    explanation:
+      "The wing takes up one feature of the old building and rejects another, which is a reply rather than a copy. C is ruled out by \u201crefusing its ornament\u201d, and B and D are senses the sentence does not carry.",
+  },
+  {
+    id: "r-cra-30",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "text-structure",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The article opens with the assertion, now widely repeated, that the city's oldest bridge has been declared unsafe. It quotes at length the engineer's report the assertion rests on. It then points out that the report concerns a different bridge, four miles upstream, whose name differs by one word.",
+    prompt: "Which choice best describes the overall structure of the text?",
+    choices: [
+      { id: "A", text: "It states a widely repeated claim, presents the source it rests on, and shows that the source is about something else." },
+      { id: "B", text: "It argues that the city's oldest bridge should be closed." },
+      { id: "C", text: "It compares the construction of two bridges." },
+      { id: "D", text: "It recounts the history of an engineering survey." },
+    ],
+    answer: "A",
+    explanation:
+      "Claim, source, then the mismatch between them. B is the opposite of where the article ends up, and C and D describe work the text does not do.",
+  },
+  {
+    id: "r-cra-31",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Text 1: Curator Mara Lindqvist argues that digitising a manuscript collection protects the originals, since a reader who can consult a scan has no reason to handle the parchment.\n\nText 2: Conservator Yusuf Adeyemi reports that requests to consult the originals at his own library tripled in the four years after digitisation. Scans, he suggests, told far more people that the manuscripts existed, and some of those readers want the object itself.",
+    prompt: "Based on the texts, how would Adeyemi most likely respond to Lindqvist's argument?",
+    choices: [
+      { id: "A", text: "By denying that handling damages parchment." },
+      {
+        id: "B",
+        text: "By accepting the aim while noting that digitising a collection can increase the demand to handle it.",
+      },
+      { id: "C", text: "By arguing that scans are of too low a quality to be useful." },
+      { id: "D", text: "By recommending that the collection be closed to readers." },
+    ],
+    answer: "B",
+    explanation:
+      "Adeyemi does not dispute that handling is the risk or that protection is the point; he reports a consequence that runs the other way. A, C and D are positions the text never gives him.",
+  },
+  {
+    id: "r-cra-32",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "craft-structure",
+    skillId: "cross-text",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "Text 1: Psychologist Dana Reuter finds that students who take notes by hand recall more of a lecture than students who type, and concludes that writing by hand aids memory.\n\nText 2: Psychologist Ola Bjerke repeated the comparison with one change: the typing group was told to write summaries rather than take down what was said. The difference in recall disappeared.",
+    prompt: "Which choice best describes how Bjerke's finding bears on Reuter's conclusion?",
+    choices: [
+      { id: "A", text: "It confirms that handwriting is what produces the advantage." },
+      {
+        id: "B",
+        text: "It locates the advantage in summarising rather than in the act of writing by hand.",
+      },
+      { id: "C", text: "It shows that neither group recalled anything of the lecture." },
+      { id: "D", text: "It shows that typing is faster than writing by hand." },
+    ],
+    answer: "B",
+    explanation:
+      "Changing what the typists did, not how they wrote, removed the gap, so the gap was about summarising. A is the conclusion the second study undercuts, and C and D describe results neither text reports.",
+  },
+  {
+    id: "r-exp-18",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "The cave's painted chamber is lit for two hours a day and closed to visitors the rest of the time. ______ its pigments have faded far less than those at comparable sites open all year.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "In contrast," },
+      { id: "B", text: "Even so," },
+      { id: "C", text: "Meanwhile," },
+      { id: "D", text: "As a result," },
+    ],
+    answer: "D",
+    explanation:
+      "Less light and fewer visitors, so less fading: the second sentence is the consequence of the first. The other three signal a contrast or a change of subject that the sentences do not support.",
+  },
+  {
+    id: "r-exp-19",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "transitions",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "High winds cancel the island ferry on about forty days a year, most of them in winter. ______ the island's shops rarely run short, because the deliveries are timed around the forecasts rather than the calendar.",
+    prompt: "Which choice completes the text with the most logical transition?",
+    choices: [
+      { id: "A", text: "Similarly," },
+      { id: "B", text: "Therefore," },
+      { id: "C", text: "In particular," },
+      { id: "D", text: "Even so," },
+    ],
+    answer: "D",
+    explanation:
+      "The second sentence reports the opposite of what the first would lead you to expect, which is a concession. \u201cTherefore\u201d would make empty shelves the outcome, and the other two signal illustration or likeness.",
+  },
+  {
+    id: "r-exp-20",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "expression-ideas",
+    skillId: "rhetorical-synthesis",
+    difficulty: "hard",
+    source: P,
+    stimulus:
+      "While researching, a student took these notes:\n\u2022 A tidal mill on the estuary ground grain from 1740 until 1926.\n\u2022 It was driven by water held behind a gate at high tide and released as the tide fell.\n\u2022 The restored mill now drives a generator instead of millstones.\n\u2022 It supplies about a fifth of the electricity used by the village hall.",
+    prompt:
+      "The student wants to emphasise that the mill works on the same principle as before but to a different end. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+    choices: [
+      { id: "A", text: "The tidal mill ground grain on the estuary from 1740 until 1926." },
+      {
+        id: "B",
+        text: "The mill is still driven by water released as the tide falls, but it now turns a generator rather than millstones, supplying about a fifth of the village hall's electricity.",
+      },
+      { id: "C", text: "The restored mill supplies about a fifth of the village hall's electricity." },
+      { id: "D", text: "Water was held behind a gate at high tide and released as the tide fell." },
+    ],
+    answer: "B",
+    explanation:
+      "The goal has two halves, the unchanged principle and the changed purpose, and only B gives both. A and D describe the old mill alone, and C the new use alone.",
+  },
+  {
+    id: "r-sec-24",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "boundaries",
+    difficulty: "medium",
+    source: P,
+    stimulus:
+      "Delegates travelled from Lima, Peru______ Quito, Ecuador; and Bogot\u00e1, Colombia.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: ";" },
+      { id: "B", text: "," },
+      { id: "C", text: ":" },
+      { id: "D", text: "(no punctuation)" },
+    ],
+    answer: "A",
+    explanation:
+      "The items in this series already contain commas, so the items themselves are separated by semicolons — as the rest of the sentence does. A comma here would leave four items that cannot be told apart.",
+  },
+  {
+    id: "r-sec-25",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "boundaries",
+    difficulty: "hard",
+    source: P,
+    stimulus: "The only ferry ______ runs through the winter leaves at dawn.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "that" },
+      { id: "B", text: ", which" },
+      { id: "C", text: "which" },
+      { id: "D", text: ", that" },
+    ],
+    answer: "A",
+    explanation:
+      "The clause identifies which ferry is meant, so it is essential and takes \u201cthat\u201d with no comma. B would make the identifying information an aside, C leaves a nonessential pronoun without its comma, and D pairs a comma with a pronoun that cannot take one.",
+  },
+  {
+    id: "r-sec-26",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "form-structure-sense",
+    difficulty: "medium",
+    source: P,
+    stimulus: "Rebuilt after the fire of 1892, ______ now houses the town archive.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "the old courthouse" },
+      { id: "B", text: "the town's records were moved into the old courthouse, which" },
+      { id: "C", text: "it is the old courthouse that" },
+      { id: "D", text: "housing the records, the old courthouse" },
+    ],
+    answer: "A",
+    explanation:
+      "The opening phrase describes whatever the main clause's subject is, and the thing rebuilt after the fire is the courthouse. B puts the records in that position, and C and D leave the sentence without a straightforward subject and verb.",
+  },
+  {
+    id: "r-sec-27",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "form-structure-sense",
+    difficulty: "hard",
+    source: P,
+    stimulus: "Reading the transcripts proved more useful than ______ the interviews.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "listening to" },
+      { id: "B", text: "to listen to" },
+      { id: "C", text: "listened to" },
+      { id: "D", text: "having listened to" },
+    ],
+    answer: "A",
+    explanation:
+      "The comparison is between two activities, and the first is given as \u201creading\u201d, so the second must take the same form. The other three break the parallel.",
+  },
+  {
+    id: "r-sec-28",
+    testId: "sat",
+    subjectId: "rw",
+    domainId: "standard-conventions",
+    skillId: "subject-verb",
+    difficulty: "medium",
+    source: P,
+    stimulus: "There ______ a dozen reasons to postpone the launch, and the weather is only one.",
+    prompt:
+      "Which choice completes the text so that it conforms to the conventions of Standard English?",
+    choices: [
+      { id: "A", text: "are" },
+      { id: "B", text: "is" },
+      { id: "C", text: "was" },
+      { id: "D", text: "has been" },
+    ],
+    answer: "A",
+    explanation:
+      "\u201cThere\u201d is not the subject; \u201ca dozen reasons\u201d is, and it is plural. The second clause is in the present, so a past form would not fit either.",
   },
 ];
 

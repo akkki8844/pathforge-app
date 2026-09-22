@@ -23,6 +23,7 @@ import {
   masteryTone,
   overallStats,
   pct,
+  timingByDomain,
 } from "@/lib/testprep/stats";
 import { ROW_HOVER, SURFACE } from "@/lib/testprep/ui";
 import { Bar, Stat, StatGrid } from "@/components/testprep/primitives";
@@ -45,6 +46,7 @@ export default function TestPrepProgress() {
 
   const stats = useMemo(() => overallStats(profile), [profile]);
   const difficulty = useMemo(() => accuracyByDifficulty(profile), [profile]);
+  const timing = useMemo(() => timingByDomain(profile), [profile]);
   const exams = useMemo(
     () => profile.attempts.filter((a) => a.kind === "exam" && a.score !== undefined),
     [profile.attempts],
@@ -221,6 +223,41 @@ export default function TestPrepProgress() {
               </Panel>
             </Reveal>
 
+            {/*
+              Where the time goes.
+
+              `overallStats` already reported one average across everything,
+              which answers "am I slow" but not "slow at what" — which is the
+              only version of the question a student can act on. Every
+              ingredient was already on the record; this groups it.
+            */}
+            {timing.length > 0 && (
+              <Reveal delay={0.22}>
+                <Panel
+                  title="Where your time goes"
+                  description="Mean time per question, slowest topic first. Only topics you have answered at least three of."
+                  bodyClassName="p-0"
+                >
+                  <ul>
+                    {timing.map((row) => (
+                      <li
+                        key={row.id}
+                        className="flex items-baseline justify-between gap-4 border-b border-border/50 px-5 py-3 last:border-b-0"
+                      >
+                        <span className="min-w-0 truncate text-sm text-foreground">{row.label}</span>
+                        <span className="shrink-0 text-xs tabular-nums text-muted-foreground">
+                          {formatDuration(row.avgMs)}
+                          {" · "}
+                          {row.answers} answered
+                          {row.accuracy !== null && ` · ${pct(row.accuracy)} correct`}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </Panel>
+              </Reveal>
+            )}
+
             {exams.length > 0 && (
               <Reveal delay={0.24}>
                 <Panel title="Score history" bodyClassName="p-0">
@@ -319,7 +356,7 @@ export default function TestPrepProgress() {
                 Reset progress
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent>
+            <AlertDialogContent className="bluebook">
               <AlertDialogHeader>
                 <AlertDialogTitle>Reset all SAT progress?</AlertDialogTitle>
                 <AlertDialogDescription>

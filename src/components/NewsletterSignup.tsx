@@ -3,6 +3,7 @@ import { Mail, Send, CheckCircle2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Link } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { isLikelyEmail } from "@/lib/isLikelyEmail";
@@ -107,8 +108,14 @@ export function NewsletterSignup() {
               <Send className="h-4 w-4" aria-hidden="true" />
               {loading ? "Signing up…" : "Subscribe"}
             </Button>
-            <p className="text-xs text-muted-foreground">
-              Unsubscribe any time — no spam, ever.
+            {/* Marketing email needs actual consent, and the act of subscribing
+                is that consent only if what is being consented to is stated
+                here. Purpose, frequency, withdrawal and the policy link. */}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Subscribing means you agree to receive Pathforge emails about deadlines, features and
+              application tips. Unsubscribe any time from the link in any email — no spam, ever. We
+              never sell your address. See our{" "}
+              <Link to="/privacy" className="underline hover:text-foreground">Privacy Notice</Link>.
             </p>
           </motion.form>
         )}

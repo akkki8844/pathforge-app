@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import {
-  Target, CheckCircle, AlertTriangle, TrendingUp, TrendingDown, Minus, GraduationCap, ListChecks, ChevronDown, Building2 } from "lucide-react";
+  Target, CheckCircle, AlertTriangle, TrendingUp, TrendingDown, Minus, GraduationCap, ListChecks, ChevronDown, Building2, Lightbulb } from "lucide-react";
 import {
   Radar,
   RadarChart,
@@ -27,27 +27,41 @@ interface Props {
   analysisId?: string; // for action-plan check persistence
 }
 
+/*
+ * Semantic tokens, not raw Tailwind hues.
+ *
+ * This file hardcoded green-600 / yellow-600 / red-600 with hand-written
+ * `dark:` variants beside each one. The app already ships --success,
+ * --warning and --info in both themes and maps them in tailwind.config.ts, so
+ * the hardcoded set was a second palette that had to be kept in sync by hand
+ * and drifted from every other surface the moment either side changed.
+ *
+ * These three scales stay coloured because they are genuinely ordinal — the
+ * reader acts differently on "Safety" than on "Reach" — which is the one case
+ * where colour carries information rather than decoration.
+ */
 const alignmentColor = (s: string) => {
   switch (s) {
     case "Strong":
-      return "text-green-600 bg-green-100 dark:bg-green-900/30 dark:text-green-400";
+      return "bg-success/10 text-success";
     case "Moderate":
-      return "text-yellow-600 bg-yellow-100 dark:bg-yellow-900/30 dark:text-yellow-400";
+      return "bg-warning/10 text-warning";
     case "Needs Work":
-      return "text-red-600 bg-red-100 dark:bg-red-900/30 dark:text-red-400";
+    case "Misaligned":
+      return "bg-destructive/10 text-destructive";
     default:
-      return "text-muted-foreground bg-muted";
+      return "bg-muted text-muted-foreground";
   }
 };
 
 const fitColor = (f: string) => {
   switch (f) {
     case "Reach":
-      return "border-red-500/40 text-red-600 dark:text-red-400";
+      return "border-destructive/40 text-destructive";
     case "Match":
-      return "border-yellow-500/40 text-yellow-600 dark:text-yellow-400";
+      return "border-warning/40 text-warning";
     case "Safety":
-      return "border-green-500/40 text-green-600 dark:text-green-400";
+      return "border-success/40 text-success";
     default:
       return "";
   }
@@ -62,12 +76,36 @@ const priorityColor = (p: string) =>
 
 const TrendIcon = ({ trend }: { trend: string }) =>
   trend === "up" ? (
-    <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+    <TrendingUp className="h-3.5 w-3.5 text-success" />
   ) : trend === "down" ? (
-    <TrendingDown className="h-3.5 w-3.5 text-red-500" />
+    <TrendingDown className="h-3.5 w-3.5 text-destructive" />
   ) : (
     <Minus className="h-3.5 w-3.5 text-muted-foreground" />
   );
+
+/** Direction of travel across terms, as a word and a tone. */
+const TRAJECTORY_TONE: Record<string, string> = {
+  improving: "bg-success/10 text-success",
+  steady: "bg-muted text-muted-foreground",
+  mixed: "bg-warning/10 text-warning",
+  declining: "bg-destructive/10 text-destructive",
+};
+
+/**
+ * How sure the counsellor is of a finding.
+ *
+ * Shown as a word rather than a coloured dot: "medium" is information, a amber
+ * circle beside a paragraph is decoration that the reader has to decode from a
+ * legend that does not exist.
+ */
+function ConfidenceNote({ level }: { level: "high" | "medium" | "low" }) {
+  if (level === "high") return null;
+  return (
+    <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+      {level === "medium" ? "Moderate confidence" : "Low confidence"}
+    </span>
+  );
+}
 
 export function ReadinessReport({ analysis, analysisId }: Props) {
   const storageKey = analysisId ? `readiness-actions-${analysisId}` : null;
@@ -137,6 +175,25 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
       animate={{ opacity: 1, y: 0 }}
       className="space-y-6"
     >
+      {/*
+        * The headline.
+        *
+        * The report used to open on "College Alignment" and a badge, which is
+        * a label, not a finding. If the review is worth paying for it has one
+        * sentence that matters most, and it belongs before anything else on
+        * the page rather than buried in paragraph three of the summary.
+        */}
+      {analysis.headline && (
+        <div className="rounded-2xl border border-accent/25 bg-accent/[0.06] p-6 dark:bg-accent/[0.10]">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-accent">
+            The finding
+          </p>
+          <p className="mt-2 text-balance text-[19px] font-semibold leading-snug tracking-[-0.02em] text-foreground">
+            {analysis.headline}
+          </p>
+        </div>
+      )}
+
       {/* Executive summary + alignment */}
       <div className="card-elevated p-6">
         <div className="flex items-start justify-between gap-4 mb-4">
@@ -161,6 +218,147 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
           {analysis.alignmentExplanation}
         </p>
       </div>
+
+      {/*
+        * Does the record actually support the stated major?
+        *
+        * The single most useful thing this report can say, and the old version
+        * had nowhere to say it — a student whose marks point away from their
+        * intended subject got "Moderate" on an alignment badge and no
+        * explanation of what would have to change.
+        */}
+      {analysis.majorAlignment && (
+        <div className="card-elevated p-6">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <GraduationCap className="h-5 w-5 text-accent" />
+              Major alignment
+            </h3>
+            <span
+              className={`shrink-0 rounded-md px-3 py-1 text-sm font-bold ${alignmentColor(
+                analysis.majorAlignment.verdict,
+              )}`}
+            >
+              {analysis.majorAlignment.verdict}
+            </span>
+          </div>
+          <p className="leading-relaxed text-foreground">
+            {analysis.majorAlignment.explanation}
+          </p>
+
+          <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            {analysis.majorAlignment.requiredSubjects &&
+              analysis.majorAlignment.requiredSubjects.length > 0 && (
+                <div>
+                  <h4 className="text-[13px] font-semibold text-foreground">
+                    Subjects this major expects
+                  </h4>
+                  <ul className="mt-2 space-y-1.5">
+                    {analysis.majorAlignment.requiredSubjects.map((r) => (
+                      <li key={r} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                        <span
+                          aria-hidden
+                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50"
+                        />
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+            {analysis.majorAlignment.gapsToClose &&
+              analysis.majorAlignment.gapsToClose.length > 0 && (
+                <div>
+                  <h4 className="text-[13px] font-semibold text-foreground">Gaps to close</h4>
+                  <ul className="mt-2 space-y-1.5">
+                    {analysis.majorAlignment.gapsToClose.map((g) => (
+                      <li key={g} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                        <span
+                          aria-hidden
+                          className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-destructive/60"
+                        />
+                        <span>{g}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+          </div>
+        </div>
+      )}
+
+      {/*
+        * Direction of travel.
+        *
+        * A single term is a snapshot; what a family actually wants to know is
+        * whether this is getting better or worse and where it lands by
+        * application season.
+        */}
+      {analysis.trajectory && (
+        <div className="card-elevated p-6">
+          <div className="mb-3 flex items-start justify-between gap-4">
+            <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              <TrendingUp className="h-5 w-5 text-accent" />
+              Trajectory
+            </h3>
+            <span
+              className={`shrink-0 rounded-md px-3 py-1 text-sm font-bold capitalize ${
+                TRAJECTORY_TONE[analysis.trajectory.direction] ?? "bg-muted text-muted-foreground"
+              }`}
+            >
+              {analysis.trajectory.direction}
+            </span>
+          </div>
+          <p className="leading-relaxed text-foreground">{analysis.trajectory.evidence}</p>
+          <p className="mt-3 border-l-2 border-accent/30 pl-3 text-[13.5px] leading-relaxed text-muted-foreground">
+            {analysis.trajectory.projection}
+          </p>
+        </div>
+      )}
+
+      {/*
+        * Insights: the part a student could not have read off their own card.
+        *
+        * Deliberately the longest-form block in the report. Everything else
+        * here is a list; this is where the counsellor actually reasons, and
+        * compressing it into bullets is what made the old report feel generic.
+        */}
+      {analysis.insights && analysis.insights.length > 0 && (
+        <div className="card-elevated p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Lightbulb className="h-5 w-5 text-accent" />
+            What stands out
+            <span className="text-sm font-normal text-muted-foreground">
+              ({analysis.insights.length})
+            </span>
+          </h3>
+          <div className="space-y-4">
+            {analysis.insights.map((ins, i) => (
+              <motion.div
+                key={`${ins.title}-${i}`}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.35, delay: Math.min(i, 6) * 0.05, ease: [0.16, 1, 0.3, 1] }}
+                className="rounded-xl border border-border/70 bg-background/60 p-4"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h4 className="text-[14px] font-semibold tracking-[-0.01em] text-foreground">
+                    {ins.title}
+                  </h4>
+                  <ConfidenceNote level={ins.confidence} />
+                </div>
+                <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted-foreground">
+                  {ins.finding}
+                </p>
+                <p className="mt-2.5 text-[13.5px] font-medium leading-relaxed text-foreground">
+                  {ins.soWhat}
+                </p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Pillars: radar + bars + overall */}
       {analysis.pillars && (
@@ -430,6 +628,34 @@ export function ReadinessReport({ analysis, analysisId }: Props) {
           </AccordionItem>
         </Accordion>
       </div>
+      {/*
+        * What the review could not see.
+        *
+        * A report card shows marks and little else — no test scores, usually no
+        * extracurriculars. Saying so is the difference between an assessment
+        * and a verdict, and it stops a student reading silence as approval.
+        */}
+      {analysis.dataGaps && analysis.dataGaps.length > 0 && (
+        <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-5">
+          <h3 className="text-[13px] font-semibold text-foreground">
+            What this review could not see
+          </h3>
+          <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
+            Based only on the report card provided. These would change the assessment.
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {analysis.dataGaps.map((g) => (
+              <li key={g} className="flex gap-2 text-[13px] leading-relaxed text-muted-foreground">
+                <span
+                  aria-hidden
+                  className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/50"
+                />
+                <span>{g}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </motion.div>
   );
 }

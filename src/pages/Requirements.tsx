@@ -18,6 +18,7 @@ import { useAiGenerationGuard } from "@/hooks/useAiGenerationGuard";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { fadeUp, staggerParent, staggerStep, transition, viewportOnce } from "@/lib/motion";
 import { safeExternalUrl } from "@/lib/safeUrl";
+import { sanitizeReport } from "@/lib/reportSanitize";
 import { Eyebrow } from "@/components/cluely/primitives";
 
 // Permissive type — the AI report schema evolves; we render defensively.
@@ -25,21 +26,36 @@ type RequirementsReport = any;
 type HistoryRow = { id: string; college: string; report: RequirementsReport; updated_at: string };
 
 
+/*
+ * Both tone ladders run on semantic tokens, not fixed Tailwind hues.
+ *
+ * They used to run on both, which was the bug: `destructive`, `primary` and
+ * `muted` follow the theme, while `emerald-500` and `amber-500` do not. In dark
+ * mode half the scale re-lit itself and half stayed at its light-mode value, so
+ * the steps stopped reading as one ladder.
+ *
+ * Two mappings are worth naming. "Hard" has no token of its own — it sits
+ * between target and reach — so it takes a lighter destructive rather than a
+ * fifth colour nobody else on the site uses. And the lightbulb markers below
+ * carry `warning` for its amber, not to warn: an essay angle is an idea, and
+ * amber is simply the site's warm accent. The token name is about the hue there,
+ * not the severity.
+ */
 function selectivityTone(s: string) {
   const v = (s || "").toLowerCase();
   if (v.includes("extremely")) return "bg-destructive/10 text-destructive border-destructive/30";
-  if (v.includes("highly")) return "bg-amber-500/10 text-amber-500 border-amber-500/30";
+  if (v.includes("highly")) return "bg-warning/10 text-warning border-warning/30";
   if (v.includes("moderately")) return "bg-primary/10 text-primary border-primary/30";
-  if (v.includes("open")) return "bg-emerald-500/10 text-emerald-500 border-emerald-500/30";
+  if (v.includes("open")) return "bg-success/10 text-success border-success/30";
   return "bg-muted text-foreground border-border";
 }
 
 function fitBandTone(b: string) {
   const v = (b || "").toLowerCase();
-  if (v.includes("safety")) return "text-emerald-500";
+  if (v.includes("safety")) return "text-success";
   if (v.includes("match")) return "text-primary";
-  if (v.includes("target")) return "text-amber-500";
-  if (v.includes("hard")) return "text-orange-500";
+  if (v.includes("target")) return "text-warning";
+  if (v.includes("hard")) return "text-destructive/80";
   if (v.includes("reach")) return "text-destructive";
   return "text-foreground";
 }
@@ -138,10 +154,10 @@ function ReportView({ report }: { report: RequirementsReport }) {
                 <Card className="shadow-none hover:shadow-none">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm flex items-center gap-2">
-                      <CheckCircle2 className="h-4 w-4 text-emerald-500" /> Your strengths vs this school
+                      <CheckCircle2 className="h-4 w-4 text-success" /> Your strengths vs this school
                     </CardTitle>
                   </CardHeader>
-                  <CardContent><BulletList items={fa.strengths} icon={CheckCircle2} tone="text-emerald-500" /></CardContent>
+                  <CardContent><BulletList items={fa.strengths} icon={CheckCircle2} tone="text-success" /></CardContent>
                 </Card>
               </motion.div>
               <motion.div variants={fadeUp}>
@@ -254,7 +270,7 @@ function ReportView({ report }: { report: RequirementsReport }) {
                       {qs.map((q: any, i: number) => (
                         <li key={i} className="flex gap-2 text-sm">
                           {q.present ? (
-                            <CheckCircle2 className="h-4 w-4 mt-0.5 text-emerald-500 shrink-0" />
+                            <CheckCircle2 className="h-4 w-4 mt-0.5 text-success shrink-0" />
                           ) : (
                             <XCircle className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                           )}
@@ -288,7 +304,7 @@ function ReportView({ report }: { report: RequirementsReport }) {
                 {report.extracurriculars?.missingArchetypes?.length > 0 && (
                   <div>
                     <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Missing archetypes</div>
-                    <BulletList items={report.extracurriculars.missingArchetypes} icon={XCircle} tone="text-amber-500" />
+                    <BulletList items={report.extracurriculars.missingArchetypes} icon={XCircle} tone="text-warning" />
                   </div>
                 )}
               </CardContent>
@@ -373,7 +389,7 @@ function ReportView({ report }: { report: RequirementsReport }) {
           {report.essays?.anglesForStudent?.length > 0 && (
             <Card className="shadow-none hover:shadow-none">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-amber-500" /> Essay angles for you</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-warning" /> Essay angles for you</CardTitle>
               </CardHeader>
               <CardContent><BulletList items={report.essays.anglesForStudent} /></CardContent>
             </Card>
@@ -383,9 +399,9 @@ function ReportView({ report }: { report: RequirementsReport }) {
               {report.essays?.whatTheyReward?.length > 0 && (
                 <Card className="shadow-none hover:shadow-none">
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-500" /> What essays reward</CardTitle>
+                    <CardTitle className="text-sm flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-success" /> What essays reward</CardTitle>
                   </CardHeader>
-                  <CardContent><BulletList items={report.essays.whatTheyReward} icon={CheckCircle2} tone="text-emerald-500" /></CardContent>
+                  <CardContent><BulletList items={report.essays.whatTheyReward} icon={CheckCircle2} tone="text-success" /></CardContent>
                 </Card>
               )}
               {report.essays?.whatGetsRejected?.length > 0 && (
@@ -478,7 +494,7 @@ function ReportView({ report }: { report: RequirementsReport }) {
             </Card>
             <Card className="shadow-none hover:shadow-none">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-amber-500" /> Edge strategies</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-2"><Lightbulb className="h-4 w-4 text-warning" /> Edge strategies</CardTitle>
               </CardHeader>
               <CardContent><BulletList items={report.edgeStrategies} /></CardContent>
             </Card>
@@ -618,7 +634,9 @@ export default function Requirements() {
       });
       if (error) throw error;
       if (data?.report) {
-        setReports((r) => ({ ...r, [college]: data.report }));
+        // Same guarantee as the readiness report: the prompt asks, this
+        // enforces. See src/lib/reportSanitize.ts for why both are needed.
+        setReports((r) => ({ ...r, [college]: sanitizeReport(data.report) }));
       } else {
         throw new Error(data?.error || "No report returned");
       }
@@ -687,7 +705,7 @@ export default function Requirements() {
         {!onboardingData || targets.length === 0 ? (
           <Card className="shadow-none hover:shadow-none">
             <CardContent className="py-16 text-center">
-              <AlertTriangle className="h-12 w-12 mx-auto text-amber-500 mb-4" />
+              <AlertTriangle className="h-12 w-12 mx-auto text-warning mb-4" />
               <h2 className="text-xl font-semibold text-foreground mb-2">
                 Add your target universities first
               </h2>

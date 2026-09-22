@@ -244,7 +244,7 @@ export default function Recommendations() {
                 </div>
                 <h3 className="font-cluely text-[14.5px] font-semibold tracking-[-0.01em] text-foreground">{rec.title}</h3>
                 <p className="mt-1 text-[13px] text-muted-foreground">{rec.description}</p>
-                <p className="mt-2 text-[12px] text-muted-foreground/80">
+                <p className="mt-2 text-[12px] text-muted-foreground">
                   Why: {rec.reason}
                 </p>
               </Panel>

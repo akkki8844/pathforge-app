@@ -100,7 +100,7 @@ export function PortalLinkSection({ recommender }: { recommender: Recommender })
       {recommender.letter_file_path ? (
         <div className="rounded-md border bg-background p-3 space-y-2">
           <div className="flex items-center gap-2 text-sm">
-            <FileText className="h-4 w-4 text-emerald-600" />
+            <FileText className="h-4 w-4 text-primary" />
             <span className="font-medium">Letter uploaded</span>
             {recommender.letter_uploaded_at && (
               <span className="text-xs text-muted-foreground">

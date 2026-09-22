@@ -448,7 +448,34 @@ export default function Terms() {
           </li>
         </ul>
 
-        <h2>25. Contact</h2>
+        <h2>25. Who We Are &amp; How to Contact Us</h2>
+        <p>
+          Pathforge is owned and operated by <strong>Govind Mulchandani</strong>, trading as
+          Pathforge. Govind is the person you are contracting with under these Terms, and the
+          person responsible for the Service.
+        </p>
+        <ul>
+          <li><strong>Business name:</strong> Pathforge</li>
+          <li><strong>Owner:</strong> Govind Mulchandani</li>
+          <li>
+            <strong>Phone:</strong>{" "}
+            <a href="tel:+918888918844" className="text-accent underline">+91 88889 18844</a>
+          </li>
+          <li>
+            <strong>Business email:</strong>{" "}
+            <a href="mailto:mulchandaniakshay39@gmail.com" className="text-accent underline">
+              mulchandaniakshay39@gmail.com
+            </a>
+          </li>
+          <li>
+            <strong>Support email:</strong>{" "}
+            <a href="mailto:pathforge.co@gmail.com" className="text-accent underline">
+              pathforge.co@gmail.com
+            </a>
+          </li>
+          <li><strong>Website:</strong> pathforge.co.in</li>
+          <li><strong>Merchant of Record:</strong> Paddle.com (see section 5)</li>
+        </ul>
         <p>
           Questions about these Terms? Email{" "}
           <a href="mailto:pathforge.co@gmail.com" className="text-accent underline">

@@ -43,6 +43,26 @@ function stripHtmlComments(): Plugin {
 }
 
 // https://vitejs.dev/config/
+/**
+ * simli-client@3.0.2 ships `dist/index.js` with `require("./Client")`, but the
+ * file on disk is `dist/client.js`. That resolves fine on case-insensitive
+ * macOS/Windows and fails a case-sensitive filesystem with:
+ *   Could not resolve "./Client" from "./Client?commonjs-external"
+ * Map the bad specifier back onto the real file until upstream fixes the case.
+ * Kept identical to pathforge-tech so the two builds cannot diverge on it.
+ */
+function fixSimliClientCase(): Plugin {
+  return {
+    name: "pathforge:fix-simli-client-case",
+    enforce: "pre",
+    resolveId(source, importer) {
+      if (!importer || !importer.replace(/\\/g, "/").includes("/simli-client/")) return null;
+      if (!/^\.\/Client(\?|$)/.test(source)) return null;
+      return path.resolve(__dirname, "node_modules/simli-client/dist/client.js");
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
@@ -67,9 +87,12 @@ export default defineConfig(({ mode }) => ({
   // Skipping the plugin on win32 keeps the committed (correct) bundle authoritative
   // here; POSIX machines and CI still regenerate it exactly as before. Anyone editing
   // src/lib/mcp/ should therefore re-bundle on POSIX/WSL and commit the result.
-  plugins: [react(), stripHtmlComments(), process.platform === "win32" ? null : mcpPlugin()].filter(
-    Boolean,
-  ),
+  plugins: [
+    react(),
+    fixSimliClientCase(),
+    stripHtmlComments(),
+    process.platform === "win32" ? null : mcpPlugin(),
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

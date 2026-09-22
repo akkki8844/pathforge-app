@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Check, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { AdmitAvatar } from "@/components/admits/AdmitAvatar";
@@ -12,7 +11,7 @@ import { transition } from "@/lib/motion";
  * "+9" overflow chip that hid the whole point.
  */
 
-/** Ring colour encodes the outcome, so the grid is readable without a legend. */
+/** Ring colour encodes the outcome; the key for it is printed under the grid. */
 const RING: Record<AdmitOutcome, string> = {
   attending: "border-amber-400 dark:border-amber-500",
   accepted: "border-emerald-500/70 dark:border-emerald-400/70",
@@ -48,17 +47,11 @@ function Stat({ value, label }: { value: string; label: string }) {
  * character is generated from the admit's id, not from any image of them.
  */
 function AvatarTile({ id }: { id: string }) {
-  return (
-    <div className="relative shrink-0">
-      <AdmitAvatar seed={id} className="h-20 w-20 sm:h-[86px] sm:w-[86px] rounded-2xl" />
-      <span
-        className="absolute -bottom-1 -right-1 h-6 w-6 rounded-full bg-primary ring-2 ring-card flex items-center justify-center"
-        title="Publicly documented outcome"
-      >
-        <Check className="h-3.5 w-3.5 text-primary-foreground" strokeWidth={3} />
-      </span>
-    </div>
-  );
+  // A blue tick used to sit in the corner. It said "publicly documented", which
+  // is true of every profile on the page and so distinguished nothing, and a
+  // verification tick on a photograph of a person reads as a claim about the
+  // person rather than about the sourcing.
+  return <AdmitAvatar seed={id} className="h-20 w-20 shrink-0 rounded-2xl sm:h-[86px] sm:w-[86px]" />;
 }
 
 interface Props {
@@ -89,9 +82,9 @@ export function AdmitCard({ admit, similarity, onOpen }: Props) {
         {admit.ethnicity && <Pill>{admit.ethnicity}</Pill>}
         {admit.gender && <Pill>{admit.gender}</Pill>}
         {similarity !== null && (
-          <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border-2 border-primary px-3 py-1 text-xs font-semibold text-primary">
-            <Check className="h-3.5 w-3.5" strokeWidth={3} />
-            Similarity {similarity}%
+          <span className="ml-auto inline-flex items-baseline gap-1.5 rounded-full border-2 border-primary px-3 py-1 text-xs font-semibold text-primary">
+            <span className="tabular-nums">{similarity}%</span>
+            <span className="font-medium">similar to you</span>
           </span>
         )}
       </div>
@@ -130,11 +123,6 @@ export function AdmitCard({ admit, similarity, onOpen }: Props) {
             )}
           >
             <CollegeLogo name={s.name} size={26} className="rounded" />
-            {s.outcome === "attending" && (
-              <span className="absolute -top-1.5 -right-1.5 h-5 w-5 rounded-full bg-amber-400 ring-2 ring-card flex items-center justify-center">
-                <Star className="h-3 w-3 text-white" fill="currentColor" strokeWidth={0} />
-              </span>
-            )}
           </span>
         ))}
         {admit.totalAccepted && admit.totalAccepted > schools.length && (
@@ -143,6 +131,25 @@ export function AdmitCard({ admit, similarity, onOpen }: Props) {
           </span>
         )}
       </div>
+
+      {/* The ring colour is the whole encoding now, so it is stated in words
+          rather than left to a gold star nobody has a key for. */}
+      <p className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[10.5px] uppercase tracking-[0.1em] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-[3px] w-4 rounded-full bg-amber-400" />
+          Attending
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-[3px] w-4 rounded-full bg-emerald-500 dark:bg-emerald-400" />
+          Accepted
+        </span>
+        {schools.some((s) => s.outcome === "rejected") && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="h-[3px] w-4 rounded-full bg-rose-400" />
+            Rejected
+          </span>
+        )}
+      </p>
     </motion.button>
   );
 }

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Megaphone, Loader2 } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
-import { BackToCommand } from "@/components/teacher/BackToCommand";
+import { Seo } from "@/components/Seo";
 import { BroadcastComposer } from "@/components/BroadcastComposer";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
@@ -26,7 +26,7 @@ export default function CounselorAnnouncements() {
   const [items, setItems] = useState<Broadcast[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const load = async () => {
+  const load = useCallback(async () => {
     if (!user) return;
     setLoading(true);
     const { data } = await supabase
@@ -37,16 +37,21 @@ export default function CounselorAnnouncements() {
       .limit(30);
     setItems((data as Broadcast[] | null) ?? []);
     setLoading(false);
-  };
+  }, [user]);
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [user]);
+  useEffect(() => { load(); }, [load]);
 
   return (
     <TeacherLayout>
-      <BackToCommand />
+      <Seo
+        title="Announcements"
+        description="One message to a class or the cohort."
+        path="/teacher/announcements"
+        noindex
+      />
       <div className="space-y-6">
         <header>
-          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+          <h1 className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-foreground">
             <Megaphone className="h-5 w-5 text-accent" /> Announcements
           </h1>
           <p className="text-sm text-muted-foreground mt-1">

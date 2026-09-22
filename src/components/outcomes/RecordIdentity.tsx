@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { isConnectorAvailable } from "@/lib/connectors/availability";
 import { Github, Linkedin, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
@@ -85,20 +86,26 @@ export function RecordIdentity({
         </div>
 
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 text-xs"
-            disabled={githubLoading}
-            onClick={onSyncGithub}
-          >
-            {githubLoading ? (
-              <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Github className="mr-1.5 h-3.5 w-3.5" />
-            )}
-            Import from GitHub
-          </Button>
+          {/* Hidden while the GitHub connector is parked: with no way to
+              connect an account, this button could only ever report that it
+              found nothing, which reads as a broken import rather than as an
+              integration that is not open yet. */}
+          {isConnectorAvailable("github") && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 text-xs"
+              disabled={githubLoading}
+              onClick={onSyncGithub}
+            >
+              {githubLoading ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Github className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              Import from GitHub
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"

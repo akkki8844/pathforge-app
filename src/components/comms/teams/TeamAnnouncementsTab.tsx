@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { format } from "date-fns";
 import { AlertTriangle, Check, Loader2, Megaphone, Pin, PinOff, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -56,7 +56,7 @@ export function TeamAnnouncementsTab({
   myRole: TeamRole | null;
 }) {
   const { user } = useAuth();
-  const { announcements, readIds, authorIds, isLoading } = useTeamAnnouncements(teamId);
+  const { announcements, readIds, ackedIds, authorIds, isLoading } = useTeamAnnouncements(teamId);
   const { people } = usePeople(authorIds);
   const { markRead, acknowledge, setPinned, unpublish } = useAnnouncementActions(teamId);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -103,6 +103,7 @@ export function TeamAnnouncementsTab({
               announcement={a}
               people={people}
               isRead={readIds.has(a.id)}
+              hasAcknowledged={ackedIds.has(a.id)}
               canManage={canPublish || a.author_id === user?.id}
               onRead={() => markRead.mutate(a.id)}
               onAcknowledge={() =>
@@ -130,10 +131,14 @@ export function TeamAnnouncementsTab({
   );
 }
 
+/** Mirrors `AnnouncementItem`: on screen for a moment, not merely hovered. */
+const READ_DWELL_MS = 900;
+
 export function AnnouncementCard({
   announcement: a,
   people,
   isRead,
+  hasAcknowledged = false,
   canManage,
   onRead,
   onAcknowledge,
@@ -144,6 +149,8 @@ export function AnnouncementCard({
   announcement: Announcement;
   people: PersonMap;
   isRead: boolean;
+  /** Whether this reader has already acknowledged it. */
+  hasAcknowledged?: boolean;
   canManage: boolean;
   onRead: () => void;
   onAcknowledge: () => void;
@@ -152,11 +159,43 @@ export function AnnouncementCard({
   /** Shown next to the priority pill on the global feed, where the team isn't implied by the page. */
   teamLabel?: string;
 }) {
+  const cardRef = useRef<HTMLElement>(null);
+  // See `AnnouncementItem`: the callback is inline, the observer is not.
+  const onReadRef = useRef(onRead);
+  onReadRef.current = onRead;
+
+  useEffect(() => {
+    if (isRead) return;
+    const el = cardRef.current;
+    if (!el) return;
+    if (typeof IntersectionObserver === "undefined") {
+      onReadRef.current();
+      return;
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) timer = setTimeout(() => onReadRef.current(), READ_DWELL_MS);
+        else if (timer) {
+          clearTimeout(timer);
+          timer = undefined;
+        }
+      },
+      { threshold: 0.6 },
+    );
+    io.observe(el);
+    return () => {
+      if (timer) clearTimeout(timer);
+      io.disconnect();
+    };
+  }, [isRead]);
+
   return (
     <article
-      onMouseEnter={() => {
-        if (!isRead) onRead();
-      }}
+      // Read state follows the same rule as the feed's card: see
+      // `AnnouncementItem`. Hover marked a whole tab read on one sweep of the
+      // pointer and marked nothing read at all on a touch screen.
+      ref={cardRef}
       className={cn(
         "rounded-xl border p-4 transition-colors",
         a.pinned ? "border-accent/40 bg-accent/5" : "border-border bg-background",
@@ -220,13 +259,24 @@ export function AnnouncementCard({
 
       {a.requires_ack && (
         <div className="mt-3 flex items-center gap-2 border-t border-border pt-3">
-          <p className="flex-1 text-xs text-muted-foreground">
-            This one asks you to confirm you've seen it.
-          </p>
-          <Button size="sm" variant="outline" onClick={onAcknowledge}>
-            <Check className="mr-1.5 h-3.5 w-3.5" />
-            Acknowledge
-          </Button>
+          {hasAcknowledged ? (
+            // Asking again after it has been given is how an acknowledgement
+            // stops meaning anything.
+            <p className="flex-1 text-xs font-medium text-success">
+              <Check className="mr-1 inline h-3.5 w-3.5" />
+              You acknowledged this.
+            </p>
+          ) : (
+            <>
+              <p className="flex-1 text-xs text-muted-foreground">
+                This one asks you to confirm you've seen it.
+              </p>
+              <Button size="sm" variant="outline" onClick={onAcknowledge}>
+                <Check className="mr-1.5 h-3.5 w-3.5" />
+                Acknowledge
+              </Button>
+            </>
+          )}
         </div>
       )}
     </article>

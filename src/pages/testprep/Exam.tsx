@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { Calculator as CalculatorIcon, ChevronDown, Eye, EyeOff, Flag, Grid2x2, Highlighter, MoreHorizontal } from "lucide-react";
+import { Calculator as CalculatorIcon, ChevronDown, Eye, EyeOff, Flag, Highlighter, MoreHorizontal } from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,9 +24,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
-import { blueprintFor } from "@/lib/testprep/blueprints";
+import { SAT_DOMAINS, blueprintFor } from "@/lib/testprep/blueprints";
 import { buildExam, isCorrect, resolve } from "@/lib/testprep/select";
-import { readProfile, recordAnswer, saveAttempt } from "@/lib/testprep/store";
+import { readProfile, recordAnswers, saveAttempt } from "@/lib/testprep/store";
 import { estimateSectionScore, formatClock } from "@/lib/testprep/stats";
 import { resultsHref, sectionHref } from "@/lib/testprep/nav";
 import {
@@ -45,7 +45,7 @@ import { ExamQuestionCard } from "@/components/testprep/QuestionView";
 import { Bar } from "@/components/testprep/primitives";
 import { Calculator } from "@/components/testprep/Calculator";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
-import type { AttemptSummary, SubjectId } from "@/lib/testprep/types";
+import type { AnswerRecord, AttemptSummary, SubjectId } from "@/lib/testprep/types";
 import type { DomainStats } from "@/lib/testprep/stats";
 
 /**
@@ -60,6 +60,9 @@ import type { DomainStats } from "@/lib/testprep/stats";
  * would make the timing meaningless, and it is not what the real test does.
  */
 const EMPTY_SET: ReadonlySet<string> = new Set();
+
+/** Published share of the section each domain carries, by domain id. */
+const DOMAIN_WEIGHT = new Map(SAT_DOMAINS.map((d) => [d.id, d.weight]));
 
 export default function TestPrepExam() {
   const { testId = "sat" } = useParams();
@@ -83,7 +86,15 @@ export default function TestPrepExam() {
     ),
   );
 
-  const [phase, setPhase] = useState<"intro" | "module" | "break">("intro");
+  /*
+   * "review" is the module review page.
+   *
+   * The real test puts one between the last question and the Submit button:
+   * every question in the module, its status, and no way past it except
+   * submitting. It is a separate phase rather than a dialog because the clock
+   * keeps running on it and the student can go back into any question from it.
+   */
+  const [phase, setPhase] = useState<"intro" | "module" | "review" | "break">("intro");
   const [moduleIndex, setModuleIndex] = useState(0);
   const [index, setIndex] = useState(0);
   const [given, setGiven] = useState<Record<string, string>>({});
@@ -92,6 +103,9 @@ export default function TestPrepExam() {
   const [showNavigator, setShowNavigator] = useState(false);
   const [showCalculator, setShowCalculator] = useState(false);
   const [hideTimer, setHideTimer] = useState(false);
+  const [fiveMinutes, setFiveMinutes] = useState(false);
+  /** The module whose five-minute warning has already been shown. */
+  const warnedFor = useRef(-1);
   const [highlightOn, setHighlightOn] = useState(false);
   const [highlightedStimulus, setHighlightedStimulus] = useState<Record<string, boolean>>({});
   const [eliminatorOn, setEliminatorOn] = useState(false);
@@ -99,6 +113,48 @@ export default function TestPrepExam() {
   const [exitOpen, setExitOpen] = useState(false);
   const startedAt = useRef(Date.now());
   const submitted = useRef(false);
+  /**
+   * When the open module runs out, as a wall-clock timestamp.
+   *
+   * The clock used to be a counter decremented once per `setInterval` tick,
+   * which measures ticks rather than time. Browsers throttle timers in
+   * background tabs — Chrome to roughly once a minute — so switching tab
+   * paused the exam, and a sitting whose entire purpose is "timed, under exam
+   * conditions" could be stretched arbitrarily by leaving it. A machine going
+   * to sleep did the same thing.
+   *
+   * So the deadline is fixed when the module opens and every tick just asks
+   * how long is left. The interval now only controls how often the number on
+   * screen refreshes; it no longer decides how much time the student gets.
+   */
+  const deadline = useRef<number>(0);
+
+  /**
+   * Real time spent per question, accumulated across visits.
+   *
+   * `submit` used to divide the whole sitting evenly across every question,
+   * so each answer was stored with an identical synthetic duration — which
+   * made every surface that reads `elapsedMs` for an exam answer wrong in the
+   * same way, including Progress's "Recent practice" list and the timing
+   * breakdown that groups by domain. Averaging by domain is meaningless when
+   * every value is the same number.
+   *
+   * The exam lets you move freely within a module, so a question can be
+   * visited more than once and the time has to add up rather than be
+   * overwritten. Time accrues only while a module is open: the intro and the
+   * between-module breaks belong to nobody.
+   */
+  const spent = useRef<Record<string, number>>({});
+  const activeQuestion = useRef<string | undefined>(undefined);
+  const lastTick = useRef(Date.now());
+
+  /** Bank whatever has elapsed onto the question currently being timed. */
+  const commitTime = useCallback(() => {
+    const id = activeQuestion.current;
+    const now = Date.now();
+    if (id) spent.current[id] = (spent.current[id] ?? 0) + (now - lastTick.current);
+    lastTick.current = now;
+  }, []);
 
   const module = exam.modules[moduleIndex];
   const questions = useMemo(() => resolve(module?.questionIds ?? []), [module]);
@@ -109,11 +165,14 @@ export default function TestPrepExam() {
     submitted.current = true;
 
     const all = exam.modules.flatMap((m) => resolve(m.questionIds));
+    const records: AnswerRecord[] = [];
     const bySkill: AttemptSummary["bySkill"] = {};
     const perSubject: Record<string, { correct: number; total: number; domains: Map<string, { correct: number; total: number; weight: number }> }> = {};
     let correct = 0;
     const now = new Date().toISOString();
-    const perQuestionMs = Math.round((Date.now() - startedAt.current) / Math.max(1, all.length));
+    // Close the book on whatever is open before reading the tallies.
+    commitTime();
+    activeQuestion.current = undefined;
 
     for (const q of all) {
       const answer = given[q.id] ?? "";
@@ -127,7 +186,19 @@ export default function TestPrepExam() {
       const subject = (perSubject[q.subjectId] ??= { correct: 0, total: 0, domains: new Map() });
       subject.total += 1;
       if (ok) subject.correct += 1;
-      const d = subject.domains.get(q.domainId) ?? { correct: 0, total: 0, weight: 1 };
+      // The published weight of the domain, not 1.
+      //
+      // `estimateSectionScore` takes a weighted mean of per-domain accuracy,
+      // and every other caller hands it the blueprint's weights. Passing 1 for
+      // all four made this one estimate an unweighted mean, so a student who
+      // answered the two 15%-weight Math domains well and Algebra badly got a
+      // section score here that Progress — reading the same answers through
+      // the real weights — would not agree with.
+      const d = subject.domains.get(q.domainId) ?? {
+        correct: 0,
+        total: 0,
+        weight: DOMAIN_WEIGHT.get(q.domainId) ?? 1,
+      };
       d.total += 1;
       if (ok) d.correct += 1;
       subject.domains.set(q.domainId, d);
@@ -135,15 +206,21 @@ export default function TestPrepExam() {
       // Unanswered questions are still attempts — leaving one blank on a timed
       // module is information about pacing, and dropping it would flatter the
       // student's accuracy everywhere else in the product.
-      recordAnswer({
+      //
+      // Collected rather than written one at a time: see `recordAnswers`.
+      records.push({
         questionId: q.id,
         given: answer,
         correct: ok,
-        elapsedMs: perQuestionMs,
+        // Zero for a question never opened, which is true and is what the
+        // timing breakdown's own floor already knows to discard.
+        elapsedMs: spent.current[q.id] ?? 0,
         at: now,
         flagged: flags[q.id],
       });
     }
+
+    recordAnswers(records);
 
     const sectionScores: Partial<Record<SubjectId, number>> = {};
     for (const [subjectId, s] of Object.entries(perSubject)) {
@@ -182,7 +259,7 @@ export default function TestPrepExam() {
 
     saveAttempt(attempt);
     navigate(resultsHref(testId, attempt.id), { replace: true });
-  }, [exam, flags, given, navigate, testId]);
+  }, [commitTime, exam, flags, given, navigate, testId]);
 
   const nextModule = useCallback(() => {
     if (moduleIndex + 1 >= exam.modules.length) {
@@ -195,19 +272,91 @@ export default function TestPrepExam() {
     setPhase("break");
   }, [exam.modules.length, moduleIndex, submit]);
 
-  // One second tick, running only while a module is open.
+  /*
+   * Move the stopwatch when the student moves.
+   *
+   * Runs on every change of open question, module or phase, banking the
+   * elapsed time onto whichever question was open before. Leaving a module
+   * stops the clock entirely rather than charging the break to the last
+   * question someone happened to be looking at.
+   */
   useEffect(() => {
-    if (phase !== "module") return;
-    const t = window.setInterval(() => setRemaining((r) => Math.max(0, r - 1)), 1000);
-    return () => window.clearInterval(t);
+    commitTime();
+    activeQuestion.current = phase === "module" ? questions[index]?.id : undefined;
+  }, [phase, moduleIndex, index, questions, commitTime]);
+
+  // One second tick, running only while a module is open. It reads the clock
+  // rather than counting its own firings — see `deadline`.
+  useEffect(() => {
+    if (phase !== "module" && phase !== "review") return;
+    const sync = () =>
+      setRemaining(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)));
+    // Once immediately, so returning to a throttled tab corrects the display
+    // on the same frame rather than up to a second later.
+    sync();
+    const t = window.setInterval(sync, 1000);
+    // A tab that was backgrounded may not have ticked for minutes; resync the
+    // moment it is looked at again, before the next interval would fire.
+    const onVisible = () => { if (!document.hidden) sync(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [phase]);
 
   useEffect(() => {
-    if (phase === "module" && remaining === 0) nextModule();
+    if ((phase === "module" || phase === "review") && remaining === 0) nextModule();
   }, [phase, remaining, nextModule]);
 
+  /*
+   * The five-minute warning.
+   *
+   * The real test interrupts you once, five minutes out, whether or not the
+   * clock is on screen — which is the point of it, since the students most
+   * likely to lose track of time are the ones who hid the clock. Shown once
+   * per module: `warnedFor` remembers which module it fired for, so returning
+   * from the review page does not fire it again.
+   */
+  useEffect(() => {
+    if (phase !== "module" && phase !== "review") return;
+    if (remaining > 300 || remaining <= 0) return;
+    if (warnedFor.current === moduleIndex) return;
+    warnedFor.current = moduleIndex;
+    setFiveMinutes(true);
+  }, [phase, remaining, moduleIndex]);
+
+  /*
+   * Don't let a stray refresh throw away a sitting.
+   *
+   * The exam lives entirely in component state: nothing is written until
+   * `submit`, and `buildExam` reshuffles on mount, so a reload does not just
+   * lose the answers, it loses the paper they were answers to. A full-length
+   * sitting is over two hours. Closing the tab by accident should cost a
+   * confirmation dialog, not the afternoon.
+   *
+   * This covers reload, close and navigation away from the origin. Leaving
+   * via the app's own controls is already behind the exit dialog, and once
+   * `submit` has run the attempt is saved, so neither needs guarding.
+   *
+   * Browsers ignore the message string and show their own wording; assigning
+   * `returnValue` is still what makes the prompt appear at all.
+   */
+  useEffect(() => {
+    if (phase === "intro") return;
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (submitted.current) return;
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, [phase]);
+
   const beginModule = () => {
-    setRemaining((exam.modules[moduleIndex]?.actualMinutes ?? 1) * 60);
+    const seconds = (exam.modules[moduleIndex]?.actualMinutes ?? 1) * 60;
+    deadline.current = Date.now() + seconds * 1000;
+    setRemaining(seconds);
     setPhase("module");
     if (moduleIndex === 0) startedAt.current = Date.now();
   };
@@ -233,7 +382,9 @@ export default function TestPrepExam() {
   /* Between-module screens                                            */
   /* ---------------------------------------------------------------- */
 
-  if (phase !== "module") {
+  // The intro and break screens. The review page is part of the live module —
+  // same header, same clock, same footer — so it is not handled here.
+  if (phase !== "module" && phase !== "review") {
     const upcoming = exam.modules[moduleIndex];
     const answeredSoFar = Object.keys(given).length;
     return (
@@ -286,19 +437,28 @@ export default function TestPrepExam() {
 
   const question = questions[index];
   const answeredInModule = questions.filter((q) => given[q.id]).length;
+  // "Section 1, Module 2: Reading and Writing" — the way the real test names
+  // where you are. The blueprint's own label is written for the exam list,
+  // where there is no sitting to be a section of.
+  const sectionOrder: SubjectId[] = [];
+  for (const m of exam.modules) if (!sectionOrder.includes(m.subjectId)) sectionOrder.push(m.subjectId);
+  const moduleTitle = `Section ${sectionOrder.indexOf(module.subjectId) + 1}, Module ${
+    exam.modules.filter((m) => m.subjectId === module.subjectId).findIndex((m) => m.id === module.id) + 1
+  }: ${module.subjectId === "rw" ? "Reading and Writing" : "Math"}`;
   const eliminatedForQuestion = question ? eliminated[question.id] ?? EMPTY_SET : EMPTY_SET;
 
   return (
     <>
       <Seo title={`${exam.label}`} description="Practice exam." path={`/test-prep/${testId}/exam`} noindex />
       <div className="bluebook flex min-h-screen flex-col bg-background">
-        {/* Exam chrome: a light top bar (title, clock, tools) over a navy
-            banner naming the sitting — the digital-testing look, but built
-            from Pathforge's own tokens rather than any borrowed asset. */}
-        <header className={BB_TOPBAR}>
+        {/* Exam chrome: a blue rule, a light top bar carrying the title, clock
+            and tools, then the yellow banner naming the sitting. Blue, white,
+            yellow down the screen — the digital-testing look, built from
+            Pathforge's own tokens rather than any borrowed asset. */}
+        <header className={cn(BB_TOPBAR, "border-t-[5px] border-t-[hsl(var(--bb-blue))]")}>
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5">
             <div className="min-w-0">
-              <p className="truncate text-sm font-bold text-foreground">{module.label}</p>
+              <p className="truncate text-sm font-bold text-foreground">{moduleTitle}</p>
               <Popover>
                 <PopoverTrigger asChild>
                   <button
@@ -312,7 +472,7 @@ export default function TestPrepExam() {
                     <ChevronDown className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="max-w-xs text-sm leading-relaxed text-foreground">
+                <PopoverContent align="start" className="bluebook max-w-xs text-sm leading-relaxed text-foreground">
                   <p className="font-semibold">Directions</p>
                   <p className="mt-1.5 text-muted-foreground">
                     Read each question carefully and choose the best answer. Mark a question for
@@ -327,12 +487,20 @@ export default function TestPrepExam() {
             <p
               className={cn(
                 "shrink-0 font-display text-2xl font-bold tabular-nums transition-colors",
+                /*
+                  The five-minute warning used to be `text-warning`, which
+                  inside `.bluebook` is School bus Yellow — about 1.5:1 on the
+                  white top bar, so the one moment the clock most needed
+                  reading was the one moment it could not be. Urgency is
+                  carried by the blue and then by weight and a yellow field
+                  instead, all of which survive on white.
+                */
                 hideTimer
-                  ? "text-muted-foreground/50"
+                  ? "text-muted-foreground"
                   : remaining <= 60
-                    ? "text-destructive"
+                    ? "rounded-md bg-[hsl(var(--bb-rule))] px-2 text-[hsl(var(--bb-flag-foreground))]"
                     : remaining <= 300
-                      ? "text-warning"
+                      ? "text-[hsl(var(--bb-blue))]"
                       : "text-foreground",
               )}
               aria-live="off"
@@ -367,7 +535,7 @@ export default function TestPrepExam() {
                     More
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="bluebook">
                   {module.calculator && (
                     <DropdownMenuItem
                       onSelect={(e) => {
@@ -402,6 +570,45 @@ export default function TestPrepExam() {
           />
         </header>
 
+        {phase === "review" ? (
+          <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
+            <h1 className="text-center font-display text-2xl font-bold tracking-[-0.01em] text-foreground">
+              Check Your Work
+            </h1>
+            <p className="mx-auto mt-2 max-w-lg text-center text-sm leading-relaxed text-muted-foreground">
+              On test day, you cannot move back to this module once you submit it. Go to a
+              question by selecting its number.
+            </p>
+
+            <div className="mt-7 rounded-xl border border-border/70 bg-card p-5">
+              <p className="text-center text-sm font-bold text-foreground">{moduleTitle}</p>
+              <NavigatorLegend className="mt-4 justify-center" />
+              <div className="mt-4 flex flex-wrap justify-center gap-2 border-t border-border/60 pt-4">
+                {questions.map((q, i) => (
+                  <button
+                    key={q.id}
+                    type="button"
+                    onClick={() => {
+                      setIndex(i);
+                      setPhase("module");
+                    }}
+                    aria-label={`Question ${i + 1}${given[q.id] ? ", answered" : ", not answered"}${
+                      flags[q.id] ? ", marked for review" : ""
+                    }`}
+                    className={cn(BB_NAV_CIRCLE, FOCUS, given[q.id] && BB_NAV_CIRCLE_ANSWERED)}
+                  >
+                    {i + 1}
+                    {flags[q.id] && (
+                      <span className={BB_NAV_FLAG} aria-hidden="true">
+                        <Flag className="h-2 w-2 fill-current" />
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </main>
+        ) : (
         <main className="mx-auto grid w-full max-w-6xl flex-1 grid-cols-1 gap-0 px-4 py-6 sm:py-8 md:grid-cols-[1fr_1px_1fr] md:gap-6">
           {question?.stimulus ? (
             <>
@@ -448,6 +655,7 @@ export default function TestPrepExam() {
             </AnimatePresence>
           </div>
         </main>
+        )}
 
         {/* The calculator floats above the footer rather than inside the flow,
             so opening it never reflows the question the student is reading. */}
@@ -474,30 +682,42 @@ export default function TestPrepExam() {
                 FOCUS,
               )}
             >
-              <Grid2x2 className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
               Question {index + 1} of {questions.length}
               <ChevronDown className="h-3 w-3 text-muted-foreground" aria-hidden="true" />
             </button>
 
             <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIndex((i) => Math.max(0, i - 1))}
-                disabled={index === 0}
-              >
-                Back
-              </Button>
-              {index < questions.length - 1 ? (
-                <Button size="sm" onClick={() => setIndex((i) => i + 1)}>
-                  Next
-                </Button>
+              {phase === "review" ? (
+                <>
+                  <Button variant="ghost" size="sm" onClick={() => setPhase("module")}>
+                    Back
+                  </Button>
+                  <SubmitModule
+                    last={moduleIndex + 1 >= exam.modules.length}
+                    unanswered={questions.length - answeredInModule}
+                    onConfirm={nextModule}
+                  />
+                </>
               ) : (
-                <SubmitModule
-                  last={moduleIndex + 1 >= exam.modules.length}
-                  unanswered={questions.length - answeredInModule}
-                  onConfirm={nextModule}
-                />
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIndex((i) => Math.max(0, i - 1))}
+                    disabled={index === 0}
+                  >
+                    Back
+                  </Button>
+                  {index < questions.length - 1 ? (
+                    <Button size="sm" onClick={() => setIndex((i) => i + 1)}>
+                      Next
+                    </Button>
+                  ) : (
+                    <Button size="sm" onClick={() => setPhase("review")}>
+                      Review
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -511,7 +731,9 @@ export default function TestPrepExam() {
                 transition={{ duration: DURATION.base, ease: EASE_OUT_EXPO }}
                 className="overflow-hidden border-t border-border"
               >
-                <div className="mx-auto flex max-w-3xl flex-wrap gap-1.5 px-4 py-3">
+                <div className="mx-auto max-w-3xl px-4 py-3">
+                  <NavigatorLegend className="pb-3" />
+                  <div className="flex flex-wrap gap-1.5 border-t border-border/60 pt-3">
                   {questions.map((q, i) => (
                     <motion.button
                       key={q.id}
@@ -545,14 +767,48 @@ export default function TestPrepExam() {
                       )}
                     </motion.button>
                   ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowNavigator(false);
+                      setPhase("review");
+                    }}
+                    className={cn(
+                      "mt-3 w-full rounded-full border border-[hsl(var(--bb-blue))] px-4 py-2 text-xs font-bold text-[hsl(var(--bb-blue))] transition-colors hover:bg-[hsl(var(--bb-blue-soft))]",
+                      FOCUS,
+                    )}
+                  >
+                    Go to Review Page
+                  </button>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
         </footer>
 
+        <AlertDialog open={fiveMinutes} onOpenChange={setFiveMinutes}>
+          <AlertDialogContent className="bluebook">
+            <AlertDialogHeader>
+              <AlertDialogTitle>5 minutes remaining</AlertDialogTitle>
+              <AlertDialogDescription>
+                {answeredInModule === questions.length
+                  ? "Every question in this module is answered. The module submits itself when the clock runs out."
+                  : `${questions.length - answeredInModule} question${
+                      questions.length - answeredInModule === 1 ? " is" : "s are"
+                    } still blank. The module submits itself when the clock runs out, and blank counts as incorrect.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogAction onClick={() => setFiveMinutes(false)}>
+                Keep working
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
         <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
-          <AlertDialogContent>
+          <AlertDialogContent className="bluebook">
             <AlertDialogHeader>
               <AlertDialogTitle>Leave the exam?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -573,6 +829,42 @@ export default function TestPrepExam() {
         </AlertDialog>
       </div>
     </>
+  );
+}
+
+/**
+ * The key to the question grid.
+ *
+ * The grid carries three states — where you are, what you have answered, what
+ * you marked — in colour and a flag alone, which is not enough on its own:
+ * colour is not information a colourblind student can read, and the flag is
+ *4px across. Named here once, under both the popup grid and the review page.
+ */
+function NavigatorLegend({ className }: { className?: string }) {
+  return (
+    <ul className={cn("flex flex-wrap items-center gap-x-4 gap-y-2 text-[11px] text-muted-foreground", className)}>
+      <li className="flex items-center gap-1.5">
+        <span className={cn("h-3.5 w-3.5 rounded-full border", BB_NAV_CIRCLE_CURRENT)} aria-hidden="true" />
+        Current
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span className={cn("h-3.5 w-3.5 rounded-full border", BB_NAV_CIRCLE_ANSWERED)} aria-hidden="true" />
+        Answered
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span className="h-3.5 w-3.5 rounded-full border border-border/70" aria-hidden="true" />
+        Unanswered
+      </li>
+      <li className="flex items-center gap-1.5">
+        <span
+          className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-[hsl(var(--bb-flag))] text-[hsl(var(--bb-flag-foreground))]"
+          aria-hidden="true"
+        >
+          <Flag className="h-2 w-2 fill-current" />
+        </span>
+        Marked for review
+      </li>
+    </ul>
   );
 }
 
@@ -598,7 +890,7 @@ function SubmitModule({
       <AlertDialogTrigger asChild>
         <Button size="sm">{last ? "Submit exam" : "Submit module"}</Button>
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="bluebook">
         <AlertDialogHeader>
           <AlertDialogTitle>{last ? "Submit the exam?" : "Submit this module?"}</AlertDialogTitle>
           <AlertDialogDescription>
@@ -658,7 +950,7 @@ function ExitExam({
           </button>
         )}
       </AlertDialogTrigger>
-      <AlertDialogContent>
+      <AlertDialogContent className="bluebook">
         <AlertDialogHeader>
           <AlertDialogTitle>Leave the exam?</AlertDialogTitle>
           <AlertDialogDescription>

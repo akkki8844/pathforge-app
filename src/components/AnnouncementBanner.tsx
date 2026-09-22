@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { AlertTriangle, Info, Megaphone, Wrench, X } from "lucide-react";
+import { X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface Announcement {
@@ -34,18 +34,27 @@ const persistDismissed = (ids: string[]) => {
   } catch {}
 };
 
-const styleFor = (type: string) => {
-  switch (type) {
-    case "warning":
-      return { Icon: AlertTriangle, bar: "bg-yellow-500/10 text-yellow-900 dark:text-yellow-200 border-yellow-500/30" };
-    case "maintenance":
-      return { Icon: Wrench, bar: "bg-orange-500/10 text-orange-900 dark:text-orange-200 border-orange-500/30" };
-    case "update":
-      return { Icon: Megaphone, bar: "bg-emerald-500/10 text-emerald-900 dark:text-emerald-200 border-emerald-500/30" };
-    default:
-      return { Icon: Info, bar: "bg-primary/10 text-foreground border-primary/30" };
-  }
-};
+/**
+ * The strip's severity, as a word and a rule rather than as a coloured panel
+ * with an icon in it.
+ *
+ * It used to render in raw Tailwind palette colours - yellow, orange, emerald -
+ * none of which belong to this product's token set, with a different lucide
+ * icon per type (Wrench, Megaphone, Info, AlertTriangle). Four icons and three
+ * off-system colours is a lot of decoration for one line of text, and it made
+ * the banner read as a component borrowed from somewhere else. Severity is now
+ * carried by a rule and a kicker word, both drawn from the semantic tokens the
+ * rest of the app uses.
+ */
+const TONES = {
+  warning: { label: "Important", rule: "bg-warning", text: "text-warning" },
+  maintenance: { label: "Maintenance", rule: "bg-warning", text: "text-warning" },
+  update: { label: "Update", rule: "bg-success", text: "text-success" },
+  notice: { label: "Notice", rule: "bg-accent", text: "text-accent" },
+} as const;
+
+const toneFor = (type: string) =>
+  TONES[type as keyof typeof TONES] ?? TONES.notice;
 
 export function AnnouncementBanner() {
   const { user, onboardingCompleted } = useAuth();
@@ -102,28 +111,40 @@ export function AnnouncementBanner() {
   return (
     <div className="sticky top-16 z-40 w-full">
       {visible.slice(0, 1).map((a) => {
-        const { Icon, bar } = styleFor(a.type);
+        const tone = toneFor(a.type);
         return (
           <div
             key={a.id}
-            className={cn(
-              "border-b backdrop-blur supports-[backdrop-filter]:bg-opacity-90",
-              bar,
-            )}
+            className="border-b border-border bg-card/95 backdrop-blur"
             role="status"
           >
-            <div className="container mx-auto flex items-start gap-4 px-4 py-4 sm:py-5 text-base sm:text-[15px]">
-              <Icon className="h-5 w-5 mt-0.5 flex-shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-base sm:text-lg leading-snug">{a.title}</p>
-                <p className="mt-1 text-sm sm:text-[15px] text-current/90 leading-relaxed">{a.content}</p>
+            <div className="container mx-auto flex items-start gap-3 px-4 py-3.5">
+              <span
+                aria-hidden
+                className={cn("mt-0.5 h-10 w-[3px] shrink-0 rounded-full", tone.rule)}
+              />
+              <div className="min-w-0 flex-1">
+                <p
+                  className={cn(
+                    "text-[10px] font-semibold uppercase tracking-[0.12em]",
+                    tone.text,
+                  )}
+                >
+                  {tone.label}
+                </p>
+                <p className="mt-0.5 text-sm font-semibold leading-snug text-foreground">
+                  {a.title}
+                </p>
+                <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+                  {a.content}
+                </p>
               </div>
               <button
                 onClick={() => dismiss(a.id)}
                 aria-label="Dismiss announcement"
-                className="rounded p-1 hover:bg-foreground/10 transition-colors flex-shrink-0"
+                className="flex-shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               >
-                <X className="h-5 w-5" />
+                <X className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -132,5 +153,3 @@ export function AnnouncementBanner() {
     </div>
   );
 }
-
-export { Megaphone };

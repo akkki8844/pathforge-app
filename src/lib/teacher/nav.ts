@@ -21,6 +21,7 @@ import {
   Target,
   Megaphone,
   Mail,
+  MessagesSquare,
   BookOpen,
   Award,
   Settings,
@@ -72,7 +73,11 @@ export const COUNSELLOR_MAIN: CounsellorDestination[] = [
   {
     href: "/teacher/analytics",
     label: "Analytics",
-    description: "Outcomes and activity over time",
+    // Not "over time": the page has no time series. It reports the cohort as
+    // it stands - score spread, risk split, engagement, grade and major
+    // distribution - and a menu line promising trends sends a counsellor
+    // looking for a chart that is not there.
+    description: "Score spread, risk and engagement",
     icon: BarChart3,
   },
 ];
@@ -123,16 +128,29 @@ export const COUNSELLOR_OTHER: CounsellorGroup[] = [
         icon: Mail,
       },
       {
+        href: "/teacher/feedback",
+        label: "Feedback log",
+        description: "Everything you have sent a student",
+        icon: MessagesSquare,
+      },
+    ],
+  },
+  {
+    /*
+     * Copilot used to sit under "Reach out", beside Announcements and
+     * Messages. It does not reach out to anybody — it reads the cohort and
+     * answers questions about it, which is the same job as the two reference
+     * surfaces below it. Grouping is the only thing telling a new counsellor
+     * what a page is for before they open it, so it has to be right.
+     */
+    title: "Tools",
+    links: [
+      {
         href: "/teacher/copilot",
         label: "Copilot",
         description: "Ask about your own cohort's data",
         icon: Bot,
       },
-    ],
-  },
-  {
-    title: "Library",
-    links: [
       {
         href: "/teacher/scholarships",
         label: "Scholarships",

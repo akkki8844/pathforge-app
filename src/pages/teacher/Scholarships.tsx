@@ -1,35 +1,23 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Award, Search, Calendar, DollarSign, MapPin, GraduationCap,
-  Clock, ExternalLink, Star, ChevronRight,
-} from "lucide-react";
+import { Award, Search, Calendar, DollarSign, MapPin, Clock, ExternalLink } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { Badge } from "@/components/ui/badge";
+import { TONE_BADGE } from "@/lib/teacher/status";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
-import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import { counsellorDb } from "@/integrations/supabase/counsellor";
 import { useQuery } from "@tanstack/react-query";
 
 import { BrandLogo } from "@/components/BrandLogo";
-interface Scholarship {
-  id: string;
-  name: string;
-  provider: string;
-  amount: string;
-  deadline: string | null;
-  country: string;
-  field: string | null;
-  eligibility: string | null;
-  url: string | null;
-  description: string | null;
-}
 
 export default function TeacherScholarships() {
   const { students } = useTeacherRoster();
@@ -40,12 +28,12 @@ export default function TeacherScholarships() {
   const { data: scholarships = [], isLoading } = useQuery({
     queryKey: ["counselor-scholarships"],
     queryFn: async () => {
-      const { data, error } = await (supabase as any)
+      const { data, error } = await counsellorDb
         .from("scholarships")
         .select("*")
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data || []) as Scholarship[];
+      return data ?? [];
     },
   });
 
@@ -79,9 +67,16 @@ export default function TeacherScholarships() {
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Scholarships"
+        description="Awards to point students at."
+        path="/teacher/scholarships"
+        noindex
+      />
+
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Scholarships</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Scholarships</h1>
           <p className="text-sm text-muted-foreground mt-1">Find and recommend scholarships to students</p>
         </div>
 
@@ -97,7 +92,7 @@ export default function TeacherScholarships() {
           </div>
           <div className="card-elevated p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Upcoming</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">
+            <p className="mt-1 text-2xl font-bold text-warning">
               {scholarships.filter((s) => { const d = getDaysUntil(s.deadline); return d !== null && d > 0 && d <= 30; }).length}
             </p>
           </div>
@@ -152,21 +147,36 @@ export default function TeacherScholarships() {
               </div>
             ))
           ) : filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <Award className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
-              <p className="text-muted-foreground font-medium">No scholarships found</p>
+            <div className="py-12 text-center">
+              <Award className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+              {/* An empty catalogue and a filter that matches nothing are not
+                  the same problem, and only one of them is the counsellor's
+                  to fix. */}
+              {scholarships.length === 0 ? (
+                <>
+                  <p className="font-medium text-foreground">The scholarship list is empty</p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                    Nothing has been published to the catalogue yet.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-foreground">Nothing matches that</p>
+                  <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                    {scholarships.length} scholarship{scholarships.length === 1 ? "" : "s"} in the
+                    catalogue. Clear the search and filters to see them.
+                  </p>
+                </>
+              )}
             </div>
           ) : (
-            filtered.map((scholarship, i) => {
+            filtered.map((scholarship) => {
               const daysLeft = getDaysUntil(scholarship.deadline);
               const isUrgent = daysLeft !== null && daysLeft <= 14 && daysLeft >= 0;
               return (
-                <motion.div
+                <div
                   key={scholarship.id}
-                  initial={{ opacity: 0, y: 4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: Math.min(i * 0.03, 0.3) }}
-                  className="card-elevated p-4 hover:border-accent/30 transition-colors"
+                  className="card-elevated p-4 transition-colors hover:border-accent/30"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
@@ -179,7 +189,7 @@ export default function TeacherScholarships() {
                         />
                         <h3 className="text-sm font-semibold text-foreground">{scholarship.name}</h3>
                         {isUrgent && (
-                          <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/20">
+                          <Badge variant="outline" className={`text-[10px] ${TONE_BADGE.bad}`}>
                             <Clock className="h-2.5 w-2.5 mr-0.5" />
                             {daysLeft}d left
                           </Badge>
@@ -222,7 +232,7 @@ export default function TeacherScholarships() {
                       </a>
                     )}
                   </div>
-                </motion.div>
+                </div>
               );
             })
           )}

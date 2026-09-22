@@ -5,11 +5,13 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider, defaultShouldDehydrateQuery } from "@tanstack/react-query";
 import { PersistQueryClientProvider } from "@tanstack/react-query-persist-client";
-import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
+import { persister, queryClient } from "@/lib/queryClient";
 import { TopLoadingBar } from "@/components/TopLoadingBar";
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useNavigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useAdminCheck } from "@/hooks/useAdminCheck";
 import { UsageProvider } from "@/contexts/UsageContext";
 import { Layout } from "@/components/layout/Layout";
 import { RouteActivityLogger } from "@/components/RouteActivityLogger";
@@ -24,6 +26,24 @@ import Maintenance from "./pages/Maintenance";
 
 // Resilient lazy: retry once, then hard-reload so a stale chunk after a deploy
 // (or extension blocking a chunk) never leaves users on an infinite spinner.
+/**
+ * Holds the Interview Simulator back from students while it is still being
+ * tested, without unpublishing the routes — admins pass straight through, so it
+ * can keep being exercised against the real origin with a real session.
+ *
+ * Renders nothing at all until the admin check resolves. Flashing the
+ * coming-soon page at an admin for a beat and then swapping it for the feature
+ * is worse than a short blank.
+ *
+ * To ship: delete this component, its three usages below, and
+ * `pages/interview/ComingSoon.tsx`.
+ */
+function InterviewGate({ children }: { children: React.ReactNode }) {
+  const { isAdmin, loading } = useAdminCheck();
+  if (loading) return null;
+  return isAdmin ? <>{children}</> : <InterviewComingSoon />;
+}
+
 function lazyWithRetry<T extends ComponentType<any>>(factory: () => Promise<{ default: T }>) {
   return lazy(async () => {
     try {
@@ -54,11 +74,12 @@ const Activities = lazyWithRetry(() => import("./pages/Activities"));
 const Journey = lazyWithRetry(() => import("./pages/Journey"));
 const Leaderboard = lazyWithRetry(() => import("./pages/Leaderboard"));
 const ProfileBuilder = lazyWithRetry(() => import("./pages/ProfileBuilder"));
+const Docs = lazyWithRetry(() => import("./pages/Docs"));
+const DocEditor = lazyWithRetry(() => import("./pages/DocEditor"));
 const Essays = lazyWithRetry(() => import("./pages/Essays"));
 const Scholarships = lazyWithRetry(() => import("./pages/Scholarships"));
 const CollegeReadiness = lazyWithRetry(() => import("./pages/CollegeReadiness"));
 const Outcomes = lazyWithRetry(() => import("./pages/Outcomes"));
-const WeeklyPlanner = lazyWithRetry(() => import("./pages/WeeklyPlanner"));
 // Routine — one product area, six views over one shared data model.
 const RoutineToday = lazyWithRetry(() => import("./pages/routine/Today"));
 const RoutineTimetable = lazyWithRetry(() => import("./pages/routine/Timetable"));
@@ -72,6 +93,10 @@ const CommsTeams = lazyWithRetry(() => import("./pages/communications/Teams"));
 const CommsTeamWorkspace = lazyWithRetry(() => import("./pages/communications/TeamWorkspace"));
 const CommsObjectives = lazyWithRetry(() => import("./pages/communications/Objectives"));
 const CommsAnnouncements = lazyWithRetry(() => import("./pages/communications/Announcements"));
+const InterviewLobby = lazyWithRetry(() => import("./pages/interview/Lobby"));
+const InterviewComingSoon = lazyWithRetry(() => import("./pages/interview/ComingSoon"));
+const InterviewRoom = lazyWithRetry(() => import("./pages/interview/Room"));
+const InterviewReport = lazyWithRetry(() => import("./pages/interview/Report"));
 const TestPrepOverview = lazyWithRetry(() => import("./pages/testprep/Overview"));
 const TestPrepPractice = lazyWithRetry(() => import("./pages/testprep/Practice"));
 const TestPrepQuestionBank = lazyWithRetry(() => import("./pages/testprep/QuestionBank"));
@@ -98,6 +123,7 @@ const Pricing = lazyWithRetry(() => import("./pages/Pricing"));
 const Terms = lazyWithRetry(() => import("./pages/Terms"));
 const Privacy = lazyWithRetry(() => import("./pages/Privacy"));
 const RefundPolicy = lazyWithRetry(() => import("./pages/RefundPolicy"));
+const CookiePolicy = lazyWithRetry(() => import("./pages/CookiePolicy"));
 
 const Resume = lazyWithRetry(() => import("./pages/Resume"));
 const ApplicationBuilder = lazyWithRetry(() => import("./pages/ApplicationBuilder"));
@@ -112,6 +138,8 @@ const CounselorAnnouncements = lazyWithRetry(() => import("./pages/teacher/Annou
 const CounselorSchoolView = lazyWithRetry(() => import("./pages/teacher/SchoolView"));
 const TeacherSettings = lazyWithRetry(() => import("./pages/teacher/Settings"));
 const TeacherAuth = lazyWithRetry(() => import("./pages/teacher/Auth"));
+const TeacherOnboarding = lazyWithRetry(() => import("./pages/teacher/Onboarding"));
+const TeacherFeedback = lazyWithRetry(() => import("./pages/teacher/Feedback"));
 const TeacherStudents = lazyWithRetry(() => import("./pages/teacher/Students"));
 const TeacherMeetings = lazyWithRetry(() => import("./pages/teacher/Meetings"));
 const TeacherEssayReview = lazyWithRetry(() => import("./pages/teacher/EssayReview"));
@@ -125,20 +153,11 @@ const LOR = lazyWithRetry(() => import("./pages/LOR"));
 const LorPortal = lazyWithRetry(() => import("./pages/LorPortal"));
 const OAuthConsent = lazyWithRetry(() => import("./pages/OAuthConsent"));
 
-import { safeRedirectPath } from "@/lib/safeRedirect";
-
-const PENDING_OAUTH_REDIRECT_KEY = "pathforge_pending_oauth_redirect";
-
-function consumeSafePendingOAuthRedirect() {
-  if (typeof window === "undefined") return null;
-  const value = window.localStorage.getItem(PENDING_OAUTH_REDIRECT_KEY);
-  if (!value) return null;
-  window.localStorage.removeItem(PENDING_OAUTH_REDIRECT_KEY);
-  // Same normalisation the sign-in buttons apply on the way in. This is the
-  // last gate before the value reaches navigate(), so it re-checks rather than
-  // trusting whatever ended up in localStorage.
-  return safeRedirectPath(value);
-}
+import {
+  consumePendingOAuth,
+  forgetPendingOAuth,
+  peekPendingOAuthPortal,
+} from "@/lib/auth/pendingOAuth";
 
 import { useUsage } from "@/contexts/UsageContext";
 import { LogoSpinner } from "@/components/LogoSpinner";
@@ -154,6 +173,7 @@ const OnboardingSurvey = lazyWithRetry(() =>
 );
 const SupportChatbot = lazyWithRetry(() => import("@/components/SupportChatbot"));
 const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
+const MessageDockBar = lazyWithRetry(() => import("@/components/comms/MessageDockBar"));
 // Not lazy: this is what appears when the app is already failing to load
 // things, which is the worst possible moment to depend on fetching one more
 // chunk.
@@ -177,25 +197,6 @@ const UpgradeModal = lazyWithRetry(() =>
   import("@/components/UpgradeModal").then((m) => ({ default: m.UpgradeModal }))
 );
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 min: less refetch churn
-      gcTime: 24 * 60 * 60 * 1000, // 24h cache retention
-      refetchOnWindowFocus: false, // don't blow away state on tab return
-      refetchOnReconnect: "always",
-      retry: 1,
-    },
-  },
-});
-
-const persister = typeof window !== "undefined"
-  ? createSyncStoragePersister({
-      storage: window.localStorage,
-      key: "pathforge-rq-cache",
-      throttleTime: 1000,
-    })
-  : undefined;
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, onboardingCompleted, isTeacher, isAdmin, roleLoading } = useAuth();
@@ -327,6 +328,57 @@ function AuthRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/**
+ * The counsellor portal's missing half of "sign in only".
+ *
+ * That page offers no sign-up. But "Continue with Google" is not a sign-in —
+ * it is an authentication that creates an account when none exists — and the
+ * identity that comes back carries no memory of which page sent it. So anyone
+ * whose email an admin had not added was getting a working account, as a
+ * student, from a page that never offered to enrol them. The password form has
+ * always checked this and signed the wrong person back out; OAuth simply had
+ * no equivalent.
+ *
+ * The check cannot happen before the round trip, because the email is not
+ * known until the provider returns it. So it happens here, on the way back,
+ * and `counsellor-oauth-reject` cleans up the account behind them — but only
+ * when that account is seconds old and empty. Anyone with a real account is
+ * signed out and turned away, never deleted. See that function for the full
+ * list of conditions.
+ */
+function CounsellorOAuthGuard() {
+  const { user, loading, roleLoading, isAdmin, isTeacher, signOut } = useAuth();
+  const navigate = useNavigate();
+  const handledRef = useRef(false);
+
+  useEffect(() => {
+    if (handledRef.current || loading || roleLoading || !user) return;
+    if (peekPendingOAuthPortal() !== "counsellor") return;
+    // Entitled to be here: let the ordinary bridge route them.
+    if (isTeacher || isAdmin) return;
+
+    handledRef.current = true;
+    forgetPendingOAuth();
+
+    void (async () => {
+      try {
+        // Best effort. If this fails the sign-out below still happens, which
+        // is the part the person actually experiences.
+        await supabase.functions.invoke("counsellor-oauth-reject");
+      } catch (e) {
+        console.warn("counsellor-oauth-reject failed", e);
+      }
+      try {
+        await signOut();
+      } finally {
+        navigate("/teacher/auth?error=not-registered", { replace: true });
+      }
+    })();
+  }, [user, loading, roleLoading, isAdmin, isTeacher, signOut, navigate]);
+
+  return null;
+}
+
 function OAuthRedirectBridge() {
   const { user, loading, roleLoading, isAdmin, isTeacher, onboardingCompleted } = useAuth();
   const navigate = useNavigate();
@@ -334,7 +386,12 @@ function OAuthRedirectBridge() {
 
   useEffect(() => {
     if (handledRef.current || loading || (user && roleLoading) || !user) return;
-    const pendingRedirect = consumeSafePendingOAuthRedirect();
+    // Leave it for `CounsellorOAuthGuard`: this one would otherwise consume the
+    // marker and send an unprovisioned account to the student dashboard, which
+    // is the exact outcome the guard exists to prevent.
+    if (peekPendingOAuthPortal() === "counsellor" && !isTeacher && !isAdmin) return;
+
+    const { redirect: pendingRedirect } = consumePendingOAuth();
     if (!pendingRedirect) return;
     handledRef.current = true;
 
@@ -380,9 +437,57 @@ function AppRoutes() {
   // `/` is always the public landing page — for guests and signed-in students
   // alike. Only strip app chrome on the landing.
   const isLandingPage = location.pathname === "/";
+  /*
+   * Where the dock is suppressed.
+   *
+   * The list used to include `/test-prep`, which is most of a section, so the
+   * dock vanished across a large part of the app for no reason a user could
+   * see - it reads as the feature being broken rather than deliberate. A
+   * test-prep page does not own the bottom edge the way the advisor composer
+   * does, so it is off the list.
+   *
+   * What remains is only the places where the dock would sit on top of the one
+   * control the page exists for, or belongs to a different persona entirely:
+   *
+   *   /communications  - this section IS the chat UI
+   *   /advisor         - the composer is pinned to the bottom of its shell
+   *   /routine/focus   - a full-screen timer
+   *   /interview       - the whole section; see below
+   *   /teacher         - the counsellor workspace, not the student's inbox
+   *   /auth, landing   - signed out
+   */
+  const showMessageDock =
+    !isLandingPage &&
+    !location.pathname.startsWith("/communications") &&
+    !location.pathname.startsWith("/advisor") &&
+    !location.pathname.startsWith("/teacher") &&
+    !location.pathname.startsWith("/routine/focus") &&
+    // The exam runner, and only it, inside Test Prep.
+    //
+    // Everything else in /test-prep is an ordinary page, which is why the
+    // section as a whole is not on this list. The exam is not: it is a timed
+    // sitting whose own control bar — the question navigator, Back and Next —
+    // is sticky at the bottom edge, exactly where the dock floats, and the
+    // dock sits on top of it.
+    !/^\/test-prep\/[^/]+\/exam$/.test(location.pathname) &&
+    // The whole interview section, not just the room.
+    //
+    // The room is a full-screen call whose own controls sit exactly where the
+    // dock floats — same reasoning as focus mode. But the lobby and the report
+    // are no better: the lobby is the last thing you look at before a call
+    // starts, and the report is a page you read top to bottom. A chat bar
+    // floating over either is the app talking over itself, and it was covering
+    // the lobby's own footer besides.
+    !location.pathname.startsWith("/interview") &&
+    // A document open for editing, but not the drive listing. The editor is a
+    // full-height shell with its own status bar along the bottom edge —
+    // page count, word count, zoom — which is exactly where the dock floats.
+    !location.pathname.startsWith("/docs/d/") &&
+    !location.pathname.startsWith("/auth");
   return (
     <>
       <TopLoadingBar />
+      <CounsellorOAuthGuard />
       <OAuthRedirectBridge />
       <RouteActivityLogger />
       <KeepAliveProvider />
@@ -421,13 +526,35 @@ function AppRoutes() {
         <Route path="/teacher" element={
           <TeacherRoute><TeacherDashboard /></TeacherRoute>
         } />
+        {/*
+          * School link and verification.
+          *
+          * This page existed and had no route, so it could not be reached from
+          * anywhere in the product. A counsellor who signed up unverified was
+          * shown a banner pointing at /teacher/settings, where the school field
+          * is disabled and reads "Linked by admin" — there was no surface
+          * anywhere that let them submit the link themselves, which is what
+          * this page does.
+          */}
+        <Route path="/teacher/onboarding" element={
+          <TeacherRoute><TeacherOnboarding /></TeacherRoute>
+        } />
         <Route path="/teacher/classes" element={
           <TeacherRoute><TeacherClasses /></TeacherRoute>
         } />
         <Route path="/teacher/assignments" element={
           <TeacherRoute><TeacherAssignments /></TeacherRoute>
         } />
-        <Route path="/teacher/feedback" element={<Navigate to="/teacher" replace />} />
+        {/*
+          * The feedback log.
+          *
+          * This page exists, reads a real table through `useTeacherFeedback`,
+          * and was routed to a redirect — so a counsellor had no way to see
+          * what they had already sent a student, only to send more.
+          */}
+        <Route path="/teacher/feedback" element={
+          <TeacherRoute><TeacherFeedback /></TeacherRoute>
+        } />
         <Route path="/teacher/announcements" element={
           <TeacherRoute><CounselorAnnouncements /></TeacherRoute>
         } />
@@ -570,8 +697,24 @@ function AppRoutes() {
         <Route path="/application" element={<Navigate to="/application-builder" replace />} />
         {/* Redirect old linkedin route */}
         <Route path="/linkedin" element={<Navigate to="/profile-builder" replace />} />
+        {/*
+          * Renamed from /lor and /weekly-planner, which were the internal names
+          * ("letters of recommendation", "weekly planner") for pages the nav has
+          * called Professors and Calendar for a long time.
+          *
+          * The old paths stay as redirects rather than being deleted. They are
+          * in sent email (activity-reminder.tsx links pathforge.co.in/weekly-planner
+          * directly), in the advisor's own navigate tool, and in whatever
+          * students have bookmarked. A rename that 404s those is a rename that
+          * breaks the product to tidy a URL.
+          *
+          * /lor/portal/:token is deliberately NOT renamed: those links are
+          * handed to recommenders outside the product and some are already live.
+          */}
+        <Route path="/lor" element={<Navigate to="/professors" replace />} />
+        <Route path="/weekly-planner" element={<Navigate to="/routine/calendar" replace />} />
         <Route
-          path="/lor"
+          path="/professors"
           element={
             <ProtectedRoute>
               <Layout>
@@ -600,12 +743,33 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
+        {/* There was a second calendar here — the ReUI weekly planner, over
+            `routine_events` and `routine_tasks` only. It is the one the navbar
+            pointed at, so "Calendar" opened a week grid showing a fraction of
+            the data while the real calendar sat unlinked at /routine/calendar.
+            One calendar, one route: this redirects rather than 404ing the
+            links and bookmarks that already exist. */}
+        <Route path="/calendar" element={<Navigate to="/routine/calendar" replace />} />
+
+        {/* Documents: Pathforge's own drive. Folders, documents written here
+            and files uploaded here — nothing to do with the Google Docs
+            connector, which reaches into a Google account and keeps no copy. */}
         <Route
-          path="/weekly-planner"
+          path="/docs"
           element={
             <ProtectedRoute>
               <Layout>
-                <WeeklyPlanner />
+                <Docs />
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/docs/d/:id"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <DocEditor />
               </Layout>
             </ProtectedRoute>
           }
@@ -848,6 +1012,48 @@ function AppRoutes() {
           }
         />
         <Route path="/test-prep/*" element={<Navigate to="/test-prep/sat" replace />} />
+
+        {/* Interview Simulator. The room is deliberately outside `Layout`, for
+            the same reason the exam runner is: a mock interview with the site's
+            navbar above it is a page about an interview rather than one. The
+            lobby and the report keep the navbar — walking away from either is
+            supposed to be easy. */}
+        <Route
+          path="/interview"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <InterviewGate>
+                  <InterviewLobby />
+                </InterviewGate>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/interview/room"
+          element={
+            <ProtectedRoute>
+              <InterviewGate>
+                <InterviewRoom />
+              </InterviewGate>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/interview/report/:sessionId"
+          element={
+            <ProtectedRoute>
+              <Layout>
+                <InterviewGate>
+                  <InterviewReport />
+                </InterviewGate>
+              </Layout>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/mock-interview" element={<Navigate to="/interview" replace />} />
+        <Route path="/interview/*" element={<Navigate to="/interview" replace />} />
         <Route
           path="/requirements"
           element={
@@ -985,6 +1191,9 @@ function AppRoutes() {
         <Route path="/terms" element={<Layout><Terms /></Layout>} />
         <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
         <Route path="/refund-policy" element={<Layout><RefundPolicy /></Layout>} />
+        <Route path="/cookies" element={<Layout><CookiePolicy /></Layout>} />
+        {/* Both spellings people actually type, so neither 404s. */}
+        <Route path="/cookie-policy" element={<Navigate to="/cookies" replace />} />
         {/* Admin Panel - Hidden route, role-protected */}
         <Route path="/admin" element={<AdminPanel />} />
         <Route path="/admin-panel" element={<Navigate to="/admin" replace />} />
@@ -1007,6 +1216,21 @@ function AppRoutes() {
           /communications, /application or the landing page. Renders nothing at
           all until the capture engine reports something broke. */}
       <BugAlertBanner />
+      {/*
+       * The message dock: a floating pill of the people you are actually
+       * talking to, so a one-line reply never costs a page change.
+       *
+       * Signed-in only, and deliberately not on every route. It is suppressed
+       * wherever it would sit on top of the primary input of the page it is
+       * floating over: the Communications section already is the chat UI, the
+       * advisor owns the bottom of its own fixed-height shell, and focus mode
+       * is a full-screen timer that should not have a chat pill in it.
+       */}
+      {user && showMessageDock && (
+        <Suspense fallback={null}>
+          <MessageDockBar />
+        </Suspense>
+      )}
       {!isLandingPage && (
         <Suspense fallback={null}>
           <CreditGiftNotification />
@@ -1035,6 +1259,11 @@ const App = () => {
     // must not be written to localStorage on what may be a shared or school
     // device — it is the single most sensitive thing this app now holds.
     "comms",
+    // Notification bodies quote whatever they are about: a counsellor's
+    // message, a deadline, an announcement. Same reasoning as "comms".
+    "notification",
+    // Connector state names the third-party account someone linked.
+    "github", "composio", "connector", "google",
   ];
   const shouldDehydrateQuery = (query: Parameters<typeof defaultShouldDehydrateQuery>[0]) => {
     // Only settled, successful queries may be persisted. react-query dehydrates

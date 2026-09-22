@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Mail, Linkedin, Instagram } from 'lucide-react';
+import { Mail, Phone, Linkedin, Instagram } from 'lucide-react';
 import { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { DURATION, EASE_OUT_EXPO, viewportOnce } from "@/lib/motion";
@@ -12,7 +12,7 @@ const PRODUCT_LINKS = [
   { to: "/outcomes", label: "Outcomes" },
   { to: "/application-builder", label: "Application Builder" },
   { to: "/admissions-probability", label: "Admissions" },
-  { to: "/weekly-planner", label: "Calendar" },
+  { to: "/routine/calendar", label: "Calendar" },
 ];
 
 const RESOURCE_LINKS = [
@@ -21,7 +21,7 @@ const RESOURCE_LINKS = [
   { to: "/exemplar-essays", label: "Exemplar Essays" },
   { to: "/scholarships", label: "Scholarships" },
   { to: "/past-admits", label: "Past Admits" },
-  { to: "/lor", label: "Professors" },
+  { to: "/professors", label: "Professors" },
 ];
 
 const COMPANY_LINKS = [
@@ -37,6 +37,7 @@ const COMPANY_LINKS = [
 const LEGAL_LINKS = [
   { to: "/terms", label: "Terms" },
   { to: "/privacy", label: "Privacy" },
+  { to: "/cookies", label: "Cookies" },
   { to: "/refund-policy", label: "Refunds" },
 ];
 
@@ -53,7 +54,7 @@ const footerItem = {
 function LinkColumn({ title, links }: { title: string; links: { to: string; label: string }[] }) {
   return (
     <div>
-      <p className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-white/40">
+      <p className="font-display text-[11px] font-bold uppercase tracking-[0.16em] text-white/60">
         {title}
       </p>
       <ul className="mt-3 space-y-2">
@@ -138,26 +139,47 @@ export function Footer() {
             whileInView="visible"
             viewport={{ once: true }}
           >
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1 text-xs text-white/50">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1 text-xs text-white/70">
               <span>Founder — Govind Mulchandani</span>
-              <span className="hidden sm:inline opacity-30">·</span>
+              <span className="hidden sm:inline text-white/55">·</span>
               <span>Co-founder — Avyaay Rathi</span>
-              <span className="hidden sm:inline opacity-30">·</span>
+              <span className="hidden sm:inline text-white/55">·</span>
               <span>Co-founder — Zachary Samuel</span>
             </div>
-            <motion.a
-              href="mailto:pathforge.co@gmail.com"
-              className="inline-flex min-h-[44px] items-center gap-1.5 px-1 text-xs text-white/50 hover:text-accent transition-colors"
-              whileHover={{ scale: 1.05, y: -1 }}
-            >
-              <Mail className="h-3 w-3" />
-              pathforge.co@gmail.com
-            </motion.a>
-            <motion.p className="text-[10px] text-white/30 mt-1" whileHover={{ scale: 1.05 }}>
+            <div className="flex flex-wrap items-center justify-center gap-x-3">
+              <motion.a
+                href="mailto:pathforge.co@gmail.com"
+                className="inline-flex min-h-[44px] items-center gap-1.5 px-1 text-xs text-white/70 hover:text-accent transition-colors"
+                whileHover={{ scale: 1.05, y: -1 }}
+              >
+                <Mail className="h-3 w-3" />
+                pathforge.co@gmail.com
+              </motion.a>
+              <motion.a
+                href="tel:+918888918844"
+                className="inline-flex min-h-[44px] items-center gap-1.5 px-1 text-xs text-white/70 hover:text-accent transition-colors"
+                whileHover={{ scale: 1.05, y: -1 }}
+              >
+                <Phone className="h-3 w-3" />
+                +91 88889 18844
+              </motion.a>
+            </div>
+            <motion.p className="text-[10px] text-white/60 mt-1" whileHover={{ scale: 1.05 }}>
               Built by students, for students
             </motion.p>
-            <p className="text-[10px] text-white/25">
+            <p className="text-[10px] text-white/60">
               © {year} Pathforge. All rights reserved.
+            </p>
+            {/* Who the buyer is actually contracting with. Paddle is the
+                Merchant of Record for every order (see /terms and
+                /refund-policy), so it belongs on the page, not only inside the
+                policies. */}
+            <p className="text-[10px] text-white/60">
+              Pathforge is owned and operated by Govind Mulchandani.{" "}
+              <Link to="/contact" className="underline hover:text-accent">Business details</Link>.
+            </p>
+            <p className="text-[10px] text-white/60">
+              Paddle.com is the Merchant of Record for all Pathforge orders.
             </p>
           </motion.div>
         </div>

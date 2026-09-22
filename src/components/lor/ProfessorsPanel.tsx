@@ -1,28 +1,13 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
-import {
-  Search,
-  Loader2,
-  Mail,
-  ExternalLink,
-  Plus,
-  PenLine,
-  Copy,
-  Check,
-  Building2,
-  GraduationCap,
-  Globe2,
-  FlaskConical,
-  BookText,
-  ChevronDown,
-  Briefcase,
-  Send,
-} from "lucide-react";
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { Check, Copy, GraduationCap, Loader2, PenLine, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { MultiStateButton, type ButtonState } from "@/components/ui/multi-state-button";
 import {
   Select,
   SelectContent,
@@ -42,76 +27,11 @@ import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useRecommenders } from "@/hooks/useRecommenders";
 import { functionErrorMessage } from "@/lib/functionError";
-import { safeExternalUrl } from "@/lib/safeUrl";
+import { useStagger } from "@/lib/lorMotion";
 import { ComposeProfessorEmailDialog } from "./ComposeProfessorEmailDialog";
+import { SectionRule } from "@/components/lor/lorSurface";
+import { ProfessorCard } from "./ProfessorCard";
 import type { Professor } from "./professorTypes";
-
-/**
- * The institution's web domain, used to fetch its logo. The email domain is the
- * most reliable signal (prof@stanford.edu → stanford.edu); the profile URL host
- * is the fallback.
- */
-function institutionDomain(p: Professor): string | null {
-  const emailHost = p.email?.split("@")[1]?.trim().toLowerCase();
-  if (emailHost && emailHost.includes(".")) return emailHost;
-  try {
-    return new URL(p.profile_url).hostname.replace(/^www\./, "").toLowerCase();
-  } catch {
-    return null;
-  }
-}
-
-/** College logo tile with a unavatar → Google favicon → DuckDuckGo → monogram
- *  fallback chain (same reliable sources the scholarships page uses). */
-function CollegeLogo({ p, size = 48 }: { p: Professor; size?: number }) {
-  const domain = institutionDomain(p);
-  const candidates = domain
-    ? [
-        `https://unavatar.io/${domain}?fallback=false`,
-        `https://www.google.com/s2/favicons?domain=${domain}&sz=128`,
-        `https://icons.duckduckgo.com/ip3/${domain}.ico`,
-      ]
-    : [];
-  const [idx, setIdx] = useState(0);
-  const [failed, setFailed] = useState(false);
-  const initials =
-    (p.university || p.name)
-      .split(/\s+/)
-      .filter((w) => /^[A-Za-z]/.test(w))
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase() || "?";
-  const dim = { width: size, height: size };
-
-  if (failed || candidates.length === 0) {
-    return (
-      <div
-        style={dim}
-        className="shrink-0 rounded-xl bg-gradient-to-br from-muted to-muted/60 border border-border flex items-center justify-center font-bold text-foreground/70"
-      >
-        <span style={{ fontSize: size * 0.34 }}>{initials}</span>
-      </div>
-    );
-  }
-  return (
-    <div
-      style={dim}
-      className="shrink-0 rounded-xl bg-background border border-border flex items-center justify-center overflow-hidden p-1.5 shadow-sm"
-    >
-      <img
-        key={candidates[idx]}
-        src={candidates[idx]}
-        alt={`${p.university} logo`}
-        loading="lazy"
-        decoding="async"
-        referrerPolicy="no-referrer"
-        onError={() => (idx + 1 < candidates.length ? setIdx(idx + 1) : setFailed(true))}
-        className="max-w-full max-h-full object-contain"
-      />
-    </div>
-  );
-}
 
 type Level = "any" | "professor" | "associate" | "assistant" | "postdoc";
 
@@ -122,6 +42,19 @@ const LEVEL_LABEL: Record<Level, string> = {
   assistant: "Assistant Professor",
   postdoc: "Postdoc",
 };
+
+/*
+ * The six fields offered on the first-run state. Each one is a member of
+ * FIELDS below, so a chip can never set a field the select cannot show.
+ */
+const QUICK_FIELDS = [
+  "Computer Science",
+  "Biology",
+  "Mechanical Engineering",
+  "Economics",
+  "Psychology",
+  "Physics",
+] as const;
 
 const FIELDS = [
   "Computer Science",
@@ -269,12 +202,20 @@ const KEYWORDS_BY_FIELD: Record<string, string[]> = {
 
 export function ProfessorsPanel() {
   const { create } = useRecommenders();
+  const stagger = useStagger();
   const [field, setField] = useState("");
   const [university, setUniversity] = useState("");
   const [country, setCountry] = useState("");
   const [keywordTags, setKeywordTags] = useState<string[]>([]);
   const [level, setLevel] = useState<Level>("any");
   const [loading, setLoading] = useState(false);
+  /*
+   * Drives the search button's four states from outside. `loading` alone can
+   * only say "in flight"; this also remembers how the last search ended, so a
+   * failure is visible on the control that caused it and not only in a toast
+   * that has already gone.
+   */
+  const [searchState, setSearchState] = useState<ButtonState>("idle");
   const [results, setResults] = useState<Professor[]>([]);
   const [searched, setSearched] = useState(false);
 
@@ -299,17 +240,26 @@ export function ProfessorsPanel() {
   const [composeProf, setComposeProf] = useState<Professor | null>(null);
   const [composeOpen, setComposeOpen] = useState(false);
 
-  const runSearch = async () => {
-    if (field.trim().length < 2) {
+  /*
+   * `fieldOverride` exists for the quick-start chips on the first-run state.
+   * They call setField and runSearch in the same handler, and React has not
+   * flushed the state by then, so reading `field` would search on the previous
+   * value (on the very first press, the empty string, which fails validation
+   * and toasts at a user who did nothing wrong).
+   */
+  const runSearch = async (fieldOverride?: string) => {
+    const searchField = typeof fieldOverride === "string" ? fieldOverride : field;
+    if (searchField.trim().length < 2) {
       toast({ title: "Add a field or department", description: "e.g. Computer Science, Biology", variant: "destructive" });
       return;
     }
     setLoading(true);
+    setSearchState("loading");
     setSearched(true);
     try {
       const { data, error } = await supabase.functions.invoke("find-professors", {
         body: {
-          field,
+          field: searchField,
           university: university === "Any university" ? "" : university,
           country: country === "Any country" ? "" : country,
           keywords: keywordTags.join(", "),
@@ -325,10 +275,12 @@ export function ProfessorsPanel() {
       if (error) throw new Error(await functionErrorMessage(error, "Please try again."));
       if (data?.error) throw new Error(data.error);
       setResults(data?.professors ?? []);
+      setSearchState("success");
       if (!data?.professors?.length) {
         toast({ title: "No verified matches", description: "Try a broader field, different university, or fewer keywords." });
       }
     } catch (e) {
+      setSearchState("error");
       toast({
         title: "Search failed",
         description: e instanceof Error ? e.message : "Please try again.",
@@ -397,6 +349,17 @@ export function ProfessorsPanel() {
     }
   };
 
+  /*
+   * Success and error are a beat, not a resting state: a button that still
+   * reads "Results below" a minute later is describing the last search rather
+   * than what pressing it now would do.
+   */
+  useEffect(() => {
+    if (searchState !== "success" && searchState !== "error") return;
+    const t = setTimeout(() => setSearchState("idle"), 1800);
+    return () => clearTimeout(t);
+  }, [searchState]);
+
   const copy = async (text: string, key: string) => {
     await navigator.clipboard.writeText(text);
     setCopied(key);
@@ -404,16 +367,27 @@ export function ProfessorsPanel() {
   };
 
   return (
-    <div className="space-y-4">
-      {/*
-       * No heading here. The page is titled "Professors" and the tab above is
-       * titled "Find professors"; a third heading reading "Professors to Email"
-       * was the same noun three times in 200px of vertical space. The one thing
-       * the heading carried that the tab does not is the constraint on what the
-       * search returns, which now sits with the search button that returns it.
-       */}
-      <div className="rounded-xl border bg-card p-4 sm:p-5 space-y-4">
-        <div className="grid sm:grid-cols-2 gap-3">
+    /*
+     * Two panes.
+     *
+     * This tab used to be a single form card centred in a 1024px column, with
+     * roughly sixty percent of the viewport blank underneath it until you ran a
+     * search. The query is a control surface you keep adjusting, so it belongs
+     * in a rail you can see while reading results, and the results get the
+     * width. Below xl it collapses to one column, form first, which is the
+     * order you need it in anyway on a narrow screen.
+     *
+     * No heading here. The page is titled "Professors" and the tab above is
+     * titled "Find professors"; a third heading reading "Professors to Email"
+     * was the same noun three times in 200px of vertical space. The one thing
+     * the heading carried that the tab does not is the constraint on what the
+     * search returns, which now sits with the search button that returns it.
+     */
+    <div className="grid gap-6 lg:grid-cols-12 lg:items-start">
+      {/* min-w-0 for the same reason as the roster column: a grid item will
+          not shrink below its content's min-content width without it. */}
+      <div className="min-w-0 space-y-4 rounded-2xl border border-border/70 bg-card p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-16px_rgba(16,24,40,0.18)] sm:p-5 lg:sticky lg:top-6 lg:col-span-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">
               Field or department <span className="text-destructive">*</span>
@@ -464,178 +438,177 @@ export function ProfessorsPanel() {
         {field && KEYWORDS_BY_FIELD[field]?.length ? (
           <div className="space-y-1.5">
             <Label className="text-xs text-muted-foreground">Research focus</Label>
-            <div className="flex flex-wrap gap-1.5">
-              {KEYWORDS_BY_FIELD[field].map((k) => {
-                const active = keywordTags.includes(k);
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() =>
-                      setKeywordTags((prev) =>
-                        active ? prev.filter((x) => x !== k) : [...prev, k]
-                      )
-                    }
-                    className={
-                      "rounded-full border px-2.5 py-1 text-xs transition " +
-                      (active
-                        ? "bg-foreground text-background border-foreground"
-                        : "bg-card hover:bg-muted border-border text-muted-foreground")
-                    }
-                  >
-                    {k}
-                  </button>
-                );
-              })}
-            </div>
+            {/*
+              * A multi-select of mutually compatible filters is what
+              * ToggleGroup is, so it is what this is now. The hand-rolled
+              * buttons it replaces marked the selected state with
+              * `bg-foreground text-background` — a solid black fill, which on
+              * a page whose single accent is the Cluely cyan is a second
+              * accent introduced for one control.
+              */}
+            <ToggleGroup
+              type="multiple"
+              value={keywordTags}
+              onValueChange={setKeywordTags}
+              className="flex flex-wrap justify-start gap-1.5"
+            >
+              {KEYWORDS_BY_FIELD[field].map((k) => (
+                <ToggleGroupItem
+                  key={k}
+                  value={k}
+                  size="sm"
+                  className="h-auto rounded-full border border-border bg-card px-2.5 py-1 text-xs font-normal text-muted-foreground data-[state=on]:border-primary/40 data-[state=on]:bg-primary/10 data-[state=on]:text-primary"
+                >
+                  {k}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
         ) : null}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="max-w-[52ch] text-xs leading-relaxed text-muted-foreground">
+        <div className="space-y-3 border-t border-border pt-4">
+          {/*
+            * The same MultiStateButton the other generate actions use, so a
+            * search that fails says so on the control that started it instead
+            * of only in a toast that has already slid away by the time you
+            * look back at the form.
+            */}
+          <MultiStateButton
+            size="lg"
+            className="w-full"
+            idleLabel="Find professors"
+            loadingLabel="Searching the web"
+            successLabel="Search done"
+            errorLabel="Search failed"
+            idleIcon={<Search className="h-4 w-4" />}
+            state={loading ? "loading" : searchState}
+            onClick={() => runSearch()}
+          />
+          {/*
+            * Stated once. The old page said it here, again beside the result
+            * count as "Emails verified from university pages", and a third
+            * time in the first-run copy — one claim, three times, on one
+            * screen.
+            */}
+          <p className="text-[11.5px] leading-relaxed text-muted-foreground">
             Only faculty whose email address appears verbatim on a university page are returned.
           </p>
-          <Button onClick={runSearch} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Search className="h-4 w-4 mr-2" />}
-            {loading ? "Searching the web" : "Find professors"}
-          </Button>
         </div>
       </div>
 
+      <div className="min-w-0 lg:col-span-8">
+
       {/* Results */}
       {loading ? (
-        <div className="rounded-xl border bg-card/50 px-6 py-16 text-center">
-          <Loader2 className="h-5 w-5 animate-spin mx-auto text-muted-foreground mb-3" />
-          <p className="text-sm text-muted-foreground">Searching faculty directories and verifying emails…</p>
+        /* Skeletons in the shape of the result cards, on shadcn's own
+           Skeleton rather than a hand-rolled `animate-pulse` div. A centred
+           spinner tells you to wait; these tell you what is coming and stop
+           the column collapsing to nothing and then jumping back. */
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl border border-border/70 bg-card p-5">
+              <div className="flex items-start gap-3">
+                <Skeleton className="h-11 w-11 shrink-0 rounded-lg" />
+                <div className="min-w-0 flex-1 space-y-2">
+                  <Skeleton className="h-3.5 w-32" />
+                  <Skeleton className="h-3 w-44" />
+                  <Skeleton className="h-3 w-36" />
+                </div>
+              </div>
+              <div className="mt-4 flex gap-1.5">
+                <Skeleton className="h-5 w-24 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <Skeleton className="mt-4 h-8 w-full rounded-lg" />
+            </div>
+          ))}
         </div>
       ) : results.length > 0 ? (
         <div className="space-y-3">
-          <div className="flex items-center justify-between px-1">
-            <p className="text-sm font-medium text-foreground">
-              {results.length} {results.length === 1 ? "professor" : "professors"} found
-            </p>
-            <p className="text-xs text-muted-foreground">Emails verified from university pages</p>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {results.map((p, i) => (
-              <motion.div
-                key={p.email + i}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2, delay: Math.min(i, 12) * 0.025 }}
-                className="group relative flex flex-col rounded-2xl border bg-card p-4 sm:p-5 transition-all hover:shadow-md hover:border-foreground/20"
-              >
-                {/* Header: logo + identity + rank */}
-                <div className="flex items-start gap-3">
-                  <CollegeLogo p={p} />
-                  <div className="min-w-0 flex-1">
-                    <div className="font-semibold leading-tight truncate">{p.name}</div>
-                    <div className="text-sm text-muted-foreground truncate">
-                      {[p.title, p.department].filter(Boolean).join(" · ")}
-                    </div>
-                    {p.university && (
-                      <div className="mt-0.5 flex items-center gap-1 text-xs font-medium text-foreground/80">
-                        <Building2 className="h-3 w-3 shrink-0" />
-                        <span className="truncate">{p.university}</span>
-                        {p.country && <span className="text-muted-foreground">· {p.country}</span>}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Research interests */}
-                {p.research_interests.length > 0 && (
-                  <div className="mt-3 flex flex-wrap gap-1.5">
-                    {p.research_interests.slice(0, 5).map((r) => (
-                      <Badge key={r} variant="secondary" className="font-normal">{r}</Badge>
-                    ))}
-                  </div>
-                )}
-
-                {/* What they have actually done: bio, appointments, papers. */}
-                <ProfessorDossier p={p} />
-
-                {/* Email row */}
-                <div className="mt-3 flex items-center gap-2 rounded-lg border bg-muted/40 px-2.5 py-1.5">
-                  <Mail className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  <a
-                    href={`mailto:${p.email}`}
-                    className="min-w-0 flex-1 truncate text-sm font-medium hover:underline"
-                    title={p.email}
-                  >
-                    {p.email}
-                  </a>
-                  <button
-                    onClick={() => copy(p.email, `e-${i}`)}
-                    className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-background hover:text-foreground transition-colors"
-                    aria-label="Copy email"
-                  >
-                    {copied === `e-${i}` ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                  </button>
-                </div>
-
-                {/* Links */}
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                  {/* These two addresses were found by the find-professors
-                      function crawling the open web, so they get the same
-                      scheme check as any other untrusted link. */}
-                  {safeExternalUrl(p.profile_url) && (
-                    <a
-                      href={safeExternalUrl(p.profile_url)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:text-foreground"
-                    >
-                      <ExternalLink className="h-3 w-3" /> Faculty profile
-                    </a>
-                  )}
-                  {safeExternalUrl(p.email_source_url) && p.email_source_url !== p.profile_url && (
-                    <a
-                      href={safeExternalUrl(p.email_source_url)!}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 hover:text-foreground"
-                      title="Page where this email was verified"
-                    >
-                      <ExternalLink className="h-3 w-3" /> Email source
-                    </a>
-                  )}
-                </div>
-
-                {/* Actions. Compose sits on its own row because it is the
-                    thing most students came here to do, and it opens a flow
-                    that ends in a real email leaving their account. */}
-                <div className="mt-4 space-y-2 border-t pt-3">
-                  <Button
-                    size="sm"
-                    className="w-full"
-                    onClick={() => {
+          {/*
+            * The same labelled rule the recommenders tab groups its stages
+            * with, so both halves of this page count things the same way. It
+            * used to be a bold sentence on the left and a second, unrelated
+            * reassurance floated to the right of it.
+            */}
+          <SectionRule as="h2" className="mb-0 px-1">
+            {results.length === 1 ? "1 professor" : `${results.length} professors`}
+          </SectionRule>
+          {/*
+            * popLayout so a second search cross-fades the old grid out from
+            * under the new one instead of unmounting thirty cards in a frame.
+            */}
+          <motion.div layout className="grid items-start gap-3 sm:grid-cols-2">
+            <AnimatePresence mode="popLayout" initial={false}>
+              {results.map((p, i) => (
+                <motion.div
+                  key={`${p.email}-${i}`}
+                  {...stagger(i)}
+                  exit={{ opacity: 0, scale: 0.97 }}
+                  className="min-w-0"
+                >
+                  <ProfessorCard
+                    p={p}
+                    onCompose={() => {
                       setComposeProf(p);
                       setComposeOpen(true);
                     }}
-                  >
-                    <Send className="h-3.5 w-3.5 mr-1.5" /> Compose mail
-                  </Button>
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => addAsRecommender(p)}>
-                      <Plus className="h-3.5 w-3.5 mr-1.5" /> Add
-                    </Button>
-                    <Button size="sm" variant="outline" className="flex-1" onClick={() => openBrag(p)}>
-                      <FlaskConical className="h-3.5 w-3.5 mr-1.5" /> Brag sheet
-                    </Button>
-                  </div>
-                </div>
-              </motion.div>
+                    onSave={() => addAsRecommender(p)}
+                    onBragSheet={() => openBrag(p)}
+                  />
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </motion.div>
+        </div>
+      ) : searched ? (
+        <div className="rounded-2xl border border-border/70 bg-card px-6 py-14 text-center">
+          <h3 className="text-[17px] font-semibold tracking-[-0.015em]">
+            No verified professors found
+          </h3>
+          <p className="mx-auto mt-1.5 max-w-sm text-[13.5px] leading-relaxed text-muted-foreground">
+            Try a different university, broaden the field, or remove research keywords.
+          </p>
+        </div>
+      ) : (
+        /*
+         * First run.
+         *
+         * This was an empty column. A blank half-page is not restraint, it is
+         * the moment a student decides the feature does not work. These are
+         * real searches: pressing one fills the field and runs it, so the
+         * fastest path to a result is one click rather than four selects.
+         */
+        <div className="flex min-h-[26rem] flex-col items-center justify-center rounded-2xl border border-border/70 bg-card px-6 py-12 text-center sm:px-10 lg:min-h-[30rem]">
+          <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-primary/10 text-primary">
+            <GraduationCap className="h-5 w-5" strokeWidth={1.75} />
+          </span>
+          <h3 className="text-[19px] font-semibold tracking-[-0.02em]">
+            Find faculty worth emailing
+          </h3>
+          <p className="mx-auto mt-2 max-w-[46ch] text-[13.5px] leading-relaxed text-muted-foreground">
+            Pick a field on the left, or start from one of these.
+          </p>
+          <div className="mx-auto mt-6 flex max-w-[34rem] flex-wrap justify-center gap-2">
+            {QUICK_FIELDS.map((f, i) => (
+              <motion.button
+                key={f}
+                type="button"
+                {...stagger(i)}
+                whileTap={{ scale: 0.97 }}
+                onClick={() => {
+                  setField(f);
+                  setKeywordTags([]);
+                  runSearch(f);
+                }}
+                className="rounded-full border border-border bg-card px-3.5 py-1.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:border-primary/40 hover:bg-primary/5 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {f}
+              </motion.button>
             ))}
           </div>
         </div>
-      ) : searched ? (
-        <div className="rounded-xl border border-border bg-card px-5 py-6 text-center">
-          <p className="text-sm text-muted-foreground">
-            No verified professors found. Try a different university, broaden the field, or remove
-            keywords.
-          </p>
-        </div>
-      ) : null}
+      )}
+      </div>
 
       {/* Brag sheet dialog */}
       <Dialog open={bragOpen} onOpenChange={(o) => !o && setBragOpen(false)}>
@@ -643,7 +616,8 @@ export function ProfessorsPanel() {
           <DialogHeader>
             <DialogTitle>Targeted brag sheet for {bragProf?.name}</DialogTitle>
             <DialogDescription>
-              Answer briefly. We'll generate a brag sheet + cold email tailored to this professor.
+              Answer briefly. This writes a brag sheet and a cold email addressed to their
+              work, not a template with their name dropped into it.
             </DialogDescription>
           </DialogHeader>
 
@@ -790,94 +764,6 @@ function ResultBlock({
       <pre className="rounded-lg border bg-muted/40 p-4 text-xs whitespace-pre-wrap font-mono leading-relaxed max-h-72 overflow-y-auto">
         {text || "Not stated"}
       </pre>
-    </div>
-  );
-}
-
-/**
- * The part of a professor a directory listing never shows: what they actually
- * work on, where they have been, and what they have published.
- *
- * Collapsed by default to two lines of bio, because the grid has to stay
- * scannable when thirty of these come back — but the whole dossier is one tap
- * away, and it is what the compose step writes the email from.
- */
-function ProfessorDossier({ p }: { p: Professor }) {
-  const [open, setOpen] = useState(false);
-  const experience = p.experience ?? [];
-  const publications = p.publications ?? [];
-  const hasMore = !!p.bio || experience.length > 0 || publications.length > 0;
-  if (!hasMore) return null;
-
-  return (
-    <div className="mt-3">
-      {p.bio && (
-        <p
-          className={
-            "text-xs leading-relaxed text-muted-foreground " + (open ? "" : "line-clamp-2")
-          }
-        >
-          {p.bio}
-        </p>
-      )}
-
-      {open && experience.length > 0 && (
-        <div className="mt-3">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            <Briefcase className="h-3 w-3" /> Experience
-          </div>
-          <ul className="mt-1.5 space-y-1">
-            {experience.map((e) => (
-              <li key={e} className="flex gap-1.5 text-xs leading-relaxed text-foreground/80">
-                <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-muted-foreground/60" />
-                <span>{e}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {open && publications.length > 0 && (
-        <div className="mt-3">
-          <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-            <BookText className="h-3 w-3" /> Selected papers
-          </div>
-          <ul className="mt-1.5 space-y-1.5">
-            {publications.map((pub, i) => {
-              const href = safeExternalUrl(pub.url ?? "");
-              const meta = [pub.venue, pub.year].filter(Boolean).join(", ");
-              return (
-                <li key={`${pub.title}-${i}`} className="text-xs leading-relaxed">
-                  {href ? (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="font-medium text-foreground hover:underline"
-                    >
-                      {pub.title}
-                    </a>
-                  ) : (
-                    <span className="font-medium text-foreground/90">{pub.title}</span>
-                  )}
-                  {meta && <span className="text-muted-foreground">, {meta}</span>}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="mt-2 inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-      >
-        {open ? "Show less" : "Background, experience & papers"}
-        <ChevronDown
-          className={"h-3 w-3 transition-transform " + (open ? "rotate-180" : "")}
-        />
-      </button>
     </div>
   );
 }

@@ -1,16 +1,14 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
-import {
-  BarChart3, TrendingUp, Users, GraduationCap, FileText, Calendar,
-  Target, Globe, ArrowUpRight, ArrowDownRight,
-} from "lucide-react";
+import { AlertTriangle, BarChart3, Users, GraduationCap, Calendar, Target } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { useCounselorActivity } from "@/hooks/useCounselorActivity";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { TONE_BADGE, TONE_TEXT } from "@/lib/teacher/status";
 
 export default function TeacherAnalytics() {
   const { students, loading } = useTeacherRoster();
@@ -64,9 +62,16 @@ export default function TeacherAnalytics() {
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Analytics"
+        description="Score spread, risk and engagement across your cohort."
+        path="/teacher/analytics"
+        noindex
+      />
+
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Analytics</h1>
           <p className="text-sm text-muted-foreground mt-1">Insights across your student roster</p>
         </div>
 
@@ -74,26 +79,24 @@ export default function TeacherAnalytics() {
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
             { label: "Total Students", value: stats.total, icon: Users, color: "text-accent" },
-            { label: "Avg Score", value: stats.avgScore, suffix: "/100", icon: Target, color: "text-blue-600" },
-            { label: "At Risk", value: stats.atRisk, icon: TrendingUp, color: "text-red-600" },
-            { label: "Strong", value: stats.strong, icon: GraduationCap, color: "text-green-600" },
-            { label: "Engagement", value: stats.engagementRate, suffix: "%", icon: BarChart3, color: "text-purple-600" },
-          ].map((kpi, i) => (
-            <motion.div
-              key={kpi.label}
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.05 }}
-              className="card-elevated p-4"
-            >
+            { label: "Avg Score", value: stats.avgScore, suffix: "/100", icon: Target, color: TONE_TEXT.progress },
+            // Not TrendingUp. A rising-arrow icon on the count of students who are
+            // behind reads as good news about a bad number.
+            { label: "At Risk", value: stats.atRisk, icon: AlertTriangle, color: TONE_TEXT.bad },
+            { label: "Strong", value: stats.strong, icon: GraduationCap, color: TONE_TEXT.good },
+            { label: "Engagement", value: stats.engagementRate, suffix: "%", icon: BarChart3, color: TONE_TEXT.neutral },
+          ].map((kpi) => (
+            /* Four numbers arriving one after another is not an event worth
+               animating; it just makes the figures land late. */
+            <div key={kpi.label} className="card-elevated p-4">
               <div className="flex items-center gap-2 mb-2">
                 <kpi.icon className={cn("h-4 w-4", kpi.color)} />
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{kpi.label}</p>
               </div>
-              <p className="text-2xl font-bold text-foreground">
+              <p className="text-2xl font-semibold tracking-tight text-foreground">
                 {kpi.value}<span className="text-sm font-normal text-muted-foreground">{kpi.suffix || ""}</span>
               </p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
@@ -176,7 +179,7 @@ export default function TeacherAnalytics() {
                   {inactive.slice(0, 6).map((s) => (
                     <div key={s.user_id} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/30">
                       <span className="text-sm text-foreground">{s.display_name}</span>
-                      <Badge variant="outline" className="text-xs bg-red-500/10 text-red-600 border-red-500/20">
+                      <Badge variant="outline" className={cn("text-xs", TONE_BADGE.bad)}>
                         {s.daysInactive}d inactive
                       </Badge>
                     </div>

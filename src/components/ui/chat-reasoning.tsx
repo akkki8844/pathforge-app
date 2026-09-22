@@ -73,7 +73,7 @@ export function ChatReasoning<T>({
         <AccordionContent className="px-3 pb-3 pt-0">
           {parts.length === 0 ? (
             emptyText ? (
-              <p className="text-[12.5px] italic leading-relaxed text-muted-foreground/70">
+              <p className="text-[12.5px] italic leading-relaxed text-muted-foreground">
                 {emptyText}
               </p>
             ) : null

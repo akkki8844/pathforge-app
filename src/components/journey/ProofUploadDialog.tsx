@@ -204,18 +204,18 @@ export const STATUS_CONFIG = {
     badgeClass: "bg-primary/10 text-primary border-primary/30",
   },
   approved: {
-    label: "Approved", icon: CheckCircle2, iconClass: "text-emerald-500",
-    boxClass: "bg-emerald-500/5 border-emerald-500/30",
-    badgeClass: "bg-emerald-500/15 text-emerald-600 border-emerald-500/30",
+    label: "Approved", icon: CheckCircle2, iconClass: "text-success",
+    boxClass: "bg-success/5 border-success/30",
+    badgeClass: "bg-success/15 text-success border-success/30",
   },
   rejected: {
-    label: "Rejected", icon: XCircle, iconClass: "text-rose-500",
-    boxClass: "bg-rose-500/5 border-rose-500/30",
-    badgeClass: "bg-rose-500/15 text-rose-600 border-rose-500/30",
+    label: "Rejected", icon: XCircle, iconClass: "text-destructive",
+    boxClass: "bg-destructive/5 border-destructive/30",
+    badgeClass: "bg-destructive/15 text-destructive border-destructive/30",
   },
   needs_review: {
-    label: "Pending admin review", icon: AlertCircle, iconClass: "text-amber-500",
-    boxClass: "bg-amber-500/5 border-amber-500/30",
-    badgeClass: "bg-amber-500/15 text-amber-600 border-amber-500/30",
+    label: "Pending admin review", icon: AlertCircle, iconClass: "text-warning",
+    boxClass: "bg-warning/5 border-warning/30",
+    badgeClass: "bg-warning/15 text-warning border-warning/30",
   },
 } as const;

@@ -101,7 +101,7 @@ const SCRIPT: Record<string, { tagline: string; steps: TourStep[] }> = {
       },
     ],
   },
-  "/lor": {
+  "/professors": {
     tagline: "Recommenders, managed.",
     steps: [
       {
@@ -146,7 +146,7 @@ const SCRIPT: Record<string, { tagline: string; steps: TourStep[] }> = {
       },
     ],
   },
-  "/weekly-planner": {
+  "/routine/calendar": {
     tagline: "Where the deadlines land.",
     steps: [
       {

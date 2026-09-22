@@ -11,12 +11,12 @@ import {
  * The tour itself is code-split and only fetched once it actually opens.
  *
  * This provider is mounted eagerly for every signed-in page load, but the tour
- * runs exactly once per account. A static import would have put the engine, the
- * seven-page script and the mascot in the entry chunk for every visitor who
- * will never see it.
+ * runs exactly once per account. A static import would have put the engine and
+ * the whole-product script in the entry chunk for every visitor who will never
+ * see it.
  */
 const ProductTour = lazy(() =>
-  import("@/components/tour/ProductTour").then((m) => ({ default: m.ProductTour })),
+  import("@/components/tour/PathforgeTour").then((m) => ({ default: m.PathforgeTour })),
 );
 
 /**

@@ -53,6 +53,7 @@ import Pricing from "@/pages/Pricing";
 import Terms from "@/pages/Terms";
 import Privacy from "@/pages/Privacy";
 import RefundPolicy from "@/pages/RefundPolicy";
+import CookiePolicy from "@/pages/CookiePolicy";
 
 /** The routes this build emits static HTML for. Must all be reachable signed out. */
 export const PRERENDER_ROUTES = [
@@ -63,6 +64,7 @@ export const PRERENDER_ROUTES = [
   "/terms",
   "/privacy",
   "/refund-policy",
+  "/cookies",
 ] as const;
 
 function PublicRoutes() {
@@ -73,6 +75,7 @@ function PublicRoutes() {
       <Route path="/about" element={<Layout><About /></Layout>} />
       <Route path="/contact" element={<Layout><Contact /></Layout>} />
       <Route path="/terms" element={<Layout><Terms /></Layout>} />
+      <Route path="/cookies" element={<Layout><CookiePolicy /></Layout>} />
       <Route path="/privacy" element={<Layout><Privacy /></Layout>} />
       <Route path="/refund-policy" element={<Layout><RefundPolicy /></Layout>} />
     </Routes>

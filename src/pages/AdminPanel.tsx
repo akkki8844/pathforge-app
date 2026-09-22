@@ -4,7 +4,7 @@ import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2, Menu, LogOut, Home, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -137,13 +137,14 @@ export default function AdminPanel() {
                   <Menu className="h-5 w-5" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-72">
+              <SheetContent side="left" className="p-0 w-72" aria-describedby={undefined}>
+                <SheetTitle className="sr-only">Admin navigation</SheetTitle>
                 <AdminSidebar activeSection={activeSection} onSectionChange={handleSectionChange} />
               </SheetContent>
             </Sheet>
             <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground ml-2 pl-3 border-l border-border/60">
               <span>Admin</span>
-              <span className="text-muted-foreground/50">/</span>
+              <span className="text-muted-foreground">/</span>
               <span className="text-foreground font-medium">{sectionLabels[activeSection]}</span>
             </div>
           </div>

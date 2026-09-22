@@ -141,7 +141,7 @@ export function PointsLedger({ reading }: { reading: Reading }) {
                   </Figure>
                 </span>
                 <span className="w-10 text-right">
-                  <Figure size="sm" className={c.onOffer > 0 ? "text-primary" : "text-muted-foreground/60"}>
+                  <Figure size="sm" className={c.onOffer > 0 ? "text-primary" : "text-muted-foreground"}>
                     {c.counted ? (c.onOffer > 0 ? `+${c.onOffer}` : "0") : "None"}
                   </Figure>
                 </span>

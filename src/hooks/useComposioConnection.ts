@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 import { invokeEdgeFunction } from "@/lib/edgeFunctionError";
 import { isTrustedOAuthMessage } from "@/lib/oauthPopupMessage";
 
@@ -21,29 +22,44 @@ export interface ComposioConnection {
 export type ComposioToolkit = string;
 
 export function useComposioConnection(toolkit: ComposioToolkit = "gmail") {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [connection, setConnection] = useState<ComposioConnection | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
 
+  /*
+   * Bound to the signed-in user rather than read from `auth.getUser()` inside
+   * the fetch. This state used to outlive a change of account within one tab,
+   * so after signing out and signing in as someone else - a shared laptop, a
+   * school machine - the card went on showing the previous person's connected
+   * account until something happened to refetch it. No row ever left its owner
+   * (RLS sees to that), but the screen was still showing one person another
+   * person's account.
+   */
   const refresh = useCallback(async () => {
-    setLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
+    if (!userId) {
       setConnection(null);
       setLoading(false);
       return;
     }
+    setLoading(true);
     const { data } = await supabase
       .from("user_composio_connections")
       .select("toolkit, status, account_email, updated_at")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("toolkit", toolkit)
       .maybeSingle();
     setConnection((data as ComposioConnection | null) ?? null);
     setLoading(false);
-  }, [toolkit]);
+  }, [toolkit, userId]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    // Drop the previous account's value before the new one is known, rather
+    // than leaving it on screen for the length of a round trip.
+    setConnection(null);
+    void refresh();
+  }, [userId, refresh]);
 
   useEffect(() => {
     const onFocus = () => void refresh();

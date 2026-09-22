@@ -70,12 +70,24 @@
        looked identical to a link. Muted enough to sit on a cream page without
        shouting; dark-mode variants are lightened for contrast, not just
        reused. */
-    --success: 152 58% 36%;
+    --success: 152 58% 31%;
     --success-foreground: 0 0% 100%;
-    --warning: 32 88% 44%;
+    --warning: 32 88% 34%;
     --warning-foreground: 0 0% 100%;
-    --info: 199 82% 42%;
+    --info: 199 82% 35%;
     --info-foreground: 0 0% 100%;
+
+    /* Medals.
+       Categorical, not semantic: these encode WHICH place, the way a team
+       colour encodes which team, so they are their own named palette rather
+       than borrowing --warning for gold and --muted for silver. Collapsing
+       them into the state tokens would make "second place" and "informational"
+       the same colour the first time either one is retuned.
+       Desaturated well below real metal — a literal #FFD700 on a warm paper
+       card reads as a sticker. */
+    --medal-gold: 40 72% 32%;
+    --medal-silver: 220 9% 44%;
+    --medal-bronze: 24 52% 41%;
 
     --border: 222 18% 86%;
     --input: 222 18% 86%;
@@ -132,8 +144,8 @@
     --highlight: 226 80% 72%;
     --highlight-foreground: 222 45% 8%;
 
-    --destructive: 0 72% 55%;
-    --destructive-foreground: 0 0% 100%;
+    --destructive: 0 72% 62%;
+    --destructive-foreground: 222 45% 8%;
 
     /* Same roles as light mode, lifted in lightness so they stay legible on the
        near-black card background rather than sinking into it. */
@@ -143,6 +155,12 @@
     --warning-foreground: 222 45% 8%;
     --info: 199 84% 58%;
     --info-foreground: 222 45% 8%;
+
+    /* Lifted for the near-black card, and gold pulled slightly warmer: at 44%
+       lightness it reads brown against a dark surface rather than metallic. */
+    --medal-gold: 42 85% 62%;
+    --medal-silver: 220 12% 72%;
+    --medal-bronze: 24 62% 58%;
 
     --border: 222 25% 22%;
     --input: 222 25% 22%;
@@ -168,30 +186,162 @@
     --sidebar-ring: 226 75% 65%;
   }
 
-  /* Test Prep's own palette — the digital-testing look (deep navy toolbar,
-     a mid blue for the current/selected state, a light blue wash for chosen
-     answers, amber for "marked for review"). Scoped under `.bluebook` so it
-     never touches `--primary`/`--accent`, which are the whole app's brand
-     colour. Not a copy of any proprietary testing app's exact values — an
-     original navy-and-blue pair picked for the same job. */
+  /* Test Prep's own palette.
+
+     Four colours and no others: School bus Yellow #FDDB00, Cerulean Blue
+     #324EC7, black and white — the College Board brand palette, because this
+     is an SAT section and the SAT's own materials look like this. Tints,
+     shades and opacities of those four are in; a fifth hue is not, which is
+     why there is no green, no red and no amber anywhere in the section.
+
+     Scoped under `.bluebook` so it never touches `--primary`/`--accent`,
+     which are the whole app's brand colour.
+
+     Colours only. The section does not use College Board's logo, wordmark or
+     any lockup, and must never imply College Board produced or endorsed it.
+
+     Two constraints this palette forces, both load-bearing:
+
+     • #FDDB00 on white is about 1.5:1. It is a fill and an accent, never a
+       text colour on a light surface, and anything sitting on it is black.
+     • With green and red gone, right/wrong can no longer be carried by hue.
+       Correct and incorrect states must always also say so — a word, a mark,
+       a shape — which is what WCAG 1.4.1 wanted anyway. */
   .bluebook {
-    --bb-navy: 213 68% 15%;
+    /* The surfaces.
+
+       This is the half that was missing. The palette below recoloured the
+       section's toolbars, states and accents, but every surface token was left
+       to the app's own theme — so an SAT page rendered College Board blue and
+       yellow on Atlas cream, which is a fifth and sixth colour underneath
+       everything else. Bluebook is white paper and black ink; so is this.
+
+       Greys are shades of black at low opacity, which the four-colour rule
+       allows. No hue enters here that is not black, white or #324EC7. */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 229 60% 49%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 7%;
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 229 60% 49%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 229 60% 49%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 229 60% 49%;
+
+    /* Toolbars and banners.
+
+       A dark shade of #324EC7, not black. The first paragraph of this block
+       admits shades of the four colours, and the section reads as College
+       Board only if the bar across the top of a module is blue — black is
+       accurate to nothing and made every runner look like a terminal. White
+       text on this sits around 10:1.
+
+       The bar carries a School bus Yellow rule along its bottom edge (see
+       BB_TOOLBAR in lib/testprep/ui.ts). That rule is where the third colour
+       enters the layout rather than only the states: blue field, yellow rule,
+       white paper, in that order down the screen. */
+    --bb-navy: 229 58% 26%;
     --bb-navy-foreground: 0 0% 100%;
-    --bb-blue: 213 74% 43%;
+    /* The yellow rule under a blue bar, and the flag on a marked question.
+       Same colour, two jobs; kept as one token so they can never drift. */
+    --bb-rule: 52 100% 50%;
+    /* Cerulean Blue #324EC7. */
+    --bb-blue: 229 60% 49%;
     --bb-blue-foreground: 0 0% 100%;
-    --bb-blue-soft: 213 66% 94%;
-    --bb-flag: 38 92% 47%;
-    --bb-flag-foreground: 0 0% 100%;
+    /* A tint of the same blue, for the wash behind a chosen answer. */
+    --bb-blue-soft: 229 60% 95%;
+    /* School bus Yellow #FDDB00. Black on top of it, never white. */
+    --bb-flag: 52 100% 50%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    /* The semantic states, redirected into the palette.
+
+       The section already used `--success`, `--warning` and `--destructive` in
+       about fifty places. Rather than rewrite fifty class strings — and leave
+       the fifty-first to be written in green by whoever touches this next —
+       the tokens themselves are redefined for the duration of `.bluebook`.
+       Every existing usage lands in-palette, and so does every future one.
+
+       This is why the states must carry a word or a mark as well: correct and
+       selected are now the same blue, and "wrong" is a black that reads as
+       emphasis rather than as alarm. Colour is no longer doing the work. */
+    --success: 229 60% 49%;
+    --success-foreground: 0 0% 100%;
+    --warning: 52 100% 50%;
+    --warning-foreground: 0 0% 0%;
+    --info: 229 60% 49%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
   }
 
   .dark .bluebook {
-    --bb-navy: 213 50% 10%;
-    --bb-navy-foreground: 210 40% 98%;
-    --bb-blue: 213 80% 62%;
-    --bb-blue-foreground: 222 45% 8%;
-    --bb-blue-soft: 213 42% 18%;
-    --bb-flag: 38 88% 58%;
-    --bb-flag-foreground: 222 45% 8%;
+    /* Same surfaces, inverted. Still only black, white and the blue. */
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 229 72% 66%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 98%;
+    --border: 0 0% 24%;
+    --input: 0 0% 24%;
+    --ring: 229 72% 66%;
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 229 72% 66%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 24%;
+    --sidebar-ring: 229 72% 66%;
+
+    /* Darker again on a dark surface, so the bar still separates from the
+       paper below it rather than glowing off it. */
+    --bb-navy: 229 52% 22%;
+    --bb-navy-foreground: 0 0% 100%;
+    --bb-rule: 52 100% 50%;
+    /* Lifted, because #324EC7 on a near-black surface is about 2.6:1 and a
+       selected answer has to be legible before it has to be exact. */
+    --bb-blue: 229 72% 66%;
+    --bb-blue-foreground: 0 0% 0%;
+    --bb-blue-soft: 229 40% 20%;
+    --bb-flag: 52 100% 50%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    /* Same redirection, lifted for a dark surface. `--destructive` becomes
+       white here: black-on-black is not a state, it is a disappearance. */
+    --success: 229 72% 66%;
+    --success-foreground: 0 0% 0%;
+    --warning: 52 100% 50%;
+    --warning-foreground: 0 0% 0%;
+    --info: 229 72% 66%;
+    --info-foreground: 0 0% 0%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
   }
 }
 
@@ -396,7 +546,7 @@
     --foreground: 222 24% 11%;
     --card-foreground: 222 24% 11%;
     --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted-foreground: 220 9% 44%;
     --border: 220 13% 90%;
     --input: 220 13% 90%;
     --secondary: 220 14% 96%;
@@ -453,14 +603,14 @@
     --card-foreground: 240 11% 4%;
     --popover-foreground: 240 11% 4%;
     --muted: 240 4% 96%;
-    --muted-foreground: 240 4% 46%;
+    --muted-foreground: 240 4% 44%;
     --border: 240 6% 90%;
     --input: 240 6% 90%;
     --secondary: 240 4% 96%;
     --secondary-foreground: 240 6% 10%;
     --accent: 240 4% 96%;
     --accent-foreground: 240 6% 10%;
-    --primary: 200 100% 39%;
+    --primary: 200 100% 34%;
     --primary-foreground: 204 92% 97%;
     --ring: 240 6% 64%;
     --destructive: 357 100% 45%;
@@ -893,7 +1043,13 @@
 }
 
 .atlas-page * { box-sizing: border-box; }
-.atlas-page a { color: inherit; text-decoration: none; }
+/* NOTE: no `color` here. Tailwind's preflight already gives every anchor
+   `color: inherit`, and declaring it again at (0,1,1) out-specified every
+   single-class rule below that colours a link - `.atlas-skip`,
+   `.atlas-primary`, `.atlas-secondary` - so the skip link and the primary
+   call to action rendered ink-navy on accent blue (3.2:1) instead of white.
+   Decoration is all this rule needs to do. */
+.atlas-page a { text-decoration: none; }
 .atlas-page button, .atlas-page input { font: inherit; }
 .atlas-page img { display: block; max-width: 100%; }
 .atlas-page ::selection { color: #fff; background: var(--accent); }
@@ -906,7 +1062,34 @@
 .atlas-wrap { width: min(100% - 3rem, 75rem); margin-inline: auto; }
 
 .atlas-header { position: absolute; z-index: 103; top: 0; width: 100%; padding: 0.9rem 1.5rem; }
-.atlas-header-inner { display: flex; width: min(100%, 75rem); min-height: 3.4rem; align-items: center; justify-content: space-between; gap: 1rem; margin-inline: auto; padding: 0.38rem 0.55rem 0.38rem 0.85rem; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1rem; background: rgba(11, 21, 43, 0.36); box-shadow: 0 10px 30px rgba(5, 11, 27, 0.18); -webkit-backdrop-filter: blur(18px) saturate(120%); backdrop-filter: blur(18px) saturate(120%); }
+.atlas-header-inner { position: relative; isolation: isolate; display: flex; width: min(100%, 75rem); min-height: 3.4rem; align-items: center; justify-content: space-between; gap: 1rem; margin-inline: auto; padding: 0.38rem 0.55rem 0.38rem 0.85rem; color: #fff; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 1rem; background: rgba(11, 21, 43, 0.36); box-shadow: 0 10px 30px rgba(5, 11, 27, 0.18); -webkit-backdrop-filter: blur(8px) saturate(120%); backdrop-filter: blur(8px) saturate(120%); }
+/* The refracting layer of the header glass.
+
+   Sits under the header's own translucent fill (z-index: -1 within the header's
+   stacking context) so the warped photo shows *through* that fill rather than
+   over the links. It is inert: no pointer events, no content, and where the SVG
+   filter is unsupported it contributes nothing and the CSS glass above renders
+   unchanged. See src/components/GlassFilter.tsx. */
+.atlas-header-inner::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  filter: url(#atlas-glass-refract);
+}
+
+/* Someone who has asked their system to reduce transparency is asking not to
+   have to read text through a moving photograph. Drop the refraction and give
+   the bar a solid ground. */
+@media (prefers-reduced-transparency: reduce) {
+  .atlas-header-inner { background: rgba(11, 21, 43, 0.92); }
+  .atlas-header-inner::before { display: none; }
+}
+
 .atlas-brand { display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; padding: 0 0.25rem; font-family: "Work Sans", "Plus Jakarta Sans", "Aptos", "Segoe UI", system-ui, sans-serif; font-size: 1.28rem; font-weight: 400; letter-spacing: -0.05em; color: #fff; }
 .atlas-brand img { width: 1.65rem; height: 1.65rem; object-fit: contain; }
 .atlas-nav { display: flex; align-items: center; gap: 0.15rem; font-size: var(--text-sm); font-weight: 620; }
@@ -931,12 +1114,25 @@
  */
 .atlas-hero-photo { position: absolute; z-index: 100; inset: 0; margin: 0; overflow: hidden; background: #101a34 url("/assets/hero-campus-cinematic-v1.webp") 53% 62% / cover no-repeat; filter: saturate(0.96) contrast(1.03) brightness(1.05); }
 .atlas-hero-photo img { display: none; }
+/* Scrim.
+
+   The hero copy is white and sat directly on the photograph, carrying nothing
+   but a soft text-shadow. Where the picture is bright - the sunlit path, the
+   autumn foliage on the right - white-on-photo fell well under the 4.5:1 that
+   WCAG 1.4.3 asks of body text, and the sub-headline was genuinely hard to
+   read. The `brightness(1.05)` grade above made it worse.
+
+   A scrim fixes it without touching the photograph or the type: the image is
+   still fully visible, it is just held down far enough behind the text to be a
+   dependable background. Slightly stronger at the top and bottom, where the
+   nav and the buttons sit. */
+.atlas-hero-photo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(3, 9, 23, 0.54) 0%, rgba(3, 9, 23, 0.34) 40%, rgba(3, 9, 23, 0.48) 100%); pointer-events: none; }
 .atlas-hero-inner { position: relative; z-index: 102; display: grid; }
 .atlas-hero-copy { max-width: 55rem; margin-inline: auto; text-align: center; }
 .atlas-hero h1 { max-width: 11.3ch; margin: 0 auto; color: #fff; font-family: "Fraunces Variable", Fraunces, "Iowan Old Style", "Palatino Linotype", Georgia, serif; font-size: clamp(4.2rem, 9.8vw, 8.9rem); font-weight: 400; letter-spacing: -0.077em; line-height: var(--lh-tight); text-shadow: 0 4px 28px rgba(3, 9, 23, 0.28); text-wrap: balance; }
 .atlas-hero h1 em { color: #b9caff; font-weight: inherit; }
 .atlas-hero h1 em .standout { color: #c4b9ff; }
-.atlas-hero-copy > p { max-width: 43rem; margin: 1.8rem auto 0; color: rgba(255, 255, 255, 0.8); font-size: clamp(var(--text-md), 1.55vw, var(--text-lg)); line-height: var(--lh-body); text-shadow: 0 2px 16px rgba(3, 9, 23, 0.32); text-wrap: balance; }
+.atlas-hero-copy > p { max-width: 43rem; margin: 1.8rem auto 0; color: rgba(255, 255, 255, 0.95); font-size: clamp(var(--text-md), 1.55vw, var(--text-lg)); line-height: var(--lh-body); text-shadow: 0 1px 3px rgba(3, 9, 23, 0.55), 0 2px 16px rgba(3, 9, 23, 0.4); text-wrap: balance; }
 .atlas-hero-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.7rem 1.15rem; margin-top: 1.8rem; }
 .atlas-primary { display: inline-flex; min-height: 3.15rem; align-items: center; justify-content: center; gap: 0.55rem; padding: 0.8rem 1.05rem 0.8rem 1.18rem; color: #fff; border: 1px solid var(--accent); border-radius: 0.75rem; background: var(--accent); box-shadow: 0 10px 21px rgba(68, 101, 216, 0.2); font-size: var(--text-sm); font-weight: 700; transition: transform var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
 .atlas-primary:hover { background: var(--accent-deep); box-shadow: 0 15px 28px rgba(68, 101, 216, 0.27); transform: translateY(-2px); }
@@ -1051,14 +1247,6 @@
 .pfi-tile-planned .pfi-mark img { opacity: 0.6; }
 .pfi-tile-planned .pfi-copy strong { color: var(--ink-soft); }
 
-.atlas-sister { padding-bottom: clamp(6rem, 12vw, 11rem); }
-.atlas-talkforge { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 1.4rem; align-items: center; margin-top: 3.2rem; padding: clamp(1.25rem, 2vw, 1.7rem); border: 1px solid var(--line); border-radius: 1rem; background: var(--surface-blue); transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
-.atlas-talkforge:hover { box-shadow: 0 15px 28px rgba(33, 48, 88, 0.12); transform: translateY(-3px); }
-.atlas-talkforge img { width: 4.4rem; height: 4.4rem; object-fit: contain; }
-.atlas-talkforge > span:nth-child(2) { display: grid; gap: 0.4rem; }
-.atlas-talkforge strong { font-family: var(--display); font-size: 2.2rem; font-weight: 600; letter-spacing: -0.015em; }
-.atlas-talkforge > span:nth-child(2) > span { max-width: 37rem; color: var(--ink-soft); font-size: var(--text-sm); line-height: var(--lh-body); }
-.atlas-talkforge > span:last-child { color: var(--accent-deep); font-size: var(--text-xs); font-weight: 720; white-space: nowrap; }
 
 .atlas-brief { padding-block: clamp(5.5rem, 10vw, 8rem); border-block: 1px solid var(--line); background: #e9e5dc; }
 .atlas-brief-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(22rem, 0.78fr); gap: clamp(3rem, 9vw, 8rem); align-items: center; }
@@ -1142,11 +1330,6 @@
      tall three-column card. In a full-width phone card it is 46px of empty box
      repeated six times, which is what made the section read as unfinished. */
   .atlas-rules h3 { margin-top: 1.4rem; }
-  .atlas-sister { padding-bottom: 4.8rem; }
-  .atlas-talkforge { grid-template-columns: auto minmax(0, 1fr); gap: 0.85rem; margin-top: 2.6rem; padding: 1.1rem; }
-  .atlas-talkforge img { width: 3.25rem; height: 3.25rem; }
-  .atlas-talkforge strong { font-size: 1.8rem; }
-  .atlas-talkforge > span:last-child { grid-column: 2; }
   .atlas-brief { padding-block: 4.8rem; }
   .atlas-colophon { display: grid; gap: 2rem; padding-block: 4.8rem; }
 }
@@ -1228,4 +1411,134 @@ html[data-reduce-motion="true"] *::after {
 
 @media (prefers-reduced-transparency: reduce) {
   .bg-chat-canvas { background-image: none; }
+}
+
+/* ── Advisor surface ───────────────────────────────────────────────────── */
+/*
+ * The advisor is a full-page assistant canvas: a quiet rail, a paper column,
+ * soft grey chips and a pill composer.
+ *
+ * Its greys are declared here rather than reached for inline so that light and
+ * dark are defined in exactly one place. The page previously mixed `bg-card`,
+ * `bg-muted` and a few raw zinc utilities, and the zinc ones do not flip with
+ * the theme — that is why some text went unreadable when the theme changed.
+ * Everything below is a token pair, so there is no branch that can only be
+ * right in one mode.
+ *
+ * `--adv-ink-soft` is the secondary heading and placeholder colour. It is
+ * deliberately lighter than `--foreground` and deliberately NOT as light as
+ * the reference it is modelled on: at 45% lightness on white it clears 4.5:1,
+ * so it stays legible at body size rather than only as a 52px heading.
+ */
+.advisor-shell {
+  --adv-canvas: 0 0% 100%;
+  --adv-rail: 45 25% 94%;
+  --adv-chip: 44 20% 93%;
+  --adv-chip-hover: 44 20% 88%;
+  --adv-field: 44 20% 93%;
+  --adv-ink: 222 38% 15%;
+  --adv-ink-soft: 222 12% 45%;
+}
+
+.dark .advisor-shell {
+  --adv-canvas: 222 45% 8%;
+  --adv-rail: 222 40% 11%;
+  --adv-chip: 222 30% 15%;
+  --adv-chip-hover: 222 28% 20%;
+  --adv-field: 222 30% 15%;
+  --adv-ink: 210 40% 98%;
+  --adv-ink-soft: 220 14% 68%;
+}
+
+/*
+ * The greeting's one piece of colour. Stops are mid-tone on purpose: a
+ * gradient that runs into near-white would repeat the bug this page already
+ * had, where the end of a greeting addressed to the reader by name was the
+ * least readable text on the screen. Dark mode lifts every stop rather than
+ * reusing the light ramp on a dark ground.
+ */
+.advisor-greeting {
+  background-image: linear-gradient(
+    90deg,
+    hsl(226 65% 54%),
+    hsl(282 52% 56%) 45%,
+    hsl(350 68% 56%)
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.dark .advisor-greeting {
+  background-image: linear-gradient(
+    90deg,
+    hsl(226 88% 74%),
+    hsl(282 72% 76%) 45%,
+    hsl(350 88% 74%)
+  );
+}
+
+/* ------------------------------------------------------------------
+ * Scroll reel
+ *
+ * The per-character rise used by `ScrollReelTestimonials`. It is plain
+ * CSS rather than a Tailwind utility because the delay is set per span
+ * inline (one span per character), and only the timing function and the
+ * two keyframes are shared.
+ *
+ * `scroll-reel-exit` sits on the block that is leaving. It also kills
+ * the rise on every character inside it, so a quote that is paginated
+ * mid-stagger fades out as one piece instead of half of it continuing
+ * to animate in while the block slides away.
+ * ------------------------------------------------------------------ */
+
+@keyframes scroll-reel-char-rise {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes scroll-reel-exit {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+}
+
+.scroll-reel-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(0.45em);
+  animation: scroll-reel-char-rise 420ms cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.scroll-reel-exit {
+  animation: scroll-reel-exit 240ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.scroll-reel-exit .scroll-reel-char {
+  animation: none;
+  opacity: 1;
+  transform: none;
+}
+
+/* The reel's columns already opt out of their slide via `motion-reduce`.
+   The text has to opt out here, because the animation is what makes it
+   visible at all: without this the quote would stay at opacity 0. */
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reel-char {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .scroll-reel-exit {
+    animation: none;
+    opacity: 0;
+  }
 }

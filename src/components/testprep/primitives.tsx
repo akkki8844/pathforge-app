@@ -35,14 +35,29 @@ export function Bar({
   /** 0-1. */
   value: number;
   className?: string;
-  tone?: "accent" | "success" | "warning" | "muted";
+  tone?: "accent" | "partial" | "success" | "warning" | "muted";
   delay?: number;
   size?: "default" | "sm";
 }) {
   const reduced = useReducedMotion();
   const clamped = Math.max(0, Math.min(1, value));
+  /*
+    Four fills, three hues, no green.
+
+    `success` used to be the distinct "you're strong here" colour. Under the
+    College Board palette `--success` resolves to the same Cerulean Blue as
+    `accent`, so a domain at 85% and one at 60% were drawing the identical
+    bar — a three-tier scale rendering as two. `partial` restores the middle
+    step as a lighter wash of the same blue: same hue, so it still reads as
+    the same axis, visibly less filled-in, so it no longer reads as mastered.
+
+    `success` is kept pointing at the token for anything outside the mastery
+    scale that still asks for it, rather than being removed from the union
+    and breaking a caller this file cannot see.
+  */
   const fill = {
     accent: "bg-[hsl(var(--bb-blue))]",
+    partial: "bg-[hsl(var(--bb-blue)/0.4)]",
     success: "bg-success",
     warning: "bg-warning",
     muted: "bg-muted-foreground/35",
@@ -144,7 +159,7 @@ export function LabelledBar({
   label: string;
   /** 0-1. */
   value: number;
-  tone?: "accent" | "success" | "warning" | "muted";
+  tone?: "accent" | "partial" | "success" | "warning" | "muted";
   caption?: ReactNode;
   delay?: number;
 }) {
@@ -203,7 +218,7 @@ export function TopicRow({
               <motion.span
                 animate={{ rotate: open ? 90 : 0 }}
                 transition={{ duration: DURATION.fast, ease: EASE_OUT_EXPO }}
-                className="inline-flex shrink-0 text-muted-foreground/70"
+                className="inline-flex shrink-0 text-muted-foreground"
                 aria-hidden="true"
               >
                 <ChevronRight className="h-3.5 w-3.5" />

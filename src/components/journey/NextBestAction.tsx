@@ -101,7 +101,7 @@ export function NextBestAction({ milestones, scores, onboardingData }: Props) {
           <Button
             size="sm"
             className="text-xs h-8 gap-1.5 btn-accent"
-            onClick={() => window.open(action.link, "_blank")}
+            onClick={() => window.open(action.link, "_blank", "noopener,noreferrer")}
           >
             Take Action <ExternalLink className="h-3 w-3" />
           </Button>

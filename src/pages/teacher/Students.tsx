@@ -1,10 +1,16 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion, AnimatePresence } from "framer-motion";
 import {
-  Search, Filter, Download, ChevronDown, ChevronUp, ArrowUpDown,
-  GraduationCap, MapPin, BookOpen, Clock, AlertTriangle, Shield,
-  ChevronRight, Users,
+  Search,
+  Download,
+  ChevronDown,
+  ChevronUp,
+  ArrowUpDown,
+  GraduationCap,
+  AlertTriangle,
+  Shield,
+  ChevronRight,
+  Users,
 } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
@@ -13,22 +19,31 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { TONE_BADGE, standingTone } from "@/lib/teacher/status";
+import { Seo } from "@/components/Seo";
+import { useToast } from "@/hooks/use-toast";
+import { downloadRosterCsv } from "@/lib/teacher/exportRoster";
 
 import { CollegeLogo } from "@/components/CollegeLogo";
 type SortField = "name" | "score" | "grade" | "status";
 type SortDir = "asc" | "desc";
 
 const statusConfig = {
-  behind: { label: "At Risk", color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", icon: AlertTriangle },
-  steady: { label: "On Track", color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", icon: Shield },
-  top: { label: "Strong", color: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20", icon: GraduationCap },
+  behind: { label: "At Risk", color: TONE_BADGE[standingTone("behind")], icon: AlertTriangle },
+  steady: { label: "On Track", color: TONE_BADGE[standingTone("steady")], icon: Shield },
+  top: { label: "Strong", color: TONE_BADGE[standingTone("top")], icon: GraduationCap },
 };
 
 export default function TeacherStudents() {
   const { students, loading } = useTeacherRoster();
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const [gradeFilter, setGradeFilter] = useState("all");
   const [majorFilter, setMajorFilter] = useState("all");
@@ -89,9 +104,56 @@ export default function TeacherStudents() {
     top: students.filter((s) => s.status === "top").length,
   }), [students]);
 
+  /*
+   * Exports what is on screen, not the whole roster. A counsellor who has
+   * filtered to grade 12 and exported expects grade 12; handing them all
+   * eighty rows instead is the kind of quiet mismatch that gets noticed after
+   * the file has already been sent on.
+   */
+  const exportCsv = () => {
+    if (!filtered.length) {
+      toast({ variant: "destructive", title: "Nothing to export" });
+      return;
+    }
+    downloadRosterCsv(filtered);
+    toast({
+      title: "Roster exported",
+      description:
+        filtered.length === students.length
+          ? `${filtered.length} students.`
+          : `${filtered.length} of ${students.length} students, matching your current filters.`,
+    });
+  };
+
   return (
     <TeacherLayout>
+      <Seo
+        title="Students"
+        description="Every student linked to you."
+        path="/teacher/students"
+        noindex
+      />
+
       <div className="space-y-6">
+        <div className="flex items-end justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground">Students</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Every student linked to you, ordered by who needs you first.
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportCsv}
+            disabled={loading || filtered.length === 0}
+            className="shrink-0"
+          >
+            <Download className="mr-1.5 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
+
         {/* Summary cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <div className="card-elevated p-4">
@@ -213,7 +275,7 @@ export default function TeacherStudents() {
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="p-12 text-center">
-                      <Users className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+                      <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
                       <p className="text-muted-foreground font-medium">No students found</p>
                       <p className="text-muted-foreground text-xs mt-1">Try adjusting your search or filters</p>
                     </td>
@@ -222,13 +284,11 @@ export default function TeacherStudents() {
                   filtered.map((s, i) => {
                     const cfg = statusConfig[s.status] || statusConfig.steady;
                     const StatusIcon = cfg.icon;
+                    // See Applications: a roster is read, not watched.
                     return (
-                      <motion.tr
+                      <tr
                         key={s.user_id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                        className="border-b border-border hover:bg-muted/30 transition-colors"
+                        className="border-b border-border transition-colors hover:bg-muted/30"
                       >
                         <td className="p-3">
                           <Link to={`/teacher/students/${s.user_id}`} className="flex items-center gap-3 group">
@@ -274,7 +334,7 @@ export default function TeacherStudents() {
                             <ChevronRight className="h-4 w-4" />
                           </Link>
                         </td>
-                      </motion.tr>
+                      </tr>
                     );
                   })
                 )}

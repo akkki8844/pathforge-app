@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { FileText, Download, Plus, Trash2, ChevronLeft, ChevronRight, Loader2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -80,10 +80,15 @@ export function BragSheetPanel({ newSheetSignal = 0 }: { newSheetSignal?: number
     setCreating(true);
   }, []);
 
-  // Fires on every increment of the header button's counter, and never on
-  // mount, so arriving on the tab does not open an empty dialog.
+  // Only a *change* of the counter opens the dialog. The tab unmounts this
+  // panel when you switch away, so comparing against the mount-time value
+  // keeps a remount (with the counter still > 0) from re-opening the form.
+  const seenSignal = useRef(newSheetSignal);
   useEffect(() => {
-    if (newSheetSignal > 0) startNew();
+    if (newSheetSignal !== seenSignal.current) {
+      seenSignal.current = newSheetSignal;
+      startNew();
+    }
   }, [newSheetSignal, startNew]);
 
   const startEdit = (s: BragSheet) => {

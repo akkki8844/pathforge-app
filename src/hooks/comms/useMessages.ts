@@ -149,6 +149,20 @@ export function useMessages(conversationId: string | undefined) {
   const qc = useQueryClient();
   const key = commsKeys.messages(conversationId);
 
+  /*
+   * The conversation this hook is bound to, as a fallback for writes that did
+   * not name one.
+   *
+   * It is deliberately only a fallback. A mutation body runs asynchronously,
+   * so by the time it reads anything the caller may have moved on - the
+   * message dock closes its composer the moment you press Enter, which unbinds
+   * this hook while the insert is still in flight. Anything that can switch
+   * conversation mid-write passes `conversationId` explicitly and does not
+   * depend on what this ref happens to hold a tick later.
+   */
+  const convRef = useRef(conversationId);
+  convRef.current = conversationId;
+
   const query = useInfiniteQuery<MessagePage, Error, MessageData, typeof key, string | null>({
     queryKey: key,
     enabled: !!conversationId,
@@ -203,7 +217,9 @@ export function useMessages(conversationId: string | undefined) {
 
   const upsertMessage = useCallback(
     (row: ChatMessage) => {
-      qc.setQueryData<MessageData>(key, (old) => {
+      // The row names its own conversation, which is the one this patch
+      // belongs to even if the hook has since been pointed somewhere else.
+      qc.setQueryData<MessageData>(commsKeys.messages(row.conversation_id), (old) => {
         if (!old) return old;
         let replaced = false;
         const pages = old.pages.map((page) => {
@@ -234,24 +250,26 @@ export function useMessages(conversationId: string | undefined) {
         };
       });
     },
-    [qc, key],
+    [qc],
   );
 
   const removeMessage = useCallback(
-    (id: string) => {
-      qc.setQueryData<MessageData>(key, (old) =>
-        old
-          ? {
-              ...old,
-              pages: old.pages.map((p) => ({
-                ...p,
-                items: p.items.filter((m) => m.id !== id),
-              })),
-            }
-          : old,
+    (id: string, conversationIdOverride?: string) => {
+      qc.setQueryData<MessageData>(
+        commsKeys.messages(conversationIdOverride ?? convRef.current),
+        (old) =>
+          old
+            ? {
+                ...old,
+                pages: old.pages.map((p) => ({
+                  ...p,
+                  items: p.items.filter((m) => m.id !== id),
+                })),
+              }
+            : old,
       );
     },
-    [qc, key],
+    [qc],
   );
 
   /** Re-read one message with its embedded children. Used after a reaction changes. */
@@ -397,9 +415,16 @@ export function useMessages(conversationId: string | undefined) {
       poll?: { question: string; allowMultiple: boolean; options: string[] } | null;
       /** Carried through so onMutate's optimistic row can be reconciled. */
       tempId?: string;
+      /**
+       * Which conversation to write to, when it is not the one this hook is
+       * bound to. The dock sends and closes in the same gesture, and closing
+       * unbinds the hook before this body runs.
+       */
+      conversationId?: string;
     }): Promise<ChatMessage> => {
       if (!user?.id) throw new Error("not signed in");
-      if (!conversationId) throw new Error("no conversation");
+      const cid = input.conversationId ?? convRef.current;
+      if (!cid) throw new Error("no conversation");
 
       const files = input.files ?? [];
       for (const f of files) {
@@ -421,7 +446,7 @@ export function useMessages(conversationId: string | undefined) {
       const { data: inserted, error } = await commsDb
         .from("messages")
         .insert({
-          conversation_id: conversationId,
+          conversation_id: cid,
           sender_id: user.id,
           body: input.body.trim(),
           reply_to_id: input.replyToId ?? null,
@@ -443,7 +468,7 @@ export function useMessages(conversationId: string | undefined) {
       // requires the message row to already be there.
       for (const file of files) {
         const safe = file.name.replace(/[^\w.-]+/g, "_").slice(-120);
-        const path = `${conversationId}/${message.id}/${crypto.randomUUID()}-${safe}`;
+        const path = `${cid}/${message.id}/${crypto.randomUUID()}-${safe}`;
         const { error: upErr } = await supabase.storage
           .from(COMMS_BUCKET)
           .upload(path, file, { contentType: file.type || "application/octet-stream" });
@@ -451,7 +476,7 @@ export function useMessages(conversationId: string | undefined) {
 
         const { error: rowErr } = await commsDb.from("message_attachments").insert({
           message_id: message.id,
-          conversation_id: conversationId,
+          conversation_id: cid,
           storage_path: path,
           file_name: file.name,
           mime_type: file.type || "application/octet-stream",
@@ -494,12 +519,13 @@ export function useMessages(conversationId: string | undefined) {
       return (withExtras as unknown as ChatMessage) ?? message;
     },
     onMutate: (input) => {
-      if (!user?.id || !conversationId) return;
+      const cid = input.conversationId ?? convRef.current;
+      if (!user?.id || !cid) return;
       const tempId = input.tempId ?? `temp-${crypto.randomUUID()}`;
       upsertMessage(
         emptyExtras({
           id: tempId,
-          conversation_id: conversationId,
+          conversation_id: cid,
           sender_id: user.id,
           body: input.body.trim(),
           reply_to_id: input.replyToId ?? null,
@@ -510,10 +536,10 @@ export function useMessages(conversationId: string | undefined) {
           pending: true,
         }),
       );
-      return { tempId };
+      return { tempId, cid };
     },
     onSuccess: (row, _input, ctx) => {
-      if (ctx?.tempId) removeMessage(ctx.tempId);
+      if (ctx?.tempId) removeMessage(ctx.tempId, ctx.cid);
       upsertMessage(row);
       void qc.invalidateQueries({ queryKey: commsKeys.conversations(user?.id) });
 
@@ -533,12 +559,14 @@ export function useMessages(conversationId: string | undefined) {
       }
     },
     onError: (_err, _input, ctx) => {
-      if (ctx?.tempId) removeMessage(ctx.tempId);
+      if (ctx?.tempId) removeMessage(ctx.tempId, ctx.cid);
     },
   });
 
   const edit = useMutation({
     mutationFn: async (input: { id: string; body: string }) => {
+      // Not yet a row. See `isOptimisticId`.
+      if (isOptimisticId(input.id)) return null;
       // An UPDATE is safe to retry with a different select — unlike an
       // INSERT, running it twice with the same values writes the same row.
       const { data, error } = await runMessagesQuery((select) =>
@@ -552,7 +580,9 @@ export function useMessages(conversationId: string | undefined) {
       if (error) throw error;
       return data as unknown as ChatMessage;
     },
-    onSuccess: (row) => upsertMessage(row),
+    onSuccess: (row) => {
+      if (row) upsertMessage(row);
+    },
   });
 
   /**
@@ -564,6 +594,8 @@ export function useMessages(conversationId: string | undefined) {
    */
   const remove = useMutation({
     mutationFn: async (id: string) => {
+      // Not yet a row. See `isOptimisticId`.
+      if (isOptimisticId(id)) return null;
       const { data, error } = await runMessagesQuery((select) =>
         commsDb
           .from("messages")
@@ -576,6 +608,7 @@ export function useMessages(conversationId: string | undefined) {
       return data as unknown as ChatMessage;
     },
     onSuccess: (row) => {
+      if (!row) return;
       upsertMessage(row);
       void qc.invalidateQueries({ queryKey: commsKeys.conversations(user?.id) });
     },
@@ -591,6 +624,8 @@ export function useMessages(conversationId: string | undefined) {
   const toggleReaction = useMutation({
     mutationFn: async (input: { messageId: string; emoji: string }) => {
       if (!user?.id) throw new Error("not signed in");
+      // Not yet a row. See `isOptimisticId`.
+      if (isOptimisticId(input.messageId)) return;
       const { data: existing, error: readErr } = await commsDb
         .from("message_reactions")
         .select("id")
@@ -767,6 +802,8 @@ export function usePins(conversationId: string | undefined) {
   const toggle = useMutation({
     mutationFn: async (messageId: string) => {
       if (!conversationId) throw new Error("no conversation");
+      // Not yet a row. See `isOptimisticId`.
+      if (isOptimisticId(messageId)) return;
       const existing = (query.data ?? []).find((p) => p.message_id === messageId);
       if (existing) {
         const { error } = await commsDb.from("message_pins").delete().eq("id", existing.id);
@@ -830,6 +867,23 @@ export function useMessageSearch(conversationId: string | undefined, term: strin
     tooShort: !enabled && trimmed.length > 0,
   };
 }
+
+/**
+ * An optimistic message exists only in this tab until its INSERT comes back.
+ *
+ * `onMutate` paints it immediately with a `temp-…` id so the thread feels
+ * instant, and that id is not a uuid. Anything that then sends it to the
+ * database — a reaction, a pin, an edit, a delete on a message that has been
+ * on screen for a few hundred milliseconds but has not landed yet — comes back
+ * `22P02 invalid input syntax for type uuid: "temp-…"`, which the bug reporter
+ * raised as a red banner. Seen in production.
+ *
+ * Guarded here, at the data boundary, rather than only by disabling the
+ * buttons: the race is short but real, and a guard on the mutation cannot be
+ * bypassed by a keyboard shortcut, a context menu, or a future call site that
+ * forgets the rule.
+ */
+export const isOptimisticId = (id: string): boolean => id.startsWith("temp-");
 
 // ── Attachments ──────────────────────────────────────────────────────────
 

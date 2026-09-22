@@ -74,9 +74,27 @@ export const EVIDENCE_CREDIT: Record<EvidenceState, number> = {
   not_started: 0,
 };
 
+/**
+ * A record field as text, whatever is actually stored in it.
+ *
+ * Every list on the profile is jsonb written by several different writers —
+ * the record editor, the LinkedIn import, the GitHub import, and rows saved by
+ * older versions of this app that had fewer fields. A row from any of them can
+ * reach here without the key this scorer reads, and `row.title.trim()` on that
+ * row throws inside a `useMemo`, which takes the whole Outcomes page down to a
+ * blank screen rather than scoring that one entry as empty.
+ */
+function text(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
 /** Total credit a list contributes, at `full` points per fully-verified item. */
+function credit(state: EvidenceState): number {
+  return EVIDENCE_CREDIT[state] ?? 0;
+}
+
 function creditOf(items: { evidenceState: EvidenceState }[], full: number): number {
-  return items.reduce((sum, i) => sum + full * EVIDENCE_CREDIT[i.evidenceState], 0);
+  return items.reduce((sum, i) => sum + full * credit(i.evidenceState), 0);
 }
 
 // ─── Tiers ───────────────────────────────────────────────────────────────
@@ -258,7 +276,7 @@ export interface TestReading {
 
 export function readTest(profile: OutcomesProfile): TestReading {
   const raw = parseInt(profile.testScore, 10);
-  const has = profile.testType !== "none" && profile.testScore.trim() !== "" && !isNaN(raw);
+  const has = profile.testType !== "none" && text(profile.testScore).trim() !== "" && !isNaN(raw);
   if (!has) return { reported: false, score: 0, raw: 0, label: "Not reported" };
 
   if (profile.testType === "act") {
@@ -319,7 +337,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   // "sustained" role also satisfied the "moderate" test, so each sustained
   // role was paid twice (35 + 18) and two of them alone pinned the signal at
   // 100.
-  const loggedRoles = profile.leadershipRoles.filter((r) => r.title.trim().length > 0);
+  const loggedRoles = profile.leadershipRoles.filter((r) => text(r.title).trim().length > 0);
   // Being in a club is not leading one. Membership shares this list because it
   // shares the shape — a title, an organisation, a stretch of time — but it is
   // tagged, and a tagged activity can never satisfy the sustained or moderate
@@ -357,9 +375,9 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   });
 
   // ── Initiative ─────────────────────────────────────────────────────────
-  const projects = profile.projects.filter((p) => p.title.trim().length > 0);
-  const substantial = projects.filter((p) => p.outcome.trim().length > 40 && !!p.link);
-  const documented = projects.filter((p) => !substantial.includes(p) && (p.outcome.trim().length > 0 || !!p.link));
+  const projects = profile.projects.filter((p) => text(p.title).trim().length > 0);
+  const substantial = projects.filter((p) => text(p.outcome).trim().length > 40 && !!p.link);
+  const documented = projects.filter((p) => !substantial.includes(p) && (text(p.outcome).trim().length > 0 || !!p.link));
   const listed = projects.filter((p) => !substantial.includes(p) && !documented.includes(p));
   const initiativeScore = Math.min(
     100,
@@ -391,7 +409,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
    * them apart carries no tag, so it is read as a competition exactly as it
    * always was.
    */
-  const loggedComps = profile.competitions.filter((c) => c.name.trim().length > 0);
+  const loggedComps = profile.competitions.filter((c) => text(c.name).trim().length > 0);
   const comps = loggedComps.filter((c) => {
     const tag = tagOf(c);
     return tag === undefined || tag === "competition";
@@ -435,14 +453,20 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   const CERT_CAP = 18;
   const competitionScore = Math.min(
     100,
-    comps.reduce(
-      (sum, c) => sum + compValue(c.level, c.result) * EVIDENCE_CREDIT[c.evidenceState],
-      0
-    ) +
-      awards.reduce((sum, a) => sum + AWARD_VALUE[a.level] * EVIDENCE_CREDIT[a.evidenceState], 0) +
+    comps.reduce((sum, c) => sum + compValue(c.level, c.result) * credit(c.evidenceState), 0) +
+      awards.reduce(
+        // `AWARD_VALUE[level]` is a lookup on a field the record does not
+        // guarantee: an entry saved before the level field existed, or one
+        // imported from LinkedIn, arrives without it. An unguarded lookup
+        // returns undefined, the multiplication yields NaN, and a single such
+        // row turned the whole readiness index into NaN. An unrecognised level
+        // is worth the school floor, not a broken page.
+        (sum, a) => sum + (AWARD_VALUE[a.level] ?? AWARD_VALUE.school) * credit(a.evidenceState),
+        0
+      ) +
       Math.min(
         CERT_CAP,
-        certs.reduce((sum, c) => sum + CERT_VALUE * EVIDENCE_CREDIT[c.evidenceState], 0)
+        certs.reduce((sum, c) => sum + CERT_VALUE * credit(c.evidenceState), 0)
       )
   );
   const topPlacements = comps.filter(
@@ -468,7 +492,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
 
   // ── Real-world impact ──────────────────────────────────────────────────
   const impactProjects = projects.filter(
-    (p) => IMPACT_EVIDENCE.test(p.outcome || "") && p.outcome.trim().length > 40
+    (p) => IMPACT_EVIDENCE.test(text(p.outcome)) && text(p.outcome).trim().length > 40
   );
   const impactRoles = roles.filter((r) => r.teamSize >= 15 && parseDuration(r.duration) >= 12);
   const impactScore = Math.min(100, creditOf(impactProjects, 28) + creditOf(impactRoles, 28));
@@ -486,7 +510,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   });
 
   // ── Service ────────────────────────────────────────────────────────────
-  const service = profile.serviceRoles.filter((s) => s.role.trim().length > 0);
+  const service = profile.serviceRoles.filter((s) => text(s.role).trim().length > 0);
   const deepService = service.filter((s) => s.hours >= 40 && IMPACT_EVIDENCE.test(s.impact || ""));
   const otherService = service.filter((s) => !deepService.includes(s));
   const serviceScore = Math.min(100, creditOf(deepService, 30) + creditOf(otherService, 12));
@@ -504,7 +528,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   });
 
   // ── Internships ────────────────────────────────────────────────────────
-  const internships = profile.internships.filter((i) => i.title.trim().length > 0);
+  const internships = profile.internships.filter((i) => text(i.title).trim().length > 0);
   const internshipScore = Math.min(100, creditOf(internships, 34));
   signals.push({
     id: "internships",
@@ -520,8 +544,8 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   });
 
   // ── Research ───────────────────────────────────────────────────────────
-  const research = profile.researchOutputs.filter((r) => r.title.trim().length > 0);
-  const citable = research.filter((r) => !!r.link || r.venue.trim().length > 0);
+  const research = profile.researchOutputs.filter((r) => text(r.title).trim().length > 0);
+  const citable = research.filter((r) => !!r.link || text(r.venue).trim().length > 0);
   const uncitable = research.filter((r) => !citable.includes(r));
   const researchScore = Math.min(100, creditOf(citable, 40) + creditOf(uncitable, 16));
   signals.push({
@@ -538,7 +562,7 @@ export function computeSignals(profile: OutcomesProfile): Signal[] {
   });
 
   // ── Portfolio ──────────────────────────────────────────────────────────
-  const creative = profile.creativeWorks.filter((c) => c.title.trim().length > 0);
+  const creative = profile.creativeWorks.filter((c) => text(c.title).trim().length > 0);
   const reaching = creative.filter((c) => !!c.link || IMPACT_EVIDENCE.test(c.reach || ""));
   const otherCreative = creative.filter((c) => !reaching.includes(c));
   const creativeScore = Math.min(100, creditOf(reaching, 30) + creditOf(otherCreative, 12));
@@ -582,8 +606,14 @@ const DEPTH_SHARE = 0.6;
 export function categoryScore(signals: Signal[], key: CategoryKey): number {
   const members = signals.filter((s) => CATEGORY_MEMBERS[key].includes(s.id));
   if (members.length === 0) return 0;
-  const best = Math.max(...members.map((s) => s.score));
-  const mean = members.reduce((sum, s) => sum + s.score, 0) / members.length;
+  // One unscoreable signal used to poison everything above it: a NaN score
+  // propagates through the roll-up into the category, the weighted sum and the
+  // index, so a single malformed row printed "NaN" where the readiness figure
+  // belongs. A signal that cannot be scored is a zero for its category, which
+  // is what an empty one is worth anyway.
+  const scores = members.map((s) => (Number.isFinite(s.score) ? s.score : 0));
+  const best = Math.max(...scores);
+  const mean = scores.reduce((sum, n) => sum + n, 0) / scores.length;
   return DEPTH_SHARE * best + (1 - DEPTH_SHARE) * mean;
 }
 
@@ -795,15 +825,15 @@ export function proofLedger(profile: OutcomesProfile): ProofLine[] {
   });
 
   return [
-    line("Projects", profile.projects.filter((p) => p.title.trim())),
+    line("Projects", profile.projects.filter((p) => text(p.title).trim())),
     // Named for everything the list now holds. Both of these carry more than
     // one kind of entry since the record learned to tell them apart.
-    line("Leadership and activities", profile.leadershipRoles.filter((r) => r.title.trim())),
-    line("Competitions and awards", profile.competitions.filter((c) => c.name.trim())),
-    line("Service", profile.serviceRoles.filter((s) => s.role.trim())),
-    line("Work", profile.internships.filter((i) => i.title.trim())),
-    line("Research", profile.researchOutputs.filter((r) => r.title.trim())),
-    line("Portfolio", profile.creativeWorks.filter((c) => c.title.trim())),
+    line("Leadership and activities", profile.leadershipRoles.filter((r) => text(r.title).trim())),
+    line("Competitions and awards", profile.competitions.filter((c) => text(c.name).trim())),
+    line("Service", profile.serviceRoles.filter((s) => text(s.role).trim())),
+    line("Work", profile.internships.filter((i) => text(i.title).trim())),
+    line("Research", profile.researchOutputs.filter((r) => text(r.title).trim())),
+    line("Portfolio", profile.creativeWorks.filter((c) => text(c.title).trim())),
   ].filter((l) => l.total > 0);
 }
 

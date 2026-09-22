@@ -126,22 +126,30 @@ export const AP_EXAM_SCHEDULE_2027: { subject: string; date: string; note?: stri
  * closed enum, so this is keyword matching against common majors rather than
  * an exhaustive lookup. An unmatched major returns an empty list rather than
  * a guess — silence is better than pointing a student at the wrong exam.
+ *
+ * The keyword lists are deliberately wide: "engineering", "nursing",
+ * "architecture", "law", "commerce" and the like are what students actually
+ * type, and a map that only knew "mechanical engineering" left most of them
+ * with no AP dates at all. Width costs an extra subject on someone's calendar;
+ * narrowness costs them the date entirely. Every entry still has to be a
+ * defensible pairing — a subject a student in that field would plausibly sit —
+ * not a catch-all.
  */
 const MAJOR_AP_KEYWORDS: { keywords: string[]; subjects: string[] }[] = [
-  { keywords: ["computer science", "software", "cs "], subjects: ["AP Computer Science A", "AP Computer Science Principles"] },
+  { keywords: ["computer science", "software", "cs ", "computing", "artificial intelligence", "machine learning", "game development", "information technology", "information systems"], subjects: ["AP Computer Science A", "AP Computer Science Principles"] },
   { keywords: ["cybersecurity", "information security", "infosec"], subjects: ["AP Cybersecurity"] },
-  { keywords: ["biology", "pre-med", "premed", "medicine", "biomedical", "neuroscience"], subjects: ["AP Biology"] },
-  { keywords: ["chemistry", "chemical engineering"], subjects: ["AP Chemistry"] },
-  { keywords: ["physics", "mechanical engineering", "aerospace", "electrical engineering"], subjects: ["AP Physics C: Mechanics", "AP Physics C: Electricity and Magnetism"] },
-  { keywords: ["environmental science", "environmental studies", "sustainability"], subjects: ["AP Environmental Science"] },
-  { keywords: ["mathematics", "math", "statistics", "data science", "actuarial"], subjects: ["AP Calculus BC", "AP Statistics"] },
-  { keywords: ["economics", "finance", "business"], subjects: ["AP Microeconomics", "AP Macroeconomics", "AP Business with Personal Finance"] },
-  { keywords: ["political science", "government", "public policy", "international relations"], subjects: ["AP United States Government and Politics", "AP Comparative Government and Politics"] },
+  { keywords: ["biology", "pre-med", "premed", "medicine", "medical", "biomedical", "neuroscience", "nursing", "pharmacy", "dentistry", "veterinary", "public health", "genetics", "microbiology", "marine biology", "zoology", "botany", "physiology", "kinesiology", "sports science", "nutrition", "dietetics"], subjects: ["AP Biology"] },
+  { keywords: ["chemistry", "chemical engineering", "biochemistry", "biotechnology", "materials science", "pharmacology", "metallurg"], subjects: ["AP Chemistry"] },
+  { keywords: ["physics", "engineering", "mechanical", "aerospace", "aeronautic", "electrical", "electronics", "civil engineering", "robotics", "mechatronic", "astronomy", "astrophysics", "nuclear"], subjects: ["AP Physics C: Mechanics", "AP Physics C: Electricity and Magnetism"] },
+  { keywords: ["environmental", "sustainability", "ecology", "climate", "geology", "earth science", "agricultur", "forestry", "conservation"], subjects: ["AP Environmental Science"] },
+  { keywords: ["mathematics", "math", "statistics", "data science", "data analytics", "actuarial", "quantitative", "operations research"], subjects: ["AP Calculus BC", "AP Statistics"] },
+  { keywords: ["economics", "econ", "finance", "business", "commerce", "accounting", "management", "marketing", "entrepreneur", "supply chain", "hospitality", "real estate", "banking"], subjects: ["AP Microeconomics", "AP Macroeconomics", "AP Business with Personal Finance"] },
+  { keywords: ["political science", "politics", "government", "public policy", "public administration", "international relations", "law", "legal studies", "criminology", "criminal justice", "diplomacy"], subjects: ["AP United States Government and Politics", "AP Comparative Government and Politics"] },
   { keywords: ["history"], subjects: ["AP United States History", "AP World History: Modern", "AP European History"] },
-  { keywords: ["psychology"], subjects: ["AP Psychology"] },
-  { keywords: ["english", "literature", "creative writing", "journalism"], subjects: ["AP English Language and Composition", "AP English Literature and Composition"] },
-  { keywords: ["art history", "studio art", "design", "fine art"], subjects: ["AP Art History"] },
-  { keywords: ["music"], subjects: ["AP Music Theory"] },
+  { keywords: ["psychology", "psycholog", "cognitive science", "counseling", "social work", "sociology", "anthropology", "human development", "education", "teaching"], subjects: ["AP Psychology"] },
+  { keywords: ["english", "literature", "creative writing", "journalism", "communications", "media studies", "public relations", "publishing", "rhetoric", "philosophy", "linguistics"], subjects: ["AP English Language and Composition", "AP English Literature and Composition"] },
+  { keywords: ["art history", "studio art", "design", "fine art", "architecture", "animation", "illustration", "fashion", "film", "photography", "visual art", "theater", "theatre", "drama", "performing art"], subjects: ["AP Art History"] },
+  { keywords: ["music", "sound engineering", "audio production"], subjects: ["AP Music Theory"] },
   { keywords: ["spanish"], subjects: ["AP Spanish Language and Culture", "AP Spanish Literature and Culture"] },
   { keywords: ["french"], subjects: ["AP French Language and Culture"] },
   { keywords: ["german"], subjects: ["AP German Language and Culture"] },
@@ -149,7 +157,7 @@ const MAJOR_AP_KEYWORDS: { keywords: string[]; subjects: string[] }[] = [
   { keywords: ["japanese"], subjects: ["AP Japanese Language and Culture"] },
   { keywords: ["italian"], subjects: ["AP Italian Language and Culture"] },
   { keywords: ["latin", "classics"], subjects: ["AP Latin"] },
-  { keywords: ["geography", "urban planning"], subjects: ["AP Human Geography"] },
+  { keywords: ["geography", "urban planning", "urban studies", "demograph", "gis"], subjects: ["AP Human Geography"] },
   { keywords: ["african american studies", "black studies", "ethnic studies"], subjects: ["AP African American Studies"] },
 ];
 

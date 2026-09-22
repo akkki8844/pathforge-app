@@ -156,7 +156,7 @@ export function SmoothTabs<T extends string>({
                 <span
                   className={cn(
                     "text-[11px] tabular-nums",
-                    active ? "text-muted-foreground" : "text-muted-foreground/70",
+                    active ? "text-muted-foreground" : "text-muted-foreground",
                   )}
                 >
                   {tab.badge}

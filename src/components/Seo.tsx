@@ -21,6 +21,56 @@ const SITE = "https://pathforge.co.in";
 const DEFAULT_OG_IMAGE =
   "https://storage.googleapis.com/gpt-engineer-file-uploads/CswkUhC78OgkSYDPS7UkrpFjZvW2/social-images/social-1778983109778-Screenshot_2026-05-17_071556.webp";
 
+/**
+ * Turn a URL segment into a human label: "refund-policy" -> "Refund Policy".
+ *
+ * Deliberately dumb. It only ever runs on our own route segments, which are
+ * lower-case kebab words, so there is nothing to be clever about.
+ */
+function humanise(segment: string) {
+  return segment
+    .split("-")
+    .map((w) => (w.length <= 2 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)))
+    .join(" ");
+}
+
+/**
+ * BreadcrumbList for the current path, or null on the home page.
+ *
+ * Built from the path rather than from a per-page prop, so every route gets it
+ * without forty call sites having to remember. Google wants the trail to match
+ * what a user sees; our nav is hierarchical by URL (/communications/chats sits
+ * under /communications), so the URL is the honest source.
+ *
+ * A segment that is an opaque identifier - a LOR portal token, a team UUID -
+ * would make a meaningless crumb, so anything that does not look like a word is
+ * dropped along with everything after it.
+ */
+function breadcrumbLd(path: string | undefined) {
+  if (!path || path === "/") return null;
+  const raw = path.split("?")[0].split("#")[0].split("/").filter(Boolean);
+
+  const segments: string[] = [];
+  for (const seg of raw) {
+    // Words and hyphens only; a UUID, a token or a number is not a crumb.
+    if (!/^[a-z][a-z-]*$/i.test(seg)) break;
+    segments.push(seg);
+  }
+  if (segments.length === 0) return null;
+
+  const items = [{ "@type": "ListItem", position: 1, name: "Home", item: SITE }];
+  segments.forEach((seg, i) => {
+    items.push({
+      "@type": "ListItem",
+      position: i + 2,
+      name: humanise(seg),
+      item: `${SITE}/${segments.slice(0, i + 1).join("/")}`,
+    });
+  });
+
+  return { "@context": "https://schema.org", "@type": "BreadcrumbList", itemListElement: items };
+}
+
 export function Seo({
   title, description, path, type = "website", image, imageAlt, jsonLd, noindex,
 }: SeoProps) {
@@ -29,6 +79,10 @@ export function Seo({
   const desc = description.length > 160 ? description.slice(0, 157) + "..." : description;
   const ogImage = image ?? DEFAULT_OG_IMAGE;
   const ldArray = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];
+  // No breadcrumbs on pages we are telling crawlers to ignore - structured data
+  // on a noindex page is markup nobody will ever read.
+  const crumbs = noindex ? null : breadcrumbLd(path);
+  const allLd = crumbs ? [...ldArray, crumbs] : ldArray;
 
   return (
     <Helmet>
@@ -70,7 +124,7 @@ export function Seo({
       <meta name="twitter:url" content={url} />
       <meta name="twitter:image" content={ogImage} />
       <meta name="twitter:image:alt" content={imageAlt ?? fullTitle} />
-      {ldArray.map((ld, i) => (
+      {allLd.map((ld, i) => (
         <script key={i} type="application/ld+json">{JSON.stringify(ld)}</script>
       ))}
     </Helmet>

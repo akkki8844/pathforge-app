@@ -1,48 +1,57 @@
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import {
-  GraduationCap, Search, Filter, MapPin, Calendar, Clock,
-  CheckCircle2, XCircle, AlertTriangle, ChevronRight, ExternalLink,
-} from "lucide-react";
+import { BellPlus, GraduationCap, Search, ChevronRight } from "lucide-react";
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import {
+  FollowupComposer,
+  type FollowupDraft,
+} from "@/components/teacher/FollowupComposer";
+import { suggestedDueDate } from "@/lib/teacher/followups";
+import { Button } from "@/components/ui/button";
+import { Seo } from "@/components/Seo";
 import { useTeacherRoster } from "@/hooks/useTeacherRoster";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/integrations/supabase/client";
+import {
+  TONE_BADGE,
+  TONE_TEXT,
+  applicationTone,
+  deadlineTone,
+  decisionTone,
+} from "@/lib/teacher/status";
+import { counsellorDb } from "@/integrations/supabase/counsellor";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
 
 import { CollegeLogo } from "@/components/CollegeLogo";
-interface AppEntry {
-  id: string;
-  student_id: string;
-  college_name: string;
-  country: string | null;
-  application_round: string | null;
-  deadline: string | null;
-  status: string;
-  missing_documents: string[] | null;
-  progress: number | null;
-  decision: string | null;
-  created_at: string;
-}
 
-const statusColors: Record<string, string> = {
-  researching: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-  planning: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-  drafting: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  submitted: "bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/20",
-  admitted: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-  rejected: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
-  waitlisted: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
-  withdrawn: "bg-gray-500/10 text-gray-600 dark:text-gray-400 border-gray-500/20",
-};
+/**
+ * The statuses an application moves through, in lifecycle order.
+ *
+ * This used to be a map of status to a literal colour, one hue each - blue,
+ * indigo, amber, green, emerald, red, orange, gray - which is eight things to
+ * learn, ignores the theme's dark-mode values, and makes "submitted" and
+ * "admitted" look like different kinds of thing rather than two points on the
+ * same scale. The colours now come from `applicationTone`; this list only says
+ * which statuses exist and in what order the filter offers them.
+ */
+const APPLICATION_STATUSES = [
+  "researching",
+  "planning",
+  "drafting",
+  "submitted",
+  "admitted",
+  "waitlisted",
+  "rejected",
+  "withdrawn",
+] as const;
 
 export default function TeacherApplications() {
   const { students } = useTeacherRoster();
@@ -58,17 +67,26 @@ export default function TeacherApplications() {
 
   const studentIds = useMemo(() => students.map((s) => s.user_id), [students]);
 
+  /*
+   * A counsellor reading this table is looking for the thing they have to
+   * chase. Until now the page could only show it to them; the chasing had to
+   * be remembered and retyped on the home screen. The composer opens seeded
+   * with the student, the university and anything the application is missing.
+   */
+  const [followupOpen, setFollowupOpen] = useState(false);
+  const [followupDraft, setFollowupDraft] = useState<FollowupDraft | undefined>();
+
   const { data: applications = [], isLoading } = useQuery({
     queryKey: ["counselor-applications", studentIds],
     queryFn: async () => {
       if (studentIds.length === 0) return [];
-      const { data, error } = await (supabase as any)
+      const { data, error } = await counsellorDb
         .from("application_entries")
         .select("*")
         .in("student_id", studentIds)
         .order("deadline", { ascending: true, nullsFirst: false });
       if (error) throw error;
-      return (data || []) as AppEntry[];
+      return data ?? [];
     },
     enabled: studentIds.length > 0,
   });
@@ -111,12 +129,41 @@ export default function TeacherApplications() {
     return diff;
   };
 
+  /** Opens the composer against one application, with the note written for it. */
+  const chase = (app: (typeof applications)[number]) => {
+    const name = nameMap.get(app.student_id) || "this student";
+    const missing = (app.missing_documents ?? []).filter(Boolean);
+    setFollowupDraft({
+      studentId: app.student_id,
+      dueDate: suggestedDueDate(app.deadline),
+      note: missing.length
+        ? `${app.college_name}: chase ${missing.join(", ")}`
+        : `${app.college_name}: check where the application has got to`,
+      context: `From ${name}'s ${app.college_name} application.`,
+    });
+    setFollowupOpen(true);
+  };
+
   return (
     <TeacherLayout>
+      <Seo
+        title="Applications"
+        description="Where each application stands."
+        path="/teacher/applications"
+        noindex
+      />
+
+      <FollowupComposer
+        open={followupOpen}
+        onOpenChange={setFollowupOpen}
+        students={students}
+        draft={followupDraft}
+      />
+
       <div className="space-y-6">
         {/* Header */}
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Applications</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Applications</h1>
           <p className="text-sm text-muted-foreground mt-1">Track all student applications in one place</p>
         </div>
 
@@ -128,15 +175,15 @@ export default function TeacherApplications() {
           </div>
           <div className="card-elevated p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Submitted</p>
-            <p className="text-2xl font-bold text-green-600 mt-1">{stats.submitted}</p>
+            <p className="mt-1 text-2xl font-bold text-success">{stats.submitted}</p>
           </div>
           <div className="card-elevated p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Admitted</p>
-            <p className="text-2xl font-bold text-emerald-600 mt-1">{stats.admitted}</p>
+            <p className="mt-1 text-2xl font-bold text-success">{stats.admitted}</p>
           </div>
           <div className="card-elevated p-4">
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">In Progress</p>
-            <p className="text-2xl font-bold text-amber-600 mt-1">{stats.pending}</p>
+            <p className="mt-1 text-2xl font-bold text-warning">{stats.pending}</p>
           </div>
         </div>
 
@@ -159,7 +206,7 @@ export default function TeacherApplications() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">All Status</SelectItem>
-                  {Object.keys(statusColors).map((s) => (
+                  {APPLICATION_STATUSES.map((s) => (
                     <SelectItem key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</SelectItem>
                   ))}
                 </SelectContent>
@@ -199,7 +246,7 @@ export default function TeacherApplications() {
                   <th className="text-left p-3 font-medium text-muted-foreground">Deadline</th>
                   <th className="text-left p-3 font-medium text-muted-foreground">Status</th>
                   <th className="text-left p-3 font-medium text-muted-foreground hidden lg:table-cell">Decision</th>
-                  <th className="p-3 w-10"></th>
+                  <th className="p-3 w-20"></th>
                 </tr>
               </thead>
               <tbody>
@@ -219,21 +266,58 @@ export default function TeacherApplications() {
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-12 text-center">
-                      <GraduationCap className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
-                      <p className="text-muted-foreground font-medium">No applications found</p>
+                      <GraduationCap className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
+                      {/*
+                        * Three different situations used to share one line,
+                        * "No applications found", which told a counsellor
+                        * nothing about which of them they were in: nobody
+                        * linked to them, nobody who has started an
+                        * application, or a filter that happens to match
+                        * nothing. Only the last one is something they can fix
+                        * from this screen.
+                        */}
+                      {students.length === 0 ? (
+                        <>
+                          <p className="font-medium text-foreground">No students linked to you</p>
+                          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                            Applications appear here once students join one of your cohorts.
+                          </p>
+                        </>
+                      ) : applications.length === 0 ? (
+                        <>
+                          <p className="font-medium text-foreground">
+                            No applications started yet
+                          </p>
+                          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                            Your {students.length} student{students.length === 1 ? " has" : "s have"}{" "}
+                            not added a university to their list. Nothing here is estimated, so the
+                            table stays empty until they do.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-medium text-foreground">Nothing matches those filters</p>
+                          <p className="mx-auto mt-1 max-w-sm text-sm text-muted-foreground">
+                            {applications.length} application
+                            {applications.length === 1 ? "" : "s"} in total. Clear the search and
+                            filters to see them.
+                          </p>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((app, i) => {
+                  filtered.map((app) => {
                     const daysLeft = getDaysUntilDeadline(app.deadline);
                     const isUrgent = daysLeft !== null && daysLeft <= 7 && daysLeft >= 0;
+                    // Not a motion row. A staggered fade down a table of
+                    // applications is a thing a counsellor watches once and
+                    // then waits through every time after; it delays the only
+                    // thing the page is for, which is reading the list.
                     return (
-                      <motion.tr
+                      <tr
                         key={app.id}
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                        className="border-b border-border hover:bg-muted/30 transition-colors"
+                        className="border-b border-border transition-colors hover:bg-muted/30"
                       >
                         <td className="p-3">
                           <Link to={`/teacher/students/${app.student_id}`} className="hover:text-accent transition-colors font-medium">
@@ -250,34 +334,49 @@ export default function TeacherApplications() {
                         <td className="p-3 text-muted-foreground hidden lg:table-cell">{app.application_round || "—"}</td>
                         <td className="p-3">
                           {app.deadline ? (
-                            <span className={cn("text-xs", isUrgent && "text-red-600 font-medium")}>
+                            <span className={cn("text-xs", isUrgent && "font-medium", TONE_TEXT[deadlineTone(daysLeft)])}>
                               {new Date(app.deadline).toLocaleDateString()}
                               {isUrgent && <span className="ml-1">({daysLeft}d)</span>}
                             </span>
                           ) : "—"}
                         </td>
                         <td className="p-3">
-                          <Badge variant="outline" className={cn("text-xs", statusColors[app.status] || statusColors.researching)}>
+                          <Badge variant="outline" className={cn("text-xs", TONE_BADGE[applicationTone(app.status)])}>
                             {app.status}
                           </Badge>
                         </td>
                         <td className="p-3 hidden lg:table-cell">
                           {app.decision ? (
-                            <Badge variant="outline" className={cn("text-xs",
-                              app.decision === "admitted" ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" :
-                              app.decision === "rejected" ? "bg-red-500/10 text-red-600 border-red-500/20" :
-                              "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                            )}>
+                            <Badge
+                              variant="outline"
+                              className={cn("text-xs", TONE_BADGE[decisionTone(app.decision)])}
+                            >
                               {app.decision}
                             </Badge>
                           ) : "—"}
                         </td>
                         <td className="p-3">
-                          <Link to={`/teacher/students/${app.student_id}`} className="text-muted-foreground hover:text-accent transition-colors">
-                            <ChevronRight className="h-4 w-4" />
-                          </Link>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                              onClick={() => chase(app)}
+                              aria-label={`Add a follow-up for ${nameMap.get(app.student_id) || "this student"}'s ${app.college_name} application`}
+                              title="Add a follow-up"
+                            >
+                              <BellPlus className="h-4 w-4" />
+                            </Button>
+                            <Link
+                              to={`/teacher/students/${app.student_id}`}
+                              className="text-muted-foreground transition-colors hover:text-accent"
+                              aria-label="Open this student"
+                            >
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          </div>
                         </td>
-                      </motion.tr>
+                      </tr>
                     );
                   })
                 )}

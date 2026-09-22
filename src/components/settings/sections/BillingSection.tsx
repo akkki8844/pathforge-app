@@ -142,6 +142,7 @@ export function BillingSection() {
                 plan={plan}
                 badge={isFreeUnlock ? "Unlocked by coupon" : plan.highlighted ? "Popular" : undefined}
                 priceLabel={isFreeUnlock ? "$0" : `$${plan.priceUSD}`}
+                priceValue={isFreeUnlock ? 0 : plan.priceUSD}
                 priceSuffix="/mo"
                 strikeThroughUSD={off !== null && !isFreeUnlock ? plan.originalPriceUSD : null}
                 saveLabel={off !== null && !isFreeUnlock ? `Save ${off}%` : null}

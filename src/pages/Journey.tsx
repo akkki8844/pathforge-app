@@ -89,22 +89,24 @@ function StartScreen({
 
 function JourneyHeader({
   stage, level, major, completedCount, gems, hearts, heartResetsRemaining,
-  onResetHearts, onTour, onPlace, stageTasks,
+  onResetHearts, onTour, onPlace,
 }: {
   stage: StageDef | null; level: number; major: string;
   completedCount: number; gems: number; hearts: number;
   heartResetsRemaining: number; onResetHearts: () => void;
   onTour: () => void; onPlace: () => void;
-  stageTasks?: LevelTask[];
 }) {
   const lvl = getLevelById((stage?.level ?? level) as any);
-  const firstTask = stageTasks && stageTasks.length > 0 ? stageTasks[0] : null;
-  const headline = stage
-    ? `${stage.id} · ${firstTask ? firstTask.title : stage.name}`
-    : lvl.tagline;
-  const sub = stage
-    ? (firstTask ? firstTask.why : stage.description)
-    : `Personalized for ${major}`;
+  // Previously showed stageTasks[0]'s title/why here instead of the stage's
+  // own name/description. That was fine while each level had its own
+  // hand-written task pool, but levels 6-15 all reuse the level-5 task
+  // library (see getLevelTasksForUser) — so the "first task" for a stage in
+  // that range is an arbitrary, unrelated task (e.g. a level 15 "Move-In Day"
+  // stage headlined as "Work as a research assistant..."). The stage's own
+  // name/description is always accurate; the task list itself is still shown
+  // in full inside LevelDetailModal below.
+  const headline = stage ? `${stage.id} · ${stage.name}` : lvl.tagline;
+  const sub = stage ? stage.description : `Personalized for ${major}`;
   // `edge` is the pill's bottom lip. The HUD pills were flat 1px-outlined chips
   // sitting directly above a path built entirely from extruded clay coins, which
   // made the one part of this screen the student reads every visit the only part
@@ -450,7 +452,6 @@ export default function Journey() {
             onResetHearts={resetHearts}
             onTour={() => setShowTour(true)}
             onPlace={() => setShowPlacement(true)}
-            stageTasks={openStage ? stageTasks : undefined}
           />
 
           <motion.div variants={fadeUp}>

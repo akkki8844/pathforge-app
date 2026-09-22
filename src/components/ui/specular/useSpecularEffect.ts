@@ -109,6 +109,10 @@ export function useSpecularEffect(
       return;
     }
     const gl = renderer.gl;
+    /* Declared here, above `resize`, because `resize()` is invoked during
+       setup and reads this flag — a `let` further down would still be in its
+       temporal dead zone at that point and throw on mount. */
+    let contextLost = false;
     gl.clearColor(0, 0, 0, 0);
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
@@ -140,6 +144,7 @@ export function useSpecularEffect(
 
     const sizeRef = { w: 1, h: 1 };
     const resize = () => {
+      if (contextLost) return;
       // Fractional size + explicit center keep the SDF pinned to the exact
       // CSS border, instead of drifting up to a pixel from offsetWidth rounding.
       const rect = host.getBoundingClientRect();
@@ -193,6 +198,34 @@ export function useSpecularEffect(
     let last = performance.now();
     let raf = 0;
 
+    /*
+     * A WebGL context is not guaranteed for the life of the page.
+     *
+     * The browser caps how many live contexts one page may hold and drops the
+     * oldest when that ceiling is crossed; a GPU driver reset does the same to
+     * every context at once. After that every `renderer.render()` call is
+     * operating on a dead context, and a loop running at 60fps turns one lost
+     * context into a flood of errors — which is a flood of red bug banners for
+     * an effect that draws a decorative shine on a button.
+     *
+     * `preventDefault()` on the lost event is what marks the context as
+     * restorable rather than permanently gone. The effect does not attempt to
+     * rebuild itself on restore: everything it owns (program, geometry, mesh)
+     * belongs to the dead context and would all have to be recreated, and the
+     * honest fallback for "no WebGL" already exists — a plain button. It just
+     * stops, silently.
+     */
+    const canvas = gl.canvas as HTMLCanvasElement;
+    const onContextLost = (e: Event) => {
+      e.preventDefault();
+      contextLost = true;
+      if (raf) {
+        cancelAnimationFrame(raf);
+        raf = 0;
+      }
+    };
+    canvas.addEventListener("webglcontextlost", onContextLost);
+
     const lineC = new Color();
     const baseC = new Color();
 
@@ -232,6 +265,7 @@ export function useSpecularEffect(
     let onScreen = false;
 
     const draw = (dt: number) => {
+      if (contextLost || gl.isContextLost()) return;
       const p = propsRef.current;
 
       idleAngle += p.speed * dt;
@@ -338,6 +372,7 @@ export function useSpecularEffect(
       stopInView();
       ro.disconnect();
       if (canHover) window.removeEventListener("pointermove", onPointerMove);
+      canvas.removeEventListener("webglcontextlost", onContextLost);
       if (gl.canvas.parentNode === fx) fx.removeChild(gl.canvas);
       gl.getExtension("WEBGL_lose_context")?.loseContext();
     };

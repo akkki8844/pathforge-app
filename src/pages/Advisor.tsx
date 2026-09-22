@@ -4,7 +4,6 @@ import { notifyUsageConsumed, useUsage } from '@/contexts/UsageContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic,
-  Send,
   Volume2,
   VolumeX,
   Square,
@@ -13,11 +12,11 @@ import {
   Puzzle,
   Zap,
   FileBox,
-  ChevronDown,
   X,
   Check,
   Lock,
   Sparkles,
+  SlidersHorizontal,
   Archive,
   Terminal,
   Compass,
@@ -38,17 +37,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import ClaudeModelSelector from '@/components/ui/claude-model-selector';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { PromptGlow } from '@/components/ui/prompt-glow';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { ToastAction } from '@/components/ui/toast';
@@ -63,6 +56,9 @@ import { FileUploadButton } from '@/components/advisor/FileUploadButton';
 import { AttachmentChips, type Attachment } from '@/components/advisor/AttachmentChips';
 import { ArtifactsPanel } from '@/components/advisor/ArtifactsPanel';
 import { ArtifactInlineCard } from '@/components/advisor/ArtifactInlineCard';
+import { InlineGeneratedImage } from '@/components/advisor/InlineGeneratedImage';
+import { MetalSendButton } from '@/components/advisor/MetalSendButton';
+import { ImageGeneration } from '@/components/ui/ai-chat-image-generation-1';
 import { SessionNavBar } from '@/components/advisor/SessionNavBar';
 import { ThinkingBlock, nextThinkingKeyword } from '@/components/advisor/ThinkingBlock';
 import { SkillsPanel } from '@/components/advisor/SkillsPanel';
@@ -383,6 +379,8 @@ export default function Advisor() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [textInput, setTextInput] = useState('');
+  /** Whether the composer's tools popover is open. */
+  const [toolsOpen, setToolsOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   // Scope the app-wide keep-alive stack (audio context + worker heartbeat) to
   // only run while a message is actually being generated.
@@ -439,12 +437,56 @@ export default function Advisor() {
     };
     measure();
     window.addEventListener('resize', measure);
-    // Catches a banner appearing or disappearing above the shell, which moves
-    // its top edge without any window resize.
+
     const ro = new ResizeObserver(measure);
     ro.observe(document.body);
+
+    /*
+     * Observing document.body alone was not enough, and the failure was live.
+     *
+     * The update banner is a `sticky` sibling of <main>, 121px tall, and it
+     * mounts AFTER this effect's first measure. It pushes the shell's top edge
+     * from 71px to 192px — but it does not change the border-box size of any
+     * element the observer was watching, so nothing re-fired. Measured on
+     * production: the shell stayed at 550px when the correct value was 429,
+     * and dispatching a single resize event snapped it straight to 429.
+     *
+     * 121px of the advisor then hung below the fold, taking the composer and
+     * the sidebar's Settings row with it — and the shell is overflow-hidden by
+     * design, so there was no way to scroll down to them.
+     *
+     * So: watch the column that holds <main>, for children arriving or
+     * leaving, and size-observe each sibling above the shell. A banner that
+     * mounts, unmounts, or simply rewraps onto another line all re-measure.
+     * `childList` only, not `subtree` — the streaming reply mutates this tree
+     * on every token and none of that moves the shell.
+     */
+    const main = el.closest('main');
+    const column = main?.parentElement ?? null;
+    const observeSiblings = () => {
+      if (!column) return;
+      for (const child of Array.from(column.children)) {
+        // Re-observing an element already observed is a no-op.
+        if (child !== main) ro.observe(child);
+      }
+    };
+    observeSiblings();
+    const mo = column
+      ? new MutationObserver(() => {
+          observeSiblings();
+          measure();
+        })
+      : null;
+    mo?.observe(column!, { childList: true });
+
+    // One more pass after paint, for anything that lands in the same frame as
+    // the first measure.
+    const raf = requestAnimationFrame(measure);
+
     return () => {
       window.removeEventListener('resize', measure);
+      cancelAnimationFrame(raf);
+      mo?.disconnect();
       ro.disconnect();
     };
   }, []);
@@ -481,6 +523,16 @@ export default function Advisor() {
   const [thinkingWord, setThinkingWord] = useState<string>(() => nextThinkingKeyword());
   const [thinkingSeconds, setThinkingSeconds] = useState(0);
   const [streamStatus, setStreamStatus] = useState<string | null>(null);
+  /*
+   * What the server is currently waiting on, when it says so.
+   *
+   * Only images get their own waiting state: generation runs for tens of
+   * seconds on the gateway, and a single line of status text for that long
+   * reads as a stall. `"image"` swaps it for a reveal over the picture being
+   * made. Any other kind, or none at all from an older deployment, falls back
+   * to the status line exactly as before.
+   */
+  const [streamStatusKind, setStreamStatusKind] = useState<string | null>(null);
   const [streamingId, setStreamingId] = useState<string | null>(null);
 
   const {
@@ -743,6 +795,10 @@ export default function Advisor() {
     // document down with it, not just this panel.
     const el = messagesContainerRef.current;
     if (!el) return;
+    // Nothing to follow on the opening canvas, and pinning it to the bottom
+    // scrolls the greeting off the top of a short window — the first thing a
+    // student would see is the last row of cards.
+    if (messages.length === 0) return;
     el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
   }, [messages.length, isProcessing]);
 
@@ -975,6 +1031,7 @@ export default function Advisor() {
       setLimitHit(null);
       setTextInput('');
       setStreamStatus(null);
+      setStreamStatusKind(null);
       // Stale chips belong to the previous answer — clear before the new one.
       setSuggestions([]);
 
@@ -1126,7 +1183,10 @@ export default function Advisor() {
               textBuf.current += d;
               scheduleFlush();
             },
-            onStatus: (label) => setStreamStatus(label),
+            onStatus: (label, kind) => {
+              setStreamStatus(label);
+              setStreamStatusKind(kind ?? null);
+            },
             onTool: registerTool,
             onArtifact: () => void refreshArtifacts(),
             onSkills: (skills) =>
@@ -1236,6 +1296,7 @@ export default function Advisor() {
         abortRef.current = null;
         setStreamingId(null);
         setStreamStatus(null);
+        setStreamStatusKind(null);
         setIsProcessing(false);
       }
     },
@@ -1757,7 +1818,10 @@ export default function Advisor() {
     <div
       ref={shellRef}
       style={{ height: shellHeight }}
-      className="flex bg-background min-h-0 overflow-hidden"
+      /* `advisor-shell` is what declares the --adv-* colour pairs for this
+         page (see index.css). Every surface below reads them, so light and
+         dark are decided in one place rather than per component. */
+      className="advisor-shell flex min-h-0 overflow-hidden bg-[hsl(var(--adv-canvas))]"
     >
       <Seo
         title="Advisor"
@@ -1780,17 +1844,13 @@ export default function Advisor() {
 
       {/* Main chat area */}
       <div className="relative flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Ambient glow behind the hero/composer, matching the advisor's glass
-            look. Tokenized (not hardcoded hex) so it holds up in both themes,
-            and z-0/pointer-events-none so it never intercepts a click. */}
-        <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-          <div className="absolute top-0 left-1/4 h-96 w-96 rounded-full bg-accent/10 blur-[128px]" />
-          <div className="absolute bottom-0 right-1/4 h-96 w-96 rounded-full bg-primary/10 blur-[128px]" />
-          <div className="absolute top-1/3 right-1/3 h-64 w-64 rounded-full bg-accent/10 blur-[96px]" />
-        </div>
+        {/* No ambient wash behind this pane. Three blurred colour blobs under
+            a reading surface tint the type, cost a full-viewport composite on
+            every scroll, and say nothing — the page is a document, and a
+            document's background is paper. */}
 
         {/* Top bar */}
-        <div className="relative z-10 flex items-center justify-between px-4 h-12 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="relative z-10 flex h-14 items-center justify-between px-3">
           <div className="flex min-w-0 items-center gap-2">
             <Button
               size="icon"
@@ -1812,7 +1872,10 @@ export default function Advisor() {
                 sidebar can be collapsed, and an unlabelled pane with no title
                 is the thing that made this read as a bare canvas rather than a
                 workspace. */}
-            <span className="min-w-0 truncate font-display text-sm font-semibold text-foreground">
+            {/* The title is a label for the pane, not a headline — medium
+                weight at body size, so it names the chat without competing
+                with the conversation under it. */}
+            <span className="min-w-0 truncate text-[13.5px] font-medium text-foreground">
               {conversations.find((c) => c.conversation_id === currentConversationId)?.name ??
                 'New chat'}
             </span>
@@ -1827,10 +1890,11 @@ export default function Advisor() {
               title="Skills"
             >
               <Puzzle className="h-4 w-4" />
+              {/* A dot, not a filled counter. The exact number of enabled
+                  skills is in the panel this button opens; out here the only
+                  question is whether any are on. */}
               {enabledSkillCount > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[11px] font-semibold flex items-center justify-center">
-                  {enabledSkillCount}
-                </span>
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Button>
             <Button
@@ -1843,9 +1907,7 @@ export default function Advisor() {
             >
               <FileBox className="h-4 w-4" />
               {artifacts.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-accent text-accent-foreground text-[11px] font-semibold flex items-center justify-center">
-                  {artifacts.length}
-                </span>
+                <span className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-primary" />
               )}
             </Button>
             <Button
@@ -1866,61 +1928,71 @@ export default function Advisor() {
         {/* Messages */}
         <div ref={messagesContainerRef} className="relative z-10 flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center px-4 max-w-2xl mx-auto">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
+            /*
+             * The opening canvas: a greeting, then four things worth asking.
+             *
+             * Left-aligned and top-weighted rather than vertically centred —
+             * the cards, the greeting and the composer all share one left edge,
+             * so the column reads as a single object instead of three centred
+             * rows that drift apart as the viewport grows.
+             */
+            <div className="mx-auto w-full max-w-3xl px-6 pt-6 sm:pt-10 xl:pt-20">
+              <motion.h1
+                initial={{ opacity: 0, y: 12 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-                className="text-center mb-10 space-y-3"
+                transition={transition.base}
+                className="font-display text-[32px] font-semibold leading-[1.12] tracking-[-0.02em] md:text-[40px] xl:text-[52px]"
               >
-                <motion.div
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2, duration: 0.5 }}
-                  className="inline-block"
-                >
-                  <h1 className="font-display text-4xl sm:text-5xl font-semibold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/40 pb-1">
-                    {(() => {
-                      const first = (profile?.full_name?.split(' ')[0] || '').trim();
-                      if (!first) return 'How can I help today?';
-                      // Daily-rotating greeting: same template all day, changes tomorrow.
-                      const templates = [
-                        `Hey, ${first}.`,
-                        `${first} returns.`,
-                        `Back at it, ${first}.`,
-                        `Ready when you are, ${first}.`,
-                        `Good to see you, ${first}.`,
-                        `Let's get tinkering, ${first}.`,
-                        `${first} — what are we untangling today?`,
-                      ];
-                      const today = new Date();
-                      const seed =
-                        Number(`${today.getFullYear()}${today.getMonth() + 1}${today.getDate()}`) +
-                        (first.charCodeAt(0) || 0);
-                      return templates[seed % templates.length];
-                    })()}
-                  </h1>
-                  <motion.div
-                    className="h-px bg-gradient-to-r from-transparent via-border to-transparent"
-                    initial={{ width: 0, opacity: 0 }}
-                    animate={{ width: '100%', opacity: 1 }}
-                    transition={{ delay: 0.5, duration: 0.8 }}
-                  />
-                </motion.div>
-                <motion.p
-                  className="text-sm text-muted-foreground"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                >
-                  Ask anything about your college admissions journey, or press{' '}
-                  <kbd className="rounded border border-border bg-muted px-1 py-0.5 font-mono text-[10px]">/</kbd>{' '}
-                  for commands and skills.
-                </motion.p>
-              </motion.div>
+                <span className="advisor-greeting">
+                  {(() => {
+                    const first = (profile?.full_name?.split(' ')[0] || '').trim();
+                    return first ? `Hello, ${first}` : 'Hello';
+                  })()}
+                </span>
+              </motion.h1>
+              <motion.p
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.06, ...transition.base }}
+                className="mt-1 font-display text-[32px] font-semibold leading-[1.12] tracking-[-0.02em] text-[hsl(var(--adv-ink-soft))] md:text-[40px] xl:text-[52px]"
+              >
+                How can I help you today?
+              </motion.p>
+
+              {/*
+                * Four cards, one per Journey phase. Each carries that phase's
+                * real opening question — the same prompt the pill row sent —
+                * so the preview under the title is the text that will actually
+                * be asked, not a mock of an answer the advisor has not given.
+                */}
+              <div className="mt-8 grid grid-cols-2 gap-3 xl:mt-12 xl:grid-cols-4">
+                {STARTER_PILLS.map((card, i) => (
+                  <motion.button
+                    key={card.phase}
+                    type="button"
+                    onClick={() => sendMessage(card.prompt)}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.12 + i * 0.04, ...transition.base }}
+                    className="group relative flex h-[168px] flex-col rounded-xl bg-[hsl(var(--adv-chip))] p-4 text-left transition-colors duration-150 hover:bg-[hsl(var(--adv-chip-hover))] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="text-[14px] font-medium leading-snug text-foreground">
+                      {card.label}
+                    </span>
+                    <span className="mt-2 line-clamp-3 text-[12px] leading-relaxed text-[hsl(var(--adv-ink-soft))]">
+                      {card.prompt}
+                    </span>
+                    {/* The icon sits in its own tile in the corner, the way the
+                        reference puts a small preview under each title. */}
+                    <span className="mt-auto inline-flex h-8 w-8 items-center justify-center self-end rounded-full bg-background text-muted-foreground transition-colors group-hover:text-foreground">
+                      <card.icon className="h-4 w-4" strokeWidth={1.75} />
+                    </span>
+                  </motion.button>
+                ))}
+              </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto w-full px-4 py-6">
+            <div className="mx-auto w-full max-w-3xl px-6 py-6">
               {messages.map((msg, msgIndex) => {
                 const isStreamingThis = streamingId === msg.id;
                 const showThinking =
@@ -2082,14 +2154,41 @@ export default function Advisor() {
                             return <ToolCallsSection calls={entries} className="mt-1.5" />;
                           })()}
 
-                          {msg.artifact && (
-                            <ArtifactInlineCard
-                              artifact={msg.artifact}
-                              onOpen={() => {
-                                setFocusArtifactId(msg.artifact!.id);
-                                setArtifactsOpen(true);
+                          {/* The image does not exist yet — there is nothing
+                              to reveal, so the reveal stays shut over a plain
+                              surface and the line above it says what is
+                              happening. It is replaced by the artifact card the
+                              moment the real picture arrives. */}
+                          {isStreamingThis && streamStatusKind === 'image' && !msg.artifact && (
+                            <ImageGeneration
+                              className="mt-2 w-full max-w-sm"
+                              done={false}
+                              labels={{
+                                starting: 'Setting up.',
+                                generating: 'Creating your image. This takes a moment.',
+                                completed: 'Image ready.',
                               }}
-                            />
+                            >
+                              <div className="aspect-[4/3] w-full bg-gradient-to-br from-muted via-secondary/60 to-muted" />
+                            </ImageGeneration>
+                          )}
+
+                          {/* An image is shown here; everything else is a card that
+                              opens the Artifacts panel. Images are no longer
+                              listed in that panel, so a card for one would
+                              open a panel that does not contain it. */}
+                          {msg.artifact && (
+                            msg.artifact.kind === 'image' ? (
+                              <InlineGeneratedImage artifact={msg.artifact} />
+                            ) : (
+                              <ArtifactInlineCard
+                                artifact={msg.artifact}
+                                onOpen={() => {
+                                  setFocusArtifactId(msg.artifact!.id);
+                                  setArtifactsOpen(true);
+                                }}
+                              />
+                            )
                           )}
 
                           {/* Copy/retry only once the turn has actually
@@ -2133,8 +2232,8 @@ export default function Advisor() {
         </div>
 
         {/* Composer */}
-        <div className="relative z-10 border-t border-border bg-background/80 backdrop-blur-sm">
-          <div className="max-w-3xl mx-auto w-full px-4 py-4">
+        <div className="relative z-10 border-t border-border/70 bg-background">
+          <div className="mx-auto w-full max-w-3xl px-6 py-4">
             <AnimatePresence>
               {advisorDown && (
                 <motion.div
@@ -2269,7 +2368,7 @@ export default function Advisor() {
                       // No icon. A sparkle on every chip is decoration, and on
                       // a chip that says "Why?" it is decoration pretending to
                       // be meaning.
-                      className="inline-flex items-center rounded-full border border-border bg-card px-3 py-1.5 text-left text-xs text-foreground transition-colors hover:border-accent/50 hover:bg-accent/5"
+                      className="inline-flex items-center rounded-lg border border-border px-2.5 py-1.5 text-left text-[12.5px] text-muted-foreground transition-colors duration-100 hover:bg-foreground/[0.045] hover:text-foreground"
                     >
                       {s}
                     </button>
@@ -2284,21 +2383,24 @@ export default function Advisor() {
               onDragOver={handleComposerDragOver}
               onDragLeave={handleComposerDragLeave}
               onDrop={handleComposerDrop}
+              /* A writing surface, not a capsule. The old box was a 28px pill
+                 in 70%-opacity glass under a large drop shadow: three effects
+                 doing the work one hairline does. Focus is now a ring rather
+                 than a deeper shadow, which is also the only state a keyboard
+                 user can perceive. */
+              /* A pill on the soft field colour, not a bordered card. The
+                 radius is a fixed 28px rather than `rounded-full` so the shape
+                 stays a capsule at one line and becomes a rounded box as the
+                 textarea grows — `rounded-full` on a 200px-tall box bows the
+                 sides. */
               className={cn(
-                'group relative isolate flex flex-col rounded-[1.75rem] border backdrop-blur-xl bg-card/70 shadow-lg transition-all',
-                'border-border/60 focus-within:border-accent/50 focus-within:shadow-xl',
-                isListening && 'border-destructive/50 ring-2 ring-destructive/20',
+                'group relative isolate flex flex-col rounded-[28px] border border-transparent bg-[hsl(var(--adv-field))] p-2 transition-[border-color,box-shadow] duration-150',
+                'focus-within:border-foreground/15 focus-within:ring-1 focus-within:ring-foreground/10',
+                isListening && 'border-destructive/60 ring-1 ring-destructive/25',
               )}
             >
-              {/* Decorative only, and deliberately layered under the composer
-                  rather than replacing it — the model picker, effort slider,
-                  voice input, file drop and command palette all keep working.
-                  Suppressed while recording so the destructive ring stays the
-                  only thing the box is saying. */}
-              {!isListening && <PromptGlow radius="rounded-[1.75rem]" />}
-
               {isDraggingFiles && (
-                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[1.75rem] border-2 border-dashed border-accent bg-accent/10 backdrop-blur-sm">
+                <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-[28px] border border-dashed border-accent bg-card/95">
                   <span className="text-sm font-medium text-accent">Drop files to upload</span>
                 </div>
               )}
@@ -2313,7 +2415,7 @@ export default function Advisor() {
                     ? 'Listening…'
                     : compacting
                       ? 'Compacting the conversation…'
-                      : 'Message Pathforge Advisor, or / for commands…'
+                      : 'Enter a prompt here'
                 }
                 rows={1}
                 disabled={compacting}
@@ -2325,88 +2427,137 @@ export default function Advisor() {
                     ? `advisor-command-palette-opt-${activeCommandIndex}`
                     : undefined
                 }
-                className="w-full min-h-[44px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 pt-3 pb-1.5 max-h-[320px] text-sm shadow-none"
+                className="w-full min-h-12 max-h-[320px] resize-none border-0 bg-transparent p-3 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               />
-              {/* One row on a real screen. `flex-wrap` let the controls spill
-                  onto a second line the moment the effort slider opened, which
-                  is what made this strip look broken — the send button ended up
-                  stranded under the model picker. It still wraps on a phone,
-                  where the meter and the model label are hidden anyway. */}
-              <div className="flex flex-wrap items-center gap-1 px-2 pb-2 sm:flex-nowrap">
-                <ContextMeter usage={usage} onCompact={runCompaction} className="shrink-0" />
+              {/*
+               * The control strip, in the shape a chat composer has settled
+               * on: a round attach button and one tools pill on the left, the
+               * send affordance pinned right, nothing loose in between.
+               *
+               * Model, reasoning effort and the context meter used to sit in
+               * this row as peers of the attach button. Five controls in a
+               * line read as five equally important choices, and they are not
+               * — you attach a file or you send, many times a session, and you
+               * change model once a month. So they moved inside the tools
+               * popover. Nothing was removed: the same model list and the same
+               * effort slider render there, which is also why the row no
+               * longer needs `flex-wrap` to survive the slider opening.
+               */}
+              <div className="mt-0.5 flex items-center gap-2 p-1 pt-0">
                 <FileUploadButton onFiles={handleFilesSelected} disabled={isProcessing} />
 
-                {/* Model and effort sit alongside the attachment button rather
-                    than floating above the box. */}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
+                <Popover open={toolsOpen} onOpenChange={setToolsOpen}>
+                  <PopoverTrigger asChild>
                     <button
                       type="button"
-                      title={`Model: ${activeModel.label}`}
-                      aria-label={`Model: ${activeModel.label}`}
-                      className="group inline-flex items-center justify-center gap-1 rounded-full px-2 h-8 min-w-8 text-xs font-display font-bold uppercase tracking-wider text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors"
+                      aria-label="Tools"
+                      title="Model, reasoning and session tools"
+                      className="inline-flex h-8 shrink-0 items-center gap-2 rounded-full px-2 text-sm text-foreground transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     >
-                      <span className="hidden sm:inline">{activeModel.label}</span>
-                      <ChevronDown className="h-3 w-3 opacity-70 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      <SlidersHorizontal className="h-4 w-4" />
+                      <span className="hidden sm:inline">Tools</span>
                     </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-64">
-                    {ADVISOR_MODELS.map((m) => {
-                      const locked = !hasPlan(m.requiredPlan);
-                      return (
-                        <DropdownMenuItem
-                          key={m.id}
-                          onClick={(e) => {
-                            selectModel(m.id);
-                            if (locked) e.preventDefault();
-                          }}
-                          className="flex items-start gap-2"
-                        >
-                          <div className="flex-1">
-                            <div className="flex items-center gap-1.5 text-sm font-medium">
-                              {m.label}
-                              {locked && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                  <Lock className="h-2.5 w-2.5" />
-                                  {planForTier(m.requiredPlan).name}
-                                </span>
-                              )}
+                  </PopoverTrigger>
+                  <PopoverContent
+                    side="top"
+                    align="start"
+                    /* Wider than a menu because the effort slider expands to
+                       fill it, and capped to the viewport so it stays on a
+                       phone. */
+                    className="w-[min(22rem,calc(100vw-2rem))] p-2"
+                  >
+                    <div className="px-2 pb-1 pt-0.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Model
+                    </div>
+                    <div className="flex flex-col gap-0.5">
+                      {ADVISOR_MODELS.map((m) => {
+                        const locked = !hasPlan(m.requiredPlan);
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              selectModel(m.id);
+                              if (!locked) setToolsOpen(false);
+                            }}
+                            className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-muted"
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 text-sm font-medium">
+                                {m.label}
+                                {locked && (
+                                  <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    <Lock className="h-2.5 w-2.5" />
+                                    {planForTier(m.requiredPlan).name}
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground">{m.blurb}</div>
+                              <div className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                                {formatContextTokens(contextWindowFor(m))} context
+                              </div>
                             </div>
-                            <div className="text-[11px] text-muted-foreground">{m.blurb}</div>
-                            {/* How much conversation this model can hold is now
-                                the reason to move up the ladder, so it belongs
-                                next to the choice rather than in a tooltip. */}
-                            <div className="mt-0.5 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground/80">
-                              {formatContextTokens(contextWindowFor(m))} context
-                            </div>
-                          </div>
-                          {m.id === activeModel.id && !locked && <Check className="mt-0.5 h-4 w-4 text-accent" />}
-                        </DropdownMenuItem>
-                      );
-                    })}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                            {m.id === activeModel.id && !locked && (
+                              <Check className="mt-0.5 h-4 w-4 shrink-0 text-accent" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                {/* Compact as a closed trigger, full-width as an open panel: the
-                    component ties both to one `--effort-width` custom property,
-                    so this scopes that property to the two states rather than
-                    touching the component itself. */}
-                <style>{`
-                  .advisor-effort-slider { --effort-width: auto; }
-                  .advisor-effort-slider[open],
-                  .advisor-effort-slider[data-closing] {
-                    --effort-width: min(20rem, calc(100vw - 2rem));
-                  }
-                `}</style>
-                <ClaudeModelSelector
-                  className="advisor-effort-slider shrink-0"
-                  value={effortSliderIndex}
-                  onLevelChange={(_, index) =>
-                    selectEffort(EFFORT_SLIDER_LEVELS[index] as AdvisorSettings['reasoning_effort'])
-                  }
-                />
+                    <div className="my-2 h-px bg-border" />
 
-                <div className="ml-auto flex shrink-0 items-center gap-1">
+                    <div className="px-2 pb-2 font-display text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">
+                      Reasoning — {activeEffort.label}
+                    </div>
+                    {/* The slider is width-driven by a custom property the
+                        component reads; inside a popover it should simply fill
+                        it, so the property is pinned rather than toggled. */}
+                    <style>{`
+                      .advisor-effort-slider { --effort-width: 100%; }
+                    `}</style>
+                    <ClaudeModelSelector
+                      className="advisor-effort-slider w-full"
+                      value={effortSliderIndex}
+                      onLevelChange={(_, index) =>
+                        selectEffort(EFFORT_SLIDER_LEVELS[index] as AdvisorSettings['reasoning_effort'])
+                      }
+                    />
+                  </PopoverContent>
+                </Popover>
+
+                {/*
+                 * The active-tool chip. It appears only when reasoning is set
+                 * above the lowest station, because that is the one setting in
+                 * the popover that silently changes what every later reply
+                 * costs and how long it takes — worth a standing reminder on
+                 * the strip. Its X returns to the default rather than opening
+                 * anything, the same as dismissing a tool.
+                 */}
+                {effortSliderIndex > 0 && (
+                  <>
+                    <div aria-hidden className="h-4 w-px shrink-0 bg-border" />
+                    <button
+                      type="button"
+                      onClick={() => selectEffort(EFFORT_SLIDER_LEVELS[0] as AdvisorSettings['reasoning_effort'])}
+                      title={`Reasoning: ${activeEffort.label}. Click to reset.`}
+                      className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full px-2 text-sm text-accent transition-colors hover:bg-muted"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      <span className="hidden sm:inline">{activeEffort.label}</span>
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </>
+                )}
+
+                {/* The meter belongs to the send cluster, not to the gap: it is
+                    read at the moment you decide whether to send. `ml-auto` lives
+                    here alone so the free space collects once, ahead of the whole
+                    right-hand group - two `ml-auto` siblings split it and left the
+                    ring stranded mid-row. */}
+                <ContextMeter usage={usage} onCompact={runCompaction} className="ml-auto shrink-0" />
+
+                <div className="flex shrink-0 items-center gap-1">
                 {/*
                  * One primary action, not two — the same toggle Gemini's own
                  * composer uses: mic while the box is empty, a filled send
@@ -2437,14 +2588,13 @@ export default function Advisor() {
                     <Square className="h-3.5 w-3.5 fill-current" />
                   </Button>
                 ) : canSend ? (
-                  <Button
-                    type="submit"
-                    size="icon"
-                    className="h-11 w-11 sm:h-8 sm:w-8 rounded-full"
-                    aria-label="Send message"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
+                  /* Metal only on send. It is the one control in this strip
+                     that is a commitment rather than a mode change, and it
+                     only exists once there is something to send — so the
+                     shader is never running behind an empty composer. Mic and
+                     Stop stay plain; three metal discs in one row would be
+                     decoration. */
+                  <MetalSendButton />
                 ) : (
                   <Button
                     type="button"
@@ -2461,31 +2611,9 @@ export default function Advisor() {
               </div>
             </form>
 
-            {/* Pathforge quick actions — one per Journey phase, standing in for
-                a blank box the same way the starter cards used to, just as
-                pills under the composer instead of a grid above it. */}
-            {messages.length === 0 && (
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
-                {STARTER_PILLS.map((pill, i) => (
-                  <motion.button
-                    key={pill.phase}
-                    type="button"
-                    onClick={() => sendMessage(pill.prompt)}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: i * 0.08 }}
-                    className="flex items-center gap-2 rounded-full border border-border/60 bg-card/50 px-3 py-2 text-xs text-muted-foreground backdrop-blur-sm transition-all hover:border-accent/40 hover:bg-accent/5 hover:text-foreground"
-                  >
-                    <pill.icon className="h-3.5 w-3.5" />
-                    <span>{pill.label}</span>
-                  </motion.button>
-                ))}
-              </div>
-            )}
-
-            <p className="text-[11px] text-muted-foreground text-center mt-2">
+            <p className="mt-3 text-center text-[11px] text-[hsl(var(--adv-ink-soft))]">
               Type <span className="font-medium text-foreground">/</span> for commands. Pathforge
-              Advisor uses AI — verify important information.
+              Advisor uses AI and may display inaccurate info — double-check its responses.
             </p>
           </div>
         </div>

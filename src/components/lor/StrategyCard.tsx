@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { MultiStateButton } from "@/components/ui/multi-state-button";
 import { cn } from "@/lib/utils";
 import { useLorStrategy } from "@/hooks/useLorStrategy";
+import { SectionRule, Surface } from "@/components/lor/lorSurface";
+import { Sparkles } from "lucide-react";
 
 /*
  * Weight, not hue.
@@ -41,22 +43,34 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
   }, [result]);
 
   return (
-    <div className="rounded-xl border bg-card mb-6 overflow-hidden">
+    <Surface className="overflow-hidden">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center justify-between px-5 py-4 hover:bg-muted/40 transition"
+        aria-expanded={open}
+        className="flex w-full items-start gap-3 px-5 py-4 text-left transition-colors hover:bg-muted/40"
       >
-        <div className="flex items-center gap-3">
-          <div className="text-left">
-            <div className="text-sm font-medium">Rank this lineup</div>
-            <div className="text-xs text-muted-foreground">
-              Orders your recommenders by how strong a letter each is likely to write, and names
-              what the set is missing. Uses one AI credit.
-            </div>
-          </div>
-        </div>
+        {/* The page's one AI feature, and previously its least visible element:
+            a grey strip of small text you had to read to discover. An icon at
+            accent weight is the cheapest way to say "this is the clever bit"
+            without a gradient or a badge reading AI. */}
+        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+          <Sparkles className="h-4 w-4" strokeWidth={1.75} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-cluely text-[14px] font-semibold tracking-[-0.01em]">
+            Rank this lineup
+          </span>
+          <span className="mt-0.5 block text-[12.5px] leading-relaxed text-muted-foreground">
+            Orders your recommenders by how strong a letter each is likely to write, and names what
+            the set is missing. Uses one AI credit.
+          </span>
+        </span>
         <ChevronDown
-          className={cn("h-4 w-4 text-muted-foreground transition", open && "rotate-180")}
+          aria-hidden
+          className={cn(
+            "mt-1 h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180",
+          )}
         />
       </button>
 
@@ -101,9 +115,11 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
 
                   {result.ranked.length > 0 && (
                     <div>
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-                        Ranked lineup
-                      </div>
+                      {/* The same labelled rule the roster groups stages with.
+                          `uppercase tracking-widest` micro-labels were cleared off
+                          the rest of this route; these two survived inside a panel
+                          that is closed by default. */}
+                      <SectionRule>Ranked lineup</SectionRule>
                       <div className="space-y-2">
                         {result.ranked
                           .slice()
@@ -140,9 +156,7 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
 
                   {result.gaps.length > 0 && (
                     <div>
-                      <div className="text-xs uppercase tracking-widest text-muted-foreground mb-2">
-                        Gaps
-                      </div>
+                      <SectionRule>Gaps</SectionRule>
                       <div className="space-y-2">
                         {result.gaps.map((g, i) => (
                           <div key={i} className="flex gap-3 rounded-lg border border-dashed bg-background/50 p-3">
@@ -172,6 +186,6 @@ export function StrategyCard({ disabled }: { disabled: boolean }) {
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </Surface>
   );
 }

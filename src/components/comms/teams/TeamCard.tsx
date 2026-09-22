@@ -13,7 +13,7 @@ import type { TeamCard as TeamCardData } from "@/hooks/comms/useTeams";
 /**
  * A team, as a card.
  *
- * The tinted header band is the one place a gradient earns its keep: it is what
+ * The tinted header band is a flat wash, not a gradient: it is what
  * makes a grid of teams distinguishable at a glance without needing anyone to
  * upload an image. The tint comes from a closed palette of literal class strings
  * — Tailwind's JIT only emits CSS for classes it can find in the source, so a
@@ -46,7 +46,7 @@ export function TeamCard({
         to={`/communications/teams/${team.id}`}
         className="group block overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-colors hover:border-accent/40"
       >
-        <div className={cn("h-16 bg-gradient-to-br", tint.header)} />
+        <div className={cn("h-16", tint.header)} />
 
         <div className="-mt-8 px-4 pb-4">
           <span

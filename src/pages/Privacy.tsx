@@ -23,12 +23,35 @@ export default function Privacy() {
         <p>
           Pathforge ("Pathforge", "we", "us", or "our") operates the Pathforge platform at{" "}
           <a href="https://pathforge.co.in" className="text-accent underline">pathforge.co.in</a>.
-          We act as the <strong>data controller</strong> for personal data collected through the
-          Service. You can reach us at{" "}
-          <a href="mailto:pathforge.co@gmail.com" className="text-accent underline">
-            pathforge.co@gmail.com
-          </a>{" "}
-          for any privacy question or request.
+          Pathforge is owned and operated by <strong>Govind Mulchandani</strong>, who is the
+          <strong> data controller</strong> — the <strong>Data Fiduciary</strong>, in the language
+          of India's Digital Personal Data Protection Act 2023 — for personal data collected
+          through the Service, and the person accountable for how it is handled.
+        </p>
+        <ul>
+          <li><strong>Business name:</strong> Pathforge</li>
+          <li><strong>Owner and data controller:</strong> Govind Mulchandani</li>
+          <li>
+            <strong>Privacy and data-request contact:</strong>{" "}
+            <a href="mailto:mulchandaniakshay39@gmail.com" className="text-accent underline">
+              mulchandaniakshay39@gmail.com
+            </a>
+          </li>
+          <li>
+            <strong>General support:</strong>{" "}
+            <a href="mailto:pathforge.co@gmail.com" className="text-accent underline">
+              pathforge.co@gmail.com
+            </a>
+          </li>
+          <li>
+            <strong>Phone:</strong>{" "}
+            <a href="tel:+918888918844" className="text-accent underline">+91 88889 18844</a>
+          </li>
+        </ul>
+        <p>
+          Write to either address for any privacy question or request, including access, correction
+          and deletion. If you are a parent or guardian asking about a student's data, say so and we
+          will tell you what we need to verify the request.
         </p>
 
         <h2>2. The Short Version</h2>
@@ -367,12 +390,23 @@ export default function Privacy() {
           will return or delete it on request.
         </p>
 
-        <h2>14. Local Storage</h2>
+        <h2>14. Cookies &amp; Local Storage</h2>
         <p>
           We use local storage for essential functionality — keeping you signed in, maintaining
           your session, remembering theme, language, and onboarding state, and protecting against
-          abuse. These are never optional, since the Service cannot function without them. We do
-          not use analytics or marketing cookies.
+          abuse — and we set two cookies: one remembering whether the app sidebar is collapsed, and
+          one recording your chosen language if you translate the site.
+        </p>
+        <p>
+          <strong>We do not use analytics or advertising cookies.</strong> Until September 2026 this
+          site served Google AdSense advertising, which did set advertising storage; that was
+          inconsistent with this notice and, because our users are school students, inappropriate
+          regardless. <strong>It has been removed</strong>, and we do not intend to carry
+          advertising on a service used by children.
+        </p>
+        <p>
+          Every cookie and storage key we use is listed individually, by name, in our{" "}
+          <Link to="/cookies" className="text-accent underline">Cookie &amp; Storage Policy</Link>.
         </p>
 
         <h2>15. Changes to This Notice</h2>
@@ -391,7 +425,7 @@ export default function Privacy() {
           or use our{" "}
           <Link to="/contact" className="text-accent underline">contact page</Link>. See also our{" "}
           <Link to="/terms" className="text-accent underline">Terms of Service</Link>,{" "}
-          and{" "}
+          <Link to="/cookies" className="text-accent underline">Cookie Policy</Link>, and{" "}
           <Link to="/refund-policy" className="text-accent underline">Refund Policy</Link>.
         </p>
 

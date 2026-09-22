@@ -8,7 +8,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import SpecularAnchor from "@/components/ui/specular/SpecularAnchor";
 import SpecularLink from "@/components/ui/specular/SpecularLink";
 import { MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_URL } from "@/lib/desktopDownload";
-import IntegrationsDirectory from "@/components/ui/integrations-directory";
+import { WorldMap } from "@/components/ui/map";
+import { STUDENT_MAP_DOTS, STUDENT_COUNTRY_COUNT } from "@/lib/studentCountries";
+import { Footer } from "@/components/layout/Footer";
 import { TextRotate } from "@/components/ui/text-rotate";
 import { fadeUp, transition } from "@/lib/motion";
 
@@ -20,7 +22,7 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 // (see <link rel="preload"> in index.html). Keeps it out of the JS bundle.
 const heroCampus = "/assets/hero-campus-cinematic-v1.webp";
 import pathforgeMark from "@/assets/pathforge-logo.webp";
-import talkforgeLogo from "@/assets/talkforge-logo.webp";
+import { GlassFilter } from "@/components/GlassFilter";
 
 /**
  * The rotating showcase that replaced the five numbered department cards.
@@ -159,6 +161,7 @@ export default function Index() {
       </div>
 
       <header className="atlas-header">
+        <GlassFilter />
         <div className="atlas-header-inner">
           <Link className="atlas-brand" to="/" aria-label="Pathforge home">
             <img src={pathforgeMark} width={96} height={96} decoding="async" alt="Pathforge logo" />
@@ -399,43 +402,25 @@ export default function Index() {
           * file will talk to the things they already use. That is checkable,
           * so it is shown instead.
           */}
+        {/* Where students are.
+          *
+          * Replaces the integrations directory. Every point on this map is a
+          * country a real student selected during onboarding, read from the
+          * database - see `src/lib/studentCountries.ts` for the query and the
+          * date it was taken. There are deliberately no per-country numbers:
+          * some of these countries have a single student, and "1 student in
+          * Angola" is a disclosure about a minor that buys nothing. */}
         <section className="atlas-house atlas-wrap" aria-labelledby="house-title">
           <motion.div className="atlas-section-heading" {...reveal}>
             <p>{"\n"}</p>
             <h2 id="house-title">
-              Your file talks to <em>everything</em> else.
+              Students in <em>{STUDENT_COUNTRY_COUNT} countries.</em>
             </h2>
           </motion.div>
 
-          <motion.div className="atlas-integrations" {...reveal}>
-            <IntegrationsDirectory />
+          <motion.div {...reveal}>
+            <WorldMap dots={STUDENT_MAP_DOTS} lineColor="#4465d8" />
           </motion.div>
-        </section>
-
-        <section className="atlas-sister atlas-wrap" aria-labelledby="sister-title">
-          <motion.div className="atlas-section-heading" {...reveal}>
-            <p>{"\n"}</p>
-            <h2 id="sister-title">
-              Also in the <em>house.</em>
-            </h2>
-          </motion.div>
-          <motion.a
-            href="https://talkforge.co.in"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="atlas-talkforge"
-            {...item(0)}
-            whileHover={prefersReduced ? undefined : { y: -3 }}
-          >
-            <img src={talkforgeLogo} width={128} height={128} loading="lazy" decoding="async" alt="TalkForge logo" />
-            <span>
-              <strong>TalkForge</strong>
-              <span>AI-powered communication and public speaking training. The spoken half of your application.</span>
-            </span>
-            <span>
-              Visit publication <b aria-hidden="true">↗</b>
-            </span>
-          </motion.a>
         </section>
 
         <section className="atlas-brief" aria-labelledby="brief-title">
@@ -484,32 +469,17 @@ export default function Index() {
         </section>
       </main>
 
-      <footer className="atlas-footer">
-        <div className="atlas-wrap">
-          <p>
-            Founder — Govind Mulchandani <i>·</i> Co-founder — Avyaay Rathi <i>·</i> Co-founder — Zachary Samuel
-          </p>
-          <a href="mailto:pathforge.co@gmail.com">pathforge.co@gmail.com</a>
-          <nav aria-label="Footer navigation">
-            {/* About is hidden from the header below 640px to keep the glass bar
-                from wrapping, so the footer is the only route to it on a phone.
-                It leads here for that reason. */}
-            <Link to="/about">About</Link>
-            <i>·</i>
-            <Link to="/pricing">Pricing</Link>
-            <i>·</i>
-            <Link to="/faq">FAQ</Link>
-            <i>·</i>
-            <Link to="/terms">Terms</Link>
-            <i>·</i>
-            <Link to="/privacy">Privacy</Link>
-            <i>·</i>
-            <Link to="/refund-policy">Refunds</Link>
-            <i>·</i>
-            <Link to="/contact">Contact</Link>
-          </nav>
-        </div>
-      </footer>
+      {/* The shared black footer, not a second one written inline.
+
+          This page used to carry its own `.atlas-footer` on a light
+          `var(--surface)` plate, which is why the landing page ended in cream
+          while every other page ended in black. It also meant the footer here
+          silently missed anything added to the real one - the cookie policy
+          link, the business identity and the Merchant of Record line were all
+          absent from the single most visited page on the site.
+
+          One footer, one place to change it. */}
+      <Footer />
     </div>
   );
 }

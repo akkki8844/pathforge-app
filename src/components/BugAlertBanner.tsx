@@ -177,61 +177,73 @@ export function BugAlertBanner() {
       <AnimatePresence>
         {showBanner && (
           <motion.div
-            initial={{ y: 24, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 16, opacity: 0 }}
+            initial={{ x: 24, y: 8, opacity: 0, scale: 0.98 }}
+            animate={{ x: 0, y: 0, opacity: 1, scale: 1 }}
+            exit={{ x: 24, opacity: 0, scale: 0.98 }}
             transition={{ type: "spring", damping: 24, stiffness: 260 }}
             role="alert"
-            /* Above the page, below the dialog. Bottom rather than top: the
-               top of the app is already a stack of banners (announcements,
-               email verification, usage limits) and a failure notice that
-               queues behind them arrives after the user has stopped looking.
+            /* A notification in the bottom-right corner, not a bar across the
+               page. The full-width centred bar read as a system-level outage
+               notice for what is usually one component failing, and it sat
+               across the middle of whatever the student was doing.
  
-               The 4.5rem of bottom padding clears the corner buttons (feedback,
-               support chat), which are 2.75rem tall at 1.25rem from the bottom.
-               Without it the chat bubble sat on top of this bar's dismiss
-               control on a phone. The clearance is unconditional rather than
-               behind a breakpoint because the bar is centred and capped at
-               42rem, so it collides with that cluster at every width below
-               about 900px -- and a breakpoint tuned to today's two buttons
-               would silently be wrong the day a third is added. */
-            className="fixed inset-x-0 bottom-0 z-[45] flex justify-center px-3 pb-[calc(env(safe-area-inset-bottom,0px)+4.5rem)] sm:px-4"
+               Bottom rather than top: the top of the app is already a stack of
+               banners (announcements, email verification, usage limits), and a
+               failure notice that queues behind them arrives after the user has
+               stopped looking. Right rather than centre: that is where this app
+               already puts transient messages, so it lands where the eye
+               already goes for one.
+ 
+               The 5rem bottom offset clears the corner cluster — support chat
+               at right-5 and feedback at right-[4.25rem], both 2.75rem tall at
+               1.25rem from the bottom — so this stacks above them instead of
+               burying their controls. Unconditional rather than behind a
+               breakpoint: they are in that corner at every width, and a
+               breakpoint tuned to today's two buttons would silently be wrong
+               the day a third is added. */
+            className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5rem)] right-3 z-[45] w-[calc(100vw-1.5rem)] max-w-sm sm:right-5 sm:w-full"
           >
-            <div className="flex w-full max-w-2xl items-start gap-3 rounded-xl border border-destructive/30 bg-destructive px-3.5 py-3 text-destructive-foreground shadow-2xl sm:items-center sm:px-4">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 sm:mt-0" />
+            {/* Stacked rather than one row: at notification width a row of
+                icon + message + two controls crushes the message to a few
+                characters, which is the one part worth reading. */}
+            <div className="w-full rounded-xl border border-destructive/30 bg-destructive p-3.5 text-destructive-foreground shadow-2xl">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
 
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold leading-snug">
-                  Something went wrong on this page
-                </p>
-                {/* The raw message, truncated. Not hidden behind a "details"
-                    toggle: a user who recognises the error can say so, and one
-                    who does not loses nothing by seeing a line of it. */}
-                <p className="mt-0.5 truncate text-[11.5px] leading-snug opacity-80">
-                  {latest?.message}
-                  {bugs.length > 1 && (
-                    <span className="ml-1 opacity-90">
-                      (+{bugs.length - 1} more {bugs.length === 2 ? "error" : "errors"})
-                    </span>
-                  )}
-                </p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold leading-snug">
+                    Something went wrong on this page
+                  </p>
+                  {/* The raw message, clamped to two lines. Not hidden behind a
+                      "details" toggle: a user who recognises the error can say
+                      so, and one who does not loses nothing by seeing it. */}
+                  <p className="mt-0.5 line-clamp-2 break-words text-[11.5px] leading-snug opacity-80">
+                    {latest?.message}
+                    {bugs.length > 1 && (
+                      <span className="ml-1 opacity-90">
+                        (+{bugs.length - 1} more {bugs.length === 2 ? "error" : "errors"})
+                      </span>
+                    )}
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setDismissed(true)}
+                  className="-mr-1 -mt-1 shrink-0 rounded-md p-1.5 opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive-foreground"
+                  aria-label="Dismiss"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
 
-              <div className="flex shrink-0 items-center gap-1">
+              <div className="mt-2.5 flex justify-end">
                 <button
                   type="button"
                   onClick={() => setOpen(true)}
                   className="rounded-md bg-destructive-foreground px-3 py-1.5 text-[12.5px] font-semibold text-destructive transition-transform hover:-translate-y-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive-foreground focus-visible:ring-offset-2 focus-visible:ring-offset-destructive"
                 >
                   Report this
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDismissed(true)}
-                  className="rounded-md p-1.5 opacity-80 transition-opacity hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive-foreground"
-                  aria-label="Dismiss"
-                >
-                  <X className="h-4 w-4" />
                 </button>
               </div>
             </div>

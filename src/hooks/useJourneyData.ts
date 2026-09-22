@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import {
   LevelId,
   MAX_LEVEL,
+  STAGES,
   getCurrentLevel,
   getLevelTasksForUser,
   LevelTask,
@@ -153,6 +154,39 @@ export function useJourneyData() {
   }, [user]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  /**
+   * Realtime on `journey_scores`, so gems/hearts move the moment the server
+   * moves them.
+   *
+   * `verify-proof` (an approved evidence submission pays 5 gems) and
+   * `journey_reset_hearts`'s monthly refill both write this row under service
+   * role, from an edge function or a cron job the client never calls directly.
+   * Without this subscription the only thing that ever re-read the row was
+   * `submitStage`/`resetHearts` explicitly re-fetching after their own RPC, or
+   * `loadData` re-running because `user` happened to get a new object
+   * identity from an unrelated Supabase auth token refresh. A student who
+   * submitted proof, watched it get approved, and stayed on the page would
+   * see gems still at the pre-submission number — correct on the next visit,
+   * wrong for as long as this tab stayed open.
+   */
+  useEffect(() => {
+    if (!user) return;
+    const suffix = Math.random().toString(36).slice(2, 8);
+    const channel = supabase.channel(`journey-scores-${user.id}-${suffix}`);
+    try {
+      channel.on(
+        "postgres_changes" as any,
+        { event: "*", schema: "public", table: "journey_scores", filter: `user_id=eq.${user.id}` },
+        (payload: any) => {
+          if (payload?.new) setDbRecord(payload.new);
+        },
+      ).subscribe();
+    } catch (e) {
+      console.warn("journey_scores realtime unavailable", e);
+    }
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
 
   // ── Score computation (weighted, evidence-based) ────────────────────
   // Each sub-score is 0–100. Diminishing returns + quality weighting so
@@ -456,14 +490,39 @@ export function useJourneyData() {
     return levelTasks.find((t) => !completedMilestones.includes(t.id)) || null;
   }, [levelTasks, completedMilestones]);
 
+  /**
+   * Placement: the diagnostic tells the student "We've unlocked everything
+   * below — start where you are, skip what you've already proven"
+   * (`PlacementTest.tsx`), so it has to actually bank the stages below the
+   * placed level, not just note the level number in `roadmap`. Recording only
+   * `roadmap.placement_level` — the whole of this function before this
+   * comment — left the path exactly as sequential as it was for a brand-new
+   * account: every stage from 1.1 still required its own evidence, so a
+   * student placed at Level 8 read a promise to skip seven levels and then
+   * found seven levels' worth of locked stages waiting anyway.
+   *
+   * Only stages STRICTLY BELOW the placed level are banked — "start where you
+   * are" means the placement level itself is where evidence starts being
+   * required again, not one more thing already ticked off. Skipped stages
+   * bypass `journey_submit_stage` entirely: they were not verified, so they
+   * are not gemmed, which also closes off placement as a way to farm gems by
+   * repeatedly retaking the diagnostic. The merge is additive — union with
+   * whatever is already banked — so placing at a level at or below a
+   * student's real progress can never erase a stage they already claimed.
+   */
   const setPlacementLevel = useCallback(async (level: LevelId) => {
     if (!user) return;
     const existingRoadmap = (dbRecord?.roadmap as any) || {};
     const newRoadmap = { ...existingRoadmap, placement_level: level };
+    const existingStageIds: string[] = Array.isArray(dbRecord?.submitted_stage_ids)
+      ? (dbRecord!.submitted_stage_ids as string[])
+      : [];
+    const skippedStageIds = STAGES.filter((s) => s.level < level).map((s) => s.id);
+    const newStageIds = Array.from(new Set([...existingStageIds, ...skippedStageIds]));
     if (dbRecord) {
       await supabase
         .from("journey_scores")
-        .update({ roadmap: newRoadmap })
+        .update({ roadmap: newRoadmap, submitted_stage_ids: newStageIds })
         .eq("user_id", user.id);
     } else {
       await supabase.from("journey_scores").insert([{
@@ -472,11 +531,16 @@ export function useJourneyData() {
         started_at: new Date().toISOString(),
         ...scores,
         roadmap: newRoadmap,
+        submitted_stage_ids: newStageIds,
         completed_milestones: [],
       }]);
       setJourneyStarted(true);
     }
-    setDbRecord((prev: any) => ({ ...(prev || {}), roadmap: newRoadmap }));
+    setDbRecord((prev: any) => ({
+      ...(prev || {}),
+      roadmap: newRoadmap,
+      submitted_stage_ids: newStageIds,
+    }));
   }, [user, dbRecord, scores]);
 
   /** Stages banked server-side — the single source of truth for path progress. */

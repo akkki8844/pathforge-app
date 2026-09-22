@@ -1,6 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { Bookmark, Check, ChevronDown, ChevronUp, Search, X } from "lucide-react";
+import {
+  Bookmark,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  Minus,
+  Search,
+  X,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -18,7 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SAT, blueprintFor, domainName, skillName, subjectName } from "@/lib/testprep/blueprints";
 import { SAT_QUESTIONS, questionById } from "@/lib/testprep/questions";
@@ -43,6 +53,7 @@ import type { Difficulty, SubjectId } from "@/lib/testprep/types";
 const FILTER_TRIGGER = "h-8 rounded-full border-border/60 bg-muted/30 px-3 text-xs shadow-none";
 const FILTER_TRIGGER_ACTIVE = "border-[hsl(var(--bb-blue)/0.5)] bg-[hsl(var(--bb-blue)/0.1)] text-[hsl(var(--bb-blue))]";
 
+/** Rows per page. The bank is read a page at a time, not scrolled endlessly. */
 const PAGE = 50;
 
 /**
@@ -63,7 +74,14 @@ export default function TestPrepQuestionBank() {
   const profile = useTestPrep();
   const [filters, setFilters] = useState<BankFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<BankSort>("bank");
-  const [limit, setLimit] = useState(PAGE);
+  /**
+   * The page being read, 1-based.
+   *
+   * Held raw and clamped below rather than corrected in an effect: narrowing
+   * the filters while on page 4 of 5 shortens the result set, and a page number
+   * that fixes itself one render late shows an empty table in between.
+   */
+  const [pageRaw, setPage] = useState(1);
   const [openId, setOpenId] = useState<string | null>(null);
   /**
    * The order Back/Next walk through, frozen at the moment a question opens.
@@ -115,7 +133,7 @@ export default function TestPrepQuestionBank() {
       }
       return next;
     });
-    setLimit(PAGE);
+    setPage(1);
   };
 
   const toggleDomain = (id: string) => {
@@ -126,7 +144,7 @@ export default function TestPrepQuestionBank() {
       // a newly-added domain (a longer list next season) starts checked too.
       return { ...f, domainIds: next.length === domains.length ? [] : next, skillId: "all" };
     });
-    setLimit(PAGE);
+    setPage(1);
   };
 
   const toggleRow = (id: string) => {
@@ -166,8 +184,30 @@ export default function TestPrepQuestionBank() {
   const correctCount = profile.answers.filter((a) => a.correct).length;
   const accuracyLabel = answeredCount > 0 ? `${Math.round((correctCount / answeredCount) * 100)}%` : "—";
 
-  const visibleIds = results.slice(0, limit).map((q) => q.id);
+  const pageCount = Math.max(1, Math.ceil(results.length / PAGE));
+  const page = Math.min(pageRaw, pageCount);
+  const pageStart = (page - 1) * PAGE;
+  const pageRows = results.slice(pageStart, pageStart + PAGE);
+
+  const visibleIds = pageRows.map((q) => q.id);
   const allVisibleSelected = visibleIds.length > 0 && visibleIds.every((id) => selected.has(id));
+
+  /**
+   * Turning a page puts the student back at the head of the table.
+   *
+   * Without it, clicking page 3 from the foot of page 2 leaves them looking at
+   * the pager of a table whose top they never saw. The offset clears the global
+   * navbar, which is `sticky top-0`.
+   */
+  const goToPage = (next: number) => {
+    setPage(Math.min(Math.max(1, next), pageCount));
+    const table = document.getElementById("tp-bank-results");
+    if (!table) return;
+    window.scrollTo({
+      top: table.getBoundingClientRect().top + window.scrollY - 96,
+      behavior: "smooth",
+    });
+  };
 
   return (
     <TestPrepShell
@@ -260,7 +300,7 @@ export default function TestPrepQuestionBank() {
                   <SelectTrigger className="h-9 w-full max-w-xs rounded-lg text-sm sm:w-64" aria-label="Section">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bluebook">
                     <SelectItem value="all">Both sections</SelectItem>
                     {SAT.subjects.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
@@ -303,7 +343,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bluebook">
                       <SelectItem value="all">All skills</SelectItem>
                       {skills.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
@@ -323,7 +363,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bluebook">
                       <SelectItem value="all">Any difficulty</SelectItem>
                       <SelectItem value="easy">Easy</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
@@ -341,7 +381,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bluebook">
                       <SelectItem value="all">Any status</SelectItem>
                       <SelectItem value="unseen">Not attempted</SelectItem>
                       <SelectItem value="seen">Attempted</SelectItem>
@@ -358,10 +398,11 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bluebook">
                       <SelectItem value="all">Any result</SelectItem>
                       <SelectItem value="correct">Last answered correctly</SelectItem>
                       <SelectItem value="incorrect">Last answered incorrectly</SelectItem>
+                      <SelectItem value="skipped">Last left unanswered</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -385,7 +426,7 @@ export default function TestPrepQuestionBank() {
                     <SelectTrigger className={cn(FILTER_TRIGGER, "ml-auto")} aria-label="Sort">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="bluebook">
                       {BANK_SORTS.map((s) => (
                         <SelectItem key={s.value} value={s.value}>
                           {s.label}
@@ -401,7 +442,7 @@ export default function TestPrepQuestionBank() {
                   type="button"
                   onClick={() => {
                     setFilters(EMPTY_FILTERS);
-                    setLimit(PAGE);
+                    setPage(1);
                   }}
                   className={cn("rounded-md text-xs text-[hsl(var(--bb-blue))] hover:underline", FOCUS)}
                 >
@@ -446,7 +487,7 @@ export default function TestPrepQuestionBank() {
                   <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="bluebook">
                 <DropdownMenuItem
                   onClick={() => setSelected((s) => new Set([...s, ...visibleIds]))}
                   disabled={visibleIds.length === 0}
@@ -497,7 +538,7 @@ export default function TestPrepQuestionBank() {
                 className="mt-5"
                 onClick={() => {
                   setFilters(EMPTY_FILTERS);
-                  setLimit(PAGE);
+                  setPage(1);
                   setView("all");
                 }}
               >
@@ -505,10 +546,19 @@ export default function TestPrepQuestionBank() {
               </Button>
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div id="tp-bank-results" className="overflow-x-auto">
               <table className="w-full min-w-[640px] border-collapse text-sm">
                 <thead>
-                  <tr className={cn(EYEBROW, "border-b border-border/60 text-left")}>
+                  {/* The column head is the bank's one blue field, closed with
+                      the section's yellow rule. A bare grey header row on white
+                      was the only part of this page that could have belonged to
+                      any table in the product. */}
+                  <tr
+                    className={cn(
+                      EYEBROW,
+                      "border-b-2 border-[hsl(var(--bb-rule))] bg-[hsl(var(--bb-blue-soft))] text-left text-[hsl(var(--bb-blue))]",
+                    )}
+                  >
                     <th className="w-10 px-4 py-2.5 sm:px-5">
                       <Checkbox
                         checked={allVisibleSelected}
@@ -520,7 +570,7 @@ export default function TestPrepQuestionBank() {
                             return next;
                           })
                         }
-                        aria-label="Select all in view"
+                        aria-label="Select all on this page"
                         className="h-4 w-4 rounded-[4px] data-[state=checked]:border-[hsl(var(--bb-blue))] data-[state=checked]:bg-[hsl(var(--bb-blue))]"
                       />
                     </th>
@@ -542,7 +592,7 @@ export default function TestPrepQuestionBank() {
                   </tr>
                 </thead>
                 <tbody>
-                  {results.slice(0, limit).map((q) => {
+                  {pageRows.map((q) => {
                     const h = history.get(q.id);
                     const bookmarked = profile.bookmarks.includes(q.id);
                     const isSelected = selected.has(q.id);
@@ -597,14 +647,46 @@ export default function TestPrepQuestionBank() {
                               />
                             )}
                             {h && (
+                              /*
+                                This used to be `aria-hidden`, which meant the
+                                only thing in the row saying whether you got the
+                                question right was invisible to a screen reader.
+                                The glyph is now the visual half of a label, not
+                                the whole signal — which also matters sighted,
+                                since the palette has no red and "wrong" is a
+                                black dot next to a blue one.
+                              */
                               <span
-                                aria-hidden="true"
+                                title={
+                                  h.lastOutcome === "correct"
+                                    ? "Last attempt: correct"
+                                    : h.lastOutcome === "skipped"
+                                      ? "Last attempt: skipped"
+                                      : "Last attempt: incorrect"
+                                }
                                 className={cn(
-                                  "flex h-4 w-4 items-center justify-center rounded-full text-[hsl(var(--bb-blue-foreground))]",
-                                  h.lastCorrect ? "bg-success" : "bg-destructive",
+                                  "flex h-4 w-4 items-center justify-center rounded-full",
+                                  h.lastOutcome === "correct"
+                                    ? "bg-success text-success-foreground"
+                                    : h.lastOutcome === "skipped"
+                                      ? "border border-border bg-muted text-muted-foreground"
+                                      : "bg-destructive text-destructive-foreground",
                                 )}
                               >
-                                {h.lastCorrect ? <Check className="h-2.5 w-2.5" /> : <X className="h-2.5 w-2.5" />}
+                                <span className="sr-only">
+                                  {h.lastOutcome === "correct"
+                                    ? "Last attempt: correct"
+                                    : h.lastOutcome === "skipped"
+                                      ? "Last attempt: skipped"
+                                      : "Last attempt: incorrect"}
+                                </span>
+                                {h.lastOutcome === "correct" ? (
+                                  <Check aria-hidden className="h-2.5 w-2.5" strokeWidth={3} />
+                                ) : h.lastOutcome === "skipped" ? (
+                                  <Minus aria-hidden className="h-2.5 w-2.5" strokeWidth={3} />
+                                ) : (
+                                  <X aria-hidden className="h-2.5 w-2.5" strokeWidth={3} />
+                                )}
                               </span>
                             )}
                           </div>
@@ -617,11 +699,67 @@ export default function TestPrepQuestionBank() {
             </div>
           )}
 
-          {results.length > limit && (
-            <div className="border-t border-border/60 p-3 text-center">
-              <Button variant="ghost" size="sm" onClick={() => setLimit((l) => l + PAGE)}>
-                Show {Math.min(PAGE, results.length - limit)} more
-              </Button>
+          {pageCount > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/60 px-3 py-3 sm:px-5">
+              <p className="text-xs text-muted-foreground">
+                Showing{" "}
+                <span className="font-medium tabular-nums text-foreground">
+                  {pageStart + 1}–{Math.min(pageStart + PAGE, results.length)}
+                </span>{" "}
+                of <span className="font-medium tabular-nums text-foreground">{results.length}</span>
+              </p>
+
+              <nav aria-label="Question bank pages" className="flex items-center gap-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={page === 1}
+                  onClick={() => goToPage(page - 1)}
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+
+                {pageWindow(page, pageCount).map((n, i) =>
+                  n === null ? (
+                    <span
+                      key={`gap-${i}`}
+                      aria-hidden="true"
+                      className="px-1 text-xs text-muted-foreground"
+                    >
+                      …
+                    </span>
+                  ) : (
+                    <Button
+                      key={n}
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Page ${n}`}
+                      aria-current={n === page ? "page" : undefined}
+                      onClick={() => goToPage(n)}
+                      className={cn(
+                        "h-8 min-w-[2rem] px-2 text-xs tabular-nums",
+                        n === page &&
+                          "bg-[hsl(var(--bb-blue))] font-semibold text-[hsl(var(--bb-blue-foreground))] hover:bg-[hsl(var(--bb-blue))] hover:text-[hsl(var(--bb-blue-foreground))]",
+                      )}
+                    >
+                      {n}
+                    </Button>
+                  ),
+                )}
+
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={page === pageCount}
+                  onClick={() => goToPage(page + 1)}
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </nav>
             </div>
           )}
         </Reveal>
@@ -637,6 +775,26 @@ export default function TestPrepQuestionBank() {
       />
     </TestPrepShell>
   );
+}
+
+/**
+ * The page numbers to draw, with `null` where a run is elided.
+ *
+ * First and last stay reachable, plus the current page and its two neighbours.
+ * The bank is five pages today and will be many more later, so the pager is
+ * sized by that window rather than by the number of pages.
+ */
+function pageWindow(page: number, count: number): (number | null)[] {
+  if (count <= 7) return Array.from({ length: count }, (_, i) => i + 1);
+
+  const out: (number | null)[] = [1];
+  const from = Math.max(2, page - 1);
+  const to = Math.min(count - 1, page + 1);
+  if (from > 2) out.push(null);
+  for (let i = from; i <= to; i += 1) out.push(i);
+  if (to < count - 1) out.push(null);
+  out.push(count);
+  return out;
 }
 
 /** How many filters are narrowing the list, for the count next to the results. */
@@ -662,9 +820,13 @@ function countActive(filters: BankFilters): number {
  * mastery figures whether or not the student meant to attempt it. Real
  * practice happens in the session runner; Back and Next walk the exact result
  * order the table was showing when this opened (see `openQuestion`), and
- * "Add to PDF" adds to the same selection the table's checkboxes use — there
- * is no PDF export yet, so the button is honest about what it actually does
- * via its title rather than silently doing nothing.
+ * "Add to selection" adds to the same selection the table's checkboxes use.
+ *
+ * That button used to read "Add to PDF", which named a feature that does not
+ * exist anywhere in the repo, and admitted as much only in a `title` nobody
+ * reads. The action itself was always real — the selection can be practised as
+ * a set or bookmarked in bulk — so the fix was to call it what it does rather
+ * than to remove it.
  */
 function QuestionPreview({
   questionId,
@@ -696,13 +858,18 @@ function QuestionPreview({
 
   return (
     <Dialog open={!!question} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="flex h-[92vh] w-[95vw] max-w-[110rem] flex-col gap-0 overflow-hidden p-0 sm:p-0">
+      <DialogContent
+        className="bluebook flex h-[92vh] w-[95vw] max-w-[110rem] flex-col gap-0 overflow-hidden p-0 sm:p-0"
+        aria-describedby={undefined}
+      >
         {question && (
           <>
-            <div className="flex shrink-0 items-center justify-between border-b border-border/60 px-8 py-5">
-              <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
-                Question ID: <span className="font-mono">{question.id}</span>
-              </h2>
+            <div className="flex shrink-0 items-center justify-between border-b-[3px] border-[hsl(var(--bb-rule))] bg-[hsl(var(--bb-blue-soft))] px-8 py-5">
+              <DialogTitle asChild>
+                <h2 className="font-display text-2xl font-bold tracking-tight text-foreground">
+                  Question ID: <span className="font-mono">{question.id}</span>
+                </h2>
+              </DialogTitle>
               <button
                 type="button"
                 onClick={() => toggleBookmark(question.id)}
@@ -797,11 +964,11 @@ function QuestionPreview({
                 onClick={() => onAddToSelection(question.id)}
                 title={
                   selected
-                    ? "Already in your selection — PDF export isn't available yet"
-                    : "Adds this question to your selection (PDF export isn't available yet)"
+                    ? "Already in your selection"
+                    : "Adds this question to your selection, to practise or bookmark as a set"
                 }
               >
-                {selected ? "Added" : "Add to PDF"}
+                {selected ? "Added" : "Add to selection"}
               </Button>
 
               <Button

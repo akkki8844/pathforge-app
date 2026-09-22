@@ -1,85 +1,149 @@
-import { Star } from "lucide-react";
-import { TestimonialsColumn } from "@/components/ui/testimonials-columns-1";
-import { studentReviews } from "@/data/reviews";
+import { Marquee } from "@/components/ui/3d-testimonails";
+import { ReviewReel } from "@/components/auth/ReviewReel";
+import { AuthQuote } from "@/components/auth/AuthQuote";
+import { STUDENT_AUTH_QUOTES } from "@/data/authQuotes";
+import { studentReviews, toReelTestimonials } from "@/data/reviews";
+import { ROUTINE_DESTINATIONS } from "@/lib/routine/nav";
+import { COMMUNICATIONS_DESTINATIONS } from "@/lib/comms/nav";
+import { cn } from "@/lib/utils";
 
-/** Google-style star row. Half-stars aren't worth the complexity here. */
-function Stars({ rating, className = "" }: { rating: number; className?: string }) {
+/**
+ * The left-hand panel of the student sign-in screen.
+ *
+ * WHY THIS IS NO LONGER A REVIEW WALL
+ *
+ * It used to render an aggregate star rating beside a Google "G" logo, over the
+ * caption "12 student reviews", fed from a hand-written array in
+ * `src/data/reviews.ts`. That array was product copy: its own header described
+ * an editorial rule for what each line must say, and recorded that earlier
+ * drafts had been "rewritten" to remove unflattering comparisons. Genuine
+ * reviews cannot be rewritten by the company they describe.
+ *
+ * Presented that way it was not merely puffery, it was three distinct problems:
+ *
+ *  - The Google mark and the 4.9 average implied the ratings came from Google
+ *    Reviews. They did not. That is a misuse of someone else's trade mark to
+ *    borrow their credibility.
+ *  - The US FTC's Rule on Consumer Reviews and Testimonials (16 CFR Part 465,
+ *    in force since October 2024) prohibits writing or disseminating reviews
+ *    attributed to people who do not exist, with civil penalties per violation.
+ *  - In India, the Consumer Protection Act 2019 and the CCPA's guidelines on
+ *    misleading advertisements treat fabricated endorsements the same way, and
+ *    the reviews carried invented student names and graduating classes.
+ *
+ * So the panel now shows what `CounsellorWorkspaceWall` already shows on the
+ * counsellor side, for the reason given there: the pages that actually exist
+ * behind the form, by their real labels and real descriptions, read straight
+ * from the nav definitions. Every card is a claim that can be checked by
+ * signing in. When a page is added to the product it appears here too, and
+ * there is no second list to keep honest.
+ *
+ * If real reviews are collected later - with the reviewer's informed consent,
+ * their own words, and a record of who said them - they can be shown here. They
+ * must be genuine, attributed accurately, and must not be dressed as a
+ * third-party platform's ratings.
+ */
+
+interface SurfaceCard {
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+const SURFACES: SurfaceCard[] = [
+  ...ROUTINE_DESTINATIONS.map(({ label, description, icon }) => ({ label, description, icon })),
+  ...COMMUNICATIONS_DESTINATIONS.map(({ label, description, icon }) => ({
+    label,
+    description,
+    icon,
+  })),
+];
+
+function Card({ label, description, icon: Icon }: SurfaceCard) {
   return (
-    <div
-      className={`flex items-center gap-0.5 ${className}`}
-      role="img"
-      aria-label={`${rating} out of 5 stars`}
-    >
-      {[0, 1, 2, 3, 4].map((i) => (
-        <Star
-          key={i}
-          aria-hidden="true"
-          className={
-            i < rating
-              ? "h-4 w-4 fill-[#f5b400] text-[#f5b400]"
-              : "h-4 w-4 fill-muted text-muted"
-          }
-        />
-      ))}
+    <div className="w-56 rounded-xl border border-border bg-card/70 p-3.5">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg border border-border bg-muted">
+          <Icon className="h-4 w-4 text-foreground" />
+        </span>
+        <p className="truncate text-[14px] font-semibold leading-snug text-foreground">{label}</p>
+      </div>
+      <p className="mt-2.5 text-[12.5px] leading-relaxed text-muted-foreground">{description}</p>
     </div>
   );
 }
 
-function GoogleGlyph({ className = "" }: { className?: string }) {
-  return (
-    <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true" className={className}>
-      <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
-      <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
-      <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
-      <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303a12.04 12.04 0 0 1-4.087 5.571l.003-.002 6.19 5.238C36.971 39.205 44 34 44 24c0-1.341-.138-2.65-.389-3.917z" />
-    </svg>
-  );
+/** Deal round-robin so no column is all one part of the product. */
+function dealIntoColumns(items: SurfaceCard[], columns: number) {
+  const out: SurfaceCard[][] = Array.from({ length: columns }, () => []);
+  items.forEach((item, i) => out[i % columns].push(item));
+  return out;
 }
 
-const average =
-  studentReviews.reduce((sum, r) => sum + r.rating, 0) / studentReviews.length;
-
-// Split into columns that each crawl at a slightly different speed. Equal
-// speeds read as one rigid sheet sliding past; the offset is what makes it
-// look like separate columns of independent reviews.
-const columnA = studentReviews.slice(0, 4);
-const columnB = studentReviews.slice(4, 8);
-const columnC = studentReviews.slice(8, 12);
-
-/**
- * The left-hand column of the auth screen: the aggregate rating, then columns
- * of review cards crawling slowly upward under a top-and-bottom fade.
- *
- * Previously this rotated one card at a time on a 4-second timer, which put a
- * moving element next to a form and gave the eye something to chase while
- * typing a password. A continuous slow crawl reads as texture instead — there
- * is no "next" moment to wait for, so nothing competes with the form.
- */
 export function ReviewsRail() {
+  const columns = dealIntoColumns(SURFACES, 3);
+
+  /*
+   * Real reviews, on the reel.
+   *
+   * The surface is wired up and empty: `studentReviews` holds nothing, so this
+   * branch is dead until genuine, consented reviews are collected, and the
+   * panel below runs instead. That is the whole design — the reviews surface
+   * exists, and the only way to fill it is to collect some.
+   */
+  const reel = toReelTestimonials(studentReviews);
+  if (reel.length) {
+    return (
+      <div className="w-full max-w-[37rem] 2xl:max-w-[56rem]">
+        <AuthQuote quotes={STUDENT_AUTH_QUOTES} className="mb-9" />
+        <ReviewReel
+          testimonials={reel}
+          eyebrow="Student reviews"
+          title="What students say"
+          caption="Published with consent, in the student's own words."
+        />
+      </div>
+    );
+  }
+
   return (
-    // Sized to whole columns: two fit by default, three once the panel is
-    // wide enough to hold them, and neither case shows a half-column.
     <div className="w-full max-w-[37rem] 2xl:max-w-[56rem]">
-      <div className="mb-6 flex items-center gap-3">
-        <GoogleGlyph className="h-6 w-6" />
-        <span className="text-4xl font-semibold leading-none text-foreground">
-          {average.toFixed(1)}
-        </span>
-        <div>
-          <Stars rating={Math.round(average)} />
-          <p className="mt-1 text-xs text-muted-foreground">
-            {studentReviews.length} student reviews
-          </p>
-        </div>
+      {/* The editorial line leads, the pages follow. The cards say what is
+          behind the sign-in; this says what the thing behind the sign-in is
+          for, and that is the shorter of the two arguments. */}
+      <AuthQuote quotes={STUDENT_AUTH_QUOTES} className="mb-9" />
+
+      <div className="mb-6">
+        <h2 className="text-2xl font-semibold leading-tight text-foreground">
+          What's behind the sign-in
+        </h2>
+        <p className="mt-1.5 text-sm text-muted-foreground">
+          Every card is a page of the product, described the way it describes itself.
+        </p>
       </div>
 
-      {/* The mask is what sells the loop: cards fade out before they reach
-          either edge, so neither the seam nor a half-clipped card is ever
-          visible at the boundary. */}
+      {/* Cards fade out before either edge, so the loop seam is never visible. */}
       <div className="flex max-h-[30rem] justify-start gap-5 overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,black_12%,black_88%,transparent)]">
-        <TestimonialsColumn testimonials={columnA} duration={26} />
-        <TestimonialsColumn testimonials={columnB} className="hidden xl:block" duration={32} />
-        <TestimonialsColumn testimonials={columnC} className="hidden 2xl:block" duration={29} />
+        {columns.map((column, i) => (
+          <Marquee
+            key={i}
+            vertical
+            pauseOnHover
+            ariaLabel="Pathforge pages"
+            className={cn(
+              "[--gap:1.25rem]",
+              // Speed is a CSS variable on this component, not a prop. Equal
+              // speeds read as one rigid sheet, so each column differs.
+              ["[--duration:26s]", "[--duration:32s]", "[--duration:29s]"][i],
+              i === 1 && "hidden xl:flex",
+              i === 2 && "hidden 2xl:flex",
+            )}
+          >
+            {column.map((item) => (
+              <Card key={item.label} {...item} />
+            ))}
+          </Marquee>
+        ))}
       </div>
     </div>
   );

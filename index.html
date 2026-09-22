@@ -10,6 +10,22 @@
     <link rel="preconnect" href="https://aupymiiwhfnaoduvxyzt.supabase.co" crossorigin>
     <link rel="dns-prefetch" href="https://translate.google.com">
 
+    <!-- Fraunces, the serif. Declared here rather than in index.css because
+         the bundled stylesheet is fetched after this document parses, and a
+         @font-face the browser only learns about then starts its download a
+         round trip late. Without it `font-serif` silently falls back to
+         Georgia — which is what the sign-in quote was rendering in. -->
+    <link rel="preload" as="font" type="font/woff2" href="/fonts/fraunces-latin-wght-normal.woff2" crossorigin>
+    <style>
+      @font-face {
+        font-family: 'Fraunces Variable';
+        font-style: normal;
+        font-display: swap;
+        font-weight: 100 900;
+        src: url('/fonts/fraunces-latin-wght-normal.woff2') format('woff2-variations');
+      }
+    </style>
+
     <!-- Preload the landing hero so it decodes in parallel with JS/CSS -->
     <link rel="preload" as="image" href="/assets/hero-campus-cinematic-v1.webp" fetchpriority="high">
     

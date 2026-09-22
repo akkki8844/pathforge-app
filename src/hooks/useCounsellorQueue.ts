@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { counsellorDb } from "@/integrations/supabase/counsellor";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
@@ -75,15 +75,13 @@ export function useCounsellorQueue(studentIds: string[]) {
       startOfDay.setHours(0, 0, 0, 0);
 
       const [essayRes, meetingRes] = await Promise.all([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from as any)("essay_submissions")
+        counsellorDb.from("essay_submissions")
           .select("id,student_id,title,status,created_at")
           .in("student_id", ids)
           .in("status", ["pending", "flagged", "revision_requested"])
           .order("created_at", { ascending: true })
           .limit(50),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (supabase.from as any)("counsellor_interactions")
+        counsellorDb.from("counsellor_interactions")
           .select("id,student_id,summary,occurred_at,kind")
           .eq("counsellor_id", user.id)
           .eq("kind", "meeting")
@@ -95,19 +93,27 @@ export function useCounsellorQueue(studentIds: string[]) {
       if (cancelled) return;
 
       setEssays(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ((essayRes.data as any[] | null) ?? []).map((e) => ({
-          id: e.id,
-          student_id: e.student_id,
-          title: e.title,
-          status: e.status,
-          created_at: e.created_at,
-          waitingDays: daysSince(e.created_at),
-        })),
+        (essayRes.data ?? [])
+          // The query already excludes "reviewed", but the row type covers
+          // every status the column can hold, so the narrowing has to be
+          // stated here too. Repeating it is the point: if the `.in()` filter
+          // above is ever widened, this is what stops a reviewed essay
+          // silently appearing in the outstanding queue.
+          .filter(
+            (e): e is typeof e & { status: PendingEssay["status"] } =>
+              e.status !== "reviewed",
+          )
+          .map((e) => ({
+            id: e.id,
+            student_id: e.student_id,
+            title: e.title,
+            status: e.status,
+            created_at: e.created_at,
+            waitingDays: daysSince(e.created_at),
+          })),
       );
       setMeetings(
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ((meetingRes.data as any[] | null) ?? []).map((m) => ({
+        (meetingRes.data ?? []).map((m) => ({
           id: m.id,
           student_id: m.student_id,
           summary: m.summary,

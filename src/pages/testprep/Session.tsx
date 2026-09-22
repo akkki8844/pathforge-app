@@ -21,6 +21,11 @@ import {
   BB_NAV_CIRCLE_ANSWERED,
   BB_NAV_CIRCLE_CURRENT,
   BB_NAV_FLAG,
+  BB_TIMER,
+  BB_TOOLBAR,
+  BB_TOOLBAR_BUTTON,
+  BB_TOOLBAR_FG,
+  BB_TOOLBAR_MUTED,
   FOCUS,
   ROW_HOVER,
   SURFACE,
@@ -137,16 +142,38 @@ function SessionRunner() {
     setFinished(true);
   }, [checked, config.kind, finished, given, label, questions]);
 
-  // Countdown, for timed sets only. One interval, cleared on unmount, and it
-  // finishes the session rather than silently continuing past the limit.
+  /*
+   * Countdown, for timed sets only.
+   *
+   * Measured against a deadline rather than by decrementing once per
+   * `setInterval` tick. Browsers throttle timers in background tabs — Chrome
+   * to roughly once a minute — so a counter measures how long the tab was
+   * watched rather than how long the set took, and a "20 minute" set became
+   * as long as the student wanted by switching away. The same fix as the exam
+   * runner's module clock, for the same reason.
+   *
+   * The interval now only decides how often the number refreshes.
+   */
   const [remaining, setRemaining] = useState(config.timeLimit ? config.timeLimit * 60 : null);
+  const deadline = useRef(
+    config.timeLimit ? Date.now() + config.timeLimit * 60 * 1000 : 0,
+  );
+  const timed = config.timeLimit ? true : false;
   useEffect(() => {
-    if (remaining === null || finished) return;
-    const t = window.setInterval(() => {
-      setRemaining((r) => (r === null ? null : Math.max(0, r - 1)));
-    }, 1000);
-    return () => window.clearInterval(t);
-  }, [remaining === null, finished]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!timed || finished) return;
+    const sync = () =>
+      setRemaining(Math.max(0, Math.ceil((deadline.current - Date.now()) / 1000)));
+    sync();
+    const t = window.setInterval(sync, 1000);
+    // A backgrounded tab may not have ticked for minutes; correct the display
+    // as soon as it is looked at again rather than on the next interval.
+    const onVisible = () => { if (!document.hidden) sync(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.clearInterval(t);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [timed, finished]);
 
   useEffect(() => {
     if (remaining === 0 && !finished) finish();
@@ -235,37 +262,50 @@ function SessionRunner() {
       />
       <div className="bluebook section-container py-6 sm:py-8">
         <div className="mx-auto max-w-3xl">
-          {/* Session bar. Deliberately thin: a practice run is one question at a
-              time, and everything else on screen competes with it. */}
-          <div className="flex items-baseline justify-between gap-4">
+          {/* Session bar.
+
+              Still one row, but now the section's own chrome rather than three
+              grey labels on white: the blue field, the yellow rule closing it,
+              and the progress bar underneath. A practice run and a timed module
+              are the same product, and until this bar existed only one of them
+              looked like it.
+
+              The low-time colour is the yellow, not `--destructive` — inside
+              `.bluebook` that token is black, which on a blue bar is not a
+              warning, it is a hole. */}
+          <div
+            className={cn(
+              BB_TOOLBAR,
+              "flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-t-xl px-4 py-2.5",
+            )}
+          >
             <Link
               to={sectionHref(blueprint.id, "practice")}
-              className={cn(
-                "rounded-md text-xs text-muted-foreground transition-colors hover:text-foreground",
-                FOCUS,
-              )}
+              className={cn(BB_TOOLBAR_BUTTON, FOCUS)}
             >
               <span aria-hidden="true">← </span>Exit practice
             </Link>
-            <div className="flex items-baseline gap-4">
+
+            <p className={cn("min-w-0 truncate text-sm font-bold", BB_TOOLBAR_FG)}>{label}</p>
+
+            <div className="flex items-center gap-3">
               {remaining !== null && (
                 <span
                   className={cn(
+                    BB_TIMER,
                     "font-display text-sm font-bold tabular-nums transition-colors",
-                    remaining <= 60 ? "text-destructive" : "text-muted-foreground",
+                    remaining <= 60 ? "text-[hsl(var(--bb-rule))]" : BB_TOOLBAR_FG,
                   )}
                 >
                   {formatClock(remaining)}
                 </span>
               )}
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span className={cn("text-xs tabular-nums", BB_TOOLBAR_MUTED)}>
                 {index + 1} of {questions.length}
               </span>
             </div>
           </div>
-
-          <p className="mt-3 text-sm font-semibold tracking-[-0.005em] text-foreground">{label}</p>
-          <Bar value={(index + 1) / questions.length} className="mt-2.5" />
+          <Bar value={(index + 1) / questions.length} className="rounded-none" />
 
           <div className={cn("mt-6 p-4 sm:p-6", SURFACE)}>
             <AnimatePresence mode="wait" initial={false}>
@@ -439,7 +479,7 @@ function SessionSummary({
           </p>
           <p className="mt-2.5 font-display text-[44px] font-bold leading-none tabular-nums tracking-tight text-foreground">
             {attempt.correct}
-            <span className="text-muted-foreground/60"> / {attempt.totalQuestions}</span>
+            <span className="text-muted-foreground"> / {attempt.totalQuestions}</span>
           </p>
         </Reveal>
 

@@ -131,7 +131,7 @@ export const COMMAND_ROUTES: Record<string, string> = {
   essays: "/essays",
   activities: "/activities",
   scholarships: "/scholarships",
-  planner: "/weekly-planner",
+  planner: "/routine/calendar",
   profile: "/profile",
   usage: "/profile?section=usage",
 };

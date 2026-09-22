@@ -1,8 +1,9 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { fadeUp, staggerParent, transition } from "@/lib/motion";
 import { ScrollReveal } from "@/components/animations/ScrollReveal";
-import { Mail, Send, Check, User, MessageSquare, Tag, Clock, Star } from "lucide-react";
+import { Mail, Send, Check, User, MessageSquare, Tag, Clock, Star, Phone, Building2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -162,6 +163,56 @@ export default function Contact() {
               </p>
             </motion.div>
 
+            {/* Business details.
+
+                Required, not decorative: the Consumer Protection (E-Commerce)
+                Rules 2020 r.5(3) oblige a seller to display who it is and how to
+                reach it, and a buyer is entitled to know who they are
+                contracting with before they pay. Paddle is the Merchant of
+                Record, which is why it is named here too. */}
+            <motion.div variants={fadeUp} className="rounded-2xl border border-border/50 bg-card p-5">
+              <div className="h-10 w-10 rounded-xl bg-accent/10 flex items-center justify-center mb-3">
+                <Building2 className="h-5 w-5 text-accent" />
+              </div>
+              <h2 className="font-semibold text-foreground text-sm">Business details</h2>
+              <dl className="mt-2 space-y-1.5 text-sm text-muted-foreground">
+                <div>
+                  <dt className="sr-only">Business name</dt>
+                  <dd><span className="text-foreground font-medium">Pathforge</span></dd>
+                </div>
+                <div>
+                  <dt className="inline">Owner: </dt>
+                  <dd className="inline text-foreground">Govind Mulchandani</dd>
+                </div>
+                <div>
+                  <dt className="sr-only">Phone</dt>
+                  <dd>
+                    <a
+                      href="tel:+918888918844"
+                      className="inline-flex min-h-[44px] items-center gap-1.5 text-accent hover:underline"
+                    >
+                      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                      +91 88889 18844
+                    </a>
+                  </dd>
+                </div>
+                <div>
+                  <dt className="sr-only">Business email</dt>
+                  <dd>
+                    <a
+                      href="mailto:mulchandaniakshay39@gmail.com"
+                      className="text-accent hover:underline break-all"
+                    >
+                      mulchandaniakshay39@gmail.com
+                    </a>
+                  </dd>
+                </div>
+              </dl>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Paddle.com is the Merchant of Record for all Pathforge orders.
+              </p>
+            </motion.div>
+
             <motion.div variants={fadeUp} className="rounded-2xl border border-border/50 bg-card p-5">
               <h2 className="font-semibold text-foreground text-sm mb-2">Looking for…</h2>
               <ul className="text-sm text-muted-foreground space-y-1.5">
@@ -263,8 +314,15 @@ export default function Contact() {
                     )}
                   </Button>
 
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    By submitting this form, you agree we may contact you about your inquiry.
+                  {/* Consent and purpose stated where the data is handed over,
+                      not only in the policy. We use what you type here to answer
+                      you and nothing else. */}
+                  <p className="text-[11px] leading-relaxed text-muted-foreground text-center">
+                    By sending this, you agree we may use your name and email to reply to this
+                    enquiry. We will not add you to any mailing list from here, and we do not sell
+                    your data. See our{" "}
+                    <Link to="/privacy" className="underline hover:text-foreground">Privacy Notice</Link>.
+                    If you are under 18, please ask a parent or guardian before contacting us.
                   </p>
                 </motion.form>
               )}

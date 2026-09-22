@@ -45,15 +45,15 @@ export function LevelDetailModal({
   const guide = tasks[0];
 
   const statusBadge = isCompleted
-    ? { label: "Completed", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" }
+    ? { label: "Completed", cls: "bg-success/15 text-success border-success/30" }
     : isVerified
-    ? { label: "Verified — ready to claim", cls: "bg-emerald-500/15 text-emerald-700 border-emerald-500/30" }
+    ? { label: "Verified — ready to claim", cls: "bg-success/15 text-success border-success/30" }
     : status === "verifying" || status === "pending"
     ? { label: "Verifying", cls: "bg-primary/15 text-primary border-primary/30" }
     : status === "needs_review"
-    ? { label: "In admin review", cls: "bg-amber-500/15 text-amber-700 border-amber-500/30" }
+    ? { label: "In admin review", cls: "bg-warning/15 text-warning border-warning/30" }
     : status === "rejected"
-    ? { label: "Evidence rejected", cls: "bg-rose-500/15 text-rose-700 border-rose-500/30" }
+    ? { label: "Evidence rejected", cls: "bg-destructive/15 text-destructive border-destructive/30" }
     : isCurrent
     ? { label: "In progress", cls: "bg-primary/15 text-primary border-primary/30" }
     : isLocked
@@ -108,7 +108,7 @@ export function LevelDetailModal({
             {/* What success looks like — the stage's own outcome */}
             <div className="rounded-xl border bg-muted/30 p-4">
               <div className="flex items-center gap-2 mb-1.5">
-                <Trophy className="h-4 w-4 text-amber-500" />
+                <Trophy className="h-4 w-4 text-warning" />
                 <h4 className="text-xs font-bold uppercase tracking-wider text-foreground">
                   What counts as done
                 </h4>
@@ -171,15 +171,15 @@ export function LevelDetailModal({
           <div className="border-t bg-muted/30 p-4 flex items-center justify-between gap-3 flex-wrap">
             <div className="text-xs text-muted-foreground flex items-center gap-1.5">
               {isCompleted ? (
-                <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Stage banked — next one is open.</>
+                <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Stage banked — next one is open.</>
               ) : canClaim ? (
-                <><CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" /> Evidence verified. Claim it to move on.</>
+                <><CheckCircle2 className="h-3.5 w-3.5 text-success" /> Evidence verified. Claim it to move on.</>
               ) : status === "verifying" || status === "pending" ? (
                 <><Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> Checking your evidence…</>
               ) : status === "needs_review" ? (
-                <><AlertCircle className="h-3.5 w-3.5 text-amber-600" /> An admin is reviewing this.</>
+                <><AlertCircle className="h-3.5 w-3.5 text-warning" /> An admin is reviewing this.</>
               ) : status === "rejected" ? (
-                <><XCircle className="h-3.5 w-3.5 text-rose-600" /> Upload clearer evidence to try again.</>
+                <><XCircle className="h-3.5 w-3.5 text-destructive" /> Upload clearer evidence to try again.</>
               ) : (
                 <><Lock className="h-3.5 w-3.5" /> Submit verified evidence to complete this stage.</>
               )}

@@ -450,7 +450,7 @@ function Field({
         <span className="font-display text-[10px] font-bold uppercase tracking-[0.16em] text-muted-foreground">
           {label}
         </span>
-        {hint && <span className="ml-2 text-[11px] text-muted-foreground/70">{hint}</span>}
+        {hint && <span className="ml-2 text-[11px] text-muted-foreground">{hint}</span>}
         <textarea
           value={value}
           onChange={(e) => onChange(e.target.value)}

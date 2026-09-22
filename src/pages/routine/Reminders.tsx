@@ -398,7 +398,7 @@ export default function Reminders() {
                             {r.title}
                           </p>
                           {r.completed_at && (
-                            <p className="text-[11px] text-muted-foreground/80">
+                            <p className="text-[11px] text-muted-foreground">
                               {relativeDayLabel(new Date(r.completed_at), now)}
                             </p>
                           )}
@@ -661,7 +661,7 @@ function ReminderList({
                     )}
                   </p>
                   {r.notes && (
-                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground/80">{r.notes}</p>
+                    <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{r.notes}</p>
                   )}
                 </button>
 

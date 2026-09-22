@@ -117,7 +117,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
         {menuGroups.map((group) => (
           <div key={group.label}>
             {!collapsed && (
-              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {group.label}
               </div>
             )}
@@ -150,7 +150,7 @@ export function AdminSidebar({ activeSection, onSectionChange }: AdminSidebarPro
       {/* Footer */}
       <div className="p-2 border-t border-border space-y-0.5">
         {!collapsed && user?.email && (
-          <div className="px-3 pb-1.5 pt-1 text-[10px] text-muted-foreground/80 truncate" title={user.email}>
+          <div className="px-3 pb-1.5 pt-1 text-[10px] text-muted-foreground truncate" title={user.email}>
             {user.email}
           </div>
         )}

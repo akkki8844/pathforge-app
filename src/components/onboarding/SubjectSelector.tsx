@@ -196,7 +196,7 @@ export function SubjectSelector({ curriculum, value, onChange, max = 12, min = 2
                           isSelected
                             ? "font-medium text-foreground"
                             : disabled
-                              ? "cursor-not-allowed text-muted-foreground/60"
+                              ? "cursor-not-allowed text-muted-foreground"
                               : "text-muted-foreground hover:text-foreground",
                         )}
                       >

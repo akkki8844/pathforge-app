@@ -34,6 +34,17 @@ export function AuthShell({
    * they would be unreadable inverted).
    */
   tone = "primary",
+  /**
+   * What sits under the form on the narrow layout, where the left column is
+   * gone entirely.
+   *
+   * The aside is hidden below `lg`, so on a phone the panel's whole argument
+   * disappears and the page is eight inputs on an empty background. This slot
+   * is for the one piece of it worth carrying down — in practice the editorial
+   * line — at the bottom of the column rather than above the fields, because
+   * nothing should sit between a sign-in page's heading and its first input.
+   */
+  narrowAside,
   /** Where the back link goes. Defaults to the landing page. */
   backTo = "/",
   backLabel = "Back to Pathforge",
@@ -42,6 +53,7 @@ export function AuthShell({
   children: ReactNode;
   eyebrow?: string;
   tone?: "primary" | "muted";
+  narrowAside?: ReactNode;
   backTo?: string;
   backLabel?: string;
 }) {
@@ -121,6 +133,12 @@ export function AuthShell({
         </div>
 
         <div className="mx-auto w-full max-w-[26rem]">{children}</div>
+
+        {narrowAside && (
+          <div className="mx-auto mt-12 w-full max-w-[26rem] border-t border-border pt-8 lg:hidden">
+            {narrowAside}
+          </div>
+        )}
       </main>
     </div>
   );

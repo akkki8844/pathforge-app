@@ -1,4 +1,5 @@
 import { TeacherLayout } from "@/components/teacher/TeacherLayout";
+import { Seo } from "@/components/Seo";
 import { useTeacherFeedback } from "@/hooks/useTeacherFeedback";
 import { Badge } from "@/components/ui/badge";
 
@@ -7,9 +8,18 @@ export default function TeacherFeedback() {
 
   return (
     <TeacherLayout>
+      <Seo
+        title="Feedback log"
+        description="Everything you have sent a student."
+        path="/teacher/feedback"
+        noindex
+      />
+
       <div className="mb-6">
-        <h1 className="text-2xl font-bold">Feedback log</h1>
-        <p className="text-sm text-muted-foreground mt-1">All feedback you've sent. Open a student to compose new notes.</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-foreground">Feedback log</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          Everything you have sent a student, newest first. Open a student to write a new note.
+        </p>
       </div>
 
       {loading ? (

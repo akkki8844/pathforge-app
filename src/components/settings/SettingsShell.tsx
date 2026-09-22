@@ -112,7 +112,7 @@ export function SettingsShell({
             <nav className="space-y-7">
               {NAV_GROUPS.map((group) => (
                 <div key={group.label}>
-                  <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground/70">
+                  <p className="px-3 mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                     {group.label}
                   </p>
                   <div className="flex flex-col gap-1">
@@ -157,7 +157,7 @@ export function SettingsShell({
                               <span className="text-[15px] font-semibold leading-tight">
                                 {item.label}
                               </span>
-                              <span className="mt-0.5 text-[12px] text-muted-foreground/80 leading-tight truncate">
+                              <span className="mt-0.5 text-[12px] text-muted-foreground leading-tight truncate">
                                 {item.hint}
                               </span>
                             </span>
@@ -190,7 +190,7 @@ export function SettingsShell({
               >
                 {activeMeta && (
                   <div className="mb-6 hidden lg:block">
-                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground/70">
+                    <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">
                       {activeMeta.label}
                     </p>
                   </div>

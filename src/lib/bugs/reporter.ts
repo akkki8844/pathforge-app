@@ -49,6 +49,23 @@ const pageLoadedAt = Date.now();
 /** True while a report is in flight, so reporting cannot recurse into itself. */
 let reporting = false;
 
+/**
+ * Whether a captured failure is written to `bug_reports` at all.
+ *
+ * `bug_reports` is the production admin's list of what is broken for real
+ * users. A dev server does not belong in it: half the "Failed to fetch" rows in
+ * that table turned out to be somebody's `vite` being stopped mid-request, and
+ * a row that says `http://localhost:5199` costs an admin the same attention as
+ * a row that says pathforge.co.in while meaning nothing.
+ *
+ * Capture itself stays on locally -- the red banner still appears and the
+ * console still has everything -- because that is the feedback a developer
+ * wants. Only the write to the shared table is skipped.
+ */
+const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "0.0.0.0"]);
+const filingEnabled = (): boolean =>
+  typeof window === "undefined" ? false : !LOCAL_HOSTS.has(window.location.hostname);
+
 export function addBreadcrumb(kind: Breadcrumb["kind"], label: string, detail?: string) {
   breadcrumbs.push({
     t: Date.now() - pageLoadedAt,
@@ -204,6 +221,19 @@ export async function reportBug(payload: BugReportPayload): Promise<string | nul
       recentErrors.splice(5);
     }
 
+    if (!filingEnabled()) {
+      if (payload.source !== "user_report") {
+        announce({
+          id: null,
+          source: payload.source,
+          severity: payload.severity ?? "medium",
+          title: payload.title,
+          message: payload.error_message || payload.title,
+        });
+      }
+      return null;
+    }
+
     reporting = true;
     const { data, error } = await supabase.rpc("report_bug" as never, {
       _payload: {
@@ -350,13 +380,106 @@ function installConsoleCapture() {
   };
 }
 
+/** How many times a replayable request is retried after a network failure. */
+const NETWORK_RETRIES = 2;
+/** Backoff before each retry, in ms. One entry per retry. */
+const RETRY_BACKOFF_MS = [400, 1200];
+
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 /**
- * Watch every request the app makes to our own backend.
+ * Can this request be sent again safely?
+ *
+ * A `TypeError: Failed to fetch` means no response came back, not that nothing
+ * happened: the request may have reached the server and been applied. So only
+ * methods that HTTP defines as idempotent are replayed. A POST -- an insert, an
+ * edge function call, a PostgREST rpc -- is never retried here, because sending
+ * it twice could double-post a message or spend a credit twice.
+ */
+function isReplayable(input: RequestInfo | URL, init?: RequestInit): boolean {
+  const method = (
+    init?.method ?? (typeof Request !== "undefined" && input instanceof Request ? input.method : "GET")
+  ).toUpperCase();
+  return method === "GET" || method === "HEAD";
+}
+
+/**
+ * Is a network failure this app's fault, or the network's?
+ *
+ * `Failed to fetch` was the most common row in the bug table and almost none of
+ * it was actionable. A dropped wifi frame, a tab the browser froze in the
+ * background, a laptop lid closing mid-request -- all of them surface as the
+ * same bare TypeError against our own origin, and each one raised a red
+ * "Request to Pathforge API failed" bar at a user whose next click worked fine.
+ *
+ * Two conditions say plainly that the request never had a chance, and neither
+ * is something an engineer can fix:
+ *
+ *  - The browser reports itself offline.
+ *  - The tab is hidden. Browsers throttle and freeze background tabs and cancel
+ *    what is in flight; the request is reissued when the tab comes back.
+ *
+ * Anything else is still reported, because a request to our own backend failing
+ * while the user is sitting there looking at the page is a real symptom.
+ */
+function networkFailureIsReportable(): boolean {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) return false;
+  if (typeof document !== "undefined" && document.visibilityState === "hidden") return false;
+  return true;
+}
+
+/**
+ * What the browser says when a request dies, and what a person should read.
+ *
+ * `TypeError: Failed to fetch` is the browser telling a developer that no
+ * response arrived. Around a hundred call sites in this app put an error's
+ * message straight into a toast, so that sentence -- which names no product,
+ * no action and no remedy -- is what the user was shown. Rewriting each of
+ * those call sites would be a hundred chances to change behaviour by accident;
+ * rewriting the message once, here, where every request already passes, is the
+ * same fix in one place.
+ *
+ * The error object itself is kept: same instance, same prototype, same stack,
+ * so anything matching on the type (supabase-js decides whether to retry an
+ * auth call by the error's `name`) is unaffected. Only `message` changes, and
+ * only after the bug report has already recorded the original string, so the
+ * admin list keeps the technical text.
+ */
+const NETWORK_MESSAGE_PATTERN = /failed to fetch|networkerror|network request failed|load failed/i;
+
+function humaniseNetworkError(error: unknown, isOurs: boolean): void {
+  if (!isOurs || !(error instanceof Error)) return;
+  if (!NETWORK_MESSAGE_PATTERN.test(error.message)) return;
+  try {
+    error.message =
+      typeof navigator !== "undefined" && navigator.onLine === false
+        ? "You appear to be offline. Reconnect and try again."
+        : "Could not reach Pathforge. Check your connection and try again.";
+  } catch {
+    // Some environments freeze error objects. The original message is still
+    // better than throwing from inside error handling.
+  }
+}
+
+/**
+ * Watch every request the app makes to our own backend, and retry the ones
+ * that are safe to retry.
  *
  * `supabase.functions.invoke` goes through `fetch`, so patching fetch once
  * catches every edge function failure -- including the ones whose callers
  * swallow the error -- without wrapping each of the 40-odd call sites. REST and
  * storage failures come along for free.
+ *
+ * WHY THE RETRY LIVES HERE AND NOT IN REACT QUERY
+ *
+ * React Query's `retry` only covers what a query hook asked for. Realtime
+ * token refreshes, storage uploads, `functions.invoke` from an event handler
+ * and every direct `supabase.from(...)` inside a `useEffect` bypass it
+ * entirely. More importantly, the report was filed on the FIRST failure, before
+ * React Query ever got to its retry -- so a request that recovered a second
+ * later had already raised a red banner and filed a bug. Retrying at the one
+ * place every request passes through fixes both: the app recovers, and nothing
+ * is reported unless the recovery also failed.
  */
 function installFetchCapture() {
   const apiOrigin = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
@@ -369,56 +492,84 @@ function installFetchCapture() {
     const fnMatch = isOurs ? url.match(/\/functions\/v1\/([^/?]+)/) : null;
     const functionName = fnMatch?.[1] ?? null;
 
-    try {
-      const response = await originalFetch(input as RequestInfo, init);
+    const replayable = isReplayable(input, init);
+    let attempt = 0;
 
-      if (isOurs && !response.ok) {
-        // 401/403 on an edge function is usually an expired session, which the
-        // auth layer handles by re-authenticating. 404 on a REST filter is a
-        // normal empty result. Neither is a bug.
-        const expected = response.status === 401 || response.status === 403 || response.status === 404;
-        if (!expected) {
-          // Read the body from a clone so the caller still gets an unconsumed
-          // response -- reading the original would break every call site.
-          let body = "";
-          try {
-            body = (await response.clone().text()).slice(0, 1000);
-          } catch {
-            /* body already consumed or not text */
+    // Loops only on a retry; every other path returns or throws.
+    while (true) {
+      try {
+        const response = await originalFetch(input as RequestInfo, init);
+
+        if (isOurs && !response.ok) {
+          // 401/403 on an edge function is usually an expired session, which
+          // the auth layer handles by re-authenticating. 404 on a REST filter
+          // is a normal empty result. Neither is a bug.
+          const expected =
+            response.status === 401 || response.status === 403 || response.status === 404;
+          if (!expected) {
+            // Read the body from a clone so the caller still gets an unconsumed
+            // response -- reading the original would break every call site.
+            let body = "";
+            try {
+              body = (await response.clone().text()).slice(0, 1000);
+            } catch {
+              /* body already consumed or not text */
+            }
+            addBreadcrumb("request", `${response.status} ${functionName ?? url}`);
+            void reportBug({
+              source: functionName ? "edge_function" : "network",
+              severity: response.status >= 500 ? "high" : "medium",
+              title: functionName
+                ? `Edge function ${functionName} returned ${response.status}`
+                : `Request failed with ${response.status}`,
+              error_message: body || `${response.status} ${response.statusText}`,
+              function_name: functionName,
+              http_status: response.status,
+              context: { url: url.replace(apiOrigin, ""), method: init?.method ?? "GET" },
+            });
           }
-          addBreadcrumb("request", `${response.status} ${functionName ?? url}`);
+        }
+
+        return response;
+      } catch (networkError) {
+        // A replayable request to our own backend gets a second and third go
+        // before any of this counts as a failure. Retrying while the browser
+        // is offline or the tab is frozen only burns the attempts on a
+        // connection that cannot work, so those wait for the next real call.
+        if (
+          isOurs &&
+          replayable &&
+          attempt < NETWORK_RETRIES &&
+          networkFailureIsReportable()
+        ) {
+          await wait(RETRY_BACKOFF_MS[attempt] ?? 1200);
+          attempt += 1;
+          continue;
+        }
+
+        const { message, stack } = messageOf(networkError);
+        if (isOurs && networkFailureIsReportable() && !shouldIgnore(message, stack)) {
+          addBreadcrumb("request", `network failure ${functionName ?? url}`);
           void reportBug({
             source: functionName ? "edge_function" : "network",
-            severity: response.status >= 500 ? "high" : "medium",
+            severity: "high",
             title: functionName
-              ? `Edge function ${functionName} returned ${response.status}`
-              : `Request failed with ${response.status}`,
-            error_message: body || `${response.status} ${response.statusText}`,
+              ? `Edge function ${functionName} could not be reached`
+              : "Request to Pathforge API failed",
+            error_message: message,
+            error_stack: stack,
             function_name: functionName,
-            http_status: response.status,
-            context: { url: url.replace(apiOrigin, ""), method: init?.method ?? "GET" },
+            context: {
+              url: url.replace(apiOrigin, ""),
+              method: init?.method ?? "GET",
+              attempts: attempt + 1,
+            },
           });
         }
-      }
 
-      return response;
-    } catch (networkError) {
-      const { message, stack } = messageOf(networkError);
-      if (isOurs && !shouldIgnore(message, stack)) {
-        addBreadcrumb("request", `network failure ${functionName ?? url}`);
-        void reportBug({
-          source: functionName ? "edge_function" : "network",
-          severity: "high",
-          title: functionName
-            ? `Edge function ${functionName} could not be reached`
-            : "Request to Pathforge API failed",
-          error_message: message,
-          error_stack: stack,
-          function_name: functionName,
-          context: { url: url.replace(apiOrigin, ""), method: init?.method ?? "GET" },
-        });
+        humaniseNetworkError(networkError, isOurs);
+        throw networkError;
       }
-      throw networkError;
     }
   };
 }
