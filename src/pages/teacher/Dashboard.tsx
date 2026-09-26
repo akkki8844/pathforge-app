@@ -73,7 +73,7 @@ export default function TeacherDashboard() {
        * Inter and re-declare the neutrals cool. Scoped here so the rest of the
        * counsellor workspace is untouched.
        */}
-      <div data-dash className="relative min-h-screen bg-background">
+      <div data-dash className="relative min-h-[100svh] bg-background">
         <GridField />
 
         <div className="pad-safe-x pad-safe-bottom relative mx-auto w-full max-w-[1200px] px-5 pb-28 pt-10 sm:px-8 sm:pt-14">

@@ -14,6 +14,7 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger,
 } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { CredlyCredentials } from "@/components/credentials/CredlyCredentials";
 import { Input } from "@/components/ui/input";
 import { Eyebrow, ColumnHead, Tag } from "@/components/cluely/primitives";
 import {
@@ -871,7 +872,7 @@ export default function Activities() {
    * ~430px, which is enough for a two-line title and a description worth
    * reading. Paging the list is what pays for the extra height.
    */
-  const gridClass = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4";
+  const gridClass = "grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 [&>*]:min-w-0";
 
   return (
     <div data-cluely className="min-h-svh bg-background font-cluely">
@@ -902,7 +903,7 @@ export default function Activities() {
               <HeaderStat label={`Closing ≤${URGENT_DAYS}d`} value={pulse.closingSoon} accent={pulse.closingSoon > 0} />
               <HeaderStat label="Upcoming" value={pulse.upcoming} />
 
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2">
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span>
@@ -1020,6 +1021,12 @@ export default function Activities() {
               className="rounded-[0.5rem] px-3 font-cluely text-[13px] font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
             >
               Explore more
+            </TabsTrigger>
+            <TabsTrigger
+              value="verified"
+              className="rounded-[0.5rem] px-3 font-cluely text-[13px] font-medium data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+            >
+              Verified
             </TabsTrigger>
           </TabsList>
 
@@ -1248,6 +1255,17 @@ export default function Activities() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* VERIFIED: olympiad and competition results pulled from Credly,
+              checked against the issuer's own record rather than typed in. */}
+          <TabsContent value="verified">
+            <CredlyCredentials
+              categories={["competition"]}
+              title="Verified olympiads and competitions"
+              description="Results your organiser issued as a Credly badge, checked with Credly before they go on your file. Colleges and counsellors can open each one at the source."
+              emptyText="No verified results yet. If an olympiad or competition gave you a Credly badge, add it here."
+            />
           </TabsContent>
         </Tabs>
       </div>

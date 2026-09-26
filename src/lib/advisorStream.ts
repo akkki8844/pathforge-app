@@ -33,6 +33,13 @@ export class AdvisorLimitError extends Error {
   }
 }
 
+/** One page the advisor consulted on this turn, as the web tools returned it. */
+export interface AdvisorSource {
+  title: string;
+  url: string;
+  snippet?: string;
+}
+
 export interface StreamedToolCall {
   id: string;
   name: string;
@@ -52,8 +59,16 @@ export interface AdvisorStreamCallbacks {
   onStatus?: (label: string, kind?: string) => void;
   onTool?: (call: StreamedToolCall) => void;
   onArtifact?: (artifact: unknown) => void;
+  /**
+   * Pages the advisor read before answering. Sent as soon as the search
+   * returns, which is well before the answer written from them — so the
+   * student can see what is being consulted while it is still being read.
+   */
+  onSources?: (sources: AdvisorSource[]) => void;
   /** Skills loaded for this turn, announced with the first frame. */
   onSkills?: (skills: { slug: string; name: string }[]) => void;
+  /** The model id that is actually writing this turn, as the server reports it. */
+  onModel?: (model: string) => void;
 }
 
 export interface AdvisorStreamResult {
@@ -64,11 +79,15 @@ export interface AdvisorStreamResult {
   title: string | null;
   artifact: unknown | null;
   toolCalls: StreamedToolCall[];
+  /** Pages consulted on this turn. Empty unless a web tool ran. */
+  sources: AdvisorSource[];
   /** False when the server never sent a terminal frame (aborted, or cut off). */
   completed: boolean;
   action?: { type: string; value?: string } | null;
   /** Installed skills whose full instructions were loaded for this turn. */
   skills: { slug: string; name: string }[];
+  /** The model id the server says wrote this turn, when it said. */
+  model?: string;
 }
 
 export interface AdvisorRequest {
@@ -113,6 +132,7 @@ interface StreamFrame {
   name?: unknown;
   args?: unknown;
   artifact?: unknown;
+  sources?: unknown;
   response?: unknown;
   reasoning?: unknown;
   suggestions?: unknown;
@@ -120,6 +140,7 @@ interface StreamFrame {
   title?: unknown;
   message?: unknown;
   skills?: unknown;
+  model?: unknown;
 }
 
 async function readErrorBody(res: Response): Promise<{ code?: string; message?: string }> {
@@ -137,6 +158,30 @@ async function readErrorBody(res: Response): Promise<{ code?: string; message?: 
 }
 
 /** Trust nothing from the wire: keep only well-formed `{slug, name}` pairs. */
+/**
+ * Sources as they arrive off the wire.
+ *
+ * Validated rather than trusted: these originate at a search provider, reach
+ * the model, and are rendered as links a student will click. A row without a
+ * usable https URL is dropped rather than rendered as a dead or hostile link.
+ */
+function readSources(raw: unknown): AdvisorSource[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((entry) => {
+      const row = entry as Record<string, unknown> | null;
+      const url = typeof row?.url === "string" ? row.url : "";
+      if (!/^https:\/\//i.test(url)) return null;
+      const title = typeof row?.title === "string" && row.title.trim() ? row.title : url;
+      const snippet = typeof row?.snippet === "string" ? row.snippet : undefined;
+      const source: AdvisorSource = { title, url };
+      if (snippet) source.snippet = snippet;
+      return source;
+    })
+    .filter((x): x is AdvisorSource => x !== null)
+    .slice(0, 6);
+}
+
 function readSkills(raw: unknown): { slug: string; name: string }[] {
   if (!Array.isArray(raw)) return [];
   return raw
@@ -189,6 +234,7 @@ export async function streamAdvisor(
     title: null,
     artifact: null,
     toolCalls: [],
+    sources: [],
     completed: false,
     action: null,
     skills: [],
@@ -209,6 +255,12 @@ export async function streamAdvisor(
     result.title = typeof data?.title === "string" ? data.title : null;
     result.artifact = data?.artifact ?? null;
     result.action = data?.action ?? null;
+    result.sources = readSources(data?.sources);
+    if (result.sources.length) callbacks.onSources?.(result.sources);
+    if (typeof data?.model === "string" && data.model) {
+      result.model = data.model;
+      callbacks.onModel?.(data.model);
+    }
     if (Array.isArray(data?.toolCalls)) {
       for (const t of data.toolCalls) {
         const call: StreamedToolCall = { id: String(t?.id || crypto.randomUUID()), name: String(t?.name || ""), args: t?.args };
@@ -253,6 +305,10 @@ export async function streamAdvisor(
 
         switch (frame?.type) {
           case "start":
+            if (typeof frame.model === "string" && frame.model) {
+              result.model = frame.model;
+              callbacks.onModel?.(frame.model);
+            }
             result.skills = readSkills(frame.skills);
             if (result.skills.length) callbacks.onSkills?.(result.skills);
             if (!started) {
@@ -298,6 +354,14 @@ export async function streamAdvisor(
             result.artifact = frame.artifact ?? null;
             if (result.artifact) callbacks.onArtifact?.(result.artifact);
             break;
+          case "sources": {
+            const found = readSources(frame.sources);
+            if (found.length) {
+              result.sources = found;
+              callbacks.onSources?.(found);
+            }
+            break;
+          }
           case "done":
             // Canonical values win over what we accumulated: the server has
             // stripped the suggestions block and filled in any fallback text.
@@ -308,6 +372,12 @@ export async function streamAdvisor(
               : [];
             result.topics = Array.isArray(frame.topics) ? frame.topics : [];
             result.title = typeof frame.title === "string" ? frame.title : null;
+            // The done frame is canonical, but a mid-stream `sources` frame is
+            // the same list — keep what we have if the terminal frame omits it.
+            {
+              const finalSources = readSources(frame.sources);
+              if (finalSources.length) result.sources = finalSources;
+            }
             if (frame.artifact) result.artifact = frame.artifact;
             result.completed = true;
             break;

@@ -52,7 +52,7 @@ const MATH: SubjectDef = {
       skills: [
         { id: "ratios-rates", name: "Ratios, rates and proportions", domainId: "problem-solving", subjectId: "math" },
         { id: "percentages", name: "Percentages", domainId: "problem-solving", subjectId: "math" },
-        { id: "data-distributions", name: "Distributions and measures of centre", domainId: "problem-solving", subjectId: "math" },
+        { id: "data-distributions", name: "Distributions and measures of center", domainId: "problem-solving", subjectId: "math" },
         { id: "probability", name: "Probability and conditional probability", domainId: "problem-solving", subjectId: "math" },
         { id: "inference", name: "Inference from sample statistics", domainId: "problem-solving", subjectId: "math" },
       ],

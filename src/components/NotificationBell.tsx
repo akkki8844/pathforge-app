@@ -37,6 +37,7 @@ import {
 function metaFor(n: NotificationRow): string {
   if (n.broadcast_id) return "Announcement";
   if (n.sender_role === "admin") return "Pathforge";
+  if (n.sender_role === "scholarships") return "Scholarship alert";
   if (n.sender_role === "teacher") return "Counsellor";
   return "Pathforge";
 }

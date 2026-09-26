@@ -1,7 +1,6 @@
 // Inter, loaded by the route that uses it. The app is set in Sora and
 // Fraunces everywhere else; this is the one surface that is not, and scoping
 // the import to this chunk means no other page pays for the file.
-import "@fontsource-variable/inter";
 import { useCallback, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
@@ -12,6 +11,7 @@ import { CollegeList, GridField, News, Timetable } from "@/components/dashboard/
 import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
 import { DraggableWidgetGrid, type WidgetItem } from "@/components/ui/draggable-widget-grid";
 import { DASHBOARD_WIDGETS, renderDashboardWidget } from "@/components/dashboard/widgets";
+import { useZenMode } from "@/lib/zen";
 
 /**
  * The signed-in home.
@@ -70,6 +70,7 @@ export default function Dashboard() {
   const d = useDashboardData();
   const week = useWeeklyCheckins();
   const { user } = useAuth();
+  const [zen, setZen] = useZenMode();
 
   const initialWidgets = useMemo(() => readLayout(user?.id), [user?.id]);
   const [widgetKey] = useState(() => Math.random().toString(36).slice(2));
@@ -114,14 +115,30 @@ export default function Dashboard() {
       {/* `bg-background` is not redundant: the token is re-declared inside
         this subtree, but the page body behind it is painted by the app's own
         warm paper colour, so without this the neutral cards sat on cream. */}
-      <div data-dash className="relative min-h-screen bg-background">
-        <GridField />
+      <div data-dash className="relative min-h-[100svh] bg-background">
+        {!zen && <GridField />}
 
         {/* The measure is wide because every block on this page is a list or a
           grid, not prose — a timetable, a college list and a news column all
           read better with the horizontal room, and capping them at a reading
           measure left a band of empty paper down both sides. */}
         <div className="pad-safe-x pad-safe-bottom relative mx-auto w-full max-w-[1440px] px-4 pb-28 pt-8 sm:px-6 sm:pt-10 lg:px-8">
+          {zen ? (
+            /* Zen mode: today, and the one date that matters next. The list,
+               the widgets and the news are one keypress away, not gone. */
+            <div className="mx-auto max-w-4xl space-y-4">
+              <Timetable />
+              <div className="max-w-sm rounded-[22px] border border-border bg-card">
+                {renderDashboardWidget(DASHBOARD_WIDGETS.find((w) => w.id === "deadline")!, "sm", d)}
+              </div>
+              <p className="pt-2 text-center text-[13px] text-muted-foreground">
+                Zen mode is on, so your list, widgets and news are tucked away.{" "}
+                <button type="button" onClick={() => setZen(false)} className="font-medium text-foreground underline underline-offset-4">
+                  Show everything
+                </button>
+              </p>
+            </div>
+          ) : (
           <div className="space-y-4">
             {/*
              * Today is the wider of the pair because it is the block you read
@@ -161,6 +178,7 @@ export default function Dashboard() {
 
             <WeeklyCheckIn data={week} />
           </div>
+          )}
         </div>
       </div>
     </>

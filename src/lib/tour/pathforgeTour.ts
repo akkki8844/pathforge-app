@@ -1,4 +1,5 @@
 import type { TourStep } from "@/components/ui/product-tour";
+import { testPrepEnabled } from "@/lib/testprep/preview";
 
 /**
  * The Pathforge product tour script: one flat list of stops across the whole
@@ -44,7 +45,7 @@ export interface PathforgeTourStep extends TourStep {
   route: string;
 }
 
-export const PATHFORGE_TOUR: PathforgeTourStep[] = [
+const ALL_STEPS: PathforgeTourStep[] = [
   // ── Orientation ──────────────────────────────────────────────────────
   {
     route: "/dashboard",
@@ -241,5 +242,10 @@ export const PATHFORGE_TOUR: PathforgeTourStep[] = [
       "You can run this tour again any time from Settings. Now go and put something real in Outcomes — everything else on this site gets sharper once you do.",
   },
 ];
+
+// Test Prep is unreleased; its stop only appears in preview browsers.
+export const PATHFORGE_TOUR: PathforgeTourStep[] = ALL_STEPS.filter(
+  (s) => !s.route.startsWith("/test-prep") || testPrepEnabled(),
+);
 
 export const PATHFORGE_TOUR_LENGTH = PATHFORGE_TOUR.length;

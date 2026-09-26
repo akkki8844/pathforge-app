@@ -125,3 +125,11 @@ export const BB_SCORE_CARD_CTA =
 /** The secondary pill on a score card — an in-app action, outlined. */
 export const BB_SCORE_CARD_SECONDARY =
   "inline-flex w-full items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-muted";
+
+/** Mastery to a ring colour: blue when solid, navy-ish midway, amber when weak. */
+export function masteryColor(m: number | null): string {
+  if (m === null) return "hsl(var(--muted-foreground) / 0.4)";
+  if (m >= 0.8) return "hsl(var(--bb-blue))";
+  if (m >= 0.55) return "hsl(var(--bb-blue) / 0.6)";
+  return "hsl(38 92% 50%)";
+}

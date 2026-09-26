@@ -1,0 +1,816 @@
+/*
+ * The landing page (2026-09 redesign).
+ *
+ * Replaces the "Atlas" cinematic hero: a full-bleed AI-rendered campus at
+ * dusk, a 9rem italic serif headline in a violet gradient, falling leaves and
+ * glass buttons. Review feedback was that it read as AI-generated and did not
+ * say "college profiles" at a glance. This follows the pattern the college
+ * planning sites students already know use (Appily, BigFuture, CollegeData):
+ * white page, a plain sans headline that states the job, a real photograph of
+ * students, a college search as the first action, then the tools, one per
+ * card.
+ *
+ * Tokens are local to `.pfh` so nothing here leaks into the app, and the page
+ * is light-only by design, like the rest of the public site.
+ */
+
+.pfh {
+  /* Shared components on this page (the newsletter form) read the app's
+     shadcn tokens; give them this page's cool neutrals instead of the cream. */
+  --background: 0 0% 100%;
+  --muted: 220 14% 96%;
+  --input: 220 13% 88%;
+  --border: 220 13% 90%;
+  --pfh-ink: #111a2e;
+  --pfh-ink-soft: #4a5468;
+  --pfh-line: #e3e7ef;
+  --pfh-soft: #f4f6fb;
+  --pfh-brand: #4465d8;
+  --pfh-brand-dark: #2f4bb3;
+  --pfh-brand-soft: #eaf0ff;
+  --pfh-radius: 16px;
+  min-height: 100svh;
+  background: #fff;
+  color: var(--pfh-ink);
+  font-family: "Plus Jakarta Sans", "Work Sans", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+.pfh *,
+.pfh *::before,
+.pfh *::after {
+  box-sizing: border-box;
+}
+
+.pfh h1,
+.pfh h2,
+.pfh h3 {
+  font-family: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
+  color: var(--pfh-ink);
+  margin: 0;
+}
+
+.pfh p {
+  margin: 0;
+}
+
+.pfh-wrap {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+@media (max-width: 640px) {
+  .pfh-wrap {
+    padding: 0 16px;
+  }
+}
+
+.pfh-skip {
+  position: absolute;
+  left: -9999px;
+}
+.pfh-skip:focus {
+  left: 16px;
+  top: 12px;
+  z-index: 100;
+  background: #fff;
+  padding: 8px 12px;
+  border-radius: 8px;
+}
+
+/* ------------------------------------------------------------------ header */
+
+.pfh-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--pfh-line);
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.pfh-header-inner {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  height: 68px;
+}
+
+.pfh-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--pfh-ink);
+  text-decoration: none;
+  font-family: "Sora", system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.pfh-brand img {
+  width: 30px;
+  height: 30px;
+}
+
+.pfh-nav {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 16px;
+}
+.pfh-nav a {
+  padding: 8px 12px;
+  border-radius: 8px;
+  color: var(--pfh-ink-soft);
+  font-size: 15px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pfh-nav a:hover {
+  color: var(--pfh-ink);
+  background: var(--pfh-soft);
+}
+
+.pfh-header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pfh-link {
+  padding: 8px 12px;
+  color: var(--pfh-ink);
+  font-size: 15px;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.pfh-link:hover {
+  color: var(--pfh-brand);
+}
+
+@media (max-width: 960px) {
+  .pfh-nav {
+    display: none;
+  }
+}
+@media (max-width: 420px) {
+  .pfh-header-actions .pfh-link {
+    display: none;
+  }
+}
+
+/* ----------------------------------------------------------------- buttons */
+
+.pfh-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 20px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  font: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+.pfh-btn-primary {
+  background: var(--pfh-brand);
+  color: #fff;
+}
+.pfh-btn-primary:hover {
+  background: var(--pfh-brand-dark);
+}
+.pfh-btn-quiet {
+  background: #fff;
+  border-color: var(--pfh-line);
+  color: var(--pfh-ink);
+}
+.pfh-btn-quiet:hover {
+  border-color: #c9d0dd;
+  background: var(--pfh-soft);
+}
+.pfh-btn-sm {
+  min-height: 38px;
+  padding: 0 14px;
+  font-size: 14px;
+}
+.pfh-btn:focus-visible,
+.pfh-link:focus-visible,
+.pfh-nav a:focus-visible,
+.pfh-card:focus-visible {
+  outline: 2px solid var(--pfh-brand);
+  outline-offset: 2px;
+}
+
+/* -------------------------------------------------------------------- hero */
+
+.pfh-hero {
+  padding: 56px 0 64px;
+}
+.pfh-hero-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: 56px;
+  align-items: center;
+}
+
+.pfh-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--pfh-brand-soft);
+  color: var(--pfh-brand-dark);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.pfh-hero h1 {
+  margin-top: 20px;
+  font-size: clamp(2.4rem, 5vw, 3.9rem);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.pfh-hero h1 span {
+  color: var(--pfh-brand);
+}
+.pfh-hero-lede {
+  margin-top: 20px !important;
+  max-width: 34rem;
+  color: var(--pfh-ink-soft);
+  font-size: 18px;
+  line-height: 1.6;
+}
+
+.pfh-search {
+  margin-top: 28px;
+  max-width: 36rem;
+}
+.pfh-search label {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pfh-search-row {
+  display: flex;
+  gap: 8px;
+  padding: 6px;
+  border: 1px solid var(--pfh-line);
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(17, 26, 46, 0.04), 0 10px 30px -18px rgba(17, 26, 46, 0.25);
+}
+.pfh-search-row:focus-within {
+  border-color: var(--pfh-brand);
+}
+.pfh-search-field {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  padding-left: 12px;
+  color: var(--pfh-ink-soft);
+}
+.pfh-search input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--pfh-ink);
+  font: inherit;
+  font-size: 16px;
+}
+.pfh-search-hint {
+  margin-top: 10px !important;
+  color: var(--pfh-ink-soft);
+  font-size: 13px;
+}
+.pfh-search-hint a {
+  color: var(--pfh-brand-dark);
+  font-weight: 600;
+}
+
+.pfh-hero-alt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 20px;
+  margin-top: 24px;
+  color: var(--pfh-ink-soft);
+  font-size: 14px;
+}
+.pfh-hero-alt a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--pfh-ink);
+  font-weight: 600;
+  text-decoration: none;
+}
+.pfh-hero-alt a:hover {
+  color: var(--pfh-brand);
+}
+
+.pfh-hero-media {
+  position: relative;
+}
+.pfh-hero-photo {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 24px;
+  aspect-ratio: 4 / 5;
+  max-height: 600px;
+  background: var(--pfh-soft);
+}
+.pfh-hero-photo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* The product, shown over the photo: what a profile looks like in Pathforge. */
+.pfh-float {
+  position: absolute;
+  background: #fff;
+  border: 1px solid var(--pfh-line);
+  border-radius: 14px;
+  box-shadow: 0 18px 40px -20px rgba(17, 26, 46, 0.35);
+  padding: 14px 16px;
+}
+.pfh-float-profile {
+  left: -28px;
+  bottom: 36px;
+  width: 250px;
+}
+.pfh-float-badge {
+  right: -20px;
+  top: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 250px;
+}
+.pfh-float-label {
+  color: var(--pfh-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.pfh-float-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 8px;
+  font-size: 13px;
+}
+.pfh-meter {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 99px;
+  background: var(--pfh-soft);
+  overflow: hidden;
+}
+.pfh-meter span {
+  display: block;
+  height: 100%;
+  border-radius: 99px;
+  background: var(--pfh-brand);
+}
+.pfh-float-note {
+  margin-top: 10px !important;
+  color: var(--pfh-ink-soft);
+  font-size: 11px;
+}
+
+@media (max-width: 960px) {
+  .pfh-hero {
+    padding: 32px 0 48px;
+  }
+  .pfh-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  .pfh-hero-photo {
+    aspect-ratio: 4 / 3;
+    max-height: 460px;
+  }
+  .pfh-hero-photo img {
+    object-position: 50% 30%;
+  }
+  .pfh-float-profile {
+    left: 12px;
+    bottom: 12px;
+  }
+  .pfh-float-badge {
+    right: 12px;
+    top: 12px;
+  }
+}
+@media (max-width: 520px) {
+  /* On a phone the photo is the point; the product cards would cover it. */
+  .pfh-float-badge,
+  .pfh-float-profile {
+    display: none;
+  }
+  .pfh-search-row {
+    flex-direction: column;
+  }
+  .pfh-search-row .pfh-btn {
+    width: 100%;
+  }
+}
+
+/* ------------------------------------------------------------ college strip */
+
+.pfh-colleges {
+  padding: 28px 0 32px;
+  border-top: 1px solid var(--pfh-line);
+  border-bottom: 1px solid var(--pfh-line);
+  background: var(--pfh-soft);
+}
+.pfh-colleges > .pfh-wrap > p {
+  text-align: center;
+  color: var(--pfh-ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+}
+.pfh-marquee {
+  margin-top: 18px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
+}
+.pfh-track {
+  display: flex;
+  gap: 36px;
+  width: max-content;
+  animation: pfh-scroll 60s linear infinite;
+}
+.pfh-track span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--pfh-ink);
+  font-size: 15px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.pfh-track img {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+}
+@keyframes pfh-scroll {
+  to {
+    transform: translateX(-50%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pfh-track {
+    animation: none;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: auto;
+  }
+}
+.pfh-disclaimer {
+  margin-top: 14px !important;
+  text-align: center;
+  color: #6b7488;
+  font-size: 12px;
+}
+
+/* ------------------------------------------------------------------ sections */
+
+.pfh-section {
+  padding: 88px 0;
+}
+.pfh-section-tint {
+  background: var(--pfh-soft);
+}
+.pfh-head {
+  max-width: 44rem;
+}
+.pfh-head-center {
+  margin: 0 auto;
+  text-align: center;
+}
+.pfh-kicker {
+  color: var(--pfh-brand-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+.pfh-head h2 {
+  margin-top: 10px;
+  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+.pfh-head p:not(.pfh-kicker) {
+  margin-top: 14px;
+  color: var(--pfh-ink-soft);
+  font-size: 17px;
+  line-height: 1.6;
+}
+
+@media (max-width: 640px) {
+  .pfh-section {
+    padding: 64px 0;
+  }
+}
+
+/* -------------------------------------------------------------- tool cards */
+
+.pfh-tools {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  margin-top: 48px;
+}
+.pfh-card {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  border: 1px solid var(--pfh-line);
+  border-radius: var(--pfh-radius);
+  background: #fff;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+.pfh-card:hover {
+  border-color: #c9d0dd;
+  box-shadow: 0 16px 34px -24px rgba(17, 26, 46, 0.35);
+  transform: translateY(-2px);
+}
+.pfh-card-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--pfh-brand-soft);
+  color: var(--pfh-brand-dark);
+}
+.pfh-card h3 {
+  margin-top: 18px;
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+.pfh-card p {
+  margin-top: 8px;
+  color: var(--pfh-ink-soft);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.pfh-card-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 18px;
+  color: var(--pfh-brand-dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+.pfh-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.pfh-chips span {
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: var(--pfh-soft);
+  color: var(--pfh-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (max-width: 960px) {
+  .pfh-tools {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 600px) {
+  .pfh-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ------------------------------------------------------------ split rows */
+
+.pfh-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 64px;
+  align-items: center;
+}
+.pfh-split + .pfh-split {
+  margin-top: 96px;
+}
+.pfh-split-media {
+  margin: 0;
+  overflow: hidden;
+  border-radius: 20px;
+  background: #fff;
+}
+.pfh-split-media img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.pfh-split-media figcaption {
+  padding: 8px 12px;
+  color: #6b7488;
+  font-size: 11px;
+}
+.pfh-split-media figcaption a {
+  color: inherit;
+}
+.pfh-points {
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+.pfh-points li {
+  display: flex;
+  gap: 12px;
+  font-size: 16px;
+  line-height: 1.5;
+}
+.pfh-points li svg {
+  flex-shrink: 0;
+  margin-top: 3px;
+  color: var(--pfh-brand);
+}
+.pfh-points b {
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .pfh-split {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .pfh-split-reverse .pfh-split-media,
+  .pfh-split-reverse .pfh-chat {
+    order: 2;
+  }
+}
+
+/* A still of the advisor, drawn in HTML so it stays sharp and honest. */
+.pfh-chat {
+  border: 1px solid var(--pfh-line);
+  border-radius: 20px;
+  background: #fff;
+  padding: 20px;
+  box-shadow: 0 24px 50px -34px rgba(17, 26, 46, 0.4);
+}
+.pfh-bubble {
+  max-width: 88%;
+  padding: 12px 14px;
+  border-radius: 14px;
+  font-size: 14.5px;
+  line-height: 1.55;
+}
+.pfh-bubble + .pfh-bubble {
+  margin-top: 12px;
+}
+.pfh-bubble-me {
+  margin-left: auto;
+  background: var(--pfh-brand);
+  color: #fff;
+  border-bottom-right-radius: 4px;
+}
+.pfh-bubble-ai {
+  background: var(--pfh-soft);
+  border-bottom-left-radius: 4px;
+}
+.pfh-chat-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pfh-line);
+  color: var(--pfh-ink-soft);
+  font-size: 12.5px;
+}
+
+.pfh-models {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 24px;
+}
+.pfh-models span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border: 1px solid var(--pfh-line);
+  border-radius: 10px;
+  background: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+.pfh-models svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ------------------------------------------------------------------- map */
+
+.pfh-map {
+  margin-top: 40px;
+}
+
+/* ------------------------------------------------------------- newsletter */
+
+.pfh-brief {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 48px;
+  align-items: center;
+  padding: 40px;
+  border: 1px solid var(--pfh-line);
+  border-radius: 24px;
+  background: #fff;
+}
+@media (max-width: 860px) {
+  .pfh-brief {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 24px;
+  }
+}
+
+/* ------------------------------------------------------------- final CTA */
+
+.pfh-cta {
+  padding: 72px 0;
+  background: var(--pfh-ink);
+  color: #fff;
+}
+.pfh-cta-inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.pfh-cta h2 {
+  color: #fff;
+  font-size: clamp(1.8rem, 3.2vw, 2.6rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.12;
+  max-width: 22ch;
+}
+.pfh-cta p {
+  margin-top: 10px;
+  color: #c6cde0;
+  font-size: 16px;
+}
+.pfh-cta .pfh-btn-quiet {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #fff;
+}
+.pfh-cta .pfh-btn-quiet:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+.pfh-cta-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

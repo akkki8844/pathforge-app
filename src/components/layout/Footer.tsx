@@ -1,8 +1,6 @@
 import { motion } from "framer-motion";
 import { Mail, Phone, Linkedin, Instagram } from 'lucide-react';
-import { Fragment } from "react";
 import { Link } from "react-router-dom";
-import { DURATION, EASE_OUT_EXPO, viewportOnce } from "@/lib/motion";
 import pathforgeLogo from "@/assets/pathforge-logo.webp";
 
 const PRODUCT_LINKS = [
@@ -46,11 +44,6 @@ const SOCIAL_LINKS = [
   { href: "https://instagram.com/pathforge.co.in", label: "Instagram", icon: Instagram },
 ];
 
-const footerItem = {
-  hidden: { opacity: 0, y: 6 },
-  visible: { opacity: 1, y: 0, transition: { duration: DURATION.base, ease: EASE_OUT_EXPO } },
-};
-
 function LinkColumn({ title, links }: { title: string; links: { to: string; label: string }[] }) {
   return (
     <div>
@@ -86,13 +79,7 @@ export function Footer() {
         }}
       />
       <div className="section-container relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={viewportOnce}
-          transition={{ duration: DURATION.base, ease: EASE_OUT_EXPO }}
-          className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]"
-        >
+        <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-[1.3fr_1fr_1fr_1fr_1fr]">
           {/* Brand column — logo + text, like the navbar */}
           <div className="lg:pr-6">
             <Link to="/" className="flex items-center gap-2">
@@ -129,16 +116,10 @@ export function Footer() {
           <LinkColumn title="Resources" links={RESOURCE_LINKS} />
           <LinkColumn title="Company" links={COMPANY_LINKS} />
           <LinkColumn title="Legal" links={LEGAL_LINKS} />
-        </motion.div>
+        </div>
 
         <div className="mt-12 border-t border-white/10 pt-8">
-          <motion.div
-            className="flex flex-col items-center gap-3 text-center"
-            variants={{ visible: { transition: { staggerChildren: 0.05, delayChildren: 0.1 } } }}
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-          >
+          <div className="flex flex-col items-center gap-3 text-center">
             <div className="flex flex-col sm:flex-row items-center justify-center gap-x-3 gap-y-1 text-xs text-white/70">
               <span>Founder — Govind Mulchandani</span>
               <span className="hidden sm:inline text-white/55">·</span>
@@ -181,7 +162,7 @@ export function Footer() {
             <p className="text-[10px] text-white/60">
               Paddle.com is the Merchant of Record for all Pathforge orders.
             </p>
-          </motion.div>
+          </div>
         </div>
       </div>
     </footer>

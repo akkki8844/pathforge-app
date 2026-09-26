@@ -1,3 +1,4 @@
+import { testPrepEnabled } from "@/lib/testprep/preview";
 /**
  * The counsellor resource library.
  *
@@ -62,7 +63,7 @@ export const RESOURCE_CATEGORIES: { id: ResourceCategory; label: string }[] = [
   { id: "data", label: "College data" },
 ];
 
-export const COUNSELLOR_RESOURCES: CounsellorResource[] = [
+const ALL_RESOURCES: CounsellorResource[] = [
   // ---------------------------------------------------------------- applications
   {
     id: "commonapp-counselors",
@@ -426,3 +427,8 @@ export const COUNSELLOR_RESOURCES: CounsellorResource[] = [
     source: "Pathforge",
   },
 ];
+
+// Test Prep is unreleased; counsellors are not pointed at it until it ships.
+export const COUNSELLOR_RESOURCES: CounsellorResource[] = ALL_RESOURCES.filter(
+  (r) => r.id !== "share-testprep" || testPrepEnabled(),
+);

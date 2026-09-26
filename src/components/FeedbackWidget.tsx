@@ -116,7 +116,7 @@ export function FeedbackWidget() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-[4.25rem] z-40 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-black/10 hover:shadow-xl hover:-translate-y-0.5 transition-all"
+        className="pf-corner-fab fixed right-[4.25rem] z-40 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white text-slate-700 shadow-lg ring-1 ring-black/10 hover:shadow-xl hover:-translate-y-0.5 transition-all"
         aria-label="Send feedback"
         title="Feedback"
       >

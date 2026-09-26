@@ -208,6 +208,8 @@ export function useNotifications(limit: number = NOTIFICATIONS_PAGE) {
  */
 export function notificationHref(n: NotificationRow): string | null {
   if (n.broadcast_id) return "/communications/announcements";
+  // Written by the scholarship-alerts function for a new match.
+  if (n.sender_role === "scholarships") return "/scholarships#alerts";
   if (n.sender_role === "admin" || n.sender_role === "teacher") {
     return "/communications/announcements";
   }

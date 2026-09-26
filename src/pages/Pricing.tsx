@@ -20,12 +20,9 @@ import { Seo } from "@/components/Seo";
 import { CouponSuccessModal } from "@/components/CouponSuccessModal";
 import { TierPlanCard } from "@/components/pricing/TierPlanCard";
 import { PLANS, PLAN_RANK, planTierFromString, discountPercent, usageLabel, type PlanConfig } from "@/lib/plans";
+import { resolveDisplayCurrency, formatConverted } from "@/lib/currency";
 
 const ANNUAL_DISCOUNT = 0.35;
-
-// The INR figure is indicative only — Paddle charges in USD and does its own
-// localisation at checkout.
-const USD_TO_INR = 83;
 
 const ENTERPRISE_FEATURES = [
   "Everything in Max",
@@ -41,7 +38,7 @@ const ENTERPRISE_FEATURES = [
 
 export default function Pricing() {
   const { usageData, claimFreePlan, switchPlan, redeemCoupon } = useUsage();
-  const { user } = useAuth();
+  const { user, onboardingData } = useAuth();
   const [claiming, setClaiming] = useState(false);
   const [switching, setSwitching] = useState<string | null>(null);
   const [annual, setAnnual] = useState(false);
@@ -131,6 +128,13 @@ export default function Pricing() {
     }
   };
 
+  // Prefer the country the student gave us at onboarding over a browser-locale
+  // guess — see resolveDisplayCurrency in src/lib/currency.ts.
+  const displayCurrency = useMemo(
+    () => resolveDisplayCurrency(onboardingData?.country),
+    [onboardingData],
+  );
+
   /**
    * What a paid plan costs on the selected billing period. Annual applies its
    * discount on top of the launch discount already baked into `priceUSD`, and
@@ -143,18 +147,18 @@ export default function Pricing() {
       if (!annual || monthlyUSD === 0) {
         return {
           displayUSD: String(monthlyUSD),
-          displayINR: Math.round(monthlyUSD * USD_TO_INR),
+          displayLocal: formatConverted(monthlyUSD, displayCurrency),
           totalUSD: monthlyUSD,
         };
       }
       const annualUSD = Math.round(monthlyUSD * 12 * (1 - ANNUAL_DISCOUNT));
       return {
         displayUSD: (annualUSD / 12).toFixed(2),
-        displayINR: Math.round((annualUSD / 12) * USD_TO_INR),
+        displayLocal: formatConverted(annualUSD / 12, displayCurrency),
         totalUSD: annualUSD,
       };
     },
-    [annual],
+    [annual, displayCurrency],
   );
 
   const { openCheckout, loading: checkoutLoading } = usePaddleCheckout();
@@ -248,7 +252,7 @@ export default function Pricing() {
     <div className="min-h-[100svh] relative overflow-hidden">
       <Seo
         title='Pricing'
-        description='Free forever with a daily usage allowance. Pro is $20/mo for about 3× that allowance monthly, Max is $75/mo for about 8×. Enterprise plans for schools and counselling teams.'
+        description='Free forever with a daily usage allowance. Plans start at $4/mo for about 2× that allowance monthly, up to $12/mo for about 8×. Enterprise plans for schools and counselling teams.'
         path='/pricing'
         jsonLd={{
           "@context": "https://schema.org",
@@ -361,7 +365,7 @@ export default function Pricing() {
           {PLANS.map((plan, i) => {
             const isFreeUnlock = usageData?.freePlanGrant === plan.tier;
             const price = isFreeUnlock
-              ? { displayUSD: "0", displayINR: 0, totalUSD: 0 }
+              ? { displayUSD: "0", displayLocal: formatConverted(0, displayCurrency), totalUSD: 0 }
               : priceFor(plan);
             const off = discountPercent(plan);
             /* Compare tiers, not raw plan strings. The server stores whatever
@@ -394,7 +398,12 @@ export default function Pricing() {
             const note = isFreeUnlock
               ? null
               : isPaid
-              ? `${annual ? `billed $${price.totalUSD}/yr · ` : ""}≈ ₹${price.displayINR}/mo`
+              ? [
+                  annual ? `billed $${price.totalUSD}/yr` : null,
+                  displayCurrency.code === "USD" ? null : `≈ ${price.displayLocal}/mo`,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || null
               : null;
             return (
               <motion.div

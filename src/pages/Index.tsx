@@ -1,55 +1,44 @@
-import { useRef, useState } from "react";
-import { AnimatePresence, LayoutGroup, motion, useScroll, useSpring, useTransform, useReducedMotion } from "framer-motion";
-import { FallingLeaves } from "@/components/animations/FallingLeaves";
-import { Link } from "react-router-dom";
+import { useEffect, useState, type FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  Award,
+  BadgeCheck,
+  CheckCircle2,
+  Compass,
+  FileSignature,
+  Map as MapIcon,
+  PenLine,
+  Search,
+  Target,
+  type LucideIcon,
+} from "lucide-react";
 import { Seo } from "@/components/Seo";
 import { NewsletterSignup } from "@/components/NewsletterSignup";
 import { useAuth } from "@/contexts/AuthContext";
-import SpecularAnchor from "@/components/ui/specular/SpecularAnchor";
-import SpecularLink from "@/components/ui/specular/SpecularLink";
-import { MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_URL } from "@/lib/desktopDownload";
+import { MAC_DOWNLOAD_URL, WINDOWS_DOWNLOAD_URL, canInstallDesktopApp } from "@/lib/desktopDownload";
 import { WorldMap } from "@/components/ui/map";
 import { STUDENT_MAP_DOTS, STUDENT_COUNTRY_COUNT } from "@/lib/studentCountries";
 import { Footer } from "@/components/layout/Footer";
-import { TextRotate } from "@/components/ui/text-rotate";
-import { fadeUp, transition } from "@/lib/motion";
-
-const MotionLink = motion.create(Link);
-const MotionSpecularLink = motion.create(SpecularLink);
-const MotionSpecularAnchor = motion.create(SpecularAnchor);
-const EASE = [0.16, 1, 0.3, 1] as const;
-// Hero is served from /public so the browser can preload it before JS parses
-// (see <link rel="preload"> in index.html). Keeps it out of the JS bundle.
-const heroCampus = "/assets/hero-campus-cinematic-v1.webp";
+import { ModelLogo } from "@/components/advisor/ModelBadge";
+import { CredlyMark } from "@/components/icons/CredlyMark";
 import pathforgeMark from "@/assets/pathforge-logo.webp";
-import { GlassFilter } from "@/components/GlassFilter";
+import "./landing.css";
 
 /**
- * The rotating showcase that replaced the five numbered department cards.
+ * The public landing page.
  *
- * `word` completes the sentence "Built for your ___", so every entry has to
- * read as a possessive noun phrase. `line` is that feature's one-line
- * description and is swapped in lockstep with the word — TextRotate's
- * `onNext` drives the index for both, so the two can never desync.
+ * Layout follows the college-planning sites students already use: say what
+ * the product is for in one plain sentence, put a college search first, show
+ * real students, then one card per tool. Every claim on the page is about
+ * what the product does; there are no invented student counts, testimonials
+ * or outcomes. The one number shown (countries) is read from the database, see
+ * src/lib/studentCountries.ts.
  *
- * Lines are kept to roughly one measure (~65 characters) so the copy under
- * the animation stays a single line on desktop and the block doesn't jump
- * height on every rotation.
+ * Photos: the graduates are Korea University Business School's own CC0
+ * release; the library is credited under its CC BY-SA licence where it is
+ * shown. Both are served from /public so the hero can be preloaded.
  */
-const rotatingFeatures = [
-  { word: "journey", line: "A personalized application plan, built around where you want to go." },
-  { word: "advisor", line: "Voice guidance that remembers your goals, context and progress." },
-  { word: "activities", line: "Opportunities that strengthen your story, not just your résumé." },
-  { word: "essays", line: "Drafts sharpened line by line, in your voice — never written for you." },
-  { word: "resume", line: "Verified work, turned into a credible one-page student profile." },
-  { word: "LinkedIn", line: "A professional presence that reflects what you have genuinely done." },
-  { word: "recommendations", line: "Professors tracked, briefed and followed up — without the chasing." },
-  { word: "odds", line: "An honest read on where you stand at every university on your list." },
-];
-
-/** Shared by the live pill and its reduced-motion counterpart. */
-const ROTATE_PILL = "overflow-hidden rounded-[0.6rem] bg-[var(--accent)] px-[0.28em] py-[0.06em] text-[var(--surface)]";
-const ROTATE_SPRING = { type: "spring" as const, damping: 30, stiffness: 400 };
 
 const universities: { name: string; domain: string }[] = [
   { name: "Harvard", domain: "harvard.edu" },
@@ -76,196 +65,283 @@ const universities: { name: string; domain: string }[] = [
   { name: "ETH Zurich", domain: "ethz.ch" },
 ];
 
+/** Suggestions for the hero search; any name can be typed. */
+const COLLEGE_SUGGESTIONS = [
+  "Harvard University",
+  "Stanford University",
+  "Massachusetts Institute of Technology",
+  "Princeton University",
+  "Yale University",
+  "Columbia University",
+  "University of Pennsylvania",
+  "Brown University",
+  "Cornell University",
+  "Dartmouth College",
+  "Duke University",
+  "Northwestern University",
+  "University of Chicago",
+  "Johns Hopkins University",
+  "California Institute of Technology",
+  "UC Berkeley",
+  "UCLA",
+  "Carnegie Mellon University",
+  "Georgia Institute of Technology",
+  "University of Michigan",
+  "New York University",
+  "University of Oxford",
+  "University of Cambridge",
+  "Imperial College London",
+  "London School of Economics",
+  "University of Toronto",
+  "National University of Singapore",
+  "ETH Zurich",
+];
+
+const TOOLS: {
+  icon: LucideIcon;
+  title: string;
+  body: string;
+  chips?: string[];
+  to: string;
+}[] = [
+  {
+    icon: Target,
+    title: "College list and chances",
+    body: "Add the colleges you want and see where your profile stands against each one, with what would move it.",
+    chips: ["Reach", "Target", "Likely"],
+    to: "/admissions-probability",
+  },
+  {
+    icon: Award,
+    title: "Olympiads and competitions",
+    body: "Competitions matched to your major, with registration windows, deadlines and results verified through Credly.",
+    chips: ["USACO", "IOI", "ISEF", "Credly"],
+    to: "/activities",
+  },
+  {
+    icon: PenLine,
+    title: "Essays",
+    body: "Draft personal statements and supplements with line-by-line feedback, in your own voice. Nothing is written for you.",
+    to: "/essays",
+  },
+  {
+    icon: Compass,
+    title: "Scholarships",
+    body: "A checked list of awards for your country, grade and major, plus alerts the day a new one fits you.",
+    chips: ["Live alerts"],
+    to: "/scholarships",
+  },
+  {
+    icon: FileSignature,
+    title: "Recommendations",
+    body: "Track who is writing your letters, brief them with a brag sheet and follow up without chasing.",
+    to: "/professors",
+  },
+  {
+    icon: MapIcon,
+    title: "Your application plan",
+    body: "A month-by-month plan built for your grade, curriculum and colleges, so you always know the next step.",
+    to: "/journey",
+  },
+];
+
 export default function Index() {
-  const prefersReduced = useReducedMotion();
-
-  // Driven by TextRotate's onNext so the description under the animation is
-  // always describing the word currently on screen.
-  const [featureIndex, setFeatureIndex] = useState(0);
-  const activeFeature = rotatingFeatures[featureIndex] ?? rotatingFeatures[0];
-
-  // A signed-out visitor is being invited in ("Student workspace"); a returning
-  // one is being sent back to work ("Open workspace"). While auth is still
-  // resolving we show the signed-out wording — it's the safe guess for a
-  // landing page, and it stops the label flickering for first-time visitors.
+  const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
   const isReturning = !authLoading && !!user;
-  const workspaceHref = isReturning
-    ? "/dashboard"
-    : "/auth?role=student&view=signup";
+  const signupHref = "/auth?role=student&view=signup";
+  const workspaceHref = isReturning ? "/dashboard" : signupHref;
 
+  // Installers on Windows and macOS; the web workspace everywhere else. Starts
+  // true so the prerendered HTML and its hydration match, then corrects.
+  const [desktopCapable, setDesktopCapable] = useState(true);
+  useEffect(() => {
+    setDesktopCapable(canInstallDesktopApp());
+  }, []);
 
-  // Whole-page scroll progress → the top reader bar.
-  const { scrollYProgress } = useScroll();
-  const progressX = useSpring(scrollYProgress, { stiffness: 120, damping: 30, mass: 0.3 });
-
-  // Hero parallax: copy drifts up and fades as the first screen scrolls away.
-  const heroRef = useRef<HTMLElement>(null);
-  const { scrollYProgress: heroProg } = useScroll({
-    target: heroRef,
-    offset: ["start start", "end start"],
-  });
-  const heroY = useTransform(heroProg, [0, 1], [0, prefersReduced ? 0 : -70]);
-  const heroOpacity = useTransform(heroProg, [0, 0.75], [1, prefersReduced ? 1 : 0]);
-
-  // Section reveal + per-item stagger, disabled under reduced motion.
-  const reveal = prefersReduced
-    ? {}
-    : {
-        initial: { opacity: 0, y: 28 },
-        whileInView: { opacity: 1, y: 0 },
-        viewport: { once: true, margin: "-12% 0px -10% 0px" },
-        transition: { duration: 0.75, ease: EASE },
-      };
-  const item = (i: number) =>
-    prefersReduced
-      ? {}
-      : {
-          initial: { opacity: 0, y: 22 },
-          whileInView: { opacity: 1, y: 0 },
-          viewport: { once: true, margin: "-8% 0px -8% 0px" },
-          transition: { duration: 0.55, delay: (i % 6) * 0.07, ease: EASE },
-        };
-  const load = (delay: number) =>
-    prefersReduced
-      ? {}
-      : {
-          initial: { opacity: 0, y: 24 },
-          animate: { opacity: 1, y: 0 },
-          transition: { duration: 0.5, delay, ease: EASE },
-        };
-
-  // Tactile spring feedback on call-to-action buttons: a subtle lift on hover,
-  // a press-down on tap. Disabled under reduced motion.
-  const cta = prefersReduced
-    ? {}
-    : {
-        whileHover: { y: -2, scale: 1.025 },
-        whileTap: { scale: 0.97 },
-        transition: { type: "spring" as const, stiffness: 400, damping: 22 },
-      };
+  const [college, setCollege] = useState("");
+  const onSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const name = college.trim();
+    const target = name ? `/requirements?college=${encodeURIComponent(name)}` : "/requirements";
+    navigate(isReturning ? target : `${signupHref}&redirect=${encodeURIComponent(target)}`);
+  };
 
   return (
-    <div className="atlas-page">
+    <div className="pfh">
       <Seo
-        title="Pathforge"
-        description="Build a standout college application profile, one clear next step at a time — for students applying to selective global universities."
+        title="Pathforge - Build your college profile"
+        description="Pathforge keeps your grades, activities, olympiads, essays and deadlines in one college profile, and shows you the next step for the colleges on your list."
         path="/"
       />
 
-      <a className="atlas-skip" href="#atlas-main">
+      <a className="pfh-skip" href="#pfh-main">
         Skip to content
       </a>
-      <div className="atlas-progress" aria-hidden="true">
-        <motion.span style={{ width: "100%", scaleX: progressX, transformOrigin: "0% 50%" }} />
-      </div>
 
-      <header className="atlas-header">
-        <GlassFilter />
-        <div className="atlas-header-inner">
-          <Link className="atlas-brand" to="/" aria-label="Pathforge home">
-            <img src={pathforgeMark} width={96} height={96} decoding="async" alt="Pathforge logo" />
-            <span>Pathforge</span>
+      <header className="pfh-header">
+        <div className="pfh-wrap pfh-header-inner">
+          <Link className="pfh-brand" to="/" aria-label="Pathforge home">
+            <img src={pathforgeMark} width={30} height={30} alt="" />
+            Pathforge
           </Link>
-          <nav className="atlas-nav" aria-label="Primary navigation">
-            <a href="#departments">Explore platform</a>
-            <Link to="/about">About</Link>
+          <nav className="pfh-nav" aria-label="Primary">
+            <a href="#tools">Tools</a>
+            <a href="#verified">Verified profile</a>
             <Link to="/pricing">Pricing</Link>
-            <Link to="/faq">FAQ</Link>
-            <Link to="/teacher/auth">Counsellor workspace</Link>
-            <Link
-              className="atlas-signin"
-              to={workspaceHref}
-              aria-label={isReturning ? "Open your Pathforge workspace" : "Create your Pathforge student workspace"}
-            >
-              {isReturning ? "Open workspace" : "Student workspace"} <span aria-hidden="true">↗</span>
-            </Link>
-
+            <Link to="/about">About</Link>
+            <Link to="/teacher/auth">For counsellors</Link>
           </nav>
+          <div className="pfh-header-actions">
+            {isReturning ? (
+              <Link className="pfh-btn pfh-btn-primary pfh-btn-sm" to="/dashboard">
+                Open workspace
+              </Link>
+            ) : (
+              <>
+                <Link className="pfh-link" to="/auth">
+                  Sign in
+                </Link>
+                <Link className="pfh-btn pfh-btn-primary pfh-btn-sm" to={signupHref}>
+                  Create free profile
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 
-      <main id="atlas-main">
-        <section className="atlas-hero" aria-labelledby="atlas-title" ref={heroRef}>
-          <figure className="atlas-hero-photo" aria-hidden="true">
-            <img src={heroCampus} alt="" width={1600} height={1100} decoding="async" {...({ fetchpriority: "high" } as Record<string, string>)} />
-          </figure>
+      <main id="pfh-main">
+        {/* Hero */}
+        <section className="pfh-hero" aria-labelledby="pfh-title">
+          <div className="pfh-wrap pfh-hero-grid">
+            <div>
+              <span className="pfh-eyebrow">
+                <CheckCircle2 size={15} aria-hidden="true" /> College planning for high school students
+              </span>
+              <h1 id="pfh-title">
+                Build the college profile that <span>gets you in.</span>
+              </h1>
+              <p className="pfh-hero-lede">
+                Your grades, activities, olympiads, test scores, essays and deadlines in one profile, with the next
+                step for every college on your list.
+              </p>
 
-          <FallingLeaves />
+              <form className="pfh-search" onSubmit={onSearch} role="search">
+                <label htmlFor="pfh-college">Where do you want to go?</label>
+                <div className="pfh-search-row">
+                  <div className="pfh-search-field">
+                    <Search size={18} aria-hidden="true" />
+                    <input
+                      id="pfh-college"
+                      list="pfh-college-list"
+                      value={college}
+                      onChange={(e) => setCollege(e.target.value)}
+                      placeholder="Search a college, e.g. Stanford University"
+                      autoComplete="off"
+                    />
+                    <datalist id="pfh-college-list">
+                      {COLLEGE_SUGGESTIONS.map((c) => (
+                        <option key={c} value={c} />
+                      ))}
+                    </datalist>
+                  </div>
+                  <button type="submit" className="pfh-btn pfh-btn-primary">
+                    See what it takes
+                  </button>
+                </div>
+                <p className="pfh-search-hint">
+                  Requirements, deadlines and how your profile compares. Free to start.{" "}
+                  {!isReturning && <Link to={signupHref}>Create your profile</Link>}
+                </p>
+              </form>
 
-          <motion.div className="atlas-wrap atlas-hero-inner" style={{ y: heroY, opacity: heroOpacity }}>
-            <div className="atlas-hero-copy">
-              <motion.h1 id="atlas-title" {...load(0.05)}>
-                Build a <em><span className="standout">standout</span> college profile</em>
-              </motion.h1>
-              <motion.p {...load(0.15)}>
-                A planning workspace for students applying to selective universities. Your grades, activities,
-                essays and deadlines live in one file — and it tells you the one thing worth doing next.
-              </motion.p>
-              <motion.div className="atlas-hero-actions" {...load(0.25)}>
-                {/*
-                 * Both installers, always, side by side — not one button that
-                 * guesses. A visitor on a Mac reading "Download on Windows"
-                 * concludes there is no Mac build; showing both says the
-                 * product runs on either, which is the fact worth conveying in
-                 * a hero. Each carries its platform's own colour — Windows
-                 * blue, Apple black — so the two read as two products to
-                 * choose between rather than one button duplicated.
-                 *
-                 * Each points at a fixed filename under
-                 * releases/latest/download, so the link never needs to know
-                 * the current version. Both are the installer, and both
-                 * auto-update themselves once installed.
-                 */}
-                <MotionSpecularAnchor
-                  href={WINDOWS_DOWNLOAD_URL}
-                  className="atlas-install"
-                  size="lg"
-                  radius={14}
-                  tint="#0078d4"
-                  tintOpacity={1}
-                  textColor="#ffffff"
-                  lineColor="#9ad4ff"
-                  baseColor="#0a4f96"
-                  {...cta}
-                >
-                  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="currentColor">
-                    <path d="M3 5.1 10.4 4v7.3H3zm0 13.8V12h7.4v7.9zM11.3 4.1 21 3v8.3H11.3zm0 15.8v-7.9H21V21z" />
-                  </svg>
-                  Download on Windows
-                </MotionSpecularAnchor>
-
-                <MotionSpecularAnchor
-                  href={MAC_DOWNLOAD_URL}
-                  className="atlas-install"
-                  size="lg"
-                  radius={14}
-                  tint="#2a2a30"
-                  tintOpacity={1}
-                  textColor="#ffffff"
-                  lineColor="#ffffff"
-                  baseColor="#3a3a42"
-                  {...cta}
-                >
-                  <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true" fill="currentColor">
-                    <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8c-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7s1.7.7 2.9.7c1.2 0 2-1.1 2.7-2.2.9-1.2 1.2-2.4 1.2-2.5 0 0-2.4-.9-2.4-3.5zM14.2 5.4c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.9 1 0 2-.5 2.7-1.3z" />
-                  </svg>
-                  Download on Mac
-                </MotionSpecularAnchor>
-              </motion.div>
+              <div className="pfh-hero-alt">
+                {desktopCapable ? (
+                  <>
+                    <span>Also on desktop:</span>
+                    <a href={WINDOWS_DOWNLOAD_URL}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">
+                        <path d="M3 5.1 10.4 4v7.3H3zm0 13.8V12h7.4v7.9zM11.3 4.1 21 3v8.3H11.3zm0 15.8v-7.9H21V21z" />
+                      </svg>
+                      Windows
+                    </a>
+                    <a href={MAC_DOWNLOAD_URL}>
+                      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" fill="currentColor">
+                        <path d="M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.8-.9-3-.8c-1.5 0-2.9.9-3.7 2.2-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.6 2.3 2.8 2.2 1.1 0 1.6-.7 2.9-.7s1.7.7 2.9.7c1.2 0 2-1.1 2.7-2.2.9-1.2 1.2-2.4 1.2-2.5 0 0-2.4-.9-2.4-3.5zM14.2 5.4c.6-.8 1-1.9.9-3-.9 0-2 .6-2.7 1.4-.6.7-1.1 1.8-.9 2.9 1 0 2-.5 2.7-1.3z" />
+                      </svg>
+                      Mac
+                    </a>
+                  </>
+                ) : (
+                  <span>Works in any browser, on any device.</span>
+                )}
+              </div>
             </div>
-          </motion.div>
+
+            <div className="pfh-hero-media">
+              <figure className="pfh-hero-photo">
+                <img
+                  src="/assets/home-graduates-1100.webp"
+                  srcSet="/assets/home-graduates-640.webp 640w, /assets/home-graduates-1100.webp 1100w"
+                  sizes="(max-width: 960px) 100vw, 520px"
+                  width={1100}
+                  height={1500}
+                  alt="Graduates in gowns throwing their caps in the air on the steps of a university hall"
+                  decoding="async"
+                  {...({ fetchpriority: "high" } as Record<string, string>)}
+                />
+              </figure>
+
+              {/* An example of the product, labelled as one. */}
+              <div className="pfh-float pfh-float-profile" aria-hidden="true">
+                <div className="pfh-float-label">Example profile</div>
+                <div className="pfh-float-row">
+                  <span>Academics</span>
+                  <b>82</b>
+                </div>
+                <div className="pfh-meter">
+                  <span style={{ width: "82%" }} />
+                </div>
+                <div className="pfh-float-row">
+                  <span>Activities</span>
+                  <b>74</b>
+                </div>
+                <div className="pfh-meter">
+                  <span style={{ width: "74%" }} />
+                </div>
+                <div className="pfh-float-row">
+                  <span>Essays</span>
+                  <b>61</b>
+                </div>
+                <div className="pfh-meter">
+                  <span style={{ width: "61%" }} />
+                </div>
+                <p className="pfh-float-note">Next: finish your Common App personal statement draft.</p>
+              </div>
+              <div className="pfh-float pfh-float-badge" aria-hidden="true">
+                <BadgeCheck size={22} color="#15803d" />
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>Olympiad result verified</div>
+                  <div style={{ fontSize: 12, color: "#4a5468" }}>Checked with the issuer on Credly</div>
+                </div>
+              </div>
+            </div>
+          </div>
         </section>
 
-        <section className="atlas-universities" aria-label="Top universities worldwide">
-          <motion.p {...reveal}>Where students using Pathforge are aiming</motion.p>
-          <div className="atlas-marquee" aria-live="off">
-            <div className="atlas-track">
-              {[...universities, ...universities].map((u, index) => (
-                <span key={`${u.domain}-${index}`}>
+        {/* Where students are aiming */}
+        <section className="pfh-colleges" aria-label="Universities students are aiming for">
+          <div className="pfh-wrap">
+            <p>Students on Pathforge are aiming for</p>
+          </div>
+          <div className="pfh-marquee" aria-hidden="true">
+            <div className="pfh-track">
+              {[...universities, ...universities].map((u, i) => (
+                <span key={`${u.domain}-${i}`}>
                   <img
                     src={`https://www.google.com/s2/favicons?domain=${u.domain}&sz=32`}
-                    alt={`${u.name} logo`}
+                    alt=""
                     width={20}
                     height={20}
                     loading="lazy"
@@ -276,209 +352,189 @@ export default function Index() {
               ))}
             </div>
           </div>
-          <motion.p className="atlas-universities-disclaimer" {...reveal}>
-            Pathforge is an independent planning platform, not affiliated with or endorsed by these universities.
-          </motion.p>
-        </section>
-
-        <section id="departments" className="atlas-departments atlas-wrap" aria-labelledby="departments-title">
-          <motion.div className="atlas-section-heading" {...reveal}>
-            <p>Inside this issue</p>
-            <h2 id="departments-title">
-              One workspace,
-              <br />
-              <em>one continuous file.</em>
-            </h2>
-            <p className="atlas-intro">
-              One profile. Every important next move. Edit one part and the rest — your resume, LinkedIn, advisor
-              context — stays in sync. Build depth, not a random list of certificates. Whether you're drafting a
-              personal statement, tracking recommendation letters, or mapping out the next application deadline,
-              it lives in the same file — read by the same advisor, in the same voice.
+          <div className="pfh-wrap">
+            <p className="pfh-disclaimer">
+              Pathforge is an independent planning platform, not affiliated with or endorsed by these universities.
             </p>
-          </motion.div>
-
-          {/*
-            * What replaced the five numbered department cards.
-            *
-            * The cards restated the same sentence five times in five boxes.
-            * This says the same thing in one line that keeps moving, so the
-            * eye reads the whole platform in the time it took to skim one
-            * card — and the description underneath carries the detail the
-            * cards used to hold.
-            */}
-          <motion.div
-            className="atlas-rotator"
-            {...reveal}
-            style={{
-              marginTop: "clamp(3.4rem, 7vw, 6rem)",
-              padding: "clamp(2rem, 4vw, 3.25rem)",
-              border: "1px solid var(--line)",
-              borderRadius: "1rem",
-              background: "var(--surface)",
-            }}
-          >
-            <LayoutGroup>
-              <motion.p
-                layout
-                transition={ROTATE_SPRING}
-                className="flex flex-wrap items-center whitespace-pre"
-                style={{
-                  margin: 0,
-                  color: "var(--ink)",
-                  fontFamily: "var(--display)",
-                  fontSize: "clamp(2rem, 4.2vw, 3.5rem)",
-                  fontWeight: 600,
-                  letterSpacing: "-0.022em",
-                  lineHeight: 1.12,
-                }}
-              >
-                <motion.span layout transition={ROTATE_SPRING}>
-                  {"Built for your "}
-                </motion.span>
-                {prefersReduced ? (
-                  <span className={ROTATE_PILL}>{rotatingFeatures[0].word}</span>
-                ) : (
-                  <TextRotate
-                    texts={rotatingFeatures.map((f) => f.word)}
-                    onNext={setFeatureIndex}
-                    mainClassName={`justify-center ${ROTATE_PILL}`}
-                    splitLevelClassName="overflow-hidden pb-[0.06em]"
-                    staggerFrom="last"
-                    staggerDuration={0.022}
-                    initial={{ y: "100%" }}
-                    animate={{ y: 0 }}
-                    exit={{ y: "-120%" }}
-                    transition={ROTATE_SPRING}
-                    rotationInterval={2600}
-                  />
-                )}
-              </motion.p>
-            </LayoutGroup>
-
-            <div style={{ marginTop: "1.4rem", minHeight: "calc(2 * var(--text-lg) * var(--lh-body))" }}>
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.p
-                  key={activeFeature.word}
-                  variants={fadeUp}
-                  initial="hidden"
-                  animate="visible"
-                  exit={{ opacity: 0, y: -8, transition: transition.fast }}
-                  style={{
-                    margin: 0,
-                    maxWidth: "46rem",
-                    color: "var(--ink-soft)",
-                    fontSize: "var(--text-lg)",
-                    lineHeight: "var(--lh-body)",
-                  }}
-                >
-                  {activeFeature.line}
-                </motion.p>
-              </AnimatePresence>
-            </div>
-          </motion.div>
+          </div>
         </section>
 
-        <section className="atlas-editorial" aria-label="Pathforge editorial">
-          <motion.div className="atlas-wrap atlas-editorial-grid" {...reveal}>
-            <p>Editorial</p>
-            <blockquote>
-              “The students who get in aren't the loudest. They are the ones whose <em>file tells a coherent story</em>{" "}
-              — chosen carefully, edited honestly, defended with evidence.”
-            </blockquote>
-            <p className="atlas-editorial-note">
-              That is the standard every activity, essay, and recommendation on Pathforge is held to before it
-              enters your file.
-            </p>
-          </motion.div>
-        </section>
-
-        {/*
-          * What replaced "six rules we never break".
-          *
-          * The rules were true and were stated plainly, but they were six
-          * paragraphs of the product describing its own integrity — the one
-          * claim a landing page cannot make on its own behalf. What a student
-          * actually wants to know at this point on the page is whether their
-          * file will talk to the things they already use. That is checkable,
-          * so it is shown instead.
-          */}
-        {/* Where students are.
-          *
-          * Replaces the integrations directory. Every point on this map is a
-          * country a real student selected during onboarding, read from the
-          * database - see `src/lib/studentCountries.ts` for the query and the
-          * date it was taken. There are deliberately no per-country numbers:
-          * some of these countries have a single student, and "1 student in
-          * Angola" is a disclosure about a minor that buys nothing. */}
-        <section className="atlas-house atlas-wrap" aria-labelledby="house-title">
-          <motion.div className="atlas-section-heading" {...reveal}>
-            <p>{"\n"}</p>
-            <h2 id="house-title">
-              Students in <em>{STUDENT_COUNTRY_COUNT} countries.</em>
-            </h2>
-          </motion.div>
-
-          <motion.div {...reveal}>
-            <WorldMap dots={STUDENT_MAP_DOTS} lineColor="#4465d8" />
-          </motion.div>
-        </section>
-
-        <section className="atlas-brief" aria-labelledby="brief-title">
-          <motion.div className="atlas-wrap atlas-brief-grid" {...reveal}>
-            <div className="atlas-section-heading">
-              <p>Subscribe</p>
-              <h2 id="brief-title">
-                Get the Sunday <em>brief.</em>
-              </h2>
+        {/* Tools */}
+        <section id="tools" className="pfh-section" aria-labelledby="pfh-tools-title">
+          <div className="pfh-wrap">
+            <div className="pfh-head">
+              <p className="pfh-kicker">Tools for every step</p>
+              <h2 id="pfh-tools-title">Everything your application needs, in one profile</h2>
               <p>
-                One short email each week. Deadlines, opportunities, and the single thing worth doing this week — for
-                your major, your grade, your country.
+                Each tool reads the same profile, so what you add once shows up everywhere: your college list, your
+                resume, your essays and your advisor.
               </p>
             </div>
-            <div className="atlas-form-shell">
-              <NewsletterSignup />
+            <div className="pfh-tools">
+              {TOOLS.map((t) => {
+                const Icon = t.icon;
+                return (
+                  <Link key={t.title} to={isReturning ? t.to : signupHref} className="pfh-card">
+                    <span className="pfh-card-icon">
+                      <Icon size={22} aria-hidden="true" />
+                    </span>
+                    <h3>{t.title}</h3>
+                    <p>{t.body}</p>
+                    {t.chips && (
+                      <div className="pfh-chips">
+                        {t.chips.map((c) => (
+                          <span key={c}>{c}</span>
+                        ))}
+                      </div>
+                    )}
+                    <span className="pfh-card-more">
+                      {isReturning ? "Open" : "Get started"} <ArrowRight size={15} aria-hidden="true" />
+                    </span>
+                  </Link>
+                );
+              })}
             </div>
-          </motion.div>
+          </div>
         </section>
 
-        <section className="atlas-colophon atlas-wrap" aria-labelledby="colophon-title">
-          <motion.div className="atlas-section-heading" {...reveal}>
-            <p>{"\n"}</p>
-            <h2 id="colophon-title">
-              Your file is already <span>being written.</span> <em>Start editing.</em>
-            </h2>
-          </motion.div>
-          <motion.div className="atlas-colophon-actions" {...item(1)}>
-            <MotionSpecularLink
-              to={workspaceHref}
-              size="lg"
-              radius={12}
-              tint="#4465d8"
-              tintOpacity={1}
-              textColor="#ffffff"
-              lineColor="#ffffff"
-              baseColor="#29439c"
-              {...cta}
-            >
-              Build your application plan <span aria-hidden="true">↗</span>
-            </MotionSpecularLink>
-            <MotionLink className="atlas-secondary" to="/activities" {...cta}>
-              Browse the activities desk
-            </MotionLink>
-          </motion.div>
+        {/* Verified + advisor */}
+        <section id="verified" className="pfh-section pfh-section-tint" aria-labelledby="pfh-verified-title">
+          <div className="pfh-wrap">
+            <div className="pfh-split">
+              <figure className="pfh-split-media">
+                <img
+                  src="/assets/home-library-1400.webp"
+                  srcSet="/assets/home-library-720.webp 720w, /assets/home-library-1400.webp 1400w"
+                  sizes="(max-width: 900px) 100vw, 560px"
+                  width={1400}
+                  height={1227}
+                  alt="Students studying at long desks in a domed university reading room"
+                  loading="lazy"
+                  decoding="async"
+                />
+                <figcaption>
+                  Photo:{" "}
+                  <a
+                    href="https://commons.wikimedia.org/wiki/File:La_Trobe_Reading_Room_viewed_through_archway_State_Library_Victoria.jpg"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Bhullargraphic, Wikimedia Commons
+                  </a>
+                  , CC BY-SA 4.0
+                </figcaption>
+              </figure>
+              <div className="pfh-head">
+                <p className="pfh-kicker">A profile you can prove</p>
+                <h2 id="pfh-verified-title">Your achievements, verified at the source</h2>
+                <ul className="pfh-points">
+                  <li>
+                    <CredlyMark className="h-6 w-12" />
+                    <span>
+                      <b>Credly badges, checked with the issuer.</b> Olympiad results, certificates and exam badges are
+                      verified against Credly before they go on your profile.
+                    </span>
+                  </li>
+                  <li>
+                    <BadgeCheck size={20} aria-hidden="true" />
+                    <span>
+                      <b>Proof on every activity.</b> Links and documents sit next to each entry, so a counsellor can
+                      check it in one click.
+                    </span>
+                  </li>
+                  <li>
+                    <CheckCircle2 size={20} aria-hidden="true" />
+                    <span>
+                      <b>One file, many outputs.</b> Your resume, LinkedIn and application lists are built from the
+                      same record and stay in step.
+                    </span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <div className="pfh-split pfh-split-reverse">
+              <div className="pfh-head">
+                <p className="pfh-kicker">Advisor</p>
+                <h2>An advisor that has read your whole profile</h2>
+                <p>
+                  Ask what to do this week, which schools fit, or where your essay loses the reader. It answers from
+                  your file, and it always tells you which AI model wrote the answer.
+                </p>
+                <div className="pfh-models" aria-label="AI models used by the advisor">
+                  <span>
+                    <ModelLogo vendor="google" /> Gemini 2.5 Flash
+                  </span>
+                  <span>
+                    <ModelLogo vendor="openai" /> GPT-5 mini
+                  </span>
+                  <span>
+                    <ModelLogo vendor="google" /> Gemini 2.5 Pro
+                  </span>
+                </div>
+              </div>
+              <div className="pfh-chat" aria-hidden="true">
+                <div className="pfh-bubble pfh-bubble-me">
+                  I have 6 weeks before Early Action. What should I focus on?
+                </div>
+                <div className="pfh-bubble pfh-bubble-ai">
+                  Your list is set and your scores are in range, so the gap is the essay. Finish the personal statement
+                  draft this week, then ask Ms. Rao for her letter by Friday so she has three weeks.
+                </div>
+                <div className="pfh-chat-foot">
+                  Powered by <ModelLogo vendor="google" /> <b style={{ color: "#111a2e" }}>Gemini 2.5 Flash</b>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Where students are */}
+        <section className="pfh-section" aria-labelledby="pfh-map-title">
+          <div className="pfh-wrap">
+            <div className="pfh-head pfh-head-center">
+              <p className="pfh-kicker">Around the world</p>
+              <h2 id="pfh-map-title">Students in {STUDENT_COUNTRY_COUNT} countries plan with Pathforge</h2>
+            </div>
+            <div className="pfh-map">
+              <WorldMap dots={STUDENT_MAP_DOTS} lineColor="#4465d8" />
+            </div>
+          </div>
+        </section>
+
+        {/* Newsletter */}
+        <section className="pfh-section pfh-section-tint" aria-labelledby="pfh-brief-title">
+          <div className="pfh-wrap">
+            <div className="pfh-brief">
+              <div className="pfh-head">
+                <p className="pfh-kicker">The Sunday brief</p>
+                <h2 id="pfh-brief-title">One email a week, only what matters</h2>
+                <p>Deadlines, new scholarships and competitions for your major, grade and country.</p>
+              </div>
+              <NewsletterSignup />
+            </div>
+          </div>
+        </section>
+
+        {/* Final call to action */}
+        <section className="pfh-cta" aria-labelledby="pfh-cta-title">
+          <div className="pfh-wrap pfh-cta-inner">
+            <div>
+              <h2 id="pfh-cta-title">Start your college profile today</h2>
+              <p>Free to start. Upgrade only if you want more.</p>
+            </div>
+            <div className="pfh-cta-actions">
+              <Link className="pfh-btn pfh-btn-primary" to={workspaceHref}>
+                {isReturning ? "Open your workspace" : "Create free profile"}
+              </Link>
+              <Link className="pfh-btn pfh-btn-quiet" to="/pricing">
+                See pricing
+              </Link>
+            </div>
+          </div>
         </section>
       </main>
 
-      {/* The shared black footer, not a second one written inline.
-
-          This page used to carry its own `.atlas-footer` on a light
-          `var(--surface)` plate, which is why the landing page ended in cream
-          while every other page ended in black. It also meant the footer here
-          silently missed anything added to the real one - the cookie policy
-          link, the business identity and the Merchant of Record line were all
-          absent from the single most visited page on the site.
-
-          One footer, one place to change it. */}
       <Footer />
     </div>
   );

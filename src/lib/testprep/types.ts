@@ -89,6 +89,82 @@ export interface QuestionChoice {
   text: string;
 }
 
+/* ------------------------------------------------------------------ */
+/* Figures                                                             */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A table, graph or diagram that belongs to a question.
+ *
+ * Stored as data rather than as images so it renders crisply at any size,
+ * follows the light and dark themes, and can be read by a screen reader from
+ * the same values the chart is drawn from.
+ */
+export type Figure = TableFigure | PlotFigure | BarFigure | DiagramFigure;
+
+export interface TableFigure {
+  kind: "table";
+  title?: string;
+  head: string[];
+  rows: string[][];
+  /** Header column cells in the first column, e.g. row labels. */
+  rowHeaders?: boolean;
+}
+
+export type PlotSeries =
+  | { type: "points"; pts: [number, number][]; label?: string }
+  | { type: "polyline"; pts: [number, number][]; label?: string; dashed?: boolean }
+  | { type: "fn"; f: (x: number) => number; domain?: [number, number]; label?: string; dashed?: boolean };
+
+export interface PlotFigure {
+  kind: "plot";
+  title?: string;
+  xLabel?: string;
+  yLabel?: string;
+  /** [min, max, gridStep]. */
+  x: [number, number, number];
+  y: [number, number, number];
+  series: PlotSeries[];
+  /** Print tick numbers every n grid lines. Default 1. */
+  labelEvery?: number;
+  /** Draw the axes through the origin (a coordinate plane) rather than at the edges (a chart). */
+  axesAtOrigin?: boolean;
+  /** Short text description for screen readers. */
+  alt?: string;
+}
+
+export interface BarFigure {
+  kind: "bar";
+  title?: string;
+  xLabel?: string;
+  yLabel?: string;
+  categories: string[];
+  series: { name: string; values: number[] }[];
+  y: [number, number, number];
+  alt?: string;
+}
+
+export type DiagramItem =
+  | { t: "poly"; pts: [number, number][]; closed?: boolean; dashed?: boolean }
+  | { t: "line"; a: [number, number]; b: [number, number]; dashed?: boolean; arrow?: boolean }
+  | { t: "circle"; c: [number, number]; r: number; dashed?: boolean }
+  | { t: "arc"; c: [number, number]; r: number; from: number; to: number }
+  | { t: "dot"; at: [number, number] }
+  | { t: "text"; at: [number, number]; s: string; anchor?: "start" | "middle" | "end"; italic?: boolean }
+  /** A right-angle mark at `at`, with legs pointing toward `a` and `b`. */
+  | { t: "right"; at: [number, number]; a: [number, number]; b: [number, number] };
+
+export interface DiagramFigure {
+  kind: "diagram";
+  /** viewBox width and height, in diagram units. y grows downward. */
+  w: number;
+  h: number;
+  items: DiagramItem[];
+  /** Printed under the figure, e.g. "Note: Figure not drawn to scale." */
+  note?: string;
+  alt?: string;
+}
+
 export interface Question {
   id: string;
   testId: TestId;
@@ -109,6 +185,17 @@ export interface Question {
   source: QuestionSource;
   /** Whether an on-screen calculator is expected to help. */
   calculator?: boolean;
+  /** A table, graph or diagram shown with the question. */
+  figure?: Figure;
+  /**
+   * The practice test this question belongs to, if any.
+   *
+   * Practice-test questions are held back from the Question Bank and from
+   * practice sets, the way College Board keeps its full-length tests apart
+   * from its question bank, so a student's first sight of a test's questions
+   * is when they sit it.
+   */
+  form?: string;
 }
 
 /** One answered question, wherever it was answered. */
@@ -178,13 +265,28 @@ export interface AttemptSummary {
   sectionScores?: Partial<Record<SubjectId, number>>;
   /** Per-skill tally, so Results can name the areas to work on. */
   bySkill: Record<string, { correct: number; total: number }>;
+  /**
+   * Every question in the sitting with what was given, in order, so Results
+   * can offer a question-by-question review. Absent on attempts recorded
+   * before this was kept.
+   */
+  items?: { questionId: string; given: string; correct: boolean; elapsedMs: number }[];
+  /** The practice test sat, when the attempt was one of the fixed forms. */
+  formId?: string;
+  /** Which second module each section routed to, for adaptive sittings. */
+  routes?: Partial<Record<SubjectId, ModuleRoute>>;
 }
+
+/** The digital SAT's second module is harder or easier depending on the first. */
+export type ModuleRoute = "harder" | "easier";
 
 /** Everything the section persists for one student. */
 export interface TestPrepProfile {
   targetScore: number;
   /** ISO date (yyyy-mm-dd), or empty if the student hasn't set one. */
   testDate: string;
+  /** Questions per day the student is aiming for. Absent means the default. */
+  dailyGoal?: number;
   bookmarks: string[];
   answers: AnswerRecord[];
   attempts: AttemptSummary[];

@@ -75,7 +75,8 @@ export function Seo({
   title, description, path, type = "website", image, imageAlt, jsonLd, noindex,
 }: SeoProps) {
   const url = `${SITE}${path ?? (typeof window !== "undefined" ? window.location.pathname : "/")}`;
-  const fullTitle = title.length > 60 ? title.slice(0, 57) + "..." : title;
+  const branded = /pathforge/i.test(title) ? title : `${title} — Pathforge`;
+  const fullTitle = branded.length > 60 ? branded.slice(0, 57) + "..." : branded;
   const desc = description.length > 160 ? description.slice(0, 157) + "..." : description;
   const ogImage = image ?? DEFAULT_OG_IMAGE;
   const ldArray = jsonLd ? (Array.isArray(jsonLd) ? jsonLd : [jsonLd]) : [];

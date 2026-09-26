@@ -3753,6 +3753,8 @@ export type Database = {
           ends_at: string | null
           id: string
           location: string | null
+          recurrence: string | null
+          recurrence_end: string | null
           starts_at: string
           title: string
           updated_at: string
@@ -3767,6 +3769,8 @@ export type Database = {
           ends_at?: string | null
           id?: string
           location?: string | null
+          recurrence?: string | null
+          recurrence_end?: string | null
           starts_at: string
           title: string
           updated_at?: string
@@ -3781,6 +3785,8 @@ export type Database = {
           ends_at?: string | null
           id?: string
           location?: string | null
+          recurrence?: string | null
+          recurrence_end?: string | null
           starts_at?: string
           title?: string
           updated_at?: string
@@ -4348,6 +4354,54 @@ export type Database = {
           id?: string
           is_verified?: boolean
           name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      student_applications: {
+        Row: {
+          application_round: string | null
+          college_name: string
+          country: string | null
+          created_at: string
+          deadline: string | null
+          decision: string | null
+          id: string
+          missing_documents: string[] | null
+          notes: string | null
+          progress: number | null
+          status: string
+          student_id: string
+          updated_at: string
+        }
+        Insert: {
+          application_round?: string | null
+          college_name: string
+          country?: string | null
+          created_at?: string
+          deadline?: string | null
+          decision?: string | null
+          id?: string
+          missing_documents?: string[] | null
+          notes?: string | null
+          progress?: number | null
+          status?: string
+          student_id?: string
+          updated_at?: string
+        }
+        Update: {
+          application_round?: string | null
+          college_name?: string
+          country?: string | null
+          created_at?: string
+          deadline?: string | null
+          decision?: string | null
+          id?: string
+          missing_documents?: string[] | null
+          notes?: string | null
+          progress?: number | null
+          status?: string
+          student_id?: string
           updated_at?: string
         }
         Relationships: []
@@ -5591,8 +5645,11 @@ export type Database = {
       }
       is_vc_user: { Args: { _uid?: string }; Returns: boolean }
       is_verified_teacher: { Args: { _user_id: string }; Returns: boolean }
+      journey_compute_scores: { Args: { _uid: string }; Returns: Json }
       journey_decrement_heart: { Args: { _user_id: string }; Returns: number }
+      journey_level_for_score: { Args: { _score: number }; Returns: number }
       journey_reset_hearts: { Args: never; Returns: Json }
+      journey_set_placement: { Args: { _level: number }; Returns: Json }
       journey_submit_stage: {
         Args: { stage_id: string; task_ids: string[] }
         Returns: Json

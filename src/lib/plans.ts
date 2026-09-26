@@ -64,9 +64,14 @@ export interface PlanConfig {
   tier: PlanTier;
   name: string;
   tagline: string;
-  /** What the customer actually pays per month, after the launch discount. */
+  /** What the customer actually pays per month. */
   priceUSD: number;
-  /** List price before the launch discount. Omit on tiers that aren't on sale. */
+  /**
+   * List price before a discount, for a tier that is genuinely on sale.
+   * Omitted on every tier today — Pro and Max are flat $4/$12 with no prior
+   * list price to anchor against, and inventing one would be a false discount
+   * claim. Leave this unset unless there is a real "was $X" to show.
+   */
   originalPriceUSD?: number;
   /**
    * The plan's usage allowance in the server's internal accounting units, in
@@ -133,7 +138,7 @@ export const PLANS: PlanConfig[] = [
     advisorModelBlurb: "Fast answers for everyday planning questions.",
     features: [
       "The full 300-quest Journey",
-      "PFA 5.5 advisor model",
+      "PFA 5.5 advisor model (Gemini 2.5 Flash)",
       "Activities, essays & resume builders",
       "Full daily allowance, resets every 24 h",
       "Advisor chats draw on the same daily allowance",
@@ -144,9 +149,15 @@ export const PLANS: PlanConfig[] = [
     tier: "pro",
     name: "Pro",
     tagline: "Deeper analysis and room to move fast.",
-    priceUSD: 20,
-    originalPriceUSD: 25,
-    allowanceUnits: 250,
+    // Flat $4/mo — no originalPriceUSD. There is no prior list price to anchor
+    // against here, so a manufactured "was $X" strike-through would be a false
+    // discount claim rather than a real one, which is exactly the FTC problem
+    // documented for the sign-in reviews in src/data/reviews.ts.
+    priceUSD: 4,
+    // 180 = 2x the free tier's monthly-equivalent allowance (3/day * 30 = 90).
+    // Must match monthly_credit_allowance('pro') in the database — see the
+    // module comment above and the migration that changed both together.
+    allowanceUnits: 180,
     allowancePeriod: "month",
     icon: Zap,
     accent: "from-indigo-500 to-violet-600",
@@ -156,8 +167,8 @@ export const PLANS: PlanConfig[] = [
       "Reasons across your whole profile — scores, activities and target list — before it answers.",
     features: [
       "Everything in Free",
-      "PFA 6.5 advisor model",
-      "About 3× the free allowance",
+      "PFA 6.5 advisor model (GPT-5 mini)",
+      "About 2× the free allowance",
       "Priority screenshot verification",
       "All application & LinkedIn builders",
       "Email support",
@@ -167,8 +178,10 @@ export const PLANS: PlanConfig[] = [
     tier: "max",
     name: "Max",
     tagline: "The deepest reasoning for the highest-stakes decisions.",
-    priceUSD: 75,
-    originalPriceUSD: 100,
+    // Flat $12/mo, same reasoning as Pro above — no originalPriceUSD.
+    priceUSD: 12,
+    // Unchanged: 750 already reads as "About 8x" against the free baseline,
+    // which is the multiple this tier is meant to carry. Only the price moved.
     allowanceUnits: 750,
     allowancePeriod: "month",
     icon: Crown,
@@ -178,7 +191,7 @@ export const PLANS: PlanConfig[] = [
       "Our deepest reasoning model — for essay strategy, school-list calls and anything you only get one shot at.",
     features: [
       "Everything in Pro",
-      "PFA 7 advisor model",
+      "PFA 7 advisor model (Gemini 2.5 Pro)",
       "About 8× the free allowance",
       "Fastest verification queue",
       "1:1 priority support",

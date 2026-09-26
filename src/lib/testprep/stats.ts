@@ -22,7 +22,7 @@ import {
   subjectName as subjectLabel,
 } from "./blueprints";
 import { QUESTION_COUNT_BY_DOMAIN, QUESTION_COUNT_BY_SKILL, questionById } from "./questions";
-import type { AnswerRecord, Difficulty, SubjectId, TestPrepProfile } from "./types";
+import type { AnswerRecord, Difficulty, ModuleRoute, SubjectId, TestPrepProfile } from "./types";
 
 /** Below this many attempts, a mastery percentage is noise, not a measurement. */
 export const MASTERY_MIN_ATTEMPTS = 3;
@@ -114,7 +114,12 @@ export function skillStats(profile: TestPrepProfile): SkillStats[] {
   const grouped = answersBySkill(profile);
   return SAT_SKILLS.map((skill) => {
     const records = grouped.get(skill.id) ?? [];
-    const distinct = new Set(records.map((r) => r.questionId));
+    // Coverage counts only bank questions, since `available` does: a practice
+    // test's questions still count toward mastery, but a student who has sat
+    // a test has not thereby completed more of the bank than exists.
+    const distinct = new Set(
+      records.filter((r) => !questionById(r.questionId)?.form).map((r) => r.questionId),
+    );
     // Only the records that carry a measurement, for the reason given on
     // `overallStats`: an exam stores every unanswered question with
     // `elapsedMs: 0`, and averaging those in reports a pace nobody worked at.
@@ -191,6 +196,40 @@ export function estimateSectionScore(
   // 0% accuracy maps to 250, 100% to 800, roughly matching how raw scores
   // convert on a published scoring table.
   const raw = 250 + accuracy * 550;
+  return Math.round(raw / 10) * 10;
+}
+
+/**
+ * Share of Module 1 a student must answer correctly to be routed to the
+ * harder Module 2.
+ *
+ * College Board does not publish its routing rule, and it is based on item
+ * difficulty rather than a flat percentage. Sixty per cent is a practical
+ * stand-in: comfortably above chance, and roughly where a student starts to
+ * need the harder module's questions to show what they can do.
+ */
+export const ROUTE_THRESHOLD = 0.6;
+
+export function routeFor(correct: number, total: number): ModuleRoute {
+  return total > 0 && correct / total >= ROUTE_THRESHOLD ? "harder" : "easier";
+}
+
+/**
+ * A section score for an adaptive sitting: both modules of one section.
+ *
+ * The shape follows how the digital SAT behaves rather than any published
+ * table, because there is none. On the harder route every correct answer is
+ * worth more and the full 200-800 band is reachable; on the easier route the
+ * section tops out in the low 600s, so a perfect easier Module 2 cannot outscore
+ * a strong harder one. The curve is slightly concave, so the last few
+ * questions near the top of the band are worth more than those near the
+ * bottom, which is also what real conversion tables show.
+ *
+ * Still an estimate from practice questions, and presented as one.
+ */
+export function adaptiveSectionScore(route: ModuleRoute, correct: number, total: number): number {
+  const frac = total > 0 ? Math.min(1, Math.max(0, correct / total)) : 0;
+  const raw = route === "harder" ? 200 + 600 * frac ** 0.85 : 200 + 420 * frac ** 0.9;
   return Math.round(raw / 10) * 10;
 }
 

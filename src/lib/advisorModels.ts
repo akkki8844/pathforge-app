@@ -28,7 +28,20 @@ export interface AdvisorModel {
    * student a rate they are not being charged.
    */
   weight: number;
+  /** Who makes the model underneath. Shown next to the label, with its logo. */
+  vendor: ModelVendor;
+  /** The model's public name, e.g. "Gemini 2.5 Flash". Never hidden. */
+  modelName: string;
 }
+
+export type ModelVendor = "google" | "openai" | "nvidia" | "zai";
+
+export const VENDOR_NAMES: Record<ModelVendor, string> = {
+  google: "Google",
+  openai: "OpenAI",
+  nvidia: "NVIDIA",
+  zai: "Z.ai",
+};
 
 export const ADVISOR_MODELS: readonly AdvisorModel[] = [
   {
@@ -38,6 +51,8 @@ export const ADVISOR_MODELS: readonly AdvisorModel[] = [
     gateway: "google/gemini-2.5-flash",
     requiredPlan: "free",
     weight: 1,
+    vendor: "google",
+    modelName: "Gemini 2.5 Flash",
   },
   {
     id: "pfa-6.5",
@@ -46,6 +61,8 @@ export const ADVISOR_MODELS: readonly AdvisorModel[] = [
     gateway: "openai/gpt-5-mini",
     requiredPlan: "pro",
     weight: 2,
+    vendor: "openai",
+    modelName: "GPT-5 mini",
   },
   {
     id: "pfa-7",
@@ -54,6 +71,8 @@ export const ADVISOR_MODELS: readonly AdvisorModel[] = [
     gateway: "google/gemini-2.5-pro",
     requiredPlan: "max",
     weight: 3,
+    vendor: "google",
+    modelName: "Gemini 2.5 Pro",
   },
 ] as const;
 
@@ -147,4 +166,38 @@ export function writeStoredModel(id: string): void {
   } catch {
     /* ignore */
   }
+}
+
+/**
+ * The public name and maker of any model id the advisor can come back with.
+ *
+ * The id is the one the server reports for the turn, which is not always the
+ * one the student picked: a retired or failing model falls back to Gemini 2.5
+ * Flash, and when the primary gateway is out of credit the answer is written
+ * by a backup provider's open model. Disclosing the tier's usual model would
+ * then name the wrong company, so the label is derived from what actually ran.
+ */
+const SERVED_MODELS: { match: RegExp; vendor: ModelVendor; name: string }[] = [
+  { match: /gemini-2\.5-pro/, vendor: "google", name: "Gemini 2.5 Pro" },
+  { match: /gemini-2\.5-flash-lite/, vendor: "google", name: "Gemini 2.5 Flash-Lite" },
+  { match: /gemini-2\.5-flash/, vendor: "google", name: "Gemini 2.5 Flash" },
+  { match: /gemini-3\.1-flash-lite/, vendor: "google", name: "Gemini 3.1 Flash-Lite" },
+  { match: /gemini-3\.5-flash/, vendor: "google", name: "Gemini 3.5 Flash" },
+  { match: /gemini-3-flash/, vendor: "google", name: "Gemini 3 Flash" },
+  { match: /gemini/, vendor: "google", name: "Gemini" },
+  { match: /gpt-5-nano/, vendor: "openai", name: "GPT-5 nano" },
+  { match: /gpt-5-mini/, vendor: "openai", name: "GPT-5 mini" },
+  { match: /gpt-5/, vendor: "openai", name: "GPT-5" },
+  { match: /gpt/, vendor: "openai", name: "GPT" },
+  { match: /nemotron/, vendor: "nvidia", name: "Nemotron" },
+  { match: /glm/, vendor: "zai", name: "GLM" },
+];
+
+export function describeServedModel(
+  id: string | null | undefined,
+): { vendor: ModelVendor; name: string } | null {
+  if (!id) return null;
+  const lower = id.toLowerCase();
+  const hit = SERVED_MODELS.find((m) => m.match.test(lower));
+  return hit ? { vendor: hit.vendor, name: hit.name } : null;
 }

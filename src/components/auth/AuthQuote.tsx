@@ -68,6 +68,42 @@ import type { AuthQuote as AuthQuoteData } from "@/data/authQuotes";
 
 const HOLD_MS = 8000;
 
+/*
+ * EMPHASIS
+ *
+ * Words wrapped in asterisks in `src/data/authQuotes.ts` are the ones the line
+ * turns on. They get a heavier weight and an accent colour. The accents
+ * alternate, so two emphases in one sentence read as two separate beats rather
+ * than as one long highlighted run.
+ *
+ * Weight and colour, not italics: only the upright Fraunces face is shipped, and
+ * a browser-slanted serif at display size looks broken rather than emphatic.
+ */
+const ACCENTS = {
+  light: ["text-primary", "text-amber-600 dark:text-amber-400"],
+  onDark: ["text-amber-300", "text-cyan-200"],
+} as const;
+
+function renderEmphasis(text: string, tone: "light" | "onDark") {
+  let n = 0;
+  return text.split(/(\*[^*]+\*)/g).map((part, i) => {
+    if (part.length > 2 && part.startsWith("*") && part.endsWith("*")) {
+      const accent = ACCENTS[tone][n++ % 2];
+      return (
+        <span key={i} className={cn("font-medium", accent)}>
+          {part.slice(1, -1)}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
+/** Plain text of a line, for keys and labels. */
+function plain(text: string) {
+  return text.replace(/\*/g, "");
+}
+
 export function AuthQuote({
   quotes,
   /**
@@ -76,10 +112,17 @@ export function AuthQuote({
    * between them.
    */
   tone = "light",
+  /**
+   * "lg" when the quote is the whole panel, as it is beside the forms on the
+   * wide layout. "md" under the form on a phone, where it is a footnote to
+   * the page rather than its subject.
+   */
+  size = "md",
   className,
 }: {
   quotes: AuthQuoteData[];
   tone?: "light" | "onDark";
+  size?: "md" | "lg";
   className?: string;
 }) {
   const reduced = useReducedMotion() ?? false;
@@ -107,6 +150,7 @@ export function AuthQuote({
 
   const quote = quotes[index];
   const onDark = tone === "onDark";
+  const lg = size === "lg";
 
   return (
     <figure
@@ -121,7 +165,7 @@ export function AuthQuote({
           four-line one. The two floors are the two column widths this renders
           in: the panel on the wide layout, the form column on the narrow one,
           where the type is smaller but the measure is much shorter. */}
-      <div className="min-h-[9.5rem] lg:min-h-[13.5rem]">
+      <div className={lg ? "min-h-[20rem] 2xl:min-h-[24rem]" : "min-h-[11rem]"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.blockquote
             key={index}
@@ -136,11 +180,16 @@ export function AuthQuote({
                quote looks set rather than typed. */
             style={{ textIndent: "-0.42em" }}
             className={cn(
-              "max-w-[34ch] text-pretty font-serif text-[clamp(1.35rem,2.4vw,2.2rem)] font-normal leading-[1.18] tracking-[-0.018em]",
+              "text-pretty font-serif font-light",
+              lg
+                ? "max-w-[24ch] text-[clamp(2rem,3.2vw,3.6rem)] leading-[1.1] tracking-[-0.03em]"
+                : "max-w-[30ch] text-[1.65rem] leading-[1.16] tracking-[-0.022em]",
               onDark ? "text-white" : "text-foreground",
             )}
           >
-            {"“" + quote.text + "”"}
+            {"“"}
+            {renderEmphasis(quote.text, tone)}
+            {"”"}
           </motion.blockquote>
         </AnimatePresence>
       </div>
@@ -151,7 +200,8 @@ export function AuthQuote({
           a signature. The rule gives it something to sit against. */}
       <figcaption
         className={cn(
-          "mt-7 flex items-center gap-4 border-t pt-4 text-[11px] font-semibold uppercase tracking-[0.2em]",
+          "flex items-center gap-4 border-t font-semibold uppercase tracking-[0.2em]",
+          lg ? "mt-10 pt-5 text-[12px]" : "mt-7 pt-4 text-[11px]",
           onDark ? "border-white/15 text-white/60" : "border-border text-muted-foreground",
         )}
       >
@@ -163,7 +213,7 @@ export function AuthQuote({
           <span className="ml-auto flex items-center gap-1.5">
             {quotes.map((q, i) => (
               <button
-                key={q.text}
+                key={plain(q.text)}
                 type="button"
                 onClick={() => setIndex(i)}
                 aria-label={`Show quote ${i + 1} of ${quotes.length}`}

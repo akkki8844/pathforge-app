@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   GraduationCap, AlertTriangle, ExternalLink, Loader2, RefreshCw, BookOpen, Target, Award, Calendar, DollarSign, FileText, Sparkles, ShieldAlert, Lightbulb, CheckCircle2, XCircle, TrendingUp, Map, Compass, Download, History, Trash2, ListChecks } from "lucide-react";
@@ -653,6 +653,26 @@ export default function Requirements() {
     setTab("current");
     if (user && !reports[c]) fetchReport(c);
   };
+
+  // The landing page's college search lands here as ?college=<name>. Wait for
+  // saved reports to load first so a college already researched is shown
+  // rather than generated again.
+  const [params, setParams] = useSearchParams();
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  useEffect(() => {
+    if (history.length || Object.keys(reports).length) setHistoryLoaded(true);
+    const t = setTimeout(() => setHistoryLoaded(true), 1500);
+    return () => clearTimeout(t);
+  }, [history, reports]);
+  useEffect(() => {
+    const c = params.get("college")?.trim().slice(0, 120);
+    if (!c || !user || !historyLoaded) return;
+    selectCollege(c);
+    const next = new URLSearchParams(params);
+    next.delete("college");
+    setParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, historyLoaded]);
 
   const handleExportPdf = async () => {
     if (!reportRef.current || !activeCollege) return;

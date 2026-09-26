@@ -22,7 +22,7 @@ const MODELS = ADVISOR_MODELS.map((m) => ({
   // The burn rate rides along with the label because this picker changes what
   // the advisor costs, and someone setting it here may never see the composer's
   // token meter before the choice takes effect.
-  label: `${m.label} (${m.weight}× tokens) — ${m.blurb}`,
+  label: `${m.label}, powered by ${m.modelName} (${m.weight}× tokens) — ${m.blurb}`,
 }));
 
 const RETENTION = [

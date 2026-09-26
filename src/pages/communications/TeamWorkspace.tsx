@@ -284,7 +284,7 @@ export default function TeamWorkspace() {
 
           <TabsContent value="chat" className="mt-6">
             {conversation ? (
-              <div className="h-[calc(100vh-22rem)] min-h-[420px] overflow-hidden rounded-2xl border border-border bg-card">
+              <div className="h-[calc(100dvh-22rem)] min-h-[420px] overflow-hidden rounded-2xl border border-border bg-card">
                 <ChatThread
                   conversation={conversation}
                   listPeople={people}

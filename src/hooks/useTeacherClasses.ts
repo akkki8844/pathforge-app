@@ -12,8 +12,11 @@ export interface ClassRow {
 
 function generateInviteCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  // Cryptographically random, 10 characters (~50 bits) so codes can't be guessed.
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
   let out = "";
-  for (let i = 0; i < 6; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  for (let i = 0; i < bytes.length; i++) out += chars[bytes[i] % chars.length];
   return out;
 }
 

@@ -36,3 +36,23 @@ export function desktopDownload(): { platform: DesktopPlatform; url: string; lab
     ? { platform, url: MAC_DOWNLOAD_URL, label: "Download on Mac" }
     : { platform, url: WINDOWS_DOWNLOAD_URL, label: "Download on Windows" };
 }
+
+/**
+ * Whether this device can run either desktop build at all.
+ *
+ * Phones, tablets, Chromebooks and Linux cannot install a .exe or a .dmg, so
+ * offering them only "Download on Windows" and "Download on Mac" is offering
+ * nothing: the landing page showed exactly that to every iPhone and Android
+ * visitor. Those devices get the web workspace instead.
+ *
+ * iPadOS 13+ reports itself as a Mac in the user agent; a touch screen is what
+ * gives it away, since no Mac has one. Server-side and for crawlers this says
+ * yes, so the prerendered page carries the installer links.
+ */
+export function canInstallDesktopApp(): boolean {
+  if (typeof navigator === "undefined") return true;
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod|Android|CrOS|Mobile/i.test(ua)) return false;
+  if (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1) return false;
+  return /Windows|Macintosh|Mac OS X/i.test(ua);
+}

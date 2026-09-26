@@ -2,7 +2,7 @@
   "name": "pathforge-app",
   "productName": "Pathforge",
   "private": true,
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "Pathforge desktop app — college application readiness, as a native desktop build for Windows and macOS.",
   "author": {
     "name": "Pathforge"

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/ui/input";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
 import { DifficultyTag, SourceNote } from "@/components/testprep/primitives";
+import { QuestionFigure, RichText } from "@/components/testprep/Figure";
 import { skillName } from "@/lib/testprep/blueprints";
 import { isCorrect } from "@/lib/testprep/select";
 import { FOCUS } from "@/lib/testprep/ui";
@@ -140,13 +141,17 @@ export function QuestionView({
       </div>
 
       {question.stimulus && (
-        <div className="mt-3 whitespace-pre-line rounded-lg border border-border/70 bg-muted/25 p-4 text-sm leading-relaxed text-foreground">
-          {question.stimulus}
+        <div className="mt-3 space-y-4 rounded-lg border border-border/70 bg-muted/25 p-4 text-sm leading-relaxed text-foreground">
+          {question.figure && <QuestionFigure figure={question.figure} />}
+          <RichText text={question.stimulus} className="block" />
         </div>
+      )}
+      {!question.stimulus && question.figure && (
+        <QuestionFigure figure={question.figure} className="mt-4" />
       )}
 
       <p className="mt-4 text-[15px] font-medium leading-relaxed text-foreground">
-        {question.prompt}
+        <RichText text={question.prompt} />
       </p>
 
       {question.choices ? (
@@ -213,7 +218,7 @@ export function QuestionView({
                       wrong && "line-through decoration-1",
                     )}
                   >
-                    {choice.text}
+                    <RichText text={choice.text} />
                   </span>
                   {(right || wrong) && (
                     <span className="ml-auto shrink-0 self-center pl-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
@@ -288,7 +293,9 @@ export function QuestionView({
               Correct answer: <span className="font-semibold tabular-nums">{question.answer}</span>
             </p>
           )}
-          <p className="mt-2 text-sm leading-relaxed text-foreground">{question.explanation}</p>
+          <p className="mt-2 text-sm leading-relaxed text-foreground">
+            <RichText text={question.explanation} />
+          </p>
         </motion.div>
       )}
 
@@ -364,7 +371,7 @@ function EliminableChoice({
             eliminated && "text-muted-foreground line-through decoration-2",
           )}
         >
-          {choice.text}
+          <RichText text={choice.text} />
         </span>
       </button>
 
@@ -472,8 +479,15 @@ export function ExamQuestionCard({
         )}
       </div>
 
+      {/* A figure with no passage belongs to the question itself — a Math
+          graph or diagram — so it sits in this pane. One that illustrates a
+          passage is drawn with the passage, in the other pane. */}
+      {!question.stimulus && question.figure && (
+        <QuestionFigure figure={question.figure} className="mt-5" />
+      )}
+
       <p className="mt-4 text-[15px] font-medium leading-relaxed text-foreground">
-        {question.prompt}
+        <RichText text={question.prompt} />
       </p>
 
       {question.choices ? (

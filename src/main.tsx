@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 // Only the essential weights are eager-loaded. Rarely used weights are
 // lazy-loaded inside the specific routes that need them (e.g. Resume).
 import "@fontsource/plus-jakarta-sans/400.css";
+import "@fontsource/plus-jakarta-sans/500.css";
 import "@fontsource/plus-jakarta-sans/600.css";
 import "@fontsource/plus-jakarta-sans/700.css";
 // Work Sans is deliberately NOT loaded. In tailwind.config.ts it appears only

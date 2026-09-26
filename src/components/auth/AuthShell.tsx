@@ -98,7 +98,7 @@ export function AuthShell({
         {/* Wide enough for the student page's review columns to land whole:
             a column clipped down its middle reads as a rendering bug, not as a
             crawl continuing off-panel. */}
-        <div className="max-w-2xl py-10 2xl:max-w-[58rem]">{aside}</div>
+        <div className="max-w-2xl py-10 2xl:max-w-3xl">{aside}</div>
 
         <Link
           to={backTo}

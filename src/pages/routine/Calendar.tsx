@@ -10,6 +10,7 @@ import { EventManager, type Event as CalendarEvent } from "@/components/ui/event
 import { useInvitedEvents, useRoutineSources } from "@/hooks/routine/useRoutineData";
 import { buildAgenda } from "@/lib/routine/derive";
 import { KIND_COLOR, KIND_LABEL, swatch } from "@/lib/routine/colors";
+import { testPrepEnabled } from "@/lib/testprep/preview";
 import { addDays, dateKey, minutesToTime, startOfDay, startOfWeek } from "@/lib/routine/dates";
 import {
   ROUTINE_COLORS,
@@ -407,7 +408,7 @@ export default function RoutineCalendar() {
       reminder: { label: "Open Reminders", href: "/routine/reminders" },
       habit: { label: "Open Today", href: "/routine/today" },
       goal: { label: "Open Goals", href: "/routine/goals" },
-      testdate: { label: "Open Test Prep", href: "/test-prep/sat" },
+      ...(testPrepEnabled() ? { testdate: { label: "Open Test Prep", href: "/test-prep/sat" } } : {}),
     };
     const target = destination[item.kind];
     if (!target) return null;

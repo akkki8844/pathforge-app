@@ -47,10 +47,11 @@ import { PageHeader, TestPrepShell } from "@/components/testprep/TestPrepShell";
 import { DifficultyBar } from "@/components/testprep/primitives";
 import { Collapse, Reveal } from "@/components/testprep/motion";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
+import { QuestionFigure, RichText } from "@/components/testprep/Figure";
 import type { Difficulty, SubjectId } from "@/lib/testprep/types";
 
 /** Compact select trigger used across the filter row — pill, not a form field. */
-const FILTER_TRIGGER = "h-8 rounded-full border-border/60 bg-muted/30 px-3 text-xs shadow-none";
+const FILTER_TRIGGER = "h-8 w-auto min-w-[8.5rem] gap-2 rounded-full border-border/60 bg-muted/30 px-3 text-xs shadow-none";
 const FILTER_TRIGGER_ACTIVE = "border-[hsl(var(--bb-blue)/0.5)] bg-[hsl(var(--bb-blue)/0.1)] text-[hsl(var(--bb-blue))]";
 
 /** Rows per page. The bank is read a page at a time, not scrolled endlessly. */
@@ -224,18 +225,21 @@ export default function TestPrepQuestionBank() {
             purpose="Every question in the bank, filterable by section, domain and skill."
           />
           <Reveal delay={0.04}>
-            <dl className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
+            <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                ["Questions", SAT_QUESTIONS.length.toLocaleString()],
-                ["Completed", history.size.toLocaleString()],
-                ["Accuracy", accuracyLabel],
-                ["Bookmarked", profile.bookmarks.length.toLocaleString()],
-              ].map(([label, value]) => (
-                <div key={label} className="flex items-baseline gap-1.5">
-                  <dd className="font-display text-sm font-bold tabular-nums text-foreground">
-                    {value}
+                ["Questions", SAT_QUESTIONS.length.toLocaleString(), "in the bank"],
+                ["Completed", history.size.toLocaleString(), `${Math.round((history.size / SAT_QUESTIONS.length) * 100)}% of the bank`],
+                ["Accuracy", accuracyLabel, "last answers"],
+                ["Bookmarked", profile.bookmarks.length.toLocaleString(), "saved for later"],
+              ].map(([label, value, sub]) => (
+                <div key={label} className="flex flex-col-reverse rounded-2xl border border-border/70 bg-card px-4 py-3">
+                  <dt className="text-[11px] text-muted-foreground">
+                    <span className={cn(EYEBROW, "block")}>{label}</span>
+                  </dt>
+                  <dd className="order-first">
+                    <span className="font-display text-2xl font-bold tabular-nums text-foreground">{value}</span>
+                    <span className="ml-1.5 text-[11px] text-muted-foreground">{sub}</span>
                   </dd>
-                  <dt className={EYEBROW}>{label}</dt>
                 </div>
               ))}
             </dl>
@@ -313,21 +317,27 @@ export default function TestPrepQuestionBank() {
 
               <div className="space-y-1.5">
                 <p className={EYEBROW}>2 · Domain</p>
-                <div className="flex flex-wrap gap-x-5 gap-y-2">
+                <div className="flex flex-wrap gap-1.5">
                   {domains.map((d) => {
                     const checked = activeDomains.includes(d.id);
                     return (
-                      <label
+                      <button
                         key={d.id}
-                        className={cn("flex items-center gap-2 text-sm text-foreground", FOCUS, "rounded-md")}
+                        type="button"
+                        role="checkbox"
+                        aria-checked={checked}
+                        onClick={() => toggleDomain(d.id)}
+                        className={cn(
+                          "inline-flex h-8 items-center gap-1.5 rounded-full border px-3 text-xs font-medium transition-colors",
+                          FOCUS,
+                          checked
+                            ? "border-[hsl(var(--bb-blue))] bg-[hsl(var(--bb-blue))] text-[hsl(var(--bb-blue-foreground))]"
+                            : "border-border/60 bg-muted/30 text-muted-foreground hover:text-foreground",
+                        )}
                       >
-                        <Checkbox
-                          checked={checked}
-                          onCheckedChange={() => toggleDomain(d.id)}
-                          className="h-4 w-4 rounded-[4px] data-[state=checked]:border-[hsl(var(--bb-blue))] data-[state=checked]:bg-[hsl(var(--bb-blue))]"
-                        />
+                        {checked && <Check className="h-3 w-3" strokeWidth={3} />}
                         {d.name}
-                      </label>
+                      </button>
                     );
                   })}
                 </div>
@@ -906,13 +916,14 @@ function QuestionPreview({
                 <p className="mt-1.5 text-lg font-semibold capitalize text-foreground">
                   Difficulty: {question.difficulty}
                 </p>
+                {question.figure && <QuestionFigure figure={question.figure} className="mt-6" />}
                 {question.stimulus && (
-                  <p className="mt-6 whitespace-pre-line text-base leading-loose text-foreground">
-                    {question.stimulus}
+                  <p className="mt-6 text-base leading-loose text-foreground">
+                    <RichText text={question.stimulus} />
                   </p>
                 )}
-                <p className="mt-6 whitespace-pre-line text-base leading-loose text-foreground">
-                  {question.prompt}
+                <p className="mt-6 text-base leading-loose text-foreground">
+                  <RichText text={question.prompt} />
                 </p>
               </div>
 
@@ -924,7 +935,7 @@ function QuestionPreview({
                       <ul className="mt-5 space-y-4 text-base text-foreground">
                         {question.choices.map((c) => (
                           <li key={c.id}>
-                            {c.id}. {c.text}
+                            {c.id}. <RichText text={c.text} />
                           </li>
                         ))}
                       </ul>

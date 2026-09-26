@@ -81,7 +81,7 @@ export default function TeacherApplications() {
     queryFn: async () => {
       if (studentIds.length === 0) return [];
       const { data, error } = await counsellorDb
-        .from("application_entries")
+        .from("student_applications")
         .select("*")
         .in("student_id", studentIds)
         .order("deadline", { ascending: true, nullsFirst: false });

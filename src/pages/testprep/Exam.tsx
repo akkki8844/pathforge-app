@@ -24,10 +24,11 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
-import { SAT_DOMAINS, blueprintFor } from "@/lib/testprep/blueprints";
-import { buildExam, isCorrect, resolve } from "@/lib/testprep/select";
+import { blueprintFor } from "@/lib/testprep/blueprints";
+import { buildExam, buildFormExam, isCorrect, moduleQuestionIds, resolve } from "@/lib/testprep/select";
+import { formById } from "@/lib/testprep/content/forms";
 import { readProfile, recordAnswers, saveAttempt } from "@/lib/testprep/store";
-import { estimateSectionScore, formatClock } from "@/lib/testprep/stats";
+import { adaptiveSectionScore, formatClock, routeFor } from "@/lib/testprep/stats";
 import { resultsHref, sectionHref } from "@/lib/testprep/nav";
 import {
   BB_BANNER,
@@ -42,11 +43,11 @@ import {
   SURFACE,
 } from "@/lib/testprep/ui";
 import { ExamQuestionCard } from "@/components/testprep/QuestionView";
+import { QuestionFigure, RichText } from "@/components/testprep/Figure";
 import { Bar } from "@/components/testprep/primitives";
 import { Calculator } from "@/components/testprep/Calculator";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
-import type { AnswerRecord, AttemptSummary, SubjectId } from "@/lib/testprep/types";
-import type { DomainStats } from "@/lib/testprep/stats";
+import type { AnswerRecord, AttemptSummary, ModuleRoute, SubjectId } from "@/lib/testprep/types";
 
 /**
  * The exam interface.
@@ -60,9 +61,6 @@ import type { DomainStats } from "@/lib/testprep/stats";
  * would make the timing meaningless, and it is not what the real test does.
  */
 const EMPTY_SET: ReadonlySet<string> = new Set();
-
-/** Published share of the section each domain carries, by domain id. */
-const DOMAIN_WEIGHT = new Map(SAT_DOMAINS.map((d) => [d.id, d.weight]));
 
 export default function TestPrepExam() {
   const { testId = "sat" } = useParams();
@@ -78,13 +76,24 @@ export default function TestPrepExam() {
   }, [params]);
 
   // Built once. Rebuilding on any re-render would reshuffle the paper.
-  const [exam] = useState(() =>
-    buildExam(
+  const [exam] = useState(() => {
+    const form = formById(params.get("form"));
+    if (form) return buildFormExam(form, sections);
+    return buildExam(
       readProfile(),
       sections,
       sections.length === 2 ? "SAT practice exam" : `${sections[0] === "math" ? "Math" : "Reading & Writing"} section test`,
-    ),
-  );
+    );
+  });
+
+  /**
+   * Which second module each section has been routed to.
+   *
+   * Decided when a section's Module 1 is submitted, from how many of its
+   * questions were answered correctly -- the adaptive design of the real
+   * test. Until then a Module 2 has no route and nothing reads it.
+   */
+  const [routes, setRoutes] = useState<Partial<Record<SubjectId, ModuleRoute>>>({});
 
   /*
    * "review" is the module review page.
@@ -157,17 +166,20 @@ export default function TestPrepExam() {
   }, []);
 
   const module = exam.modules[moduleIndex];
-  const questions = useMemo(() => resolve(module?.questionIds ?? []), [module]);
+  const questions = useMemo(
+    () => resolve(module ? moduleQuestionIds(module, routes) : []),
+    [module, routes],
+  );
 
   /** Grade the whole sitting, persist it, and hand over to the results page. */
   const submit = useCallback(() => {
     if (submitted.current) return;
     submitted.current = true;
 
-    const all = exam.modules.flatMap((m) => resolve(m.questionIds));
+    const all = exam.modules.flatMap((m) => resolve(moduleQuestionIds(m, routes)));
     const records: AnswerRecord[] = [];
     const bySkill: AttemptSummary["bySkill"] = {};
-    const perSubject: Record<string, { correct: number; total: number; domains: Map<string, { correct: number; total: number; weight: number }> }> = {};
+    const perSubject: Record<string, { correct: number; total: number }> = {};
     let correct = 0;
     const now = new Date().toISOString();
     // Close the book on whatever is open before reading the tallies.
@@ -183,25 +195,9 @@ export default function TestPrepExam() {
       skill.total += 1;
       if (ok) skill.correct += 1;
 
-      const subject = (perSubject[q.subjectId] ??= { correct: 0, total: 0, domains: new Map() });
+      const subject = (perSubject[q.subjectId] ??= { correct: 0, total: 0 });
       subject.total += 1;
       if (ok) subject.correct += 1;
-      // The published weight of the domain, not 1.
-      //
-      // `estimateSectionScore` takes a weighted mean of per-domain accuracy,
-      // and every other caller hands it the blueprint's weights. Passing 1 for
-      // all four made this one estimate an unweighted mean, so a student who
-      // answered the two 15%-weight Math domains well and Algebra badly got a
-      // section score here that Progress — reading the same answers through
-      // the real weights — would not agree with.
-      const d = subject.domains.get(q.domainId) ?? {
-        correct: 0,
-        total: 0,
-        weight: DOMAIN_WEIGHT.get(q.domainId) ?? 1,
-      };
-      d.total += 1;
-      if (ok) d.correct += 1;
-      subject.domains.set(q.domainId, d);
 
       // Unanswered questions are still attempts — leaving one blank on a timed
       // module is information about pacing, and dropping it would flatter the
@@ -222,22 +218,12 @@ export default function TestPrepExam() {
 
     recordAnswers(records);
 
+    // Scored on the route each section took: a harder Module 2 can reach
+    // 800, an easier one cannot -- see `adaptiveSectionScore`.
     const sectionScores: Partial<Record<SubjectId, number>> = {};
     for (const [subjectId, s] of Object.entries(perSubject)) {
-      const domains = [...s.domains.entries()].map(([domainId, d]) => ({
-        domainId,
-        name: domainId,
-        subjectId: subjectId as SubjectId,
-        weight: d.weight,
-        attempts: d.total,
-        correct: d.correct,
-        mastery: null,
-        completed: d.total,
-        available: d.total,
-        skills: [],
-      })) as DomainStats[];
-      const score = estimateSectionScore(domains, s.total);
-      if (score !== null) sectionScores[subjectId as SubjectId] = score;
+      const route = routes[subjectId as SubjectId] ?? "harder";
+      sectionScores[subjectId as SubjectId] = adaptiveSectionScore(route, s.correct, s.total);
     }
 
     const scored = Object.values(sectionScores);
@@ -255,13 +241,29 @@ export default function TestPrepExam() {
       score: scored.length === 2 ? scored.reduce((a, b) => a + b, 0) : undefined,
       sectionScores,
       bySkill,
+      items: records.map((r) => ({
+        questionId: r.questionId,
+        given: r.given,
+        correct: r.correct,
+        elapsedMs: r.elapsedMs,
+      })),
+      formId: exam.formId,
+      routes,
     };
 
     saveAttempt(attempt);
     navigate(resultsHref(testId, attempt.id), { replace: true });
-  }, [commitTime, exam, flags, given, navigate, testId]);
+  }, [commitTime, exam, flags, given, navigate, routes, testId]);
 
   const nextModule = useCallback(() => {
+    // Leaving a section's first module decides where its second one goes.
+    if (module?.stage === 1) {
+      const right = questions.filter((q) => {
+        const answer = given[q.id] ?? "";
+        return answer !== "" && isCorrect(q, answer);
+      }).length;
+      setRoutes((r) => ({ ...r, [module.subjectId]: routeFor(right, questions.length) }));
+    }
     if (moduleIndex + 1 >= exam.modules.length) {
       submit();
       return;
@@ -270,7 +272,7 @@ export default function TestPrepExam() {
     setIndex(0);
     setShowNavigator(false);
     setPhase("break");
-  }, [exam.modules.length, moduleIndex, submit]);
+  }, [exam.modules.length, given, module, moduleIndex, questions, submit]);
 
   /*
    * Move the stopwatch when the student moves.
@@ -367,7 +369,7 @@ export default function TestPrepExam() {
 
   if (!exam.totalQuestions) {
     return (
-      <div className="flex min-h-screen items-center justify-center px-6 text-center">
+      <div className="flex min-h-[100svh] items-center justify-center px-6 text-center">
         <div>
           <p className="text-sm font-medium text-foreground">This exam has no questions.</p>
           <Button asChild variant="outline" className="mt-4">
@@ -390,7 +392,7 @@ export default function TestPrepExam() {
     return (
       <>
         <Seo title={`${exam.label}`} description="Practice exam." path={`/test-prep/${testId}/exam`} noindex />
-        <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="flex min-h-[100svh] items-center justify-center bg-background px-6">
           <motion.div
             initial={reduced ? false : { opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -404,7 +406,7 @@ export default function TestPrepExam() {
               {upcoming.label}
             </p>
             <p className="mt-2 text-sm tabular-nums text-muted-foreground">
-              {upcoming.questionIds.length} questions · {upcoming.actualMinutes} minutes
+              {moduleQuestionIds(upcoming, routes).length} questions · {upcoming.actualMinutes} minutes
               {upcoming.calculator && " · calculator available"}
             </p>
             <p className="mt-4 text-xs tabular-nums text-muted-foreground">
@@ -412,8 +414,9 @@ export default function TestPrepExam() {
             </p>
             {phase === "intro" ? (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                The clock starts when you begin and does not pause. Answers are marked only after
-                the final module.
+                The clock starts when you begin and does not pause. As on the real test, each
+                section's second module adapts to how you did on its first. Answers are marked
+                only after the final module.
               </p>
             ) : (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
@@ -450,7 +453,7 @@ export default function TestPrepExam() {
   return (
     <>
       <Seo title={`${exam.label}`} description="Practice exam." path={`/test-prep/${testId}/exam`} noindex />
-      <div className="bluebook flex min-h-screen flex-col bg-background">
+      <div className="bluebook flex min-h-[100svh] flex-col bg-background">
         {/* Exam chrome: a blue rule, a light top bar carrying the title, clock
             and tools, then the yellow banner naming the sitting. Blue, white,
             yellow down the screen — the digital-testing look, built from
@@ -620,14 +623,17 @@ export default function TestPrepExam() {
                   highlightedStimulus[question.id] && "bg-[hsl(var(--bb-flag)/0.22)]",
                 )}
               >
-                {question.stimulus}
+                {question.figure && <QuestionFigure figure={question.figure} className="mb-5" />}
+                <RichText text={question.stimulus} className="block text-[15px] leading-[1.75]" />
               </div>
               <div className="hidden bg-border md:block" aria-hidden="true" />
             </>
-          ) : (
-            <div className="hidden md:block" />
-          )}
+          ) : null}
 
+          {/* With no passage the question takes the whole row. There used to be
+              an empty spacer in the first column here, which pushed a
+              three-column-wide question onto a second grid row and left it
+              floating halfway down the screen. */}
           <div className={cn(!question?.stimulus && "md:col-span-3 md:mx-auto md:w-full md:max-w-xl")}>
             <AnimatePresence mode="wait">
               {question && (
@@ -669,7 +675,7 @@ export default function TestPrepExam() {
           )}
         </AnimatePresence>
 
-        <footer className={cn(BB_TOPBAR, "sticky bottom-0 border-t backdrop-blur")}>
+        <footer className={cn(BB_TOPBAR, "sticky bottom-0 border-t backdrop-blur pad-safe-bottom")}>
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-3">
             <p className="hidden text-xs text-muted-foreground sm:block">{answeredInModule} answered</p>
 

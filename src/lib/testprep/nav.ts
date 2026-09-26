@@ -152,6 +152,11 @@ export function examHref(testId: string, sections: string[]): string {
   return `${TEST_PREP_ROOT}/${testId}/exam?sections=${sections.join(",")}`;
 }
 
+/** One of the fixed practice tests, whole or a single section of it. */
+export function formExamHref(testId: string, formId: string, sections: string[] = ["rw", "math"]): string {
+  return `${TEST_PREP_ROOT}/${testId}/exam?form=${formId}&sections=${sections.join(",")}`;
+}
+
 export function resultsHref(testId: string, attemptId: string): string {
   return `${TEST_PREP_ROOT}/${testId}/results/${attemptId}`;
 }

@@ -45,7 +45,7 @@ export default function AppLogin() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="flex min-h-[100svh] items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
       </div>
     );
@@ -62,7 +62,7 @@ export default function AppLogin() {
   const initial = name.trim().charAt(0).toUpperCase();
 
   return (
-    <div className="relative flex min-h-screen flex-col items-center justify-center bg-background px-6 font-display">
+    <div className="relative flex min-h-[100svh] flex-col items-center justify-center bg-background px-6 font-display">
       <Seo
         title="Opening Pathforge"
         description="Handing your Pathforge session to the desktop app."

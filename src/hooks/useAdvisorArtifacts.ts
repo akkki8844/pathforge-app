@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 
-export type ArtifactKind = "plan" | "document" | "pdf" | "slides" | "image";
+export type ArtifactKind = "plan" | "document" | "pdf" | "slides" | "image" | "sheet" | "chart";
 
 export interface AdvisorArtifact {
   id: string;

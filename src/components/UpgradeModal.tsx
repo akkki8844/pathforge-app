@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { usePaddleCheckout } from "@/hooks/usePaddleCheckout";
 import { useAuth } from "@/contexts/AuthContext";
+import { planForTier } from "@/lib/plans";
 
 interface UpgradeModalProps {
   open: boolean;
@@ -14,14 +15,19 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { openCheckout, loading } = usePaddleCheckout();
+  const proPrice = planForTier("pro").priceUSD;
 
   const handleQuickUpgrade = async () => {
     if (!user) {
       navigate("/auth");
       return;
     }
-    // Default quick-upgrade: Pro at 100 credits/mo ($25/mo)
-    await openCheckout("pro_100_monthly");
+    // Default quick-upgrade: Pro, monthly. "pro_100_monthly" was a catalogue
+    // id from the old per-credit-pack pricing (pro_100...pro_7000) that no
+    // longer exists in Paddle — this button was silently sending every
+    // quick-upgrade at a dead price id. "pro_monthly" is the id Pricing.tsx
+    // itself uses (`${plan.tier}_monthly`).
+    await openCheckout("pro_monthly");
     onClose();
   };
 
@@ -66,7 +72,16 @@ export function UpgradeModal({ open, onClose }: UpgradeModalProps) {
                 disabled={loading}
                 className="w-full h-12 rounded-xl bg-gradient-to-r from-primary to-accent text-primary-foreground font-semibold text-base gap-2"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <>Upgrade to Pro — from $5/mo <ArrowRight className="h-4 w-4" /></>}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    {/* Read from plans.ts rather than written here a second
+                        time — this literally said "$5/mo" while Pro was
+                        actually $20, a stale figure nobody had caught. */}
+                    Upgrade to Pro — from ${proPrice}/mo <ArrowRight className="h-4 w-4" />
+                  </>
+                )}
               </Button>
 
               <Button

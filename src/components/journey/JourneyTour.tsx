@@ -57,13 +57,13 @@ export const JOURNEY_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="journey-path"]',
     title: "The path",
-    body: "Every quest in the programme, in order, scrolling inside its own panel. Completed stages stay lit behind you and locked ones stay dim ahead — you always unlock the next one by finishing the one before it.",
+    body: "Every quest in the programme, laid out as a road across fifteen floating islands. Scroll or swipe to travel along it, drag to look around, and use the rail on the right to jump between levels. The trail lights up behind you as you finish stages.",
     placement: "right",
   },
   {
     target: '[data-tour="path-level-banner"]',
     title: "Level markers",
-    body: "Each block of twenty stages is one level. Finish all twenty and a report chip appears here with an AI evaluation of how you actually did — not just that you ticked the boxes.",
+    body: "This card names the level you are looking at and how much of it you have banked. Each island is one level of twenty stages. Finish all twenty and an AI report chip appears here with an evaluation of how you actually did — not just that you ticked the boxes.",
     placement: "right",
   },
   {
@@ -71,7 +71,7 @@ export const JOURNEY_TOUR_STEPS: TourStep[] = [
     // way: top of the path, then down to wherever the student actually is.
     target: '[data-tour="current-stage"]',
     title: "Your next quest",
-    body: "The glowing node is the only one you can open. Tap it to see the tasks, upload your proof, and claim the stage once the evidence passes verification.",
+    body: "The stage under the pin is the one you can open now. Open it from here or tap its coin to see the tasks, upload your proof, and claim the stage once the evidence passes verification.",
     placement: "right",
   },
   {

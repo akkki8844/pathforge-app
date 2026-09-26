@@ -57,7 +57,9 @@ export default {
         // the zinc palette in index.css) but reads in the same face as the
         // signed-in home rather than Cluely's own Geist — one student account,
         // one typeface, not two products stitched together.
-        cluely: ["Inter Variable", "Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "system-ui", "sans-serif"],
+        // Now simply the app's text face. It was Inter, which made every page
+        // using it read as a different product from the rest of the bar.
+        cluely: ["Plus Jakarta Sans", "Work Sans", "system-ui", "sans-serif"],
         // The printed résumé wants a book serif, not a display one. Instrument
         // Serif is lazy-loaded by that route alone (see Resume.tsx).
         document: ['"Instrument Serif"', "ui-serif", "Georgia", "serif"],

@@ -201,7 +201,7 @@ export default function ApplicationBuilder() {
           </Reveal>
           <AiGenerationNotice active={!!generatingId} />
 
-          <div className="grid gap-4 lg:grid-cols-3">
+          <div className="grid gap-4 lg:grid-cols-3 [&>*]:min-w-0">
             <aside className="lg:col-span-1">
               <div className="card-motion sticky top-24 max-h-[calc(100dvh-7rem)] overflow-y-auto rounded-2xl border border-border bg-card p-4">
                 <Eyebrow>Sections</Eyebrow>

@@ -1,6 +1,6 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays, MessageSquare, Video } from "lucide-react";
+import { Search, Leaf, Menu, X, Mic, Compass, Briefcase, Map, ChevronDown, FileText, Linkedin, FileSignature, PenLine, GraduationCap, Target, BookOpen, Trophy, Quote, Award, CalendarDays, MessageSquare, Video } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { FlowButton } from "@/components/ui/flow-button";
@@ -18,12 +18,15 @@ import { preloadRoute } from "@/lib/routePreload";
 import { ROUTINE_DESTINATIONS } from "@/lib/routine/nav";
 import { COMMUNICATIONS_DESTINATIONS, isCommsPath } from "@/lib/comms/nav";
 import { TEST_PREP_TESTS, isTestPrepPath } from "@/lib/testprep/nav";
+import { testPrepEnabled } from "@/lib/testprep/preview";
 import { useCommsBadges } from "@/hooks/comms/useCommsBadges";
 import { DURATION, EASE_OUT_EXPO, transition } from "@/lib/motion";
 import pathforgeLogo from "@/assets/pathforge-logo.webp";
 import { PathforgeAvatar } from "@/components/avatar/PathforgeAvatar";
 import { VariableFontHover } from "@/components/ui/variable-font-hover";
 import { NavPopout } from "@/components/layout/NavPopout";
+import { openGlobalSearch, searchShortcutLabel } from "@/lib/search";
+import { useZenMode } from "@/lib/zen";
 
 type NavIcon = React.ComponentType<{ className?: string }>;
 export type NavItem = {
@@ -379,6 +382,8 @@ export function Navbar() {
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const commsBadges = useCommsBadges();
+  const [zenOn, setZen] = useZenMode();
+  const zen = zenOn && !!user;
 
   const handleSignOut = async () => {
     await signOut();
@@ -389,15 +394,26 @@ export function Navbar() {
   // in — their routes are all behind ProtectedRoute, so there's nothing there
   // for a guest.
   const otherGroups: NavGroup[] = user
-    ? [buildCommsGroup(commsBadges), routineGroup, testPrepGroup, ...baseOtherGroups]
+    ? [
+        buildCommsGroup(commsBadges),
+        routineGroup,
+        // Unreleased: only in browsers that opted into the preview.
+        ...(testPrepEnabled() ? [testPrepGroup] : []),
+        ...baseOtherGroups,
+      ]
     : baseOtherGroups;
   const otherLinks: NavItem[] = otherGroups.flatMap((g) => g.links);
   // Chats now has its own top-level indicator, so Other should only light up
   // for the comms pages that still live inside it (Teams, Objectives, Announcements).
+  // A page that is also a top-level link (Calendar is one of Routine's pages)
+  // is marked on the bar, not on "Other": two indicators share one layoutId,
+  // and only the second would show.
+  const onMainLink = mainLinks.some((l) => l.href === location.pathname);
   const isOthersActive =
-    otherLinks.some((l) => location.pathname === l.href) ||
+    !onMainLink &&
+    (otherLinks.some((l) => location.pathname === l.href) ||
     (isCommsPath(location.pathname) && location.pathname !== "/communications/chats") ||
-    isTestPrepPath(location.pathname);
+    isTestPrepPath(location.pathname));
 
   // The mobile drawer is a flat list of departments — same groups as desktop's
   // "Other" menu, Communications included since it's no longer a separate
@@ -431,7 +447,13 @@ export function Navbar() {
           </Link>
 
           {/* Desktop Navigation */}
-          <div data-tour="nav:bar" className="hidden lg:flex items-center gap-2.5">
+          {/* In Zen mode the bar folds to the logo, search and the way out. */}
+          {zen && (
+            <div className="hidden flex-1 justify-center lg:flex">
+              <span className="text-[13px] font-medium text-muted-foreground">Zen mode</span>
+            </div>
+          )}
+          <div data-tour="nav:bar" className={`${zen ? "hidden" : "hidden lg:flex"} items-center gap-2.5`}>
             {mainLinks.map((link) => {
               const isActive = location.pathname === link.href;
               return (
@@ -481,6 +503,37 @@ export function Navbar() {
           {/* Theme Toggle & User Menu */}
           <div className="flex items-center gap-2">
             {user && (
+              <NavPopout label={`Search (${searchShortcutLabel()})`}>
+                <button
+                  type="button"
+                  onClick={openGlobalSearch}
+                  aria-label="Search"
+                  className="inline-flex h-10 items-center gap-2 rounded-full border border-border/70 px-3 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Search className="h-4 w-4" />
+                  <kbd className="hidden font-sans text-[11px] xl:inline">{searchShortcutLabel()}</kbd>
+                </button>
+              </NavPopout>
+            )}
+            {user && (
+              <NavPopout label={zen ? "Leave Zen mode (Ctrl + .)" : "Zen mode (Ctrl + .)"}>
+                <button
+                  type="button"
+                  onClick={() => setZen(!zen)}
+                  aria-pressed={zen}
+                  aria-label={zen ? "Leave Zen mode" : "Zen mode"}
+                  className={`inline-flex h-10 items-center gap-1.5 rounded-full px-3 text-sm transition-colors ${
+                    zen
+                      ? "bg-foreground text-background hover:bg-foreground/90"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  <Leaf className="h-4 w-4" />
+                  {zen && <span className="font-medium">Exit Zen</span>}
+                </button>
+              </NavPopout>
+            )}
+            {user && !zen && (
               <NavPopout label="Notifications">
                 <span data-tour="nav:notifications">
                   <NotificationBell />

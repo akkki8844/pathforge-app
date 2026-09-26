@@ -328,7 +328,16 @@ export function ActionRow({
 /** Difficulty, as a word. Used in the bank and in review. */
 export function DifficultyTag({ value }: { value: "easy" | "medium" | "hard" }) {
   return (
-    <span className={cn("capitalize", value === "hard" ? "text-warning" : "text-muted-foreground")}>
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full px-1.5 py-px text-[0.92em] font-semibold capitalize leading-tight",
+        value === "hard"
+          ? "bg-[hsl(var(--bb-rule))] text-black"
+          : value === "medium"
+            ? "bg-[hsl(var(--bb-blue-soft))] text-[hsl(var(--bb-blue))]"
+            : "bg-muted text-muted-foreground",
+      )}
+    >
       {value}
     </span>
   );

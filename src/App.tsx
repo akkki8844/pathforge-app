@@ -19,6 +19,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { KeepAliveProvider } from "@/components/KeepAliveProvider";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { MotionConfig } from "framer-motion";
+import { useZenMode } from "@/lib/zen";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
 import Maintenance from "./pages/Maintenance";
@@ -97,6 +98,7 @@ const InterviewLobby = lazyWithRetry(() => import("./pages/interview/Lobby"));
 const InterviewComingSoon = lazyWithRetry(() => import("./pages/interview/ComingSoon"));
 const InterviewRoom = lazyWithRetry(() => import("./pages/interview/Room"));
 const InterviewReport = lazyWithRetry(() => import("./pages/interview/Report"));
+import { testPrepEnabled } from "@/lib/testprep/preview";
 const TestPrepOverview = lazyWithRetry(() => import("./pages/testprep/Overview"));
 const TestPrepPractice = lazyWithRetry(() => import("./pages/testprep/Practice"));
 const TestPrepQuestionBank = lazyWithRetry(() => import("./pages/testprep/QuestionBank"));
@@ -172,8 +174,11 @@ const OnboardingSurvey = lazyWithRetry(() =>
   import("@/components/OnboardingSurvey").then((m) => ({ default: m.OnboardingSurvey }))
 );
 const SupportChatbot = lazyWithRetry(() => import("@/components/SupportChatbot"));
-const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
 const MessageDockBar = lazyWithRetry(() => import("@/components/comms/MessageDockBar"));
+const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
+const GlobalSearch = lazyWithRetry(() =>
+  import("@/components/search/GlobalSearch").then((m) => ({ default: m.GlobalSearch })),
+);
 // Not lazy: this is what appears when the app is already failing to load
 // things, which is the worst possible moment to depend on fetching one more
 // chunk.
@@ -197,6 +202,12 @@ const UpgradeModal = lazyWithRetry(() =>
   import("@/components/UpgradeModal").then((m) => ({ default: m.UpgradeModal }))
 );
 
+
+/** Test Prep is unreleased: see `lib/testprep/preview.ts`. */
+function TestPrepGate({ children }: { children: ReactNode }) {
+  if (!testPrepEnabled()) return <Navigate to="/dashboard" replace />;
+  return <>{children}</>;
+}
 
 function ProtectedRoute({ children }: { children: ReactNode }) {
   const { user, loading, onboardingCompleted, isTeacher, isAdmin, roleLoading } = useAuth();
@@ -421,6 +432,12 @@ function PublicGuestRoute({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
+/** Public pages a signed-in student can still visit; they keep the site palette. */
+const APP_MARKETING_PATHS = new Set([
+  "/pricing", "/about", "/contact", "/terms", "/privacy", "/refund-policy", "/cookie-policy", "/faq",
+  "/guides/ivy-league-admissions", "/guides/ivy-league-study-tools",
+]);
+
 function AppRoutes() {
   const { showUpgradeModal, setShowUpgradeModal } = useUsage();
   const { user } = useAuth();
@@ -437,6 +454,23 @@ function AppRoutes() {
   // `/` is always the public landing page — for guests and signed-in students
   // alike. Only strip app chrome on the landing.
   const isLandingPage = location.pathname === "/";
+  // The SAT exam runner. A timed sitting with its own Back / Next bar pinned to
+  // the bottom edge; on a phone the support-chat bubble sat directly on top of
+  // Next, so tapping Next opened support instead of moving on.
+  const isExamRunner = /^\/test-prep\/[^/]+\/exam$/.test(location.pathname);
+  const [zen] = useZenMode();
+  // Signed-in app surfaces share one neutral palette (see html[data-app] in
+  // index.css). The landing, auth and marketing pages keep the site's cream.
+  const isAppSurface =
+    !!user &&
+    !isLandingPage &&
+    !location.pathname.startsWith("/auth") &&
+    !APP_MARKETING_PATHS.has(location.pathname);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (isAppSurface) root.setAttribute("data-app", "");
+    else root.removeAttribute("data-app");
+  }, [isAppSurface]);
   /*
    * Where the dock is suppressed.
    *
@@ -469,7 +503,7 @@ function AppRoutes() {
     // sitting whose own control bar — the question navigator, Back and Next —
     // is sticky at the bottom edge, exactly where the dock floats, and the
     // dock sits on top of it.
-    !/^\/test-prep\/[^/]+\/exam$/.test(location.pathname) &&
+    !isExamRunner &&
     // The whole interview section, not just the room.
     //
     // The room is a full-screen call whose own controls sit exactly where the
@@ -938,7 +972,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepOverview />
+                <TestPrepGate><TestPrepOverview /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -948,7 +982,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepPractice />
+                <TestPrepGate><TestPrepPractice /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -958,7 +992,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepQuestionBank />
+                <TestPrepGate><TestPrepQuestionBank /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -968,7 +1002,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepExams />
+                <TestPrepGate><TestPrepExams /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -978,7 +1012,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepProgress />
+                <TestPrepGate><TestPrepProgress /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -988,7 +1022,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepSession />
+                <TestPrepGate><TestPrepSession /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -998,7 +1032,7 @@ function AppRoutes() {
           element={
             <ProtectedRoute>
               <Layout>
-                <TestPrepResults />
+                <TestPrepGate><TestPrepResults /></TestPrepGate>
               </Layout>
             </ProtectedRoute>
           }
@@ -1007,7 +1041,7 @@ function AppRoutes() {
           path="/test-prep/:testId/exam"
           element={
             <ProtectedRoute>
-              <TestPrepExam />
+              <TestPrepGate><TestPrepExam /></TestPrepGate>
             </ProtectedRoute>
           }
         />
@@ -1226,15 +1260,25 @@ function AppRoutes() {
        * advisor owns the bottom of its own fixed-height shell, and focus mode
        * is a full-screen timer that should not have a chat pill in it.
        */}
-      {user && showMessageDock && (
+      {/* Zen mode takes the floating chrome away with it: the dock and the
+          support bubble are exactly the "general crowdedness" it exists to
+          remove. */}
+      {user && showMessageDock && !zen && (
         <Suspense fallback={null}>
           <MessageDockBar />
+        </Suspense>
+      )}
+      {/* Ctrl/Cmd + K search, and the Ctrl/Cmd + . Zen shortcut, everywhere a
+          student is signed in. */}
+      {user && !isLandingPage && (
+        <Suspense fallback={null}>
+          <GlobalSearch />
         </Suspense>
       )}
       {!isLandingPage && (
         <Suspense fallback={null}>
           <CreditGiftNotification />
-          <SupportChatbot />
+          {!isExamRunner && !zen && <SupportChatbot />}
           <UpgradeModal open={showUpgradeModal} onClose={() => setShowUpgradeModal(false)} />
         </Suspense>
       )}

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
@@ -68,6 +68,15 @@ export function MessageDockBar() {
   const { resolvedTheme } = useTheme();
   const { conversations } = useConversations();
   const online = usePresence();
+
+  // Tells the page the dock is on screen. index.css uses it to reserve room
+  // under the page for the dock and, on phones, to lift the support-chat and
+  // feedback buttons above it rather than letting the three overlap.
+  useEffect(() => {
+    const root = document.documentElement;
+    root.setAttribute("data-message-dock", "");
+    return () => root.removeAttribute("data-message-dock");
+  }, []);
 
   /*
    * Which conversation the dock currently has open. `MessageDock` owns the

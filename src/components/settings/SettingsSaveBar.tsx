@@ -45,7 +45,7 @@ export function SettingsSaveBar() {
           transition={transition.base}
           className="fixed inset-x-0 bottom-0 z-40 pointer-events-none"
         >
-          <div className="mx-auto max-w-7xl px-4 pb-4 sm:px-6 lg:px-10">
+          <div className="mx-auto max-w-7xl px-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:px-6 lg:px-10">
             <div
               className={cn(
                 "pointer-events-auto rounded-2xl border bg-card/95 backdrop-blur-md",

@@ -50,6 +50,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import { documentSignedUrl, useDocuments } from "@/hooks/useDocuments";
+import { FilePreview } from "@/components/docs/FilePreview";
 import { compareNodes, formatBytes, type DocumentNode } from "@/lib/documents/types";
 import { cn } from "@/lib/utils";
 
@@ -118,6 +119,7 @@ export default function Docs() {
   const [query, setQuery] = useState("");
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [previewing, setPreviewing] = useState<DocumentNode | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
 
   const [renaming, setRenaming] = useState<DocumentNode | null>(null);
@@ -182,12 +184,12 @@ export default function Docs() {
         navigate(`/docs/d/${node.id}`);
         return;
       }
-      const url = await documentSignedUrl(node);
-      if (!url) {
-        toast({ title: "Could not open that file", variant: "destructive" });
-        return;
-      }
-      window.open(url, "_blank", "noopener,noreferrer");
+      // Uploaded files open over the drive rather than in a new tab. The
+      // common question about a file here is "is this the right one", which is
+      // four seconds of looking followed by closing it — and a new tab makes
+      // that cost a lost place in the folder. FilePreview still offers the tab
+      // and the download for the cases that want them.
+      setPreviewing(node);
     },
     [navigate, openFolder, toast],
   );
@@ -759,6 +761,8 @@ export default function Docs() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FilePreview node={previewing} onOpenChange={(open) => { if (!open) setPreviewing(null); }} />
     </div>
   );
 }

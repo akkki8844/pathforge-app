@@ -18,10 +18,13 @@
  */
 
 import type { Question } from "./types";
+import { BANK_PLUS } from "./content/bank";
+import { FORM_QUESTIONS } from "./content/forms";
 
 const P = "pathforge" as const;
 
-export const SAT_QUESTIONS: Question[] = [
+/** The original bank, written with the section. */
+const CORE: Question[] = [
   /* ---------------------------------------------------------------- */
   /* Math · Algebra                                                    */
   /* ---------------------------------------------------------------- */
@@ -273,7 +276,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "equivalent-expressions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "Which expression is equivalent to (3x² − 5x + 2) − (x² − 5x − 7)?",
     choices: [
@@ -334,7 +337,7 @@ export const SAT_QUESTIONS: Question[] = [
     difficulty: "medium",
     source: P,
     prompt:
-      "A town's population is modelled by P(t) = 1,200(1.04)ᵗ, where t is years since 2020. What does 1.04 represent?",
+      "A town's population is modeled by P(t) = 1,200(1.04)ᵗ, where t is years since 2020. What does 1.04 represent?",
     choices: [
       { id: "A", text: "The population grows by 104 people each year." },
       { id: "B", text: "The population was 1.04 times its 2019 size." },
@@ -370,7 +373,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "nonlinear-functions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "If g(x) = x³ − 4x, what is the value of g(−2)?",
     choices: [
@@ -415,7 +418,7 @@ export const SAT_QUESTIONS: Question[] = [
     difficulty: "medium",
     source: P,
     prompt:
-      "A map uses a scale of 1 cm to 12 km. Two towns are 4.5 cm apart on the map. How many kilometres apart are they?",
+      "A map uses a scale of 1 cm to 12 km. Two towns are 4.5 cm apart on the map. How many kilometers apart are they?",
     choices: [
       { id: "A", text: "16.5" },
       { id: "B", text: "48" },
@@ -466,7 +469,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "problem-solving",
     skillId: "data-distributions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "What is the median of the data set 4, 7, 7, 9, 13, 20?",
     choices: [
@@ -646,7 +649,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "right-triangles-trig",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "A right triangle has legs of length 9 and 12. What is the tangent of the angle opposite the leg of length 9?",
@@ -680,7 +683,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "circles",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "In a circle of radius 12, what is the length of an arc cut off by a central angle of 60°?",
@@ -774,7 +777,7 @@ export const SAT_QUESTIONS: Question[] = [
     stimulus:
       "Sediment cores from the lake show a layer of volcanic ash at a depth corresponding to roughly 4,200 years ago. Pollen from drought-tolerant grasses appears in every layer above the ash and in none below it. Researchers note that the ash layer itself is thin enough to have settled within a single season.",
     prompt:
-      "Which choice most logically completes the text?",
+      "Based on the text, which conclusion can most reasonably be drawn?",
     choices: [
       { id: "A", text: "the grasses were introduced to the region by human cultivation." },
       { id: "B", text: "the lake dried out completely soon after the eruption." },
@@ -820,7 +823,7 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     stimulus:
       "The committee's report was careful to ______ its recommendations: each was presented as provisional, contingent on data that would not arrive for another year.",
-    prompt: "Which choice completes the text with the most logical and precise word?",
+    prompt: "Which choice completes the text with the most logical and precise word or phrase?",
     choices: [
       { id: "A", text: "duplicate" },
       { id: "B", text: "publicize" },
@@ -841,7 +844,7 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     stimulus:
       "Far from being ______, the archive's gaps are informative: what a government chose not to record tells historians which activities it considered unremarkable, and which it preferred to leave undocumented.",
-    prompt: "Which choice completes the text with the most logical and precise word?",
+    prompt: "Which choice completes the text with the most logical and precise word or phrase?",
     choices: [
       { id: "A", text: "deliberate" },
       { id: "B", text: "recent" },
@@ -951,7 +954,7 @@ export const SAT_QUESTIONS: Question[] = [
     stimulus:
       "While researching, a student took these notes:\n• Bioluminescent fungi glow through a reaction involving the compound luciferin.\n• The glow is brightest at night, peaking a few hours after dark.\n• Insects attracted to glowing fungi carry spores away on their bodies.\n• Fungi grown in constant darkness still glow on a roughly 24-hour cycle.",
     prompt:
-      "The student wants to emphasise that the fungi's glow follows an internal rhythm. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+      "The student wants to emphasize that the fungi's glow follows an internal rhythm. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
     choices: [
       { id: "A", text: "Bioluminescent fungi glow through a reaction involving luciferin, a compound they produce themselves." },
       { id: "B", text: "Because insects carry spores away from glowing fungi, the glow helps the fungi reproduce." },
@@ -1105,7 +1108,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-eq-1var",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "If 2(x + 3) − 4 = 3(x − 1), what is the value of x?",
     choices: [
@@ -1124,7 +1127,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-eq-1var",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "If (2x − 1)/3 − (x − 2)/4 = 1, what is the value of x?",
     choices: [
@@ -1240,7 +1243,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-functions",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "The graph of linear function f has a slope of −4 and passes through the point (1, −2). For what value of x does f(x) = 10?",
@@ -1356,7 +1359,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-inequalities",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "The solution set of 3(x − 2) + 4 < 2x + 9 consists of all x less than what value?",
     choices: [
@@ -1455,7 +1458,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "equivalent-expressions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "Which expression is equivalent to (x + 3)(x − 5)?",
     choices: [
@@ -1474,7 +1477,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "equivalent-expressions",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "Which expression is equivalent to (4x² − 9)/(2x − 3), for x ≠ 3/2?",
     choices: [
@@ -1553,7 +1556,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "nonlinear-functions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "The graph of y = (x − 2)² + 3 has its vertex at which point?",
     choices: [
@@ -1591,7 +1594,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "nonlinear-functions",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "The function g(x) = −3(x + 1)(x − 5) reaches its maximum value at x = ?",
     choices: [
@@ -1634,7 +1637,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "problem-solving",
     skillId: "ratios-rates",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt:
       "A car travels 210 miles in 3.5 hours. At the same rate, how many miles will it travel in 5 hours?",
@@ -1654,7 +1657,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "problem-solving",
     skillId: "ratios-rates",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "Pump A alone fills a tank in 6 hours; Pump B alone fills the same tank in 3 hours. Working together at their constant rates, how many hours will it take to fill the tank?",
@@ -1713,7 +1716,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "problem-solving",
     skillId: "percentages",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "A quantity increased from 250 to 310. By what percent did it increase?",
     choices: [
@@ -1771,7 +1774,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "problem-solving",
     skillId: "data-distributions",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "A set of 10 test scores has a mean of 82. After a new student's score is added, the mean of all 11 scores becomes 83. What was the new student's score?",
@@ -1954,7 +1957,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "area-volume",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt:
       "A cylinder has a volume of 150π and a radius of 5. What is its height?",
@@ -1974,7 +1977,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "area-volume",
-    difficulty: "hard",
+    difficulty: "easy",
     source: P,
     prompt:
       "A rectangular prism has a volume of 240 cubic units, a length of 8, and a width of 5. What is its height?",
@@ -2013,7 +2016,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "lines-angles-triangles",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "In triangle ABC, angle A = 40° and angle B = 75°. What is the measure of angle C?",
     choices: [
@@ -2052,7 +2055,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "lines-angles-triangles",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
       "In triangle DEF, the measure of angle D is twice the measure of angle E, and angle F measures 30° more than angle E. What is the measure of angle D?",
@@ -2111,7 +2114,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "right-triangles-trig",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "In right triangle ABC, angle C = 90°, and tan(A) = 3/4. What is sin(A)?",
     choices: [
@@ -2149,7 +2152,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "geometry-trig",
     skillId: "circles",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt:
       "A circle has the equation (x − 3)² + (y + 2)² = 25. What is the radius of the circle?",
@@ -2434,7 +2437,7 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     stimulus:
       "Every member of the chess club who entered the regional tournament last year has since been invited to the state tournament. Maria entered the regional tournament last year.",
-    prompt: "Which choice most logically completes the text?",
+    prompt: "Based on the text, which conclusion can most reasonably be drawn?",
     choices: [
       { id: "A", text: "Maria will not enter next year's regional tournament." },
       { id: "B", text: "Maria did not enjoy the regional tournament." },
@@ -3298,7 +3301,7 @@ export const SAT_QUESTIONS: Question[] = [
       },
       { id: "B", text: "Ants followed nearly the same route on consecutive days." },
       { id: "C", text: "Ants moved faster in the early morning than at midday." },
-      { id: "D", text: "Nest entrances were usually within a few metres of a shrub." },
+      { id: "D", text: "Nest entrances were usually within a few meters of a shrub." },
     ],
     answer: "A",
     explanation:
@@ -3339,7 +3342,7 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     stimulus:
       "An ice core from the glacier holds a band of volcanic glass at the depth corresponding to 1815. Tree rings in the valley below are unusually narrow for the three summers that followed. Rings from a sheltered grove two valleys away show no narrowing at all in those years.",
-    prompt: "Which choice most logically completes the text?",
+    prompt: "Based on the text, which conclusion can most reasonably be drawn?",
     choices: [
       { id: "A", text: "the eruption must have occurred later than the ice core suggests." },
       { id: "B", text: "the sheltered grove is older than the trees in the valley below." },
@@ -3561,7 +3564,7 @@ export const SAT_QUESTIONS: Question[] = [
     source: P,
     stimulus:
       "A bakery replaced the flour in one of its breads with flour from a different mill, changing nothing else about the recipe or the schedule. Over the following month the loaves rose less and took longer to prove. When the original flour was restored, both measurements returned to what they had been.",
-    prompt: "Which choice most logically completes the text?",
+    prompt: "Based on the text, which conclusion can most reasonably be drawn?",
     choices: [
       { id: "A", text: "the change in the loaves is most reasonably attributed to the flour itself." },
       { id: "B", text: "the bakery's ovens were running at the wrong temperature." },
@@ -3736,7 +3739,7 @@ export const SAT_QUESTIONS: Question[] = [
     stimulus:
       "While researching, a student took these notes:\n\u2022 A city replaced the sodium street lamps on twelve streets with narrow-spectrum amber ones.\n\u2022 The amber lamps were chosen because insects are drawn to them far less strongly.\n\u2022 Moth counts under the new lamps fell to about a third of the counts under the old ones.\n\u2022 Residents reported no difference in how well lit the streets felt.",
     prompt:
-      "The student wants to emphasise that the change achieved its goal without a cost to residents. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+      "The student wants to emphasize that the change achieved its goal without a cost to residents. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
     choices: [
       { id: "A", text: "The city replaced sodium lamps with narrow-spectrum amber ones on twelve streets." },
       {
@@ -3866,7 +3869,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-eq-1var",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "If 4(x + 2) \u2212 3 = 2(x + 7), what is the value of x?",
     choices: [
@@ -3885,7 +3888,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "algebra",
     skillId: "linear-eq-1var",
-    difficulty: "hard",
+    difficulty: "easy",
     source: P,
     prompt: "If x/3 + x/4 = 7, what is the value of x?",
     choices: [
@@ -3945,7 +3948,7 @@ export const SAT_QUESTIONS: Question[] = [
     difficulty: "hard",
     source: P,
     prompt:
-      "A tank drains at a constant rate. Three minutes after draining began it held 42 litres, and eight minutes after it began it held 27 litres. How many minutes after draining began will the tank be empty?",
+      "A tank drains at a constant rate. Three minutes after draining began it held 42 liters, and eight minutes after it began it held 27 liters. How many minutes after draining began will the tank be empty?",
     choices: [
       { id: "A", text: "14" },
       { id: "B", text: "17" },
@@ -3954,7 +3957,7 @@ export const SAT_QUESTIONS: Question[] = [
     ],
     answer: "B",
     explanation:
-      "The rate is (27 \u2212 42)/(8 \u2212 3) = \u22123 litres per minute. Working back from 42 litres at 3 minutes, the tank held 51 litres at the start, and 51 \u00f7 3 = 17 minutes to empty.",
+      "The rate is (27 \u2212 42)/(8 \u2212 3) = \u22123 liters per minute. Working back from 42 liters at 3 minutes, the tank held 51 liters at the start, and 51 \u00f7 3 = 17 minutes to empty.",
   },
   {
     id: "m-alg-31",
@@ -4034,7 +4037,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "quadratics",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "What is the product of the solutions to 2x\u00b2 \u2212 7x \u2212 15 = 0?",
     choices: [
@@ -4053,7 +4056,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "nonlinear-functions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "The function g is defined by g(x) = x\u00b2 \u2212 4x + 1. What is the value of g(\u22121)?",
     choices: [
@@ -4111,7 +4114,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "equivalent-expressions",
-    difficulty: "medium",
+    difficulty: "easy",
     source: P,
     prompt: "Which expression is equivalent to (2x + 5)(x \u2212 3)?",
     choices: [
@@ -4130,7 +4133,7 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "equivalent-expressions",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt: "For x \u2260 \u22124/3, which expression is equivalent to (9x\u00b2 \u2212 16)/(3x + 4)?",
     choices: [
@@ -4188,10 +4191,10 @@ export const SAT_QUESTIONS: Question[] = [
     subjectId: "math",
     domainId: "advanced-math",
     skillId: "exponential",
-    difficulty: "hard",
+    difficulty: "medium",
     source: P,
     prompt:
-      "The mass, in grams, of a sample after t days is modelled by f(t) = 120(0.5)^(t/30). How many days does the sample take to fall to half its mass?",
+      "The mass, in grams, of a sample after t days is modeled by f(t) = 120(0.5)^(t/30). How many days does the sample take to fall to half its mass?",
     choices: [
       { id: "A", text: "0.5" },
       { id: "B", text: "30" },
@@ -4216,7 +4219,7 @@ export const SAT_QUESTIONS: Question[] = [
     choices: [
       {
         id: "A",
-        text: "The boulders match an outcrop sixty kilometres up-valley and sit on fine sediment that moving water would have stripped away.",
+        text: "The boulders match an outcrop sixty kilometers up-valley and sit on fine sediment that moving water would have stripped away.",
       },
       { id: "B", text: "Boulders of similar size are found on plateaus in many parts of the world." },
       { id: "C", text: "The plateau stands well above the valley's present river." },
@@ -4415,7 +4418,7 @@ export const SAT_QUESTIONS: Question[] = [
     stimulus:
       "While researching, a student took these notes:\n\u2022 A tidal mill on the estuary ground grain from 1740 until 1926.\n\u2022 It was driven by water held behind a gate at high tide and released as the tide fell.\n\u2022 The restored mill now drives a generator instead of millstones.\n\u2022 It supplies about a fifth of the electricity used by the village hall.",
     prompt:
-      "The student wants to emphasise that the mill works on the same principle as before but to a different end. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
+      "The student wants to emphasize that the mill works on the same principle as before but to a different end. Which choice most effectively uses relevant information from the notes to accomplish this goal?",
     choices: [
       { id: "A", text: "The tidal mill ground grain on the estuary from 1740 until 1926." },
       {
@@ -4537,8 +4540,18 @@ export const SAT_QUESTIONS: Question[] = [
   },
 ];
 
-/** Every question in the bank, keyed by id. */
-export const QUESTION_BY_ID = new Map(SAT_QUESTIONS.map((q) => [q.id, q]));
+/**
+ * The practice bank: everything the Question Bank lists and practice sets draw
+ * from. The practice tests' own questions are deliberately not in it -- see
+ * `Question.form`.
+ */
+export const SAT_QUESTIONS: Question[] = [...CORE, ...BANK_PLUS];
+
+/** Every question that exists, bank and practice tests alike. */
+export const ALL_QUESTIONS: Question[] = [...SAT_QUESTIONS, ...FORM_QUESTIONS];
+
+/** Every question, keyed by id, so a practice test's answers can be reviewed too. */
+export const QUESTION_BY_ID = new Map(ALL_QUESTIONS.map((q) => [q.id, q]));
 
 export function questionById(id: string): Question | undefined {
   return QUESTION_BY_ID.get(id);

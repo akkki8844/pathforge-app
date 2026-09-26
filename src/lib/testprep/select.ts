@@ -1,19 +1,22 @@
 /**
  * Choosing which questions a student sees, and marking what they answer.
  *
- * Kept apart from both the bank and the UI so that the rules — how a weak-area
+ * Kept apart from both the bank and the UI so that the rules \u2014 how a weak-area
  * set is assembled, how an exam module is filled, what counts as a correct
- * produced response — are stated once and are testable without rendering
+ * produced response \u2014 are stated once and are testable without rendering
  * anything.
  */
 
 import { SAT } from "./blueprints";
 import { SAT_QUESTIONS, questionById } from "./questions";
+import type { PracticeForm } from "./content/forms";
+import { plainText } from "./text";
 import { skillStats } from "./stats";
 import type {
   Difficulty,
   DomainDef,
   ExamModuleDef,
+  ModuleRoute,
   PracticeConfig,
   Question,
   SubjectId,
@@ -65,7 +68,7 @@ function parseNumeric(value: string): number | null {
 }
 
 /* ------------------------------------------------------------------ */
-/* Filtering — the Question Bank                                       */
+/* Filtering \u2014 the Question Bank                                       */
 /* ------------------------------------------------------------------ */
 
 export type CompletionFilter = "all" | "unseen" | "seen";
@@ -105,7 +108,7 @@ export interface QuestionHistory {
    * `lastCorrect` alone cannot tell them apart: a question the student ran out
    * of time on is stored `correct: false`, exactly like one they got wrong, so
    * every surface reading this index marked skips as mistakes. The record has
-   * always carried `given` — `""` when nothing was entered — so this costs
+   * always carried `given` \u2014 `""` when nothing was entered \u2014 so this costs
    * nothing to derive and no data had to be invented for it.
    *
    * `lastCorrect` is kept as it was; callers that genuinely only care whether
@@ -149,7 +152,7 @@ export function filterQuestions(
     // Read from `lastOutcome`, not `lastCorrect`. An exam records every
     // unanswered question with `given: ""` and `correct: false`, so filtering
     // on the boolean put every question the student ran out of time on into
-    // the "answered incorrectly" list — which is the list they drill from, and
+    // the "answered incorrectly" list \u2014 which is the list they drill from, and
     // the one place a padded result actively wastes their time.
     if (filters.outcome !== "all") {
       if (!h || h.lastOutcome === null) return false;
@@ -157,9 +160,11 @@ export function filterQuestions(
     }
 
     if (needle) {
-      const haystack = `${q.prompt} ${q.stimulus ?? ""} ${q.explanation} ${
-        q.choices?.map((c) => c.text).join(" ") ?? ""
-      }`.toLowerCase();
+      const haystack = plainText(
+        `${q.prompt} ${q.stimulus ?? ""} ${q.explanation} ${
+          q.choices?.map((c) => c.text).join(" ") ?? ""
+        }`,
+      ).toLowerCase();
       if (!haystack.includes(needle)) return false;
     }
 
@@ -175,7 +180,7 @@ export function filterQuestions(
  * Deterministic shuffle.
  *
  * Seeded rather than `Math.random`, so that a practice set built during a
- * render is the same set after React re-renders it — and so that a student who
+ * render is the same set after React re-renders it \u2014 and so that a student who
  * reloads mid-session gets their questions back in the order they had them.
  */
 function shuffle<T>(items: T[], seed: number): T[] {
@@ -186,12 +191,12 @@ function shuffle<T>(items: T[], seed: number): T[] {
     // Scaled from the whole value rather than `s % (i + 1)`.
     //
     // This is Fisher-Yates either way, so it always produces a valid
-    // permutation — but a linear congruential generator's LOW bits are barely
+    // permutation \u2014 but a linear congruential generator's LOW bits are barely
     // random at all: modulo 2^32, the bottom k bits repeat with period 2^k, so
     // `s % 2` simply alternates. Taking `j` from them made the shuffle badly
     // biased rather than slightly so. Measured over 20,000 seeds on a
     // ten-item list, the first item landed in position 0 about 4,045 times
-    // against an expected 2,000, and in position 3 only 903 times — chi-square
+    // against an expected 2,000, and in position 3 only 903 times \u2014 chi-square
     // 3,629 where 9 is expected. Scaling from the high bits brings that to 22.
     const j = Math.floor((s / 4294967296) * (i + 1));
     [out[i], out[j]] = [out[j], out[i]];
@@ -231,7 +236,7 @@ export function pickQuestions(profile: TestPrepProfile, config: PracticeConfig):
     //
     // Shuffled BEFORE the sort, not instead of it. `Array.prototype.sort` is
     // stable, so questions on equally weak skills keep their shuffled order
-    // and a second request returns a different set — without that, weak
+    // and a second request returns a different set \u2014 without that, weak
     // practice was fully deterministic and the "Another set" link handed back
     // the same questions it had just given you.
     const rank = new Map(
@@ -254,9 +259,20 @@ export function pickQuestions(profile: TestPrepProfile, config: PracticeConfig):
 /* ------------------------------------------------------------------ */
 
 export interface ExamModule extends ExamModuleDef {
+  /** Module 1: the questions. Module 2: the harder route, until routing picks. */
   questionIds: string[];
-  /** Minutes for this run — scaled down when the bank cannot fill the module. */
+  /** Minutes for this run -- scaled down when the bank cannot fill the module. */
   actualMinutes: number;
+  /** 1 for a section's first module, 2 for its adaptive second. */
+  stage: 1 | 2;
+  /**
+   * Module 2 only: both routes, chosen between when Module 1 is submitted.
+   *
+   * Both are built up front rather than on routing, so that the paper a
+   * student sits is fixed from the moment the exam opens and a reload of the
+   * builder cannot hand them a different module mid-sitting.
+   */
+  routes?: Record<ModuleRoute, string[]>;
 }
 
 export interface BuiltExam {
@@ -267,6 +283,17 @@ export interface BuiltExam {
   fullLength: boolean;
   totalQuestions: number;
   totalMinutes: number;
+  /** The practice test this sitting is, when it is one of the fixed forms. */
+  formId?: string;
+}
+
+/** The questions a module will serve, given the routes decided so far. */
+export function moduleQuestionIds(
+  m: ExamModule,
+  routes: Partial<Record<SubjectId, ModuleRoute>>,
+): string[] {
+  if (!m.routes) return m.questionIds;
+  return m.routes[routes[m.subjectId] ?? "harder"];
 }
 
 /**
@@ -294,13 +321,47 @@ function apportion(domains: DomainDef[], total: number): { domainId: string; cou
   return rows.map(({ domainId, count }) => ({ domainId, count }));
 }
 
-/** Shuffle, then float anything the student has never answered to the front. */
-function unseenFirst(pool: Question[], answered: Set<string>, seed: number): Question[] {
+/**
+ * Shuffle, then float anything the student has never answered to the front,
+ * and within that, anything at a preferred difficulty.
+ */
+function unseenFirst(
+  pool: Question[],
+  answered: Set<string>,
+  seed: number,
+  prefer?: Difficulty[],
+): Question[] {
   const shuffled = shuffle(pool, seed);
-  return [
-    ...shuffled.filter((q) => !answered.has(q.id)),
-    ...shuffled.filter((q) => answered.has(q.id)),
-  ];
+  const rank = (q: Question) =>
+    (prefer && !prefer.includes(q.difficulty) ? 2 : 0) + (answered.has(q.id) ? 1 : 0);
+  // Difficulty outranks novelty: a harder Module 2 made of easy questions the
+  // student has not seen is still the wrong module.
+  return [...shuffled].sort((a, b) => rank(a) - rank(b));
+}
+
+/** Where each domain sits in a real Reading and Writing module. */
+const RW_ORDER = ["craft-structure", "information-ideas", "standard-conventions", "expression-ideas"];
+const DIFFICULTY_ORDER: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 2 };
+
+/**
+ * Put a module's questions in the order the real test uses.
+ *
+ * Reading and Writing groups questions by type -- Craft and Structure first,
+ * Expression of Ideas last -- and Math runs roughly from easier to harder.
+ * A shuffled module used to open on whatever came up, which is not how a
+ * student meets the test and trains the wrong pacing.
+ */
+function orderModule(questions: Question[], subjectId: SubjectId): Question[] {
+  const index = new Map(questions.map((q, i) => [q.id, i]));
+  const tie = (a: Question, b: Question) => (index.get(a.id) ?? 0) - (index.get(b.id) ?? 0);
+  if (subjectId === "rw") {
+    return [...questions].sort(
+      (a, b) => RW_ORDER.indexOf(a.domainId) - RW_ORDER.indexOf(b.domainId) || tie(a, b),
+    );
+  }
+  return [...questions].sort(
+    (a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty] || tie(a, b),
+  );
 }
 
 /**
@@ -313,20 +374,21 @@ function unseenFirst(pool: Question[], answered: Set<string>, seed: number): Que
  * 3 and 10 Standard English Conventions questions where the weighting asks
  * for 7, and Math modules ran up to 7 Geometry questions against an expected
  * 3. That matters beyond realism, because `Results` estimates a section score
- * from the raw count and `Overview` ranks domains by these same weights — an
+ * from the raw count and `Overview` ranks domains by these same weights -- an
  * exam over-weighted in geometry reports a score for a test the student did
  * not sit.
  *
- * Within a domain, questions the student has never answered come first, so a
- * second sitting is not largely a replay of the first. If a domain cannot
- * supply its quota, the shortfall is backfilled from the rest of the subject
- * rather than left as a hole.
+ * Within a domain, questions at the preferred difficulties come first, then
+ * questions the student has never answered, so a second sitting is not largely
+ * a replay of the first. If a domain cannot supply its quota, the shortfall is
+ * backfilled from the rest of the subject rather than left as a hole.
  */
 function fillModule(
   m: ExamModuleDef,
   used: Set<string>,
   answered: Set<string>,
   seed: number,
+  prefer?: Difficulty[],
 ): Question[] {
   const domains = SAT.subjects.find((s) => s.id === m.subjectId)?.domains ?? [];
   const pool = SAT_QUESTIONS.filter((q) => q.subjectId === m.subjectId && !used.has(q.id));
@@ -339,6 +401,7 @@ function fillModule(
       pool.filter((q) => q.domainId === domainId && !taken.has(q.id)),
       answered,
       seed + i * 31,
+      prefer,
     );
     for (const q of fromDomain.slice(0, count)) {
       chosen.push(q);
@@ -351,6 +414,7 @@ function fillModule(
       pool.filter((q) => !taken.has(q.id)),
       answered,
       seed + 997,
+      prefer,
     );
     for (const q of rest.slice(0, m.questionCount - chosen.length)) {
       chosen.push(q);
@@ -358,22 +422,44 @@ function fillModule(
     }
   }
 
-  // Shuffled again so the module is not served in domain blocks.
-  return shuffle(chosen, seed + 4111);
+  return orderModule(shuffle(chosen, seed + 4111), m.subjectId);
+}
+
+const HARDER: Difficulty[] = ["medium", "hard"];
+const EASIER: Difficulty[] = ["easy", "medium"];
+
+/** Minutes for a module run with `count` of its published questions. */
+function scaledMinutes(m: ExamModuleDef, count: number): number {
+  const ratio = m.questionCount ? count / m.questionCount : 0;
+  return Math.max(1, Math.round(m.minutes * ratio));
+}
+
+function finish(label: string, modules: ExamModule[], formId?: string): BuiltExam {
+  const fullLength = modules.every((m) => m.questionIds.length === m.questionCount);
+  return {
+    id: `exam-${Date.now().toString(36)}`,
+    label,
+    modules,
+    fullLength,
+    totalQuestions: modules.reduce((n, m) => n + m.questionIds.length, 0),
+    totalMinutes: modules.reduce((n, m) => n + m.actualMinutes, 0),
+    formId,
+  };
 }
 
 /**
- * Assemble a sitting.
+ * Assemble a sitting from the bank.
  *
  * The digital SAT's four modules, their real counts and their real timings come
- * from the blueprint. Where the bank cannot fill a module, the module runs
- * short and its clock is scaled to match at the same seconds-per-question — a
- * 27-question module run with 12 questions gets 14 minutes, not 32. The
- * alternative, repeating questions to reach 27, would make the score estimate
- * meaningless and the practice worse.
+ * from the blueprint. Each section's Module 1 is mixed in difficulty; its
+ * Module 2 is built twice, once leaning hard and once leaning easy, and the
+ * exam picks between them on how Module 1 went -- the adaptive design of the
+ * real test.
  *
- * `fullLength` is what the UI reads to decide whether it may call this a
- * full-length simulation. It stays false until the bank can fill every module.
+ * Where the bank cannot fill a module, the module runs short and its clock is
+ * scaled to match at the same seconds-per-question. The alternative, repeating
+ * questions to reach 27, would make the score estimate meaningless and the
+ * practice worse.
  */
 export function buildExam(
   profile: TestPrepProfile,
@@ -389,28 +475,88 @@ export function buildExam(
     .map((m, i) => {
       // Each module gets its own seed. It used to be `seed + m.id.length`,
       // and "rw-1" and "rw-2" are the same length, as are "math-1" and
-      // "math-2" — so the two halves of each section were drawn from one
+      // "math-2" -- so the two halves of each section were drawn from one
       // shuffle of near-identical pools.
-      const take = fillModule(m, used, answered, seed + i * 7919);
-      take.forEach((q) => used.add(q.id));
-      const ratio = m.questionCount ? take.length / m.questionCount : 0;
+      const s = seed + i * 7919;
+      const stage: 1 | 2 = m.id.endsWith("-1") ? 1 : 2;
+      if (stage === 1) {
+        const take = fillModule(m, used, answered, s);
+        take.forEach((q) => used.add(q.id));
+        return {
+          ...m,
+          stage,
+          questionIds: take.map((q) => q.id),
+          actualMinutes: scaledMinutes(m, take.length),
+        };
+      }
+      // The two routes may share questions with each other -- a student only
+      // ever sees one -- but neither repeats anything from Module 1.
+      const harder = fillModule(m, used, answered, s, HARDER);
+      const easier = fillModule(m, used, answered, s + 1, EASIER);
+      [...harder, ...easier].forEach((q) => used.add(q.id));
+      const count = Math.min(harder.length, easier.length);
       return {
         ...m,
-        questionIds: take.map((q) => q.id),
-        actualMinutes: Math.max(1, Math.round(m.minutes * ratio)),
+        stage,
+        questionIds: harder.map((q) => q.id),
+        routes: { harder: harder.map((q) => q.id), easier: easier.map((q) => q.id) },
+        actualMinutes: scaledMinutes(m, count),
       };
     });
 
-  const fullLength = modules.every((m) => m.questionIds.length === m.questionCount);
+  return finish(label, modules);
+}
 
-  return {
-    id: `exam-${Date.now().toString(36)}`,
-    label,
-    modules,
-    fullLength,
-    totalQuestions: modules.reduce((n, m) => n + m.questionIds.length, 0),
-    totalMinutes: modules.reduce((n, m) => n + m.actualMinutes, 0),
-  };
+/** A small, stable hash, so a practice test's easier modules are the same every time. */
+function hash(text: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i += 1) {
+    h ^= text.charCodeAt(i);
+    h = Math.imul(h, 16777619) >>> 0;
+  }
+  return h % 100000;
+}
+
+/**
+ * Assemble one of the fixed practice tests.
+ *
+ * Module 1 of each section and the harder Module 2 are the test's own
+ * questions. The easier Module 2 comes from the bank's easy and medium
+ * questions on a seed fixed by the test and module, so it does not change
+ * between sittings of the same test.
+ */
+export function buildFormExam(
+  form: PracticeForm,
+  subjects: SubjectId[] = ["rw", "math"],
+): BuiltExam {
+  const used = new Set<string>();
+  const none = new Set<string>();
+  const modules: ExamModule[] = SAT.modules
+    .filter((m) => subjects.includes(m.subjectId))
+    .map((m) => {
+      const stage: 1 | 2 = m.id.endsWith("-1") ? 1 : 2;
+      const fixed =
+        m.id === "rw-1" ? form.rw1 : m.id === "rw-2" ? form.rw2 : m.id === "math-1" ? form.math1 : form.math2;
+      const ids = fixed.map((q) => q.id);
+      if (stage === 1) {
+        return { ...m, stage, questionIds: ids, actualMinutes: scaledMinutes(m, ids.length) };
+      }
+      const easier = fillModule(m, used, none, hash(`${form.id}:${m.id}`), EASIER);
+      easier.forEach((q) => used.add(q.id));
+      return {
+        ...m,
+        stage,
+        questionIds: ids,
+        routes: { harder: ids, easier: easier.map((q) => q.id) },
+        actualMinutes: scaledMinutes(m, Math.min(ids.length, easier.length)),
+      };
+    });
+
+  const label =
+    subjects.length === 2
+      ? form.name
+      : `${form.name} \u00b7 ${subjects[0] === "math" ? "Math" : "Reading and Writing"}`;
+  return finish(label, modules, form.id);
 }
 
 /**
@@ -421,7 +567,7 @@ export function buildExam(
  * by comparing these two numbers.
  *
  * It used to count every question in the chosen subjects and compare that
- * total against the combined target — which is not the same question. A
+ * total against the combined target \u2014 which is not the same question. A
  * module can only be filled from its own subject, and `buildExam` fills each
  * one separately, so a bank of 151 Math questions and no Reading & Writing
  * would have satisfied `available >= target` and had this page announce a
@@ -430,7 +576,7 @@ export function buildExam(
  * exactly why it was worth fixing before it became true.
  *
  * So capacity is now summed per module, capped at what that module's subject
- * can supply, with each module taking from what the previous ones left —
+ * can supply, with each module taking from what the previous ones left \u2014
  * mirroring `buildExam`'s `used` set rather than approximating it.
  */
 export function examCapacity(subjects: SubjectId[]): { available: number; target: number } {
@@ -463,7 +609,7 @@ export function resolve(ids: string[]): Question[] {
 }
 
 /* ------------------------------------------------------------------ */
-/* Ordering — the Question Bank                                        */
+/* Ordering \u2014 the Question Bank                                        */
 /* ------------------------------------------------------------------ */
 
 export type BankSort = "bank" | "easiest" | "hardest" | "unseen" | "missed";
@@ -483,7 +629,7 @@ const DIFFICULTY_RANK: Record<Difficulty, number> = { easy: 0, medium: 1, hard: 
  * Order a filtered result set.
  *
  * Every ordering falls back to bank order for ties, so the list is stable
- * between renders — a library whose rows shuffle when you answer one of them
+ * between renders \u2014 a library whose rows shuffle when you answer one of them
  * is a library you cannot keep your place in.
  */
 export function sortQuestions(

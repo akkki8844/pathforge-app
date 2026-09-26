@@ -99,7 +99,9 @@ export function SmoothTabs<T extends string>({
         // flex row the pill variant stretched to the container and left a band
         // of empty chrome to the right of the last tab, which reads as a
         // container someone forgot to fill rather than as a control.
-        "relative items-center",
+        // Scrolls sideways when the row is wider than the screen (three or four
+        // labelled tabs on a 360px phone) rather than running off the page.
+        "relative max-w-full items-center overflow-x-auto scrollbar-none",
         fullWidth ? "flex w-full" : "inline-flex",
         variant === "pill"
           ? "gap-1 rounded-xl border border-border bg-muted/40 p-1"

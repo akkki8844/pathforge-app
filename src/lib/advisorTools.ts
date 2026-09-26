@@ -24,7 +24,7 @@
  *     prompt-injected payload installing itself as standing instructions.
  */
 
-export const TOOL_NAMES = ["navigate", "add_outcome_item", "install_skill", "remove_skill"] as const;
+export const TOOL_NAMES = ["navigate", "add_outcome_item", "add_task", "schedule_event", "add_application", "install_skill", "remove_skill"] as const;
 export type ToolName = (typeof TOOL_NAMES)[number];
 
 /* ------------------------------------------------------------------ routes */
@@ -127,6 +127,64 @@ export interface AddOutcomeArgs {
   detail: string;
 }
 
+/** Mirrors the CHECK on `routine_tasks.priority`. */
+export const TASK_PRIORITIES = ["low", "medium", "high"] as const;
+export type TaskPriority = (typeof TASK_PRIORITIES)[number];
+
+/** Mirrors the CHECK on `routine_events.category`. */
+export const EVENT_CATEGORIES = ["exam", "deadline", "school", "application", "personal", "other"] as const;
+export type EventCategoryName = (typeof EVENT_CATEGORIES)[number];
+
+export interface AddTaskArgs {
+  title: string;
+  description: string;
+  /** ISO instant, or "" for a task with no deadline. */
+  dueAt: string;
+  priority: TaskPriority;
+}
+
+export interface ScheduleEventArgs {
+  title: string;
+  description: string;
+  category: EventCategoryName;
+  /** ISO instant. Required — an event with no start is not an event. */
+  startsAt: string;
+  /** ISO instant, or "" to let the calendar default the length. */
+  endsAt: string;
+}
+
+/** Mirrors the CHECK on `student_applications.status`, in lifecycle order. */
+export const APPLICATION_STATUSES = [
+  "researching",
+  "planning",
+  "drafting",
+  "submitted",
+  "admitted",
+  "rejected",
+  "waitlisted",
+] as const;
+export type ApplicationStatus = (typeof APPLICATION_STATUSES)[number];
+
+/** Mirrors the CHECK on `student_applications.application_round`. */
+export const APPLICATION_ROUNDS = [
+  "early_decision",
+  "early_action",
+  "early_decision_2",
+  "regular",
+  "rolling",
+] as const;
+export type ApplicationRound = (typeof APPLICATION_ROUNDS)[number];
+
+export interface AddApplicationArgs {
+  collegeName: string;
+  country: string;
+  /** "" when the student has not said which round. */
+  round: ApplicationRound | "";
+  /** ISO instant, or "" for a deadline not yet known. */
+  deadline: string;
+  status: ApplicationStatus;
+}
+
 export interface NavigateArgs {
   path: string;
   label: string;
@@ -139,6 +197,9 @@ export interface SkillArgs {
 export type ToolArgs =
   | { name: "navigate"; args: NavigateArgs }
   | { name: "add_outcome_item"; args: AddOutcomeArgs }
+  | { name: "add_task"; args: AddTaskArgs }
+  | { name: "schedule_event"; args: ScheduleEventArgs }
+  | { name: "add_application"; args: AddApplicationArgs }
   | { name: "install_skill"; args: SkillArgs }
   | { name: "remove_skill"; args: SkillArgs };
 
@@ -177,6 +238,31 @@ export const TOOL_SPECS: Record<ToolName, ToolSpec> = {
     requiresConfirmation: true,
     destructive: false,
   },
+  add_task: {
+    name: "add_task",
+    pendingLabel: "Add to your tasks",
+    doneLabel: "Added to your tasks",
+    // Writes a row the student will see on their planner tomorrow morning.
+    requiresConfirmation: true,
+    destructive: false,
+  },
+  schedule_event: {
+    name: "schedule_event",
+    pendingLabel: "Put it in your calendar",
+    doneLabel: "Added to your calendar",
+    // Same reasoning, and a wrong date here is worse than a wrong task: a task
+    // with the wrong due date is noticed, an event at the wrong hour is missed.
+    requiresConfirmation: true,
+    destructive: false,
+  },
+  add_application: {
+    name: "add_application",
+    pendingLabel: "Add to your college list",
+    doneLabel: "Added to your college list",
+    // A row on the list the whole application year is planned around.
+    requiresConfirmation: true,
+    destructive: false,
+  },
   install_skill: {
     name: "install_skill",
     pendingLabel: "Install skill",
@@ -197,6 +283,29 @@ export const TOOL_SPECS: Record<ToolName, ToolSpec> = {
     destructive: true,
   },
 };
+
+/**
+ * A date the model produced, normalised to an ISO instant, or "" if it is not
+ * one.
+ *
+ * Models are reliable about ISO-8601 and unreliable about everything else, and
+ * `new Date("next Tuesday")` is `Invalid Date` while `new Date("03/04/2026")`
+ * is a different day depending on where the reader lives. Anything that does
+ * not parse becomes "" — a task with no due date, which the student can fix
+ * in one click — rather than a confidently wrong date they will not check.
+ *
+ * The far bounds catch the other failure: a year like 0025 or 20226, which
+ * parses cleanly and puts the item somewhere nobody will ever scroll to.
+ */
+function isoInstant(v: unknown): string {
+  if (typeof v !== "string" || !v.trim()) return "";
+  const at = new Date(v.trim());
+  const ms = at.getTime();
+  if (!Number.isFinite(ms)) return "";
+  const year = at.getUTCFullYear();
+  if (year < 2000 || year > 2100) return "";
+  return at.toISOString();
+}
 
 /** Collapse control characters and runs of whitespace, then hard-cap length. */
 function str(v: unknown, max: number): string {
@@ -246,6 +355,81 @@ export function validateToolCall(name: unknown, rawArgs: unknown): ValidationRes
     return { ok: true, call: { name, args: { slug } } };
   }
 
+  if (name === "add_task") {
+    const title = str(args.title, 160);
+    if (title.length < 2) return { ok: false, reason: "The task needs a title." };
+    const priority = typeof args.priority === "string" ? args.priority.toLowerCase().trim() : "medium";
+    return {
+      ok: true,
+      call: {
+        name: "add_task",
+        args: {
+          title,
+          description: str(args.description, 600),
+          dueAt: isoInstant(args.dueAt),
+          priority: ((TASK_PRIORITIES as readonly string[]).includes(priority)
+            ? priority
+            : "medium") as TaskPriority,
+        },
+      },
+    };
+  }
+
+  if (name === "add_application") {
+    const collegeName = str(args.collegeName ?? args.college_name, 160);
+    if (collegeName.length < 2) return { ok: false, reason: "The application needs a university." };
+    const status = typeof args.status === "string" ? args.status.toLowerCase().trim() : "researching";
+    const round = typeof args.round === "string" ? args.round.toLowerCase().trim() : "";
+    return {
+      ok: true,
+      call: {
+        name: "add_application",
+        args: {
+          collegeName,
+          country: str(args.country, 80),
+          round: ((APPLICATION_ROUNDS as readonly string[]).includes(round)
+            ? round
+            : "") as ApplicationRound | "",
+          deadline: isoInstant(args.deadline),
+          // Anything unrecognised becomes the first step of the lifecycle
+          // rather than a guess further along it: telling a student an
+          // application is "submitted" when it is not is the one error here
+          // with a deadline attached to it.
+          status: ((APPLICATION_STATUSES as readonly string[]).includes(status)
+            ? status
+            : "researching") as ApplicationStatus,
+        },
+      },
+    };
+  }
+
+  if (name === "schedule_event") {
+    const title = str(args.title, 160);
+    if (title.length < 2) return { ok: false, reason: "The event needs a title." };
+    const startsAt = isoInstant(args.startsAt);
+    if (!startsAt) return { ok: false, reason: "The event needs a date and time." };
+    const endsAt = isoInstant(args.endsAt);
+    const category = typeof args.category === "string" ? args.category.toLowerCase().trim() : "other";
+    return {
+      ok: true,
+      call: {
+        name: "schedule_event",
+        args: {
+          title,
+          description: str(args.description, 600),
+          category: ((EVENT_CATEGORIES as readonly string[]).includes(category)
+            ? category
+            : "other") as EventCategoryName,
+          startsAt,
+          // The table has CHECK (ends_at IS NULL OR ends_at >= starts_at), so
+          // an end before the start is dropped here rather than rejected by
+          // Postgres after the student has already pressed the button.
+          endsAt: endsAt && endsAt >= startsAt ? endsAt : "",
+        },
+      },
+    };
+  }
+
   // add_outcome_item
   const category = typeof args.category === "string" ? args.category.toLowerCase().trim() : "";
   if (!(OUTCOME_CATEGORIES as readonly string[]).includes(category)) {
@@ -288,7 +472,35 @@ export function describeCall(call: ToolArgs): string {
   // The slug is all we have here. The executing hook replaces this with the
   // skill's real name once it has resolved the row.
   if (call.name === "install_skill" || call.name === "remove_skill") return call.args.slug;
+  if (call.name === "add_task") {
+    const when = call.args.dueAt ? ` · due ${shortDate(call.args.dueAt)}` : "";
+    return `${call.args.title}${when}`;
+  }
+  if (call.name === "add_application") {
+    const bits = [call.args.country, call.args.deadline ? `due ${shortDate(call.args.deadline)}` : ""].filter(Boolean);
+    return `${call.args.collegeName}${bits.length ? ` · ${bits.join(" · ")}` : ""}`;
+  }
+  if (call.name === "schedule_event") {
+    return `${call.args.title} · ${shortDate(call.args.startsAt, true)}`;
+  }
   const label = OUTCOME_CATEGORY_LABEL[call.args.category];
   const where = call.args.organization ? ` · ${call.args.organization}` : "";
   return `${label}: ${call.args.title}${where}`;
+}
+
+/**
+ * "12 Oct", or "12 Oct, 16:30" when the clock matters.
+ *
+ * Rendered in the viewer's own locale and timezone, because the card is asking
+ * them to confirm a date and the only date they can check it against is the one
+ * on their own calendar.
+ */
+function shortDate(iso: string, withTime = false): string {
+  const at = new Date(iso);
+  if (!Number.isFinite(at.getTime())) return iso;
+  return at.toLocaleString(undefined, {
+    day: "numeric",
+    month: "short",
+    ...(withTime ? { hour: "2-digit", minute: "2-digit" } : {}),
+  });
 }

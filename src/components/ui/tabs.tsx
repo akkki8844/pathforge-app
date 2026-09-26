@@ -12,7 +12,10 @@ const TabsList = React.forwardRef<
   <TabsPrimitive.List
     ref={ref}
     className={cn(
-      "inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+      // max-w-full + overflow-x-auto: a row of four or five triggers is wider than
+      // a 360px phone. It scrolls sideways instead of running off the page, and
+      // `safe center` keeps the first trigger reachable once it does.
+      "inline-flex h-10 max-w-full items-center justify-center overflow-x-auto scrollbar-none rounded-md bg-muted p-1 text-muted-foreground [justify-content:safe_center]",
       className,
     )}
     {...props}

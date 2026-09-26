@@ -20,7 +20,8 @@ import {
 import { cn } from "@/lib/utils";
 import { SAT, blueprintFor, skillName } from "@/lib/testprep/blueprints";
 import { examCapacity } from "@/lib/testprep/select";
-import { examHref, resultsHref, sectionHref, sessionHref } from "@/lib/testprep/nav";
+import { examHref, formExamHref, resultsHref, sessionHref } from "@/lib/testprep/nav";
+import { PRACTICE_FORMS } from "@/lib/testprep/content/forms";
 import { useTestPrep } from "@/lib/testprep/store";
 import { formatDuration } from "@/lib/testprep/stats";
 import {
@@ -93,100 +94,186 @@ export default function TestPrepExams() {
         {/*
           * The practice tests, as cards.
           *
-          * This page used to open with a block of prose and a Start button, and
-          * kept the score card for sittings already taken — so a student who had
-          * not sat one yet never saw the card at all. College Board's own app
-          * lists the practice tests as cards and fills each one's score in when
-          * you finish it. So does this: the next sitting is the first card, with
-          * its score fields empty, and every completed sitting is a card behind
-          * it, newest first.
+          * College Board's app lists its full-length practice tests as score
+          * cards and fills each one in when you finish it. So does this: one
+          * card per fixed test, showing the latest score on it, then a card for
+          * a test assembled fresh from the bank.
           */}
-        <Stagger
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
-          count={examAttempts.length + 1}
-          step={0.03}
-        >
-          <StaggerItem y={4}>
-            <ScoreCard
-              testName={blueprint.name}
-              label={`Practice ${examAttempts.length + 1}`}
-              meta="Not taken yet"
-              total={null}
-              totalRange={blueprint.scoreRange}
-              sections={SECTIONS.map((s) => ({ ...s, value: null }))}
-              footnote={
-                isFullLength
-                  ? `${full.target} questions · ${SAT.modules.reduce((n, m) => n + m.minutes, 0)} minutes`
-                  : `${full.available} questions · about ${fullMinutes} minutes`
-              }
-              actions={
-                <>
-                  <Link to={examHref(blueprint.id, ["rw", "math"])} className={BB_SCORE_CARD_CTA}>
-                    Start practice test
-                  </Link>
-                  <button
-                    type="button"
-                    onClick={() => setCustomOpen(true)}
-                    className={cn(BB_SCORE_CARD_SECONDARY, FOCUS)}
-                  >
-                    Build a custom exam
-                  </button>
-                </>
-              }
-            />
-          </StaggerItem>
+        <section aria-labelledby="tp-forms-heading" className="space-y-3">
+          <div className="flex items-baseline justify-between gap-4">
+            <h2 id="tp-forms-heading" className={EYEBROW}>
+              Full-length practice tests
+            </h2>
+            <p className="hidden text-xs text-muted-foreground sm:block">
+              98 questions {"·"} 2 hours 14 minutes {"·"} adaptive, like the real test
+            </p>
+          </div>
+          <Stagger
+            className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+            count={PRACTICE_FORMS.length + 1}
+            step={0.03}
+          >
+            {PRACTICE_FORMS.map((form) => {
+              const sittings = examAttempts.filter(
+                (a) => a.formId === form.id && a.score !== undefined,
+              );
+              const latest = sittings[0];
+              const delta =
+                latest?.score !== undefined && sittings[1]?.score !== undefined
+                  ? latest.score - sittings[1].score
+                  : null;
+              return (
+                <StaggerItem key={form.id} y={4}>
+                  <ScoreCard
+                    testName={blueprint.name}
+                    label={form.name}
+                    meta={latest ? examDate(latest.finishedAt) : "Not taken yet"}
+                    onDownload={
+                      latest
+                        ? () => downloadScoreReport(blueprint.name, latest, form.number)
+                        : undefined
+                    }
+                    downloadLabel={`Download the score report for ${form.name}`}
+                    total={latest?.score ?? null}
+                    totalRange={blueprint.scoreRange}
+                    delta={delta}
+                    sections={SECTIONS.map((s) => ({
+                      ...s,
+                      value: latest?.sectionScores?.[s.id] ?? null,
+                    }))}
+                    footnote={
+                      latest
+                        ? `${latest.correct}/${latest.totalQuestions} correct · taken ${sittings.length} time${sittings.length === 1 ? "" : "s"}`
+                        : form.blurb
+                    }
+                    actions={
+                      <>
+                        {latest ? (
+                          <>
+                            <Link to={resultsHref(blueprint.id, latest.id)} className={BB_SCORE_CARD_CTA}>
+                              Score Details
+                            </Link>
+                            <Link
+                              to={formExamHref(blueprint.id, form.id)}
+                              className={BB_SCORE_CARD_SECONDARY}
+                            >
+                              Retake {form.name}
+                            </Link>
+                          </>
+                        ) : (
+                          <Link to={formExamHref(blueprint.id, form.id)} className={BB_SCORE_CARD_CTA}>
+                            Start {form.name}
+                          </Link>
+                        )}
+                        <div className="flex items-center justify-center gap-3 pt-1 text-[13px]">
+                          <span className="text-muted-foreground">One section:</span>
+                          <Link
+                            to={formExamHref(blueprint.id, form.id, ["rw"])}
+                            className="font-medium text-[hsl(var(--bb-blue))] underline underline-offset-4 hover:text-[hsl(var(--bb-blue)/0.8)]"
+                          >
+                            Reading and Writing
+                          </Link>
+                          <Link
+                            to={formExamHref(blueprint.id, form.id, ["math"])}
+                            className="font-medium text-[hsl(var(--bb-blue))] underline underline-offset-4 hover:text-[hsl(var(--bb-blue)/0.8)]"
+                          >
+                            Math
+                          </Link>
+                        </div>
+                      </>
+                    }
+                  />
+                </StaggerItem>
+              );
+            })}
 
-          {examAttempts.map((a, i) => {
-            const previous = examAttempts[i + 1];
-            const delta =
-              a.score !== undefined && previous?.score !== undefined
-                ? a.score - previous.score
-                : null;
-            // The list is newest first, so the oldest sitting is Practice 1 and
-            // the number counts up with the sittings rather than down the page.
-            const number = examAttempts.length - i;
-            const bothSections =
-              a.sectionScores !== undefined && Object.keys(a.sectionScores).length === 2;
-            return (
-              <StaggerItem key={a.id} y={4}>
-                <ScoreCard
-                  testName={blueprint.name}
-                  label={bothSections ? `Practice ${number}` : a.label}
-                  meta={examDate(a.finishedAt)}
-                  onDownload={() => downloadScoreReport(blueprint.name, a, number)}
-                  downloadLabel={`Download the score report for ${a.label}`}
-                  total={a.score ?? null}
-                  totalRange={blueprint.scoreRange}
-                  delta={delta}
-                  sections={SECTIONS.map((s) => ({
-                    ...s,
-                    value: a.sectionScores?.[s.id] ?? null,
-                  }))}
-                  footnote={`${a.correct}/${a.totalQuestions} correct · ${formatDuration(a.elapsedMs)}`}
-                  actions={
-                    <>
-                      <Link to={resultsHref(blueprint.id, a.id)} className={BB_SCORE_CARD_CTA}>
-                        Score Details
-                      </Link>
-                      <Link
-                        to={sessionHref(blueprint.id, { kind: "weak", count: 15 })}
-                        className={BB_SCORE_CARD_SECONDARY}
-                      >
-                        Practice weak areas
-                      </Link>
-                      <Link
-                        to={sectionHref(blueprint.id, "question-bank")}
-                        className="flex items-center justify-center gap-1.5 pt-1 text-sm font-medium text-[hsl(var(--bb-blue))] underline underline-offset-4 transition-colors hover:text-[hsl(var(--bb-blue)/0.8)]"
-                      >
-                        Practice specific questions
-                      </Link>
-                    </>
-                  }
-                />
-              </StaggerItem>
-            );
-          })}
-        </Stagger>
+            <StaggerItem y={4}>
+              <ScoreCard
+                testName={blueprint.name}
+                label="Randomized test"
+                meta="New every time"
+                total={null}
+                totalRange={blueprint.scoreRange}
+                sections={SECTIONS.map((s) => ({ ...s, value: null }))}
+                footnote={
+                  isFullLength
+                    ? `${full.target} questions from the bank · ${SAT.modules.reduce((n, m) => n + m.minutes, 0)} minutes`
+                    : `${full.available} questions from the bank · about ${fullMinutes} minutes`
+                }
+                actions={
+                  <>
+                    <Link to={examHref(blueprint.id, ["rw", "math"])} className={BB_SCORE_CARD_CTA}>
+                      Start a randomized test
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setCustomOpen(true)}
+                      className={cn(BB_SCORE_CARD_SECONDARY, FOCUS)}
+                    >
+                      Build a custom exam
+                    </button>
+                  </>
+                }
+              />
+            </StaggerItem>
+          </Stagger>
+        </section>
+
+        {examAttempts.length > 0 && (
+          <section aria-labelledby="tp-history-heading" className="space-y-3">
+            <h2 id="tp-history-heading" className={EYEBROW}>
+              Every sitting
+            </h2>
+            <Stagger
+              className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
+              count={examAttempts.length}
+              step={0.03}
+            >
+              {examAttempts.map((a, i) => {
+                const previous = examAttempts[i + 1];
+                const delta =
+                  a.score !== undefined && previous?.score !== undefined
+                    ? a.score - previous.score
+                    : null;
+                // The list is newest first, so the oldest sitting is number 1
+                // and the number counts up with the sittings rather than down.
+                const number = examAttempts.length - i;
+                return (
+                  <StaggerItem key={a.id} y={4}>
+                    <ScoreCard
+                      testName={blueprint.name}
+                      label={a.label}
+                      meta={examDate(a.finishedAt)}
+                      onDownload={() => downloadScoreReport(blueprint.name, a, number)}
+                      downloadLabel={`Download the score report for ${a.label}`}
+                      total={a.score ?? null}
+                      totalRange={blueprint.scoreRange}
+                      delta={delta}
+                      sections={SECTIONS.map((s) => ({
+                        ...s,
+                        value: a.sectionScores?.[s.id] ?? null,
+                      }))}
+                      footnote={`${a.correct}/${a.totalQuestions} correct · ${formatDuration(a.elapsedMs)}`}
+                      actions={
+                        <>
+                          <Link to={resultsHref(blueprint.id, a.id)} className={BB_SCORE_CARD_CTA}>
+                            Score Details
+                          </Link>
+                          <Link
+                            to={sessionHref(blueprint.id, { kind: "weak", count: 15 })}
+                            className={BB_SCORE_CARD_SECONDARY}
+                          >
+                            Practice weak areas
+                          </Link>
+                        </>
+                      }
+                    />
+                  </StaggerItem>
+                );
+              })}
+            </Stagger>
+          </section>
+        )}
 
         <Reveal delay={0.08}>
           <Panel
@@ -226,23 +313,24 @@ export default function TestPrepExams() {
         {/* What a sitting is, and what this one honestly is. It used to be the
             top of the page; it is reference now, under the cards you act on. */}
         <Reveal delay={0.12} as="section" className={cn("p-5 sm:p-6", SURFACE)}>
-          <p className={EYEBROW}>{isFullLength ? "Full-length SAT" : "Digital SAT simulation"}</p>
+          <p className={EYEBROW}>How a sitting works</p>
           <p className="mt-2 text-lg font-semibold tracking-[-0.01em] text-foreground">
-            Four modules, both sections, one clock
+            Four modules, both sections, adaptive like the real test
           </p>
           <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            Reading &amp; Writing then Math, in two modules each, in the exam interface — move
-            freely within a module, but once a module is submitted it closes for good. No
-            explanations until the end, a running timer per module, and an on-screen calculator
-            where the real test allows one.
+            Reading &amp; Writing then Math, in two modules each, in the exam interface. Move
+            freely within a module, but once a module is submitted it closes for good. Each
+            section&apos;s second module adapts to your first: do well on Module 1 and Module 2 is
+            harder, with the full 800 in reach; otherwise it is easier and the section tops out in
+            the low 600s. No explanations until the end, a running timer per module, and an
+            on-screen calculator in Math.
           </p>
-          {!isFullLength && (
-            <p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-              A real sitting is {full.target} questions. The bank holds {full.available} for these
-              sections today, so each module runs short with its clock scaled to keep the same time
-              per question. It is not a full-length test and is not presented as one.
-            </p>
-          )}
+          <p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+            The four practice tests have fixed questions you will not meet in the Question Bank
+            or in practice sets, so each one is a fresh sitting. Every question is written by
+            Pathforge to the digital SAT specification; none is College Board material, and scores
+            are estimates.
+          </p>
         </Reveal>
       </div>
 

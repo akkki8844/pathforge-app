@@ -26,7 +26,14 @@
  */
 
 export interface AuthQuote {
-  /** The line itself. Typeset as a blockquote, so no surrounding quote marks. */
+  /**
+   * The line itself. Typeset as a blockquote, so no surrounding quote marks.
+   *
+   * Wrap the words that carry the line in asterisks, e.g. `*coherent story*`.
+   * `AuthQuote` sets them in a heavier weight and an accent colour, alternating
+   * between two accents so neighbouring emphases do not blur into one. Keep it
+   * to two or three per line: emphasis on everything is emphasis on nothing.
+   */
   text: string;
   /**
    * Who is speaking. Always the house today — see the note above before
@@ -45,27 +52,27 @@ export interface AuthQuote {
  */
 export const STUDENT_AUTH_QUOTES: AuthQuote[] = [
   {
-    text: "The students who get in are not the loudest. They are the ones whose file tells a coherent story — chosen carefully, edited honestly, defended with evidence.",
+    text: "The students who get in are not the *loudest*. They are the ones whose file tells a *coherent story* — chosen carefully, edited honestly, defended with *evidence*.",
     by: "Pathforge editorial",
   },
   {
-    text: "An activity list is not a list of things you did. It is an argument about what you care about, and it has to survive being read by someone who owes you nothing.",
+    text: "An activity list is not a list of things you did. It is an *argument* about what you *care about*, and it has to survive being read by someone who owes you nothing.",
     by: "Pathforge editorial",
   },
   {
-    text: "A first draft is supposed to be bad. The work is in the fourth one, and the only way to get there is to start early enough that a fourth draft is possible.",
+    text: "A first draft is supposed to be *bad*. The work is in the *fourth one*, and the only way to get there is to *start early* enough that a fourth draft is possible.",
     by: "Pathforge editorial",
   },
   {
-    text: "Nobody is admitted for potential in the abstract. They are admitted for the specific, checkable things they did with the years they had.",
+    text: "Nobody is admitted for *potential* in the abstract. They are admitted for the *specific, checkable things* they did with the years they had.",
     by: "Pathforge editorial",
   },
   {
-    text: "Deadlines do not sneak up on anybody. They are published years in advance, and the only thing that ever changes is when you decided to look at them.",
+    text: "Deadlines do not sneak up on anybody. They are published *years in advance*, and the only thing that ever changes is *when you decided to look* at them.",
     by: "Pathforge editorial",
   },
   {
-    text: "Write the essay only you could have written. An essay that any strong applicant could have submitted has already told the reader nothing.",
+    text: "Write the essay *only you* could have written. An essay that any strong applicant could have submitted has already told the reader *nothing*.",
     by: "Pathforge editorial",
   },
 ];
@@ -79,27 +86,27 @@ export const STUDENT_AUTH_QUOTES: AuthQuote[] = [
  */
 export const COUNSELLOR_AUTH_QUOTES: AuthQuote[] = [
   {
-    text: "A cohort is never behind evenly. The work is finding the four students who went quiet before the deadline finds them for you.",
+    text: "A cohort is never behind *evenly*. The work is finding the *four students who went quiet* before the deadline finds them for you.",
     by: "Pathforge editorial",
   },
   {
-    text: "The most useful thing a counsellor does is not the advice. It is being the one person who read the draft closely enough to say where it stops being true.",
+    text: "The most useful thing a counsellor does is not the advice. It is being the one person who read the draft *closely enough* to say where it *stops being true*.",
     by: "Pathforge editorial",
   },
   {
-    text: "Feedback a student cannot act on this week is not feedback. It is a note about how the essay made you feel.",
+    text: "Feedback a student cannot *act on this week* is not *feedback*. It is a note about how the essay made you feel.",
     by: "Pathforge editorial",
   },
   {
-    text: "You cannot promise an outcome. You can promise that nothing in the file was left to chance, and that is the promise worth keeping.",
+    text: "You cannot promise an *outcome*. You can promise that *nothing in the file was left to chance*, and that is the promise worth keeping.",
     by: "Pathforge editorial",
   },
   {
-    text: "Every student you carry in your head is a student you will eventually forget on the wrong week. Write it down where the follow-up lives.",
+    text: "Every student you carry in your head is a student you will eventually forget on the wrong week. *Write it down* where the *follow-up lives*.",
     by: "Pathforge editorial",
   },
   {
-    text: "Read the file the way an admissions officer will: quickly, once, and with no obligation to be generous about what it left out.",
+    text: "Read the file the way an admissions officer will: *quickly, once*, and with *no obligation to be generous* about what it left out.",
     by: "Pathforge editorial",
   },
 ];

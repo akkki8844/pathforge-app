@@ -26,7 +26,7 @@ interface Props {
 // lip (the 3D edge). Colours are hue-matched so the drop-shadow reads as the
 // same material, Duolingo-style. `top`/`bottom` shade the cap; `lip` is the
 // solid dark bottom edge; `text` keeps the icon legible.
-type Clay = { top: string; bottom: string; lip: string; text: string };
+export type Clay = { top: string; bottom: string; lip: string; text: string };
 
 // One hue sweep across the original ten levels — sea → brand blue → indigo →
 // plum → copper. Saturation is held well below the stock Tailwind ramps so the
@@ -34,7 +34,7 @@ type Clay = { top: string; bottom: string; lip: string; text: string };
 // Levels 11–15 are a second, deliberately distinct sweep (rose → slate → teal
 // → gold → champagne) — see the comment above `LEVELS` in journeyLevels.ts for
 // why they read as "past the original ten" rather than a seamless extension.
-const LEVEL_CLAY: Record<LevelId, Clay> = {
+export const LEVEL_CLAY: Record<LevelId, Clay> = {
   1:  { top: "#4fb3a6", bottom: "#3f9e93", lip: "#2b6f68", text: "#ffffff" },
   2:  { top: "#4fa3d4", bottom: "#3d8fc4", lip: "#2a6488", text: "#ffffff" },
   3:  { top: "#5b7ce4", bottom: "#4465d8", lip: "#29439c", text: "#ffffff" },
@@ -56,8 +56,8 @@ const LEVEL_CLAY: Record<LevelId, Clay> = {
 // gold: what's done should recede so the one live node is the loudest thing on
 // the path. Locked stages use a *warm* grey mixed toward the cream paper —
 // cold grey read as dirty against this background.
-const DONE: Clay = { top: "#8f9dbe", bottom: "#7b8aad", lip: "#5a6782", text: "#ffffff" };
-const LOCKED: Clay = { top: "#e7e2d6", bottom: "#dbd5c7", lip: "#bcb5a4", text: "#9d968a" };
+export const DONE: Clay = { top: "#8f9dbe", bottom: "#7b8aad", lip: "#5a6782", text: "#ffffff" };
+export const LOCKED: Clay = { top: "#e7e2d6", bottom: "#dbd5c7", lip: "#bcb5a4", text: "#9d968a" };
 
 function clayForLevel(level: LevelId): Clay {
   return LEVEL_CLAY[level] ?? LEVEL_CLAY[1];
@@ -92,10 +92,10 @@ function softEllipse(rgb: string, alpha: number) {
 const SHADOW_RGB = "15,23,42";
 
 /** The level number, extruded on the same clay rules as the nodes it heads. */
-function LevelPlaque({ level }: { level: LevelId }) {
+export function LevelPlaque({ level, size = 44 }: { level: LevelId; size?: number }) {
   const pal = clayForLevel(level);
-  const S = 44;
-  const D = 5;
+  const S = size;
+  const D = Math.max(3, Math.round(size / 9));
   return (
     <div className="relative shrink-0" style={{ width: S, height: S + D }}>
       <span

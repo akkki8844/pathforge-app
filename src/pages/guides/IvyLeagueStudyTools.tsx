@@ -95,21 +95,6 @@ export default function IvyLeagueStudyTools() {
               acceptedAnswer: { "@type": "Answer", text: f.a },
             })),
           },
-          {
-            "@context": "https://schema.org",
-            "@type": "BreadcrumbList",
-            "@id": `${url}#breadcrumbs`,
-            itemListElement: [
-              { "@type": "ListItem", position: 1, name: "Home", item: "https://pathforge.co.in/" },
-              {
-                "@type": "ListItem",
-                position: 2,
-                name: "How to Get Into Ivy League Colleges",
-                item: "https://pathforge.co.in/guides/ivy-league-admissions",
-              },
-              { "@type": "ListItem", position: 3, name: "Ivy League Study Tools", item: url },
-            ],
-          },
         ]}
       />
 

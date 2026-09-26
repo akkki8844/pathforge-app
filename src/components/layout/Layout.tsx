@@ -13,6 +13,7 @@ import { UsageLimitBanner } from "@/components/UsageLimitBanner";
 import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 import { UpgradeCelebration } from "@/components/UpgradeCelebration";
 import { useAuth } from "@/contexts/AuthContext";
+import { useZenMode } from "@/lib/zen";
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,6 +22,10 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const { user, loading } = useAuth();
   const location = useLocation();
+  // Zen mode (Ctrl/Cmd + .) keeps the page and drops the banners, backdrop
+  // and floating feedback button around it.
+  const [zenOn] = useZenMode();
+  const zen = zenOn && !!user;
   // Guest visitors on the landing page get the whole minimal chrome (Index
   // ships its own header/footer, so the app's is redundant there).
   const useGuestNav = !user && location.pathname === "/";
@@ -57,18 +62,18 @@ export function Layout({ children }: LayoutProps) {
      * correct with the toolbars shown, which is the state the user is in.
      */
     <div className="relative flex min-h-[100svh] flex-col">
-      {!useGuestNav && <AuroraBackdrop />}
+      {!useGuestNav && !zen && <AuroraBackdrop />}
       <div className="relative z-10 flex min-h-[100svh] flex-col">
         {!useGuestNav && (isMarketingPage ? <BackNav /> : user ? <Navbar /> : <GuestNavbar />)}
-        {!useGuestNav && <AnnouncementBanner />}
-        {!useGuestNav && <EmailVerificationBanner />}
-        {!useGuestNav && <UsageLimitBanner />}
-        {!useGuestNav && <GuestModeBanner />}
+        {!useGuestNav && !zen && <AnnouncementBanner />}
+        {!useGuestNav && !zen && <EmailVerificationBanner />}
+        {!useGuestNav && !zen && <UsageLimitBanner />}
+        {!useGuestNav && !zen && <GuestModeBanner />}
         <main className="flex-1 min-w-0">
           <PageTransition>{children}</PageTransition>
         </main>
         {showFooter && <Footer />}
-        {user && <FeedbackWidget />}
+        {user && !zen && <FeedbackWidget />}
         {user && <UpgradeCelebration />}
       </div>
     </div>

@@ -4,8 +4,11 @@ import {
   Check,
   CircleAlert,
   Loader2,
+  CalendarPlus,
+  GraduationCap,
   ListPlus,
   Puzzle,
+  SquareCheck,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -29,6 +32,9 @@ import {
 const ICONS = {
   navigate: ArrowRight,
   add_outcome_item: ListPlus,
+  add_task: SquareCheck,
+  schedule_event: CalendarPlus,
+  add_application: GraduationCap,
   install_skill: Puzzle,
   remove_skill: Puzzle,
 } as const;
@@ -36,6 +42,9 @@ const ICONS = {
 /** Confirmation verb. "Do it" is fine for navigation and wrong for everything else. */
 const CONFIRM_LABEL: Partial<Record<AdvisorToolCall["name"], string>> = {
   add_outcome_item: "Add it",
+  add_task: "Add the task",
+  schedule_event: "Add to calendar",
+  add_application: "Add it to the list",
   install_skill: "Install it",
   remove_skill: "Remove it",
 };

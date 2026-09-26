@@ -52,11 +52,14 @@ import { useAdvisorArtifacts } from '@/hooks/useAdvisorArtifacts';
 import { useAdvisorSettings, type AdvisorSettings } from '@/hooks/useAdvisorSettings';
 import { useAdvisorSkills } from '@/hooks/useAdvisorSkills';
 import { useOutcomesData, type OutcomesProfile } from '@/hooks/useOutcomesData';
+import { useRoutineTasks, useRoutineEvents } from '@/hooks/routine/useRoutineData';
+import { counsellorDb } from '@/integrations/supabase/counsellor';
 import { FileUploadButton } from '@/components/advisor/FileUploadButton';
 import { AttachmentChips, type Attachment } from '@/components/advisor/AttachmentChips';
 import { ArtifactsPanel } from '@/components/advisor/ArtifactsPanel';
 import { ArtifactInlineCard } from '@/components/advisor/ArtifactInlineCard';
 import { InlineGeneratedImage } from '@/components/advisor/InlineGeneratedImage';
+import { SourceList } from '@/components/advisor/SourceList';
 import { MetalSendButton } from '@/components/advisor/MetalSendButton';
 import { ImageGeneration } from '@/components/ui/ai-chat-image-generation-1';
 import { SessionNavBar } from '@/components/advisor/SessionNavBar';
@@ -74,14 +77,17 @@ import {
   stripSuggestionMarker,
   AdvisorLimitError,
   type StreamedToolCall,
+  type AdvisorSource,
 } from '@/lib/advisorStream';
 import {
   ADVISOR_MODELS,
   DEFAULT_ADVISOR_MODEL,
+  describeServedModel,
   modelFromGateway,
   readStoredModel,
   writeStoredModel,
 } from '@/lib/advisorModels';
+import { ModelLogo, PoweredBy } from '@/components/advisor/ModelBadge';
 import {
   validateToolCall,
   describeCall,
@@ -134,11 +140,15 @@ interface Message {
   /** How long the turn took, frozen once it finishes. */
   seconds?: number;
   artifact?: AdvisorArtifact;
+  /** Pages the advisor read for this answer. Only set when a web tool ran. */
+  sources?: AdvisorSource[];
   toolCalls?: AdvisorToolCall[];
   /** True when the user pressed stop and this is what had arrived. */
   partial?: boolean;
   /** Installed skills whose instructions were loaded for this answer. */
   skills?: { slug: string; name: string }[];
+  /** The model id the server reported for this answer. Not stored with history. */
+  model?: string;
   /**
    * What this row is.
    *
@@ -543,6 +553,12 @@ export default function Advisor() {
   } = useAdvisorArtifacts(currentConversationId);
 
   const { updateProfile: updateOutcomesProfile } = useOutcomesData();
+  // The advisor writes tasks and events through the Planner's and Calendar's
+  // own mutations rather than touching the tables, so a row it creates is
+  // indistinguishable from one the student typed and the two lists refresh
+  // themselves.
+  const { createTask } = useRoutineTasks();
+  const { createEvent } = useRoutineEvents();
 
   const { settings: advisorSettings, loading: settingsLoading, save: saveAdvisorSettings } = useAdvisorSettings();
 
@@ -975,6 +991,59 @@ export default function Advisor() {
           patchToolCall(messageId, tool.id, { status: 'done', summary: `${row.name} removed.` });
           return;
         }
+        // add_task / schedule_event — the same mutations the Planner and the
+        // Calendar use, so the row lands under RLS with the owner derived from
+        // the session and shows up on those pages without a refresh. Both
+        // required a click to get here: TOOL_SPECS marks them
+        // requiresConfirmation, and nothing ran while the card was pending.
+        if (tool.call.name === 'add_task') {
+          const t = tool.call.args;
+          await createTask({
+            title: t.title,
+            description: t.description || null,
+            due_at: t.dueAt || null,
+            priority: t.priority,
+          } as never);
+          patchToolCall(messageId, tool.id, {
+            status: 'done',
+            summary: t.dueAt ? 'Added to your tasks, with its due date.' : 'Added to your tasks.',
+          });
+          return;
+        }
+        if (tool.call.name === 'schedule_event') {
+          const e = tool.call.args;
+          await createEvent({
+            title: e.title,
+            description: e.description || null,
+            category: e.category,
+            starts_at: e.startsAt,
+            ends_at: e.endsAt || null,
+            all_day: false,
+          } as never);
+          patchToolCall(messageId, tool.id, {
+            status: 'done',
+            summary: 'Added to your calendar.',
+          });
+          return;
+        }
+        if (tool.call.name === 'add_application') {
+          const a = tool.call.args;
+          // `student_id` is not sent: the column defaults to auth.uid() and RLS
+          // checks it, so the browser has no say in whose list this lands on.
+          const { error } = await counsellorDb.from('student_applications').insert({
+            college_name: a.collegeName,
+            country: a.country || null,
+            application_round: a.round || null,
+            deadline: a.deadline || null,
+            status: a.status,
+          } as never);
+          if (error) throw error;
+          patchToolCall(messageId, tool.id, {
+            status: 'done',
+            summary: `${a.collegeName} added to your college list.`,
+          });
+          return;
+        }
         // add_outcome_item — goes through the same RLS-scoped hook the Outcomes
         // page writes with. No user id crosses the wire; Postgres derives it.
         const args = tool.call.args;
@@ -990,7 +1059,7 @@ export default function Advisor() {
         });
       }
     },
-    [installFromCatalog, navigate, patchToolCall, removeSkill, updateOutcomesProfile],
+    [createEvent, createTask, installFromCatalog, navigate, patchToolCall, removeSkill, updateOutcomesProfile],
   );
 
   const confirmToolCall = useCallback(
@@ -1189,8 +1258,15 @@ export default function Advisor() {
             },
             onTool: registerTool,
             onArtifact: () => void refreshArtifacts(),
+            // Attached to the bubble the moment the search returns, so the
+            // pages being read are on screen while the answer is still being
+            // written from them.
+            onSources: (sources) =>
+              setMessages((prev) => prev.map((m) => (m.id === answerId ? { ...m, sources } : m))),
             onSkills: (skills) =>
               setMessages((prev) => prev.map((m) => (m.id === answerId ? { ...m, skills } : m))),
+            onModel: (model) =>
+              setMessages((prev) => prev.map((m) => (m.id === answerId ? { ...m, model } : m))),
           },
           controller.signal,
         );
@@ -1210,6 +1286,7 @@ export default function Advisor() {
                   reasoning: result.reasoning || reasonBuf.current,
                   seconds,
                   artifact: (result.artifact as AdvisorArtifact) || undefined,
+                  sources: result.sources.length ? result.sources : m.sources,
                 }
               : m,
           ),
@@ -1508,7 +1585,7 @@ export default function Advisor() {
               ``,
               `The window is how much of the conversation the advisor can still see. It is not a balance and it does not draw on your allowance. When it fills, run \`/compact\`.`,
               ``,
-              `You are on **${activeModel.label}**, which holds ${formatContextTokens(usage.window)}.`,
+              `You are on **${activeModel.label}** (${activeModel.modelName}), which holds ${formatContextTokens(usage.window)}.`,
             ].join('\n'),
           );
           return;
@@ -1591,7 +1668,7 @@ export default function Advisor() {
               ``,
               ...ADVISOR_MODELS.map(
                 (m) =>
-                  `- \`/model ${m.id}\` — **${m.label}**${m.id === activeModel.id ? ' *(current)*' : ''}. ${m.blurb}. Holds ${formatContextTokens(contextWindowFor(m))} of context.${hasPlan(m.requiredPlan) ? '' : ` Needs ${planForTier(m.requiredPlan).name}.`}`,
+                  `- \`/model ${m.id}\` — **${m.label}**, powered by ${m.modelName}${m.id === activeModel.id ? ' *(current)*' : ''}. ${m.blurb}. Holds ${formatContextTokens(contextWindowFor(m))} of context.${hasPlan(m.requiredPlan) ? '' : ` Needs ${planForTier(m.requiredPlan).name}.`}`,
               ),
             ].join('\n'),
           );
@@ -2191,6 +2268,14 @@ export default function Advisor() {
                             )
                           )}
 
+                          {/* What the answer was built from. Above the
+                              copy/retry row rather than below it, because it
+                              belongs to the answer and those controls act on
+                              it. */}
+                          {msg.sources && msg.sources.length > 0 && (
+                            <SourceList sources={msg.sources} />
+                          )}
+
                           {/* Copy/retry only once the turn has actually
                               settled — mid-stream text is still moving, and
                               there is nothing to regenerate yet. */}
@@ -2219,6 +2304,20 @@ export default function Advisor() {
                               >
                                 <RotateCcw className="h-3.5 w-3.5" />
                               </Button>
+                              {/* Which model actually wrote this answer, by
+                                  name and mark. Read from what the server
+                                  reported for the turn, so a fallback is
+                                  named as the model it fell back to. */}
+                              {(() => {
+                                const served = describeServedModel(msg.model);
+                                return served ? (
+                                  <PoweredBy
+                                    vendor={served.vendor}
+                                    name={served.name}
+                                    className="ml-2 text-[11px]"
+                                  />
+                                ) : null;
+                              })()}
                             </div>
                           )}
                         </>
@@ -2482,9 +2581,11 @@ export default function Advisor() {
                             }}
                             className="flex w-full items-start gap-2 rounded-md p-2 text-left transition-colors hover:bg-muted"
                           >
+                            <ModelLogo vendor={m.vendor} className="mt-0.5 h-4 w-4" />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-1.5 text-sm font-medium">
                                 {m.label}
+                                <span className="font-normal text-muted-foreground">{m.modelName}</span>
                                 {locked && (
                                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                                     <Lock className="h-2.5 w-2.5" />
@@ -2612,8 +2713,9 @@ export default function Advisor() {
             </form>
 
             <p className="mt-3 text-center text-[11px] text-[hsl(var(--adv-ink-soft))]">
-              Type <span className="font-medium text-foreground">/</span> for commands. Pathforge
-              Advisor uses AI and may display inaccurate info — double-check its responses.
+              <PoweredBy vendor={activeModel.vendor} name={activeModel.modelName} className="mr-1.5 align-middle" />
+              <span aria-hidden="true">&middot;</span> Type <span className="font-medium text-foreground">/</span> for
+              commands. AI can make mistakes, so double-check its responses.
             </p>
           </div>
         </div>

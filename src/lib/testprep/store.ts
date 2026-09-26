@@ -105,6 +105,10 @@ export function setTestDate(date: string) {
   persist({ ...load(), testDate: date });
 }
 
+export function setDailyGoal(goal: number) {
+  persist({ ...load(), dailyGoal: Math.max(5, Math.min(100, Math.round(goal))) });
+}
+
 export function toggleBookmark(questionId: string) {
   const current = load();
   const has = current.bookmarks.includes(questionId);

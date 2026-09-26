@@ -1,6 +1,5 @@
 // Loaded here, not app-wide: Outcomes is its own chunk and Dashboard already
 // pays for this font in its own. See the [data-cluely] typography note below.
-import "@fontsource-variable/inter";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { ChevronDown, Loader2, Save } from "lucide-react";

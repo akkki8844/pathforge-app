@@ -30,6 +30,7 @@ import { CertificateIcon } from "@/components/icons/FlatSvgIcons";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveWebSearch } from "@/components/LiveWebSearch";
+import { ScholarshipAlerts } from "@/components/scholarships/ScholarshipAlerts";
 import { Seo } from "@/components/Seo";
 import { useActivityRefresh, MANUAL_REFRESH_LIMIT } from "@/hooks/useActivityRefresh";
 import { RefreshCw } from "lucide-react";
@@ -468,6 +469,8 @@ export default function Scholarships() {
             </motion.div>
           ))}
         </div>
+
+        <ScholarshipAlerts defaultMajor={userProfile?.major} defaultCountry={userProfile?.country} />
 
         {/* ===== FEATURED CAROUSEL ===== */}
         {featuredScholarships.length > 0 && (

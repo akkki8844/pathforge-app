@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, FileImage, Presentation, ListChecks, Download, Trash2, ArrowLeft, Copy, Check, ImageIcon, ExternalLink, Loader2 } from "lucide-react";
+import { FileText, FileImage, Presentation, ListChecks, Download, Trash2, ArrowLeft, Copy, Check, ImageIcon, ExternalLink, Loader2, Table2, BarChart3 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { type AdvisorArtifact } from "@/hooks/useAdvisorArtifacts";
@@ -17,6 +17,8 @@ export const KIND_META: Record<string, { icon: any; label: string; tone: string 
   pdf:      { icon: FileImage,    label: "PDF",      tone: "text-rose-500" },
   slides:   { icon: Presentation, label: "Slides",   tone: "text-amber-500" },
   image:    { icon: ImageIcon,    label: "Image",    tone: "text-fuchsia-500" },
+  sheet:    { icon: Table2,       label: "Sheet",    tone: "text-teal-500" },
+  chart:    { icon: BarChart3,    label: "Chart",    tone: "text-indigo-500" },
 };
 
 // Artifacts are passed in rather than re-fetched. Advisor.tsx already holds the
@@ -144,7 +146,7 @@ export function ArtifactsPanel({
                     content_markdown, so checking that first — as this used to —
                     would swap a faithful preview for a re-rendered
                     approximation. */}
-                {active.kind === "image" && active.file_path ? (
+                {(active.kind === "image" || active.kind === "chart") && active.file_path ? (
                   previewLoading ? (
                     <div className="flex items-center justify-center py-10 text-muted-foreground">
                       <Loader2 className="h-5 w-5 animate-spin" />

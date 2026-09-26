@@ -61,18 +61,40 @@ export type EssaySubmissionRow = {
 };
 
 /** One university on a student's list, and where it has got to. */
+/**
+ * One university a student is applying to.
+ *
+ * Lives in `student_applications`, created 2026-09-22. This type previously
+ * named `application_entries`, which was wrong in the way that is hardest to
+ * catch: that table exists, so nothing failed to compile, but it holds essay
+ * section text (`section_id`, `input_text`, `refined_text`) and is written by
+ * ApplicationBuilder. The counsellor Applications page was querying it for
+ * `student_id`, `deadline` and `status`, none of which are columns on it, so
+ * the page errored at runtime while typechecking cleanly.
+ *
+ * That is the cost of a hand-written schema module: it asserts a shape rather
+ * than deriving one, so it is only ever as true as the last person to check it
+ * against the database. The seven `status` values below are the CHECK
+ * constraint verbatim, and are the same seven `applicationTone` in
+ * lib/teacher/status.ts maps.
+ */
 export type ApplicationEntryRow = {
   id: string;
   student_id: string;
   college_name: string;
   country: string | null;
+  /** early_decision | early_action | early_decision_2 | regular | rolling */
   application_round: string | null;
   deadline: string | null;
+  /** researching | planning | drafting | submitted | admitted | rejected | waitlisted */
   status: string;
-  missing_documents: string[] | null;
-  progress: number | null;
+  /** admitted | rejected | waitlisted, once there is one. */
   decision: string | null;
+  progress: number | null;
+  missing_documents: string[] | null;
+  notes: string | null;
   created_at: string;
+  updated_at: string;
 };
 
 /** A scholarship in the shared catalogue. Not scoped to a counsellor. */
@@ -119,7 +141,7 @@ export type CounsellorDatabase = {
   public: {
     Tables: {
       essay_submissions: Table<EssaySubmissionRow>;
-      application_entries: Table<ApplicationEntryRow>;
+      student_applications: Table<ApplicationEntryRow, "status">;
       scholarships: Table<ScholarshipRow>;
       counsellor_interactions: Table<Plain<CounsellorInteraction>>;
       counsellor_followups: Table<Plain<Followup>, "status" | "completed_at">;

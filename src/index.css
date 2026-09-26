@@ -509,20 +509,30 @@
    * g, which is what makes it read as the interface face rather than as the
    * default web sans.
    */
+  /*
+   * One app, one type system (2026-09 review).
+   *
+   * The Inter override above was the reason the dashboard, Outcomes,
+   * Activities, Professors and Scholarships read as a different product from
+   * Journey, Advisor, Chats and Calendar: Inter plus a Fluent-style cyan
+   * accent is the Microsoft 365 look, and it changed with every tab in the
+   * bar. Every signed-in page now reads in the brand pair: Plus Jakarta Sans
+   * for text and controls, Sora for headings and figures.
+   */
   [data-dash],
+  [data-dash] button,
+  [data-dash] input,
+  [data-dash] textarea,
+  [data-dash] select {
+    font-family: "Plus Jakarta Sans", "Work Sans", system-ui, sans-serif;
+  }
   [data-dash] .font-display,
   [data-dash] .font-serif,
   [data-dash] h1,
   [data-dash] h2,
   [data-dash] h3,
-  [data-dash] h4,
-  [data-dash] button,
-  [data-dash] input,
-  [data-dash] textarea,
-  [data-dash] select {
-    font-family: "Inter Variable", Inter, -apple-system, BlinkMacSystemFont,
-      "Segoe UI", system-ui, sans-serif;
-    font-feature-settings: "cv05", "cv11";
+  [data-dash] h4 {
+    font-family: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
   }
 
   /*
@@ -539,6 +549,30 @@
    * accent on the page is still the brand blue and still means the one thing
    * it means everywhere else.
    */
+  /*
+   * The signed-in app, all of it, on the dashboard's neutrals.
+   *
+   * The marketing site is Atlas cream, and the app used to inherit it: the nav
+   * bar, Journey, Advisor's rail, Chats and Calendar sat on cream while the
+   * dashboard, Outcomes, Activities and Professors sat on white, so the page
+   * behind the content changed colour as you moved along the bar. App.tsx sets
+   * `data-app` on <html> for signed-in, non-marketing routes, and every page
+   * then shares one white surface, one grey scale and one hairline. Only light
+   * mode moves; the dark palette was already one palette.
+   */
+  html[data-app]:not(.dark) {
+    --background: 0 0% 100%;
+    --card: 0 0% 100%;
+    --popover: 0 0% 100%;
+    --foreground: 222 24% 11%;
+    --card-foreground: 222 24% 11%;
+    --popover-foreground: 222 24% 11%;
+    --muted: 220 14% 96%;
+    --muted-foreground: 220 9% 40%;
+    --border: 220 13% 90%;
+    --input: 220 13% 90%;
+  }
+
   [data-dash] {
     --background: 0 0% 100%;
     --card: 0 0% 100%;
@@ -593,9 +627,15 @@
    * feature settings `[data-dash]` uses, so a student moving between
    * Dashboard and Outcomes is reading one typeface, not two products.
    */
+  /* Headings keep the display face even where the text utility is set on
+     them, so a page title reads the same on every tab of the bar. */
+  [data-cluely] :is(h1, h2, h3),
+  .cly-scope :is(h1, h2, h3) {
+    font-family: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
+  }
+
   [data-cluely],
   .cly-scope {
-    font-feature-settings: "cv05", "cv11";
     --background: 0 0% 100%;
     --card: 0 0% 100%;
     --popover: 0 0% 100%;
@@ -610,9 +650,7 @@
     --secondary-foreground: 240 6% 10%;
     --accent: 240 4% 96%;
     --accent-foreground: 240 6% 10%;
-    --primary: 200 100% 34%;
-    --primary-foreground: 204 92% 97%;
-    --ring: 240 6% 64%;
+    --ring: 226 65% 56%;
     --destructive: 357 100% 45%;
     --destructive-foreground: 0 0% 100%;
     --radius: 0.625rem;
@@ -634,9 +672,7 @@
     --secondary-foreground: 0 0% 98%;
     --accent: 240 4% 16%;
     --accent-foreground: 0 0% 98%;
-    --primary: 198 100% 46%;
-    --primary-foreground: 204 75% 16%;
-    --ring: 240 4% 46%;
+    --ring: 226 65% 56%;
     --destructive: 359 100% 70%;
     --destructive-foreground: 240 11% 4%;
   }
@@ -1093,7 +1129,7 @@
 .atlas-brand { display: inline-flex; align-items: center; gap: 0.55rem; min-height: 2.5rem; padding: 0 0.25rem; font-family: "Work Sans", "Plus Jakarta Sans", "Aptos", "Segoe UI", system-ui, sans-serif; font-size: 1.28rem; font-weight: 400; letter-spacing: -0.05em; color: #fff; }
 .atlas-brand img { width: 1.65rem; height: 1.65rem; object-fit: contain; }
 .atlas-nav { display: flex; align-items: center; gap: 0.15rem; font-size: var(--text-sm); font-weight: 620; }
-.atlas-nav > a { min-height: 2.5rem; display: inline-flex; align-items: center; padding: 0 0.75rem; color: rgba(255, 255, 255, 0.84); border-radius: 0.68rem; transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
+.atlas-nav > a { min-height: 2.5rem; display: inline-flex; align-items: center; white-space: nowrap; padding: 0 0.75rem; color: rgba(255, 255, 255, 0.84); border-radius: 0.68rem; transition: color var(--dur-1) var(--ease-out), background var(--dur-1) var(--ease-out); }
 .atlas-nav > a:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
 .atlas-nav .atlas-signin { gap: 0.4rem; color: var(--accent-deep); background: #fff; }
 .atlas-nav .atlas-signin:hover { color: #fff; background: var(--accent); }
@@ -1178,6 +1214,9 @@
 .atlas-hero-actions .atlas-install,
 .atlas-hero-actions .atlas-install .specular-button__label,
 .atlas-hero-actions .atlas-install svg { color: #fff; fill: currentColor; }
+/* On devices that cannot run an installer the hero carries one web CTA and
+   this line under it, on its own row. */
+.atlas-hero-note { flex-basis: 100%; margin: 0.2rem 0 0; color: rgba(255, 255, 255, 0.78); font-size: var(--text-sm); text-align: center; }
 
 .atlas-universities { padding: 1.4rem 0 1.7rem; overflow: hidden; border-block: 1px solid var(--line); background: var(--surface); }
 .atlas-universities > p { margin: 0; color: var(--muted); font-size: var(--text-xs); font-weight: 680; letter-spacing: 0.08em; text-align: center; text-transform: uppercase; }
@@ -1272,6 +1311,11 @@
 @keyframes atlas-marquee { to { transform: translateX(-50%); } }
 
 @media (max-width: 900px) {
+  /* The six-link bar does not fit a portrait tablet: every two-word link
+     wrapped onto two lines. The same two secondary links phones drop go a tier
+     earlier here; both are still in the footer. */
+  .atlas-nav > a[href="/teacher/auth"] { display: none; }
+  .atlas-nav > a[href="#departments"] { display: none; }
   .atlas-hero { min-height: 47rem; padding-top: 9.5rem; }
   .atlas-department { grid-template-columns: 3rem 7rem minmax(0, 1fr); }
   .atlas-link-label { grid-column: 3; }
@@ -1432,10 +1476,10 @@ html[data-reduce-motion="true"] *::after {
  */
 .advisor-shell {
   --adv-canvas: 0 0% 100%;
-  --adv-rail: 45 25% 94%;
-  --adv-chip: 44 20% 93%;
-  --adv-chip-hover: 44 20% 88%;
-  --adv-field: 44 20% 93%;
+  --adv-rail: 220 14% 97%;
+  --adv-chip: 220 14% 96%;
+  --adv-chip-hover: 220 13% 92%;
+  --adv-field: 220 14% 96%;
   --adv-ink: 222 38% 15%;
   --adv-ink-soft: 222 12% 45%;
 }
@@ -1457,25 +1501,11 @@ html[data-reduce-motion="true"] *::after {
  * least readable text on the screen. Dark mode lifts every stop rather than
  * reusing the light ramp on a dark ground.
  */
+/* Solid brand ink, not the blue-violet-pink gradient it used to be: that
+   gradient is the stock "AI assistant" greeting, and it was the one element
+   that made the advisor look like a wrapper rather than part of Pathforge. */
 .advisor-greeting {
-  background-image: linear-gradient(
-    90deg,
-    hsl(226 65% 54%),
-    hsl(282 52% 56%) 45%,
-    hsl(350 68% 56%)
-  );
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.dark .advisor-greeting {
-  background-image: linear-gradient(
-    90deg,
-    hsl(226 88% 74%),
-    hsl(282 72% 76%) 45%,
-    hsl(350 88% 74%)
-  );
+  color: hsl(var(--primary));
 }
 
 /* ------------------------------------------------------------------
@@ -1541,4 +1571,64 @@ html[data-reduce-motion="true"] *::after {
     animation: none;
     opacity: 0;
   }
+}
+
+/* Horizontal scrollers that should not draw a scrollbar.
+
+   Tab rows scroll sideways on a narrow phone rather than overflowing the page.
+   Windows draws a full-height classic scrollbar inside anything that scrolls,
+   which inside a 40px tab pill covers the labels; touch platforms never show
+   one anyway. Swiping, the trackpad and arrow keys all still scroll. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* The bottom-right corner buttons (support chat, feedback) and the message dock.
+
+   The dock is centred along the bottom edge and about 300px wide, and the two
+   corner buttons take the last ~116px on the right. Below roughly 530px the two
+   overlap: the chat bubble sat on top of the dock's menu button on every phone,
+   and the feedback button was hidden behind the dock entirely. While the dock
+   is on screen (it sets `data-message-dock` on <html>), phones lift the corner
+   buttons to sit above it instead.
+
+   Both also clear the home indicator on notched iPhones, which `bottom-5`
+   alone did not: with viewport-fit=cover they sat on top of it. */
+.pf-corner-fab {
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+}
+@media (max-width: 639px) {
+  html[data-message-dock] .pf-corner-fab {
+    bottom: calc(6.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/* Room under the page for the dock, so the last row of every page can scroll
+   clear of it instead of ending underneath it. */
+html[data-message-dock] body {
+  padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* iOS zooms the whole page in when a field under 16px takes focus, and does
+   not zoom back out when it loses it. Inputs here are 14px (`text-sm`) by
+   design, so on iOS every search box, composer and form field threw the layout
+   sideways on the first tap. 16px on iOS only: `-webkit-touch-callout` is
+   supported by iOS Safari (and every iOS browser, which are all WebKit) and by
+   nothing else, so desktop and Android keep the designed size. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]),
+  textarea,
+  select {
+    font-size: max(16px, 1em) !important;
+  }
+}
+
+/* At 400px and under, "Student workspace" no longer fits beside Pricing and
+   FAQ without wrapping inside its own button. FAQ is in the footer too. */
+@media (max-width: 400px) {
+  .atlas-nav > a[href="/faq"] { display: none; }
 }

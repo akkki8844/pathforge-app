@@ -512,36 +512,20 @@ export function useJourneyData() {
    */
   const setPlacementLevel = useCallback(async (level: LevelId) => {
     if (!user) return;
-    const existingRoadmap = (dbRecord?.roadmap as any) || {};
-    const newRoadmap = { ...existingRoadmap, placement_level: level };
-    const existingStageIds: string[] = Array.isArray(dbRecord?.submitted_stage_ids)
-      ? (dbRecord!.submitted_stage_ids as string[])
-      : [];
-    const skippedStageIds = STAGES.filter((s) => s.level < level).map((s) => s.id);
-    const newStageIds = Array.from(new Set([...existingStageIds, ...skippedStageIds]));
-    if (dbRecord) {
-      await supabase
-        .from("journey_scores")
-        .update({ roadmap: newRoadmap, submitted_stage_ids: newStageIds })
-        .eq("user_id", user.id);
-    } else {
-      await supabase.from("journey_scores").insert([{
-        user_id: user.id,
-        journey_started: true,
-        started_at: new Date().toISOString(),
-        ...scores,
-        roadmap: newRoadmap,
-        submitted_stage_ids: newStageIds,
-        completed_milestones: [],
-      }]);
-      setJourneyStarted(true);
+    // Placement is decided server-side: the RPC clamps the level to what the
+    // student's recorded profile supports and banks the stages below it.
+    const { data, error } = await (supabase as any).rpc("journey_set_placement", { _level: level });
+    if (error || !data) {
+      console.error("Placement failed:", error);
+      return;
     }
+    if (!dbRecord) setJourneyStarted(true);
     setDbRecord((prev: any) => ({
       ...(prev || {}),
-      roadmap: newRoadmap,
-      submitted_stage_ids: newStageIds,
+      roadmap: data.roadmap,
+      submitted_stage_ids: data.submitted_stage_ids,
     }));
-  }, [user, dbRecord, scores]);
+  }, [user, dbRecord]);
 
   /** Stages banked server-side — the single source of truth for path progress. */
   const submittedStageIds: string[] = useMemo(() => {

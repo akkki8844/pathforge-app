@@ -22,8 +22,8 @@ const STORAGE_KEY = "pf:lastCelebratedSub";
  * the free tier, never as a count of a unit nothing else mentions.
  */
 const PLAN_META: Record<string, { name: string; allowance: string; icon: typeof Zap; tagline: string }> = {
-  pro_monthly: { name: "Pro", allowance: "3×", icon: Zap, tagline: "Pro unlocked. Build relentlessly." },
-  pro_annual: { name: "Pro", allowance: "3×", icon: Rocket, tagline: "Pro, for the year. Build relentlessly." },
+  pro_monthly: { name: "Pro", allowance: "2×", icon: Zap, tagline: "Pro unlocked. Build relentlessly." },
+  pro_annual: { name: "Pro", allowance: "2×", icon: Rocket, tagline: "Pro, for the year. Build relentlessly." },
   max_monthly: { name: "Max", allowance: "8×", icon: Crown, tagline: "Top-tier access. No throttling." },
   max_annual: { name: "Max", allowance: "8×", icon: Crown, tagline: "Max, for the year. The whole platform is yours." },
 };

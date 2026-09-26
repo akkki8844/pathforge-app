@@ -89,6 +89,14 @@ export default function SupportChatbot() {
     setIsLoading(true);
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      if (!sessionData.session) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: "Please sign in at /auth to chat with Pathforge support. You can also email **support@pathforge.co.in**." },
+        ]);
+        return;
+      }
       const { data, error } = await supabase.functions.invoke("support-chat", {
         body: {
           message: trimmedInput,
@@ -155,7 +163,7 @@ export default function SupportChatbot() {
             onClick={() => setIsOpen(true)}
             onHoverStart={() => setLauncherHovered(true)}
             onHoverEnd={() => setLauncherHovered(false)}
-            className="fixed bottom-5 right-5 z-50 h-11 w-11 rounded-full bg-white shadow-lg ring-1 ring-black/10 flex items-center justify-center hover:shadow-xl transition-shadow"
+            className="pf-corner-fab fixed right-5 z-50 h-11 w-11 rounded-full bg-white shadow-lg ring-1 ring-black/10 flex items-center justify-center hover:shadow-xl transition-shadow"
             aria-label="Open support chat"
             title="Support"
           >

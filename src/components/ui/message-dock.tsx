@@ -223,7 +223,7 @@ export function MessageDock({
       ref={dockRef}
       className={cn(
         "fixed left-1/2 z-40",
-        position === "top" ? "top-6" : "bottom-6",
+        position === "top" ? "top-6" : "bottom-[calc(1.5rem+env(safe-area-inset-bottom,0px))]",
         className,
       )}
       /*
