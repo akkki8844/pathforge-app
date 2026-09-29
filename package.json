@@ -2,8 +2,8 @@
   "name": "pathforge-app",
   "productName": "Pathforge",
   "private": true,
-  "version": "1.0.10",
-  "description": "Pathforge desktop app — college application readiness, as a native desktop build for Windows and macOS.",
+  "version": "1.0.11",
+  "description": "Pathforge desktop app — college application readiness, as a native desktop build for Windows, macOS and Linux.",
   "author": {
     "name": "Pathforge"
   },
@@ -22,6 +22,7 @@
     "preview": "vite preview",
     "dist:mac": "npm run build:web && electron-builder --mac",
     "dist:mac:dir": "npm run build:web && electron-builder --mac --dir",
+    "dist:linux": "npm run build:web && electron-builder --linux",
     "appx:assets": "node scripts/generate-appx-assets.mjs",
     "dist:store": "npm run build:web && node scripts/build-appx.mjs"
   },
@@ -121,6 +122,33 @@
         "NSHighResolutionCapable": true,
         "LSMinimumSystemVersion": "11.0"
       },
+      "artifactName": "Pathforge.${ext}"
+    },
+    "linux": {
+      "icon": "build/icon.png",
+      "category": "Education",
+      "synopsis": "College application planning workspace",
+      "executableName": "pathforge",
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "tar.gz",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "mimeTypes": [
+        "x-scheme-handler/pathforge"
+      ],
+      "artifactName": "Pathforge.${ext}"
+    },
+    "appImage": {
       "artifactName": "Pathforge.${ext}"
     },
     "dmg": {

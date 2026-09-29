@@ -23,6 +23,10 @@ jobs:
             platform: --win
           - os: macos-latest
             platform: --mac
+          # One AppImage runs on every distro, so Linux is one job, not one per
+          # package format. The tar.gz beside it is for machines without FUSE.
+          - os: ubuntu-latest
+            platform: --linux
 
     runs-on: ${{ matrix.os }}
 

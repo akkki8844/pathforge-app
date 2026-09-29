@@ -27,9 +27,19 @@ const DIST = path.join(__dirname, "..", "dist");
 // result comes back to this process over the pathforge:// protocol.
 const WEB_ORIGIN = "https://pathforge.co.in";
 const SIGN_IN_URL = `${WEB_ORIGIN}/app-login`;
-const DOWNLOADS_URL = `${WEB_ORIGIN}/#download`;
+const DOWNLOADS_URL = `${WEB_ORIGIN}/download`;
 const PROTOCOL = "pathforge";
 const IS_MAC = process.platform === "darwin";
+const IS_LINUX = process.platform === "linux";
+
+// Chromium's sandbox needs unprivileged user namespaces or a setuid helper. An
+// AppImage or an unpacked tar.gz has neither (the helper cannot be root-owned
+// inside a file the user just downloaded), and Ubuntu 23.10+ switches the
+// namespaces off for unconfined apps, so without this the app dies on launch
+// on the distro most Linux users have. The window only ever loads the
+// bundled app from 127.0.0.1, never arbitrary web content; sign-in happens in
+// the user's own browser.
+if (IS_LINUX) app.commandLine.appendSwitch("no-sandbox");
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -397,7 +407,11 @@ if (!app.requestSingleInstanceLock()) {
     // builds a zip alongside the dmg — electron-updater applies the zip, not
     // the disk image). The portable Windows build is excluded because it has
     // no installation to replace.
-    if (app.isPackaged && !IS_PORTABLE && !IS_WINDOWS_STORE) {
+    // On Linux only the AppImage can replace itself; electron-updater reads its
+    // path from APPIMAGE, and the tar.gz build has none, so it would report a
+    // failed check every hour.
+    const CAN_SELF_UPDATE = !IS_LINUX || !!process.env.APPIMAGE;
+    if (app.isPackaged && !IS_PORTABLE && !IS_WINDOWS_STORE && CAN_SELF_UPDATE) {
       setupAutoUpdater();
     } else if (IS_WINDOWS_STORE) {
       // Say so once the page is actually listening, so a renderer waiting on
