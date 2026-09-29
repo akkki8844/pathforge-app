@@ -86,7 +86,7 @@ export default function TeacherMessages() {
   return (
     <TeacherLayout>
       <Seo
-        title="Messages"
+        title="Counsellor Messages"
         description="Direct messages with a student."
         path="/teacher/messages"
         noindex

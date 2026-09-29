@@ -131,7 +131,7 @@ export function Atmosphere({ anim }: { anim: Anim }) {
   }, []);
 
   const dust = useMemo(() => {
-    const n = 180;
+    const n = 300;
     const pos = new Float32Array(n * 3);
     const seed = new Float32Array(n);
     let s = 5;
@@ -139,6 +139,15 @@ export function Atmosphere({ anim }: { anim: Anim }) {
     for (let i = 0; i < n; i++) {
       // Two volumes: the moonlight falling through the window, and the lamp.
       const inBeam = i % 3 !== 0;
+      if (i >= 180) {
+        // The loft, and the lounge under it: light from the glass wall.
+        const up = i % 2 === 0;
+        pos[i * 3] = -3.6 + r() * 7.2;
+        pos[i * 3 + 1] = up ? 2.5 + r() * 1.9 : 0.4 + r() * 1.6;
+        pos[i * 3 + 2] = 3.9 + r() * 2.5;
+        seed[i] = r();
+        continue;
+      }
       pos[i * 3] = inBeam ? -0.2 + r() * 2.2 : 0.1 + r() * 1.0;
       pos[i * 3 + 1] = inBeam ? 0.4 + r() * 2.4 : 0.9 + r() * 0.7;
       pos[i * 3 + 2] = inBeam ? -3.2 + r() * 2.6 : -3.0 + r() * 0.7;

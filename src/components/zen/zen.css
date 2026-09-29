@@ -1,5 +1,13 @@
-/* Zen mode's study. Loaded with the Zen chunk only. */
+/* Zen mode's study. Loaded with the Zen chunk only.
 
+   The interface speaks Pathforge's own language rather than a separate one:
+   Sora for headings and figures, Plus Jakarta Sans for text, the editorial
+   blue as the one accent, cards with the dashboard's soft blue-tinted
+   shadow. By day it is the app's light theme on warm paper; by night the
+   app's dark navy. Shapes: cards 20px, controls 12px, chips fully round. */
+
+/* Painted type in the room (the directory plate, the binders, the paper's
+   datelines) still uses Geist Mono, drawn onto canvases. */
 @font-face {
   font-family: "Geist Mono Variable";
   font-style: normal;
@@ -9,79 +17,413 @@
 }
 
 .pf-zen {
-  --zen-bg: #040509;
-  --zen-ink: #eef1f8;
-  --zen-mute: rgba(238, 241, 248, 0.56);
-  --zen-line: rgba(238, 241, 248, 0.16);
-  --zen-cobalt: #5f82ff;
-  --zen-panel: rgba(8, 9, 14, 0.94);
   --zen-ease: cubic-bezier(0.16, 1, 0.3, 1);
-  font-family: "Geist Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+  --zen-display: "Sora", "Plus Jakarta Sans", system-ui, sans-serif;
+  --zen-text: "Plus Jakarta Sans", system-ui, sans-serif;
+  font-family: var(--zen-text);
   color: var(--zen-ink);
   -webkit-font-smoothing: antialiased;
 }
 
-.pf-zen .zen-mono {
-  font-family: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace;
-  letter-spacing: 0.01em;
+.pf-zen,
+.pf-zen[data-time="day"] {
+  --zen-bg: #f3f1ec;
+  --zen-ink: #1a2238;
+  --zen-mute: #4f5972;
+  --zen-faint: rgba(26, 34, 56, 0.36);
+  --zen-line: #e2e5ec;
+  --zen-line-strong: #c8cedb;
+  --zen-blue: #4465d8;
+  --zen-blue-ink: #29439c;
+  --zen-soft: #e7edff;
+  --zen-panel: #fffefb;
+  --zen-well: #f6f4ef;
+  --zen-on-blue: #ffffff;
+  --zen-good: #1f7a4f;
+  --zen-bad: #c43d2f;
+  --zen-shadow: 0 1px 2px rgba(26, 34, 56, 0.05), 0 22px 52px -30px rgba(68, 101, 216, 0.38);
+  --zen-chip-shadow: 0 1px 2px rgba(26, 34, 56, 0.06), 0 10px 24px -16px rgba(68, 101, 216, 0.4);
 }
 
-/* The hover frame: basement's diagonal hatch, traced around the object. */
-.pf-zen .zen-hatch {
-  background-image: repeating-linear-gradient(-45deg, rgba(238, 241, 248, 0.22) 0 1px, transparent 1px 7px);
-  border: 1px solid rgba(238, 241, 248, 0.42);
+.pf-zen[data-time="night"] {
+  --zen-bg: #070a14;
+  --zen-ink: #f3f5fb;
+  --zen-mute: #a4aec4;
+  --zen-faint: rgba(243, 245, 251, 0.34);
+  --zen-line: #232c45;
+  --zen-line-strong: #34405f;
+  --zen-blue: #7390f2;
+  --zen-blue-ink: #a3b6ff;
+  --zen-soft: #1a2448;
+  --zen-panel: #0f1629;
+  --zen-well: #141d34;
+  --zen-on-blue: #0b1122;
+  --zen-good: #5fcf98;
+  --zen-bad: #ff8a7a;
+  --zen-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset, 0 28px 60px -30px rgba(0, 0, 0, 0.75);
+  --zen-chip-shadow: 0 12px 28px -16px rgba(0, 0, 0, 0.7);
 }
 
-/* Bracket buttons, the HUD's only control style. */
-.pf-zen .zen-btn {
-  font-family: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace;
-  font-size: 12px;
-  line-height: 1;
-  padding: 8px 6px;
+.pf-zen .zen-display {
+  font-family: var(--zen-display);
+}
+.pf-zen .zen-num {
+  font-family: var(--zen-display);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- hover ---------------------------------------------------------------- */
+
+/* The hover frame: a soft blue selection traced around the object. */
+.pf-zen .zen-frame {
+  border: 2px solid var(--zen-blue);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--zen-blue) 9%, transparent);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--zen-blue) 14%, transparent);
+}
+.pf-zen .zen-hover-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
   color: var(--zen-ink);
-  white-space: nowrap;
-  transition: color 90ms ease-out;
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  box-shadow: var(--zen-chip-shadow);
 }
-.pf-zen .zen-btn:hover,
-.pf-zen .zen-btn:focus-visible {
-  color: var(--zen-cobalt);
-  outline: none;
+
+.pf-zen kbd,
+.pf-zen .zen-key {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 5px;
+  font-family: var(--zen-display);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--zen-mute);
+  background: var(--zen-well);
+  border: 1px solid var(--zen-line);
+  border-radius: 6px;
+}
+
+/* ---- controls ------------------------------------------------------------ */
+
+/* A secondary control: a white chip with a hairline, the navbar's pill. */
+.pf-zen .zen-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--zen-ink);
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  transition:
+    background-color 120ms ease-out,
+    border-color 120ms ease-out,
+    color 120ms ease-out,
+    transform 120ms ease-out;
+}
+.pf-zen .zen-btn:hover {
+  border-color: var(--zen-line-strong);
+  background: var(--zen-well);
+}
+.pf-zen .zen-btn[aria-pressed="true"] {
+  color: var(--zen-blue);
+  background: var(--zen-soft);
+  border-color: color-mix(in srgb, var(--zen-blue) 45%, transparent);
 }
 .pf-zen .zen-btn:active {
-  transform: translateY(1px);
+  transform: scale(0.97);
 }
-
 .pf-zen .zen-btn:disabled {
-  color: var(--zen-mute);
+  opacity: 0.45;
   pointer-events: none;
 }
+.pf-zen .zen-btn svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+/* The one thing to do next: solid blue, the dashboard's primary button. */
+.pf-zen .zen-btn-primary {
+  color: var(--zen-on-blue);
+  background: var(--zen-blue);
+  border-color: var(--zen-blue);
+  border-radius: 12px;
+  height: 38px;
+  padding: 0 16px;
+}
+.pf-zen .zen-btn-primary:hover {
+  background: var(--zen-blue-ink);
+  border-color: var(--zen-blue-ink);
+}
+.pf-zen[data-time="night"] .zen-btn-primary:hover {
+  background: #8aa2f6;
+  border-color: #8aa2f6;
+}
+.pf-zen .zen-btn-sm {
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+.pf-zen .zen-btn-icon {
+  width: 34px;
+  padding: 0;
+}
+
+/* "OPEN" in a card's corner, as on the dashboard. */
+.pf-zen .zen-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--zen-blue);
+  white-space: nowrap;
+  transition: color 100ms ease-out;
+}
+.pf-zen .zen-link:hover {
+  color: var(--zen-blue-ink);
+}
+.pf-zen .zen-link svg {
+  width: 13px;
+  height: 13px;
+}
+
+.pf-zen :is(button, a, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--zen-blue);
+  outline-offset: 2px;
+}
+
+/* ---- panels ----------------------------------------------------------------- */
 
 /* No backdrop blur: blurring a canvas that redraws every frame costs a full
    extra pass on the compositor for as long as a panel is open. */
 .pf-zen .zen-panel {
+  position: relative;
   background: var(--zen-panel);
   border: 1px solid var(--zen-line);
+  border-radius: 20px;
+  box-shadow: var(--zen-shadow);
   scrollbar-width: thin;
-  scrollbar-color: var(--zen-line) transparent;
+  scrollbar-color: var(--zen-line-strong) transparent;
+}
+
+.pf-zen .zen-panel-head {
+  padding: 20px 22px 16px;
+}
+
+/* The panel's first line: which part of the room, and which object. */
+.pf-zen .zen-kicker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--zen-blue);
+}
+.pf-zen .zen-kicker-dot {
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+}
+
+.pf-zen .zen-title {
+  font-family: var(--zen-display);
+  font-size: 30px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+}
+.pf-zen .zen-meta {
+  padding-bottom: 4px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--zen-mute);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pf-zen .zen-label {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--zen-mute);
+}
+
+/* Readouts: Sora figures, as the dashboard shows a number. */
+.pf-zen .zen-big {
+  font-family: var(--zen-display);
+  font-size: 44px;
+  font-weight: 700;
+  line-height: 0.95;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+}
+.pf-zen .zen-big-xl {
+  font-size: 76px;
+  letter-spacing: -0.05em;
+}
+.pf-zen .zen-unit {
+  margin-left: 6px;
+  font-family: var(--zen-text);
+  font-size: 14px;
+  font-weight: 500;
+  letter-spacing: 0;
+  color: var(--zen-mute);
+}
+
+/* A number with its caption: the grid of small figures most panels open with. */
+.pf-zen .zen-stat {
+  padding: 12px 14px;
+  background: var(--zen-well);
+  border: 1px solid var(--zen-line);
+  border-radius: 14px;
+  text-align: left;
+}
+.pf-zen button.zen-stat {
+  transition: border-color 120ms ease-out, transform 120ms ease-out;
+}
+.pf-zen button.zen-stat:hover {
+  border-color: color-mix(in srgb, var(--zen-blue) 50%, transparent);
+}
+.pf-zen button.zen-stat:active {
+  transform: scale(0.98);
+}
+.pf-zen .zen-stat-value {
+  font-family: var(--zen-display);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+.pf-zen .zen-stat-name {
+  margin-top: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--zen-mute);
 }
 
 .pf-zen .zen-input {
+  background: var(--zen-well);
+  border: 1px solid var(--zen-line);
+  border-radius: 12px;
+  color: var(--zen-ink);
+  outline: none;
+  transition: border-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.pf-zen .zen-input:focus,
+.pf-zen .zen-input:focus-visible {
+  border-color: var(--zen-blue);
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--zen-blue) 18%, transparent);
+}
+.pf-zen .zen-input::placeholder {
+  color: var(--zen-faint);
+}
+/* A line on the plan: no box, just a rule, so five of them read as a list. */
+.pf-zen .zen-input-line {
   background: transparent;
   border: 0;
   border-bottom: 1px solid var(--zen-line);
-  color: var(--zen-ink);
-  outline: none;
   border-radius: 0;
-  transition: border-color 120ms ease-out;
 }
-.pf-zen textarea.zen-input {
-  border: 1px solid var(--zen-line);
+.pf-zen .zen-input-line:focus,
+.pf-zen .zen-input-line:focus-visible {
+  box-shadow: none;
 }
-.pf-zen .zen-input:focus {
-  border-color: var(--zen-cobalt);
+
+/* The pages that live at a station: rows like the dashboard's college list. */
+.pf-zen .zen-pages {
+  border-top: 1px solid var(--zen-line);
 }
-.pf-zen .zen-input::placeholder {
-  color: rgba(238, 241, 248, 0.3);
+.pf-zen .zen-page {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 2px;
+  text-align: left;
+  border-bottom: 1px solid var(--zen-line);
+  transition: color 100ms ease-out;
+}
+.pf-zen .zen-page:last-child {
+  border-bottom: 0;
+}
+.pf-zen .zen-page-name {
+  font-size: 14px;
+  font-weight: 600;
+  transition: transform 160ms var(--zen-ease);
+}
+.pf-zen .zen-page-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 12.5px;
+  font-weight: 400;
+  color: var(--zen-mute);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pf-zen .zen-page-go {
+  margin-left: auto;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  color: var(--zen-mute);
+  border-radius: 9px;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.pf-zen .zen-page-go svg {
+  width: 15px;
+  height: 15px;
+}
+.pf-zen .zen-page:hover .zen-page-name,
+.pf-zen .zen-page:focus-visible .zen-page-name {
+  transform: translateX(3px);
+  color: var(--zen-blue);
+}
+.pf-zen .zen-page:hover .zen-page-go {
+  color: var(--zen-blue);
+  background: var(--zen-soft);
+}
+.pf-zen .zen-badge {
+  display: inline-grid;
+  place-items: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--zen-on-blue);
+  background: var(--zen-blue);
+  border-radius: 999px;
 }
 
 /* ---- panel motion ------------------------------------------------------ */
@@ -121,6 +463,7 @@
 }
 .pf-zen .zen-bar {
   transform-origin: bottom;
+  border-radius: 3px 3px 1px 1px;
   animation: zen-bar 520ms var(--zen-ease) backwards;
 }
 
@@ -133,7 +476,8 @@
   }
 }
 .pf-zen .zen-shimmer {
-  background: rgba(238, 241, 248, 0.1);
+  border-radius: 6px;
+  background: var(--zen-well);
   animation: zen-pulse 900ms ease-in-out infinite alternate;
 }
 
@@ -147,20 +491,30 @@
   animation: zen-fade 600ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
 }
 
-/* ---- controls ---------------------------------------------------------- */
+/* ---- small controls ------------------------------------------------------ */
 
 .pf-zen .zen-check,
 .pf-zen .zen-seg,
 .pf-zen .zen-row {
   transition: border-color 120ms ease-out, background-color 160ms ease-out, transform 120ms ease-out;
 }
+.pf-zen .zen-check {
+  border-radius: 6px;
+}
 .pf-zen .zen-check span {
+  border-radius: 3px;
   transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pf-zen .zen-seg {
+  border-radius: 8px;
+}
+.pf-zen .zen-row {
+  border-radius: 14px;
 }
 .pf-zen .zen-check:hover:not(:disabled),
 .pf-zen .zen-seg:hover,
 .pf-zen .zen-row:hover {
-  border-color: rgba(238, 241, 248, 0.42);
+  border-color: var(--zen-line-strong);
 }
 .pf-zen .zen-seg:active,
 .pf-zen .zen-row:active {
@@ -176,7 +530,8 @@
 .pf-zen .zen-eq i {
   width: 2px;
   height: 100%;
-  background: var(--zen-cobalt);
+  border-radius: 1px;
+  background: var(--zen-blue);
   transform-origin: bottom;
   animation: zen-eq 900ms ease-in-out infinite alternate;
 }
@@ -189,78 +544,306 @@
 
 .pf-zen .zen-range {
   appearance: none;
-  height: 16px;
+  height: 18px;
   background: transparent;
 }
 .pf-zen .zen-range::-webkit-slider-runnable-track {
-  height: 2px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--zen-line);
 }
 .pf-zen .zen-range::-moz-range-track {
-  height: 2px;
+  height: 4px;
+  border-radius: 2px;
   background: var(--zen-line);
 }
 .pf-zen .zen-range::-webkit-slider-thumb {
   appearance: none;
-  width: 12px;
-  height: 12px;
-  margin-top: -5px;
-  background: var(--zen-cobalt);
-  border: 0;
+  width: 16px;
+  height: 16px;
+  margin-top: -6px;
+  background: var(--zen-blue);
+  border: 3px solid var(--zen-panel);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px var(--zen-blue);
 }
 .pf-zen .zen-range::-moz-range-thumb {
   width: 12px;
   height: 12px;
-  background: var(--zen-cobalt);
-  border: 0;
-  border-radius: 0;
-}
-.pf-zen .zen-range:focus-visible {
-  outline: 1px solid var(--zen-cobalt);
-  outline-offset: 4px;
+  background: var(--zen-blue);
+  border: 3px solid var(--zen-panel);
+  border-radius: 50%;
 }
 
 /* ---- the index ----------------------------------------------------------- */
 
-.pf-zen .zen-index {
-  background: var(--zen-panel);
-  border: 1px solid var(--zen-line);
+/* The rail: one dot per place, grouped by part of the room, on a hairline.
+   No card, so the room keeps the screen; a dot names itself on hover, and the
+   list icon opens the full sheet. Only transform and opacity ever animate. */
+.pf-zen .zen-rail {
+  z-index: 10;
   opacity: 0;
   transition: opacity 240ms var(--zen-ease);
 }
-.pf-zen .zen-index[data-in] {
+.pf-zen .zen-rail[data-in] {
   opacity: 1;
 }
-.pf-zen .zen-index li {
-  opacity: 0;
-  transform: translateX(-10px);
-  transition: opacity 280ms var(--zen-ease), transform 360ms var(--zen-ease);
+.pf-zen .zen-rail-track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 8px 0;
 }
-.pf-zen .zen-index[data-in] li {
+.pf-zen .zen-rail-track::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 40px;
+  bottom: 12px;
+  width: 1px;
+  background: var(--zen-line-strong);
+  opacity: 0.7;
+}
+.pf-zen .zen-rail-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pf-zen .zen-rail-toggle {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--zen-ink);
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 50%;
+  box-shadow: var(--zen-chip-shadow);
+  transition: transform 140ms var(--zen-ease), color 120ms ease-out;
+}
+.pf-zen .zen-rail-toggle:hover {
+  color: var(--zen-blue);
+  transform: scale(1.06);
+}
+.pf-zen .zen-rail-toggle[aria-expanded="true"] {
+  color: var(--zen-on-blue);
+  background: var(--zen-blue);
+  border-color: var(--zen-blue);
+}
+.pf-zen .zen-rail-toggle svg {
+  width: 15px;
+  height: 15px;
+}
+.pf-zen .zen-dot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 22px;
+  opacity: 0;
+  transform: translateX(-8px);
+  transition: opacity 260ms var(--zen-ease), transform 320ms var(--zen-ease);
+}
+.pf-zen .zen-rail[data-in] .zen-dot {
   opacity: 1;
   transform: none;
 }
-.pf-zen .zen-index:not([data-in]) {
+.pf-zen .zen-dot-mark {
+  display: block;
+  width: 9px;
+  height: 9px;
+  background: var(--zen-panel);
+  border-radius: 50%;
+  box-shadow: 0 0 0 1.5px var(--zen-line-strong), 0 2px 6px rgba(26, 34, 56, 0.28);
+  transition: transform 160ms var(--zen-ease), background-color 120ms ease-out, box-shadow 120ms ease-out;
+}
+.pf-zen .zen-dot:hover .zen-dot-mark,
+.pf-zen .zen-dot:focus-visible .zen-dot-mark {
+  transform: scale(1.5);
+  background: var(--zen-blue);
+  box-shadow: 0 0 0 1.5px var(--zen-blue), 0 0 0 5px color-mix(in srgb, var(--zen-blue) 22%, transparent);
+}
+.pf-zen .zen-dot[aria-current] .zen-dot-mark {
+  transform: scale(1.5);
+  background: var(--zen-blue);
+  box-shadow: 0 0 0 1.5px var(--zen-panel), 0 0 0 3px var(--zen-blue);
+}
+.pf-zen .zen-dot:focus-visible {
+  outline: none;
+}
+.pf-zen .zen-dot-label {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px 5px 11px;
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--zen-ink);
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  box-shadow: var(--zen-chip-shadow);
+  opacity: 0;
   pointer-events: none;
+  transform: translate3d(-6px, -50%, 0);
+  transition: opacity 120ms ease-out, transform 200ms var(--zen-ease);
 }
-.pf-zen .zen-index-name {
-  transition: transform 160ms var(--zen-ease), color 90ms ease-out;
+.pf-zen .zen-dot-label em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--zen-mute);
 }
-.pf-zen .zen-index-rule {
-  align-self: center;
-  height: 0;
-  border-bottom: 1px dotted var(--zen-line);
+.pf-zen .zen-dot:hover .zen-dot-label,
+.pf-zen .zen-dot:focus-visible .zen-dot-label {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
 }
-.pf-zen .zen-index-row:hover .zen-index-name,
-.pf-zen .zen-index-row:focus-visible .zen-index-name {
-  transform: translateX(4px);
-  color: var(--zen-cobalt);
+
+/* The full list, a sheet beside the rail. */
+.pf-zen .zen-rail-sheet {
+  position: absolute;
+  left: 40px;
+  top: 50%;
+  width: 244px;
+  max-height: calc(100dvh - 150px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  opacity: 0;
+  transform: translate3d(-10px, -50%, 0) scale(0.98);
+  transform-origin: left center;
+  transition: opacity 160ms ease-out, transform 260ms var(--zen-ease);
+}
+.pf-zen .zen-rail-sheet[data-open] {
+  opacity: 1;
+  transform: translate3d(0, -50%, 0);
+  pointer-events: auto;
+}
+.pf-zen .zen-index-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 44px;
+  padding: 0 14px 0 16px;
+  border-bottom: 1px solid var(--zen-line);
+  white-space: nowrap;
+}
+.pf-zen .zen-index-head strong {
+  font-family: var(--zen-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.pf-zen .zen-index-zone {
+  padding: 10px 16px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--zen-faint);
+  white-space: nowrap;
+}
+.pf-zen .zen-index-row {
+  position: relative;
+  padding: 2px 12px 2px 10px;
+  white-space: nowrap;
+}
+.pf-zen .zen-index-row > .zen-index-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 4px 6px;
+  border-radius: 10px;
+  transition: background-color 120ms ease-out;
+}
+.pf-zen .zen-index-row:hover > .zen-index-inner,
+.pf-zen .zen-index-row:focus-visible > .zen-index-inner {
+  background: var(--zen-well);
+}
+.pf-zen .zen-index-row[aria-current] > .zen-index-inner {
+  background: var(--zen-soft);
 }
 .pf-zen .zen-index-row:focus-visible {
   outline: none;
 }
-.pf-zen .zen-index-row[aria-current] .zen-index-name {
-  color: var(--zen-cobalt);
+.pf-zen .zen-index-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  transition: color 90ms ease-out;
+}
+.pf-zen .zen-index-meta {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--zen-mute);
+  font-variant-numeric: tabular-nums;
+}
+.pf-zen .zen-index-row[aria-current] .zen-index-name,
+.pf-zen .zen-index-row:hover .zen-index-name {
+  color: var(--zen-blue);
+}
+.pf-zen .zen-index-row[aria-current] .zen-key {
+  color: var(--zen-on-blue);
+  background: var(--zen-blue);
+  border-color: var(--zen-blue);
+}
+
+/* ---- the news desk ---------------------------------------------------- */
+
+.pf-zen .zen-headline {
+  font-family: var(--zen-display);
+  font-size: 23px;
+  line-height: 1.18;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-wrap: balance;
+}
+@keyframes zen-word {
+  from {
+    opacity: 0;
+    transform: translateY(0.18em);
+    filter: blur(2px);
+  }
+}
+.pf-zen .zen-word {
+  display: inline-block;
+  white-space: pre;
+  animation: zen-word 420ms var(--zen-ease) backwards;
+  transition: color 160ms ease-out;
+}
+/* Read aloud: words ahead of the voice wait in grey. */
+.pf-zen .zen-word[data-said="0"] {
+  color: var(--zen-faint);
+}
+.pf-zen .zen-live {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--zen-faint);
+  transition: background-color 160ms ease-out;
+}
+.pf-zen .zen-live[data-on] {
+  background: var(--zen-blue);
+  animation: zen-pulse 700ms ease-in-out infinite alternate;
+}
+.pf-zen .zen-story {
+  border-radius: 10px;
+  transition: color 90ms ease-out, background-color 120ms ease-out;
+}
+.pf-zen .zen-story:hover {
+  background: var(--zen-well);
+}
+.pf-zen .zen-story[aria-current] {
+  color: var(--zen-blue);
+  background: var(--zen-soft);
 }
 
 .pf-zen .zen-strip {
@@ -277,8 +860,9 @@
   pointer-events: none;
 }
 .pf-zen .zen-strip [aria-current] {
-  border-color: var(--zen-cobalt);
-  color: var(--zen-cobalt);
+  color: var(--zen-blue);
+  background: var(--zen-soft);
+  border-color: color-mix(in srgb, var(--zen-blue) 45%, transparent);
 }
 
 @keyframes zen-curtain-in {
@@ -297,13 +881,108 @@
     clip-path: inset(0 0 100% 0);
   }
 }
-@keyframes zen-seam {
-  from {
-    transform: translateY(100vh);
-  }
-  to {
-    transform: translateY(0);
-  }
+
+/* ---- the directory ------------------------------------------------------ */
+
+.pf-zen .zen-search {
+  font-family: var(--zen-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* ---- the reader's on-air tag ------------------------------------------- */
+
+.pf-zen .zen-onair {
+  transition: opacity 220ms var(--zen-ease);
+  will-change: transform;
+}
+.pf-zen .zen-onair-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transform: translate(-50%, -100%);
+  padding: 6px 10px 6px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--zen-ink);
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  box-shadow: var(--zen-chip-shadow);
+}
+.pf-zen .zen-onair-inner b {
+  font-weight: 600;
+  color: var(--zen-mute);
+  font-variant-numeric: tabular-nums;
+}
+.pf-zen .zen-onair-inner i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--zen-faint);
+  transition: background-color 160ms ease-out;
+}
+.pf-zen .zen-onair-inner i[data-live] {
+  background: #e5484d;
+  animation: zen-pulse 700ms ease-in-out infinite alternate;
+}
+
+/* ---- chrome ------------------------------------------------------------- */
+
+.pf-zen .zen-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 12px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--zen-mute);
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  box-shadow: var(--zen-chip-shadow);
+}
+.pf-zen .zen-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  border-radius: 999px;
+  box-shadow: var(--zen-chip-shadow);
+}
+.pf-zen .zen-toolbar > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--zen-mute);
+  border-radius: 999px;
+  transition: background-color 120ms ease-out, color 120ms ease-out;
+}
+.pf-zen .zen-toolbar > button:hover {
+  color: var(--zen-ink);
+  background: var(--zen-well);
+}
+.pf-zen .zen-toolbar > button[aria-pressed="true"] {
+  color: var(--zen-on-blue);
+  background: var(--zen-blue);
+}
+.pf-zen .zen-toolbar svg {
+  width: 15px;
+  height: 15px;
+}
+.pf-zen .zen-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--zen-mute);
 }
 
 @media (prefers-reduced-motion: reduce) {

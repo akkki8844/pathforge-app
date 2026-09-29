@@ -24,6 +24,13 @@ export type Anim = {
   pet: number;
   /** Rain outside the window, 0..1; follows the sound. */
   rain: number;
+  /** Daylight, 0..1: 1 is the sunlit studio, 0 the night-time one. */
+  day: number;
+  /** Depth of field, 0..1, and the distance it is focused at (m). The camera writes both. */
+  dof: number;
+  focus: number;
+  /** 1 while the camera is at rest on a view; the quality monitor only measures then. */
+  settled: number;
 };
 
 export const createAnim = (): Anim => ({
@@ -40,8 +47,21 @@ export const createAnim = (): Anim => ({
   cam: 0,
   pet: 0,
   rain: 0,
+  day: 1,
+  dof: 0,
+  focus: 2,
+  settled: 0,
 });
 
+/**
+ * The sun through drifting cloud: 1 in the open, dipping to about 0.8 as a
+ * cloud goes over, slowly and never in step with anything else. By day only.
+ */
+export const cloudShade = (t: number, day: number) => {
+  const c = 0.5 + 0.5 * Math.sin(t * 0.17 + Math.sin(t * 0.06) * 2.2);
+  return 1 - 0.2 * day * Math.pow(c, 1.6);
+};
+
 /** Room height plus headroom: a scan here has passed everything. */
-export const TOP = 4.8;
+export const TOP = 5.7;
 export const BOTTOM = -0.5;

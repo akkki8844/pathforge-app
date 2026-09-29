@@ -47,7 +47,7 @@ function Logo({ domain, small = false }: { domain: string; small?: boolean }) {
     <img
       className={small ? "fs-logo fs-logo--small" : "fs-logo"}
       src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-      alt=""
+      alt={`${domain} logo`}
       width={28}
       height={28}
       loading="lazy"
@@ -220,7 +220,7 @@ const FEATURES: Feature[] = [
     preview: (
       <div className="fs-body fs-profile">
         <div className="fs-banner" aria-hidden="true" />
-        <img className="fs-avatar" src="/avatars/maya-okafor.webp" alt="" width={64} height={64} decoding="async" />
+        <img className="fs-avatar" src="/avatars/maya-okafor.webp" alt="Student Maya Okafor, example profile in the Pathforge workspace" width={64} height={64} decoding="async" />
         <p className="fs-paper-name">Maya Okafor</p>
         <p className="fs-paper-sub">Student researcher in environmental sensing. Captain, FRC Team 5427.</p>
         <span className="fs-tag">Open to research internships</span>
@@ -259,7 +259,7 @@ const FEATURES: Feature[] = [
         </div>
         <ul className="fs-list fs-list--people">
           <li>
-            <img className="fs-initials" src="/avatars/ms-alvarez.webp" alt="" width={32} height={32} decoding="async" />
+            <img className="fs-initials" src="/avatars/ms-alvarez.webp" alt="Ms. Alvarez, example recommender" width={32} height={32} decoding="async" />
             <div>
               <strong>Ms. Alvarez</strong>
               <small>Physics</small>
@@ -267,7 +267,7 @@ const FEATURES: Feature[] = [
             <span className="fs-tag fs-tag--solid">Submitted</span>
           </li>
           <li>
-            <img className="fs-initials" src="/avatars/mr-chen.webp" alt="" width={32} height={32} decoding="async" />
+            <img className="fs-initials" src="/avatars/mr-chen.webp" alt="Mr. Chen, example recommender" width={32} height={32} decoding="async" />
             <div>
               <strong>Mr. Chen</strong>
               <small>English</small>
@@ -275,7 +275,7 @@ const FEATURES: Feature[] = [
             <span className="fs-tag">Brief sent</span>
           </li>
           <li>
-            <img className="fs-initials" src="/avatars/dr-patel.webp" alt="" width={32} height={32} decoding="async" />
+            <img className="fs-initials" src="/avatars/dr-patel.webp" alt="Dr. Patel, example recommender" width={32} height={32} decoding="async" />
             <div>
               <strong>Dr. Patel</strong>
               <small>Research mentor</small>

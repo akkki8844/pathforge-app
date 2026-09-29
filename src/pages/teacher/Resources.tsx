@@ -79,7 +79,7 @@ export default function TeacherResources() {
   return (
     <TeacherLayout>
       <Seo
-        title="Resources"
+        title="Counsellor Resources"
         description="Official sources and Pathforge pages you can point a student at."
         path="/teacher/resources"
         noindex

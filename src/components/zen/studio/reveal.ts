@@ -20,7 +20,38 @@ export const revealUniforms = {
   uPfScan: { value: -0.5 },
   uPfDraw: { value: -0.5 },
   uPfBand: { value: new THREE.Color("#5f82ff") },
+  /** How far each side of the building has dissolved, by CutSide index (0 is "none"). */
+  uPfCut: { value: new Float32Array(6) },
 };
+
+/*
+ * The cutaway. Orbiting the study from outside, whichever wall stands between
+ * the camera and the room dissolves in a coarse dither, the way a dollhouse
+ * is opened, so the building can be turned all the way round and never hides
+ * what is inside it. Geometry says which side it belongs to with a per-vertex
+ * attribute (0 means none), and one uniform per side drives every surface at
+ * once: no per-wall materials, and no transparency to sort.
+ */
+export type CutSide = "back" | "left" | "right" | "front" | "top";
+const CUT_INDEX: Record<CutSide, number> = { back: 1, left: 2, right: 3, front: 4, top: 5 };
+
+export function tagCut<T extends THREE.BufferGeometry>(g: T, side: CutSide): T {
+  const n = g.getAttribute("position").count;
+  g.setAttribute("aPfCut", new THREE.BufferAttribute(new Float32Array(n).fill(CUT_INDEX[side]), 1));
+  return g;
+}
+
+/** Eased so a wall dissolves over a fifth of a second, not in a pop. */
+export function stepCutaway(goal: Record<CutSide, boolean>, dt: number) {
+  const k = 1 - Math.exp(-dt * 9);
+  const v = revealUniforms.uPfCut.value;
+  for (const side of Object.keys(CUT_INDEX) as CutSide[]) {
+    const i = CUT_INDEX[side];
+    const to = goal[side] ? 1 : 0;
+    v[i] += (to - v[i]) * k;
+    if (Math.abs(to - v[i]) < 0.004) v[i] = to;
+  }
+}
 
 /**
  * Closed until every shader has finished compiling in the background. Drawing
@@ -30,7 +61,7 @@ export const revealUniforms = {
  */
 export const renderGate = { open: false };
 
-const VERT_HEAD = "varying float vPfY;\n";
+const VERT_HEAD = "varying float vPfY;\nattribute float aPfCut;\nvarying float vPfCut;\n";
 const VERT_BODY = [
   "#include <project_vertex>",
   "  {",
@@ -39,10 +70,26 @@ const VERT_BODY = [
   "    pfW = instanceMatrix * pfW;",
   "    #endif",
   "    vPfY = (modelMatrix * pfW).y;",
+  "    vPfCut = aPfCut;",
   "  }",
 ].join("\n");
 
-const FRAG_HEAD = "uniform float uPfScan;\nuniform float uPfDraw;\nuniform vec3 uPfBand;\nvarying float vPfY;\n";
+const FRAG_HEAD = [
+  "uniform float uPfScan;",
+  "uniform float uPfDraw;",
+  "uniform vec3 uPfBand;",
+  "uniform float uPfCut[6];",
+  "varying float vPfY;",
+  "varying float vPfCut;",
+  // 4 x 4 Bayer: an ordered dither, so a dissolving wall is halftone, not noise.
+  "float pfBayer(vec2 p) {",
+  "  ivec2 q = ivec2(mod(p, 4.0));",
+  "  int i = q.x + q.y * 4;",
+  "  const float m[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);",
+  "  return (m[i] + 0.5) / 16.0;",
+  "}",
+  "",
+].join("\n");
 
 function injectVertex(shader: THREE.WebGLProgramParametersWithUniforms) {
   shader.vertexShader = VERT_HEAD + shader.vertexShader.replace("#include <project_vertex>", VERT_BODY);
@@ -52,13 +99,21 @@ function injectVertex(shader: THREE.WebGLProgramParametersWithUniforms) {
 export function patchSolid(mat: THREE.Material) {
   if (mat.userData.pfSolid) return;
   mat.userData.pfSolid = true;
-  mat.onBeforeCompile = (shader) => {
+  // A material may already carry its own shader change (the plants' wind);
+  // this one runs after it, and its cache key extends the other's.
+  const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey();
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev.call(mat, shader, renderer);
     Object.assign(shader.uniforms, revealUniforms);
     injectVertex(shader);
     shader.fragmentShader =
       FRAG_HEAD +
       shader.fragmentShader
-        .replace("void main() {", "void main() {\n  if (vPfY > uPfScan) discard;")
+        .replace(
+          "void main() {",
+          "void main() {\n  if (vPfY > uPfScan) discard;\n  { float pfK = uPfCut[int(vPfCut + 0.5)]; if (pfK > 0.0 && pfK > pfBayer(gl_FragCoord.xy)) discard; }",
+        )
         .replace(
           "#include <dithering_fragment>",
           [
@@ -68,7 +123,7 @@ export function patchSolid(mat: THREE.Material) {
           ].join("\n"),
         );
   };
-  mat.customProgramCacheKey = () => "pf-solid";
+  mat.customProgramCacheKey = () => `pf-solid|${prevKey}`;
   mat.needsUpdate = true;
 }
 
@@ -76,7 +131,10 @@ export function patchSolid(mat: THREE.Material) {
 export function patchLine(mat: THREE.Material) {
   if (mat.userData.pfLine) return;
   mat.userData.pfLine = true;
-  mat.onBeforeCompile = (shader) => {
+  const prev = mat.onBeforeCompile;
+  const prevKey = mat.customProgramCacheKey();
+  mat.onBeforeCompile = (shader, renderer) => {
+    prev.call(mat, shader, renderer);
     Object.assign(shader.uniforms, revealUniforms);
     injectVertex(shader);
     shader.fragmentShader =
@@ -93,7 +151,7 @@ export function patchLine(mat: THREE.Material) {
           ].join("\n"),
         );
   };
-  mat.customProgramCacheKey = () => "pf-line";
+  mat.customProgramCacheKey = () => `pf-line|${prevKey}`;
   mat.needsUpdate = true;
 }
 

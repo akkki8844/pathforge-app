@@ -17,6 +17,36 @@ import { useCallback, useSyncExternalStore } from "react";
  */
 
 const KEY = "pf-zen";
+const TIME_KEY = "pf-zen-time";
+
+export type ZenTime = "day" | "night";
+
+/**
+ * Whether the study is sunlit or lamp-lit. The student's own choice if they
+ * made one in the room; otherwise it follows the app's theme, so a dark app
+ * opens onto the room at night and a light one onto the room by day.
+ */
+export function zenTime(): ZenTime {
+  try {
+    const v = localStorage.getItem(TIME_KEY);
+    if (v === "day" || v === "night") return v;
+  } catch {
+    /* private mode: fall through to the theme */
+  }
+  if (typeof document !== "undefined" && document.documentElement.classList.contains("dark")) return "night";
+  return "day";
+}
+
+export function setZenTime(t: ZenTime) {
+  try {
+    localStorage.setItem(TIME_KEY, t);
+  } catch {
+    /* private mode: this visit only */
+  }
+}
+
+/** The colour behind the room while it builds: the day room's paper, or the night's ink. */
+export const ZEN_GROUND: Record<ZenTime, string> = { day: "#f3f1ec", night: "#070a14" };
 const EVENT = "pf-zen-change";
 
 function read(): boolean {

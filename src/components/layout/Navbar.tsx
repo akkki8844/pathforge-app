@@ -62,8 +62,9 @@ export const NAVBAR_MAIN_LINKS: NavItem[] = [
 // Everything that isn't a top-seven link, folded into the one "Other"
 // dropdown instead of the old separate Builders/Preparation/Others menus —
 // arranged in the same departments-under-one-menu shape as a reference
-// mega-menu the redesign was modeled on, not its colours.
-const baseOtherGroups: NavGroup[] = [
+// mega-menu the redesign was modeled on, not its colours. Exported for Zen
+// mode's directory, which lists every page from inside the study.
+export const NAVBAR_OTHER_GROUPS: NavGroup[] = [
   {
     title: "Builders",
     links: [
@@ -399,9 +400,9 @@ export function Navbar() {
         routineGroup,
         // Unreleased: only in browsers that opted into the preview.
         ...(testPrepEnabled() ? [testPrepGroup] : []),
-        ...baseOtherGroups,
+        ...NAVBAR_OTHER_GROUPS,
       ]
-    : baseOtherGroups;
+    : NAVBAR_OTHER_GROUPS;
   const otherLinks: NavItem[] = otherGroups.flatMap((g) => g.links);
   // Chats now has its own top-level indicator, so Other should only light up
   // for the comms pages that still live inside it (Teams, Objectives, Announcements).

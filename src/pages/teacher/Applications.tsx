@@ -147,7 +147,7 @@ export default function TeacherApplications() {
   return (
     <TeacherLayout>
       <Seo
-        title="Applications"
+        title="Counsellor Applications"
         description="Where each application stands."
         path="/teacher/applications"
         noindex

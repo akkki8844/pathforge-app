@@ -44,7 +44,7 @@ export default function CounselorAnnouncements() {
   return (
     <TeacherLayout>
       <Seo
-        title="Announcements"
+        title="Counsellor Announcements"
         description="One message to a class or the cohort."
         path="/teacher/announcements"
         noindex

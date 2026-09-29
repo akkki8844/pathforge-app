@@ -34,7 +34,7 @@ export default function InterviewComingSoon() {
   return (
     <>
       <Seo
-        title="Interview Simulator"
+        title="Interview Simulator — Coming Soon"
         description="A mock interview built on your own application and shaped to the format your school actually runs. Coming soon to Pathforge."
         path="/interview"
         noindex

@@ -4,37 +4,44 @@ import { useProgress } from "@react-three/drei";
 import { useNavigate } from "react-router-dom";
 import gsap from "gsap";
 import * as THREE from "three";
-import { setZen } from "@/lib/zen";
+import { ArrowLeft, ChevronLeft, ChevronRight, Footprints, Moon, Search, Sun, Volume2, VolumeX, X } from "lucide-react";
+import pathforgeLogo from "@/assets/pathforge-logo.webp";
+import { setZen, setZenTime, zenTime, type ZenTime } from "@/lib/zen";
 import { Scene } from "./studio/Scene";
 import { preloadModels } from "./studio/models";
 import { createAnim, TOP, BOTTOM, type Anim } from "./studio/anim";
-import { HOTSPOTS, INTRO_PATH, STATIONS, isStation, type HotspotId, type StationId, type View } from "./studio/stage";
+import { HOTSPOTS, INTRO_PATH, STATIONS, ZONES, isStation, stationForKey, type HotspotId, type StationId, type View } from "./studio/stage";
 import { useFocusTimer } from "./studio/focus";
 import { chime, purr, shutdownAudio, sound, useSound, type SoundKind } from "./studio/audio";
 import { LiveData } from "./studio/live";
 import { StationPanel } from "./studio/panels";
-import { LeaveContext } from "./studio/leave";
+import { directoryIntent, GoContext, LeaveContext } from "./studio/leave";
 import { StationIndex } from "./studio/Index";
+import { applyPreset, enterWalk, explore, type Area } from "./studio/explore";
+import { desk, deskMotion, useDesk } from "./studio/newsdesk";
 import "./zen.css";
 
 /*
  * Zen mode, the study.
  *
- * Turning Zen on leaves the app for a room: a night-time study built from
- * photoscanned furniture, with a student reading in the corner. The room is
- * the dashboard, simplified: every block of the dashboard page, and a few
- * things it never had, is an object you can walk up to.
+ * Turning Zen on leaves the app for a room: a study built from photoscanned
+ * furniture, with a student reading in the corner, sunlit by day and
+ * lamp-lit by night (T switches; it starts from the app's own theme). The
+ * room is the whole app, laid out as places: every section of Pathforge
+ * lives at an object, grouped into parts of the room.
  *
- *   laptop      focus timer          chalkboard  today's plan and scratch
- *   clock       today's classes and the next deadlines
- *   pinboard    the college list     compass     readiness, streak, essays
- *   shelves     documents, AI allowance, practice tests
- *   reader      admissions news      notebook    the weekly check-in
- *   cassette    rain or brown noise  window      a breathing break
+ *   the desk      laptop (focus), chalkboard (plan), binder (essays and
+ *                 applications), phone (messages), compass (journey)
+ *   the wall      clock (today), calendar (the week), pinboard (colleges)
+ *   the shelves   binders (documents), prep books (test prep), trophy
+ *                 (activities)
+ *   the chair     the news desk        around the room: sound, a breathing
+ *                                      break, and the directory by the door
  *
- * The index down the left edge lists them with the one number that matters at
+ * Each station's panel has its figures and the pages that live there. The
+ * index down the left edge lists them with the one number that matters at
  * each, so the room answers "how am I doing" before anything is clicked.
- * Number keys fly straight to a station; the arrows step between them.
+ * Each station has a key; the arrows step between them.
  *
  * Interaction follows basement.studio's: hover an object and a hatched frame
  * traces it with a bracketed label; click and the camera moves to it; click
@@ -91,29 +98,39 @@ function Loader({ visible }: { visible: boolean }) {
   return (
     <div
       data-zen-loader=""
-      className="pointer-events-none absolute inset-0 flex items-end justify-between bg-[color:var(--zen-bg)] p-4 sm:p-8"
+      className="pointer-events-none absolute inset-0 flex items-end justify-between gap-6 bg-[color:var(--zen-bg)] p-5 sm:p-10"
       style={{ opacity: visible ? 1 : 0, transition: "opacity 400ms cubic-bezier(0.16,1,0.3,1)" }}
       aria-hidden={!visible}
     >
       <div>
-        <div className="zen-mono text-[11px] uppercase text-[color:var(--zen-mute)]">
-          {progress >= 100 ? "Zen mode / lighting the room" : "Zen mode / building your study"}
-        </div>
-        <div className="zen-mono mt-2 text-[64px] leading-none tabular-nums sm:text-[96px]">
-          {String(Math.min(100, Math.round(progress))).padStart(3, "0")}
+        <div className="zen-label !text-[color:var(--zen-blue)]">Zen mode</div>
+        <div className="zen-display mt-3 text-[40px] font-semibold leading-none tracking-[-0.03em] sm:text-[56px]">
+          {progress >= 100 ? "Lighting the room" : "Building your study"}
+          <span className="text-[color:var(--zen-blue)]">.</span>
         </div>
       </div>
-      <div className="mb-3 h-px w-[40vw] bg-[color:var(--zen-line)]">
-        <div
-          className="h-px w-full origin-left bg-[color:var(--zen-cobalt)]"
-          style={{ transform: `scaleX(${Math.min(100, progress) / 100})`, transition: "transform 200ms" }}
-        />
+      <div className="mb-2 flex w-[34vw] items-center gap-4">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-[color:var(--zen-line)]">
+          <div
+            className="h-full w-full origin-left rounded-full bg-[color:var(--zen-blue)]"
+            style={{ transform: `scaleX(${Math.min(100, progress) / 100})`, transition: "transform 200ms" }}
+          />
+        </div>
+        <span className="zen-num w-10 text-right text-[14px] font-semibold text-[color:var(--zen-mute)]">
+          {Math.min(100, Math.round(progress))}%
+        </span>
       </div>
     </div>
   );
 }
 
-const SOUND_NAME: Record<SoundKind, string> = { off: "off", rain: "rain", brown: "brown" };
+const AREAS: Array<[Area, string]> = [
+  ["study", "Downstairs"],
+  ["loft", "Upstairs"],
+  ["terrace", "Terrace"],
+];
+
+const SOUND_NAME: Record<SoundKind, string> = { off: "Sound off", rain: "Rain", brown: "Brown noise" };
 
 /* ------------------------------------------------------------------ studio */
 
@@ -136,14 +153,22 @@ export default function ZenStudio({
   // Models download on first mount, not when the chunk is evaluated: ZenHost
   // prefetches this chunk while the app is idle, and that must stay cheap.
   useState(preloadModels);
+  // Walking needs a keyboard.
+  const touch = useMemo(() => window.matchMedia?.("(pointer: coarse)").matches ?? false, []);
   const [webgl, setWebgl] = useState(() => hasWebGL());
   const [phase, setPhase] = useState<Phase>("loading");
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View>("home");
   const [mode, setMode] = useState<"study" | "blueprint">("study");
+  const [area, setArea] = useState<Area>("study");
   const [hover, setHover] = useState<HotspotId | null>(null);
   const [hudIn, setHudIn] = useState(false);
   const [lampOn, setLampOn] = useState(true);
+  const [time, setTime] = useState<ZenTime>(zenTime);
+  const timeRef = useRef(time);
+  // The reflections are baked for one lighting; they follow the time of day
+  // once a dusk or a dawn has run.
+  const [daylight, setDaylight] = useState(time === "day");
   const snd = useSound();
   const lastSound = useRef<Exclude<SoundKind, "off">>("rain");
   const pointer = useRef(new THREE.Vector2());
@@ -211,9 +236,14 @@ export default function ZenStudio({
   const playEnter = useCallback(() => {
     tl.current?.kill();
     // A parked room comes back exactly as a fresh one would start.
-    Object.assign(anim, createAnim(), { rain: sound.get().kind === "rain" ? 1 : 0 });
+    Object.assign(anim, createAnim(), {
+      rain: sound.get().kind === "rain" ? 1 : 0,
+      day: timeRef.current === "day" ? 1 : 0,
+    });
     setView("home");
     setMode("study");
+    applyPreset("study", false);
+    setArea("study");
     setHover(null);
     setPhase("intro");
     setHudIn(false);
@@ -238,8 +268,9 @@ export default function ZenStudio({
       .to(anim, { pix: 0, duration: 0.9, ease: "power1.in" }, 1.5)
       // 4. HUD, staggered in once the room has settled.
       .call(() => setHudIn(true), [], 2.75);
-    // 3. Lights, one at a time.
-    lightsUp(t, 2.05);
+    // 3. Lights, one at a time. By day the sun is already up, so the room
+    // scans in lit rather than switching on afterwards.
+    lightsUp(t, timeRef.current === "day" ? 0.85 : 2.05);
     tl.current = t;
   }, [anim, lightsUp, reduced]);
 
@@ -296,6 +327,12 @@ export default function ZenStudio({
     [],
   );
 
+  // The reader lowers her paper and faces you while the News station is open.
+  useEffect(() => {
+    desk.setOn(phase === "live" && view === "reader");
+  }, [phase, view]);
+  useEffect(() => () => desk.setOn(false), []);
+
   // Rain outside follows the rain you hear.
   useEffect(() => {
     if (snd.kind !== "off") lastSound.current = snd.kind;
@@ -331,6 +368,22 @@ export default function ZenStudio({
     sound.play(sound.get().kind === "off" ? lastSound.current : "off");
   }, []);
 
+  const toggleTime = useCallback(() => {
+    const next: ZenTime = timeRef.current === "day" ? "night" : "day";
+    timeRef.current = next;
+    setTime(next);
+    setZenTime(next);
+    gsap.killTweensOf(anim, "day");
+    // Swap the baked reflections at the darkest point of the change.
+    if (next === "night") setDaylight(false);
+    gsap.to(anim, {
+      day: next === "day" ? 1 : 0,
+      duration: reduced ? 0.01 : 1.6,
+      ease: "sine.inOut",
+      onComplete: () => setDaylight(next === "day"),
+    });
+  }, [anim, reduced]);
+
   const toggleLamp = useCallback(() => {
     const on = !lampRef.current;
     lampRef.current = on;
@@ -362,6 +415,25 @@ export default function ZenStudio({
 
   const goHome = useCallback(() => setView("home"), []);
 
+  // Free exploration: walking the floors, and flying to a part of the building
+  // (the stair is the way upstairs, so the flight climbs it).
+  const startWalk = useCallback(() => {
+    if (phase !== "live" || mode !== "study") return;
+    enterWalk();
+    setHover(null);
+    setView("walk");
+  }, [phase, mode]);
+  const goArea = useCallback(
+    (next: Area) => {
+      if (phase !== "live" || mode !== "study") return;
+      setArea(next);
+      applyPreset(next);
+      setHover(null);
+      setView("home");
+    },
+    [phase, mode],
+  );
+
   const activate = useCallback(
     (id: HotspotId) => {
       if (isStation(id)) {
@@ -386,12 +458,9 @@ export default function ZenStudio({
             },
           );
           break;
-        case "door":
-          leaveTo();
-          break;
       }
     },
-    [anim, go, leaveTo, toggleLamp],
+    [anim, go, toggleLamp],
   );
 
   const onActivate = useCallback((id: HotspotId) => activate(id), [activate]);
@@ -411,7 +480,16 @@ export default function ZenStudio({
   // back (it never leaves Zen by itself), M is the sound, B the blueprint.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (phase !== "live" || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (phase !== "live") return;
+      // Ctrl + K, the app's search shortcut, opens the directory here.
+      if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "k" || e.key === "K") && mode === "study") {
+        e.preventDefault();
+        e.stopPropagation();
+        directoryIntent.focus = true;
+        go("door");
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       const el = e.target as HTMLElement | null;
       if (e.key === "Escape") {
         if (view !== "home") {
@@ -421,33 +499,64 @@ export default function ZenStudio({
         return;
       }
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable)) return;
-      const st = STATIONS.find((s) => s.key === e.key);
+      if (view === "walk" && (/^[a-z]$/i.test(e.key) || e.key.startsWith("Arrow"))) {
+        // The letters are walking here; the few that are not are handled first.
+        const k = e.key.toLowerCase();
+        if (k === "f") goHome();
+        else if (k === "m") toggleSound();
+        else if (k === "t") toggleTime();
+        if (e.key.startsWith("Arrow")) e.preventDefault();
+        return;
+      }
+      if (e.key === "/" && mode === "study") {
+        e.preventDefault();
+        directoryIntent.focus = true;
+        go("door");
+        return;
+      }
+      const st = stationForKey(e.key);
       if (st && mode === "study") {
         e.preventDefault();
         go(st.id);
+      } else if ((e.key === "f" || e.key === "F") && view === "home" && mode === "study") {
+        startWalk();
+      } else if ((e.key === "r" || e.key === "R") && view === "home" && mode === "study") {
+        goArea("study");
       } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && view !== "home") {
         e.preventDefault();
         step(e.key === "ArrowRight" ? 1 : -1);
       } else if (e.key === "m" || e.key === "M") {
         toggleSound();
+      } else if (e.key === "t" || e.key === "T") {
+        toggleTime();
       } else if ((e.key === "b" || e.key === "B") && view === "home") {
         setModeAnimated(mode === "study" ? "blueprint" : "study");
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [phase, view, mode, go, goHome, step, toggleSound, setModeAnimated]);
+    // Capture, so the app's own Ctrl + K search underneath never opens.
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
+  }, [phase, view, mode, go, goHome, goArea, startWalk, step, toggleSound, toggleTime, setModeAnimated]);
 
+  // The way-back label follows the cursor, so it stays hidden until there is one.
+  const [pointerSeen, setPointerSeen] = useState(false);
   const onPointerMove = useCallback((e: React.PointerEvent) => {
+    if (e.pointerType === "mouse") setPointerSeen(true);
     const w = window.innerWidth;
     const h = window.innerHeight;
     pointer.current.set((e.clientX / w) * 2 - 1, -((e.clientY / h) * 2 - 1));
     const el = back.current;
-    if (el) el.style.transform = `translate3d(${e.clientX + 14}px, ${e.clientY + 16}px, 0)`;
+    if (!el) return;
+    el.style.transform = `translate3d(${e.clientX + 14}px, ${e.clientY + 16}px, 0)`;
+    // Over a panel or the HUD a click does not step back, so say nothing.
+    const overUi = !!(e.target as HTMLElement | null)?.closest?.(".zen-panel, nav, header, footer, button");
+    el.style.visibility = overUi ? "hidden" : "";
   }, []);
 
   const onPointerMissed = useCallback(() => {
-    if (phase === "live" && view !== "home") goHome();
+    // The release of a drag is not a click.
+    if (explore.moved) return;
+    if (phase === "live" && view !== "home" && view !== "walk") goHome();
   }, [phase, view, goHome]);
 
   /* ---- the panel slot ---- */
@@ -457,7 +566,7 @@ export default function ZenStudio({
   // the camera starts moving), so two panels never overlap.
   const [shown, setShown] = useState<StationId | null>(null);
   const [panelIn, setPanelIn] = useState(false);
-  const want = phase === "live" && view !== "home" ? view : null;
+  const want = phase === "live" && view !== "home" && view !== "walk" ? view : null;
   useEffect(() => {
     if (want === shown) {
       if (!want) return;
@@ -469,9 +578,11 @@ export default function ZenStudio({
     return () => window.clearTimeout(id);
   }, [want, shown]);
 
-  const interactive = phase === "live" && view === "home" && mode === "study";
-  const station = view !== "home" ? STATIONS.find((s) => s.id === view) : undefined;
+  const free = view === "home" || view === "walk";
+  const interactive = phase === "live" && free && mode === "study";
+  const station = !free ? STATIONS.find((s) => s.id === view) : undefined;
   const shownSide = shown ? STATIONS.find((s) => s.id === shown)?.side ?? "right" : "right";
+  const hoverKey = hover && isStation(hover) ? STATIONS.find((x) => x.id === hover)?.key : undefined;
   const hoverLabel = hover
     ? hover === "cassette"
       ? snd.kind === "off"
@@ -499,7 +610,7 @@ export default function ZenStudio({
     shownSide === "center"
       ? "pointer-events-none absolute inset-0 flex items-center justify-center"
       : shownSide === "left"
-        ? "pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4 sm:inset-x-auto sm:bottom-auto sm:left-6 sm:top-1/2 sm:-translate-y-1/2 sm:px-0 md:left-[256px] lg:left-[264px]"
+        ? "pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4 sm:inset-x-auto sm:bottom-auto sm:left-6 sm:top-1/2 sm:-translate-y-1/2 sm:px-0 md:left-[76px] lg:left-[84px]"
         : "pointer-events-none absolute inset-x-0 bottom-20 flex justify-center px-4 sm:inset-x-auto sm:bottom-auto sm:right-6 sm:top-1/2 sm:-translate-y-1/2 sm:px-0";
   const slideFrom = shownSide === "left" ? "-16px" : shownSide === "right" ? "16px" : "0px";
   const slotStyle: React.CSSProperties = {
@@ -510,10 +621,14 @@ export default function ZenStudio({
       : "opacity 150ms cubic-bezier(0.3,0,1,1), transform 150ms cubic-bezier(0.3,0,1,1)",
   };
 
+  const zone = station ? ZONES.find((z) => z.id === station.zone)?.title : undefined;
+
   return (
     <LeaveContext.Provider value={leaveTo}>
+      <GoContext.Provider value={go}>
       <div
         className="pf-zen absolute inset-0 select-none overflow-hidden bg-[color:var(--zen-bg)]"
+        data-time={time}
         role="dialog"
         aria-modal="true"
         aria-label="Zen mode study"
@@ -531,8 +646,11 @@ export default function ZenStudio({
               dpr={1}
               frameloop={parked ? "never" : "always"}
               gl={{ antialias: false, alpha: false, stencil: false, powerPreference: "high-performance" }}
-              camera={{ fov: 62, near: 0.05, far: 60, position: INTRO_PATH[0] }}
-              onCreated={({ gl }) => {
+              camera={{ fov: 62, near: 0.05, far: 200, position: INTRO_PATH[0] }}
+              onCreated={(state) => {
+                const { gl } = state;
+                // For poking at the scene from the console while developing.
+                if (import.meta.env.DEV) (window as unknown as { __zen?: unknown }).__zen = state;
                 // Reading every program's info log forces each shader to finish
                 // compiling on the main thread; only worth it while developing.
                 gl.debug.checkShaderErrors = import.meta.env.DEV;
@@ -554,6 +672,7 @@ export default function ZenStudio({
                   onHover={setHover}
                   onActivate={onActivate}
                   onReady={onReady}
+                  daylight={daylight}
                 />
               </Suspense>
             </Canvas>
@@ -563,53 +682,113 @@ export default function ZenStudio({
         {/* Hover frame, traced around the object by the scene each frame. */}
         <div
           ref={frame}
-          className="zen-hatch pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-100"
+          className="zen-frame pointer-events-none absolute left-0 top-0 opacity-0 transition-opacity duration-100"
           aria-hidden
         >
-          <span className="zen-mono absolute -bottom-6 right-0 whitespace-nowrap text-[12px] text-[color:var(--zen-ink)]">
-            [{hoverLabel}]
+          <span className="zen-hover-label absolute -bottom-11 left-1/2 -translate-x-1/2 whitespace-nowrap">
+            {hoverLabel}
+            {hoverKey && <kbd>{hoverKey}</kbd>}
           </span>
         </div>
+
+        {/* Over the reader's head while she is telling the news. */}
+        <OnAirTag />
 
         {/* In a close-up, the cursor carries the way back. */}
         <div
           ref={back}
-          className="zen-mono pointer-events-none absolute left-0 top-0 hidden text-[12px] text-[color:var(--zen-mute)] md:block"
-          style={{ opacity: phase === "live" && view !== "home" && !hover ? 1 : 0, transition: "opacity 160ms" }}
+          className="pointer-events-none absolute left-0 top-0 hidden md:block"
+          style={{ opacity: pointerSeen && phase === "live" && !free && !hover ? 1 : 0, transition: "opacity 160ms" }}
           aria-hidden
         >
-          [Click to go back]
+          <span className="zen-chip">
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Click to go back
+          </span>
         </div>
 
         <Loader visible={loadingVisible} />
 
         {/* HUD */}
-        <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-4 sm:p-6">
-          <div className="pointer-events-auto flex items-baseline gap-3" style={hud(0)}>
-            <span className="text-[20px] font-semibold tracking-tight">pathforge.</span>
-            <span className="zen-mono whitespace-nowrap text-[11px] uppercase text-[color:var(--zen-mute)]">
-              Zen
-              <span className="hidden sm:inline">
-                {station ? ` / ${station.title}` : mode === "blueprint" ? " / Blueprint" : ""}
+        <header className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-3 p-4 sm:p-6">
+          <div className="pointer-events-auto flex min-w-0 items-center gap-3" style={hud(0)}>
+            <div className="zen-chip !h-11 shrink-0 !gap-2.5 !pl-2 !pr-4 !text-[color:var(--zen-ink)]">
+              <img src={pathforgeLogo} alt="" className="h-7 w-7" draggable={false} />
+              <span className="zen-display text-[16px] font-bold tracking-[-0.03em]">pathforge</span>
+              <span className="rounded-full bg-[color:var(--zen-soft)] px-2 py-0.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[color:var(--zen-blue)]">
+                Zen
+              </span>
+            </div>
+            <span className="hidden min-w-0 lg:block">
+              <span className="zen-chip max-w-full truncate">
+              {station ? (
+                <>
+                  <span className="truncate">{zone}</span>
+                  <ChevronRight className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                  <span className="truncate text-[color:var(--zen-ink)]">{station.title}</span>
+                </>
+              ) : mode === "blueprint" ? (
+                "The blueprint"
+              ) : view === "walk" ? (
+                "Walking"
+              ) : area === "loft" ? (
+                "Upstairs"
+              ) : area === "terrace" ? (
+                "The terrace"
+              ) : (
+                "Your study"
+              )}
               </span>
             </span>
           </div>
-          <div className="pointer-events-auto flex items-center gap-1 sm:gap-2" style={hud(70)}>
-            <span className="zen-mono hidden px-2 text-[12px] tabular-nums text-[color:var(--zen-mute)] sm:inline">
-              <Clock />
+          <div className="pointer-events-auto flex items-center gap-1.5 sm:gap-2" style={hud(70)}>
+            <span className="hidden lg:block">
+              <span className="zen-chip zen-num !h-9">
+                <Clock />
+              </span>
             </span>
-            <button type="button" className="zen-btn" onClick={toggleSound} aria-pressed={snd.kind !== "off"}>
-              [Sound: {SOUND_NAME[snd.kind]}]
+            <button
+              type="button"
+              className="zen-btn !h-9 max-sm:!hidden"
+              onClick={() => {
+                directoryIntent.focus = true;
+                if (mode === "study") go("door");
+              }}
+              disabled={phase !== "live" || mode !== "study"}
+            >
+              <Search aria-hidden />
+              Go anywhere
+              <kbd>Ctrl K</kbd>
             </button>
-            <button type="button" className="zen-btn" onClick={() => leaveTo()} aria-label="Leave Zen mode">
-              [Exit Zen]
+            <button
+              type="button"
+              className="zen-btn zen-btn-icon !h-9 !w-9"
+              onClick={toggleTime}
+              aria-label={time === "day" ? "Switch to night" : "Switch to day"}
+              title={time === "day" ? "Night (T)" : "Day (T)"}
+            >
+              {time === "day" ? <Moon aria-hidden /> : <Sun aria-hidden />}
+            </button>
+            <button
+              type="button"
+              className="zen-btn zen-btn-icon !h-9 !w-9"
+              onClick={toggleSound}
+              aria-pressed={snd.kind !== "off"}
+              aria-label={snd.kind === "off" ? "Turn sound on" : `${SOUND_NAME[snd.kind]}, turn off`}
+              title={`${SOUND_NAME[snd.kind]} (M)`}
+            >
+              {snd.kind === "off" ? <VolumeX aria-hidden /> : <Volume2 aria-hidden />}
+            </button>
+            <button type="button" className="zen-btn !h-9" onClick={() => leaveTo()} aria-label="Leave Zen mode">
+              <X aria-hidden />
+              <span className="hidden sm:inline">Exit Zen</span>
             </button>
           </div>
         </header>
 
         {webgl && (
           <StationIndex
-            active={view !== "home" ? view : null}
+            active={station?.id ?? null}
             visible={indexVisible}
             stripVisible={indexVisible && view === "home"}
             onGo={go}
@@ -635,61 +814,85 @@ export default function ZenStudio({
         {/* Bottom: the mode toggle (their HUMAN / MACHINE) and the way back. */}
         {webgl && (
           <footer className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between gap-3 p-4 sm:p-6">
-            <div className="zen-mono hidden text-[11px] text-[color:var(--zen-mute)] sm:block" style={hud(140)}>
-              {view === "home"
-                ? mode === "study"
-                  ? "Hover the room, or press 1 to 0."
-                  : "B to switch back."
-                : "Esc steps back. Arrows for the next station."}
+            <div className="hidden max-w-[34vw] lg:block" style={hud(140)}>
+              <span className="zen-chip">
+                {view === "home"
+                  ? mode === "study"
+                    ? "Drag to look round, scroll to zoom. Hover anything, or press its key."
+                    : "B to switch back to the study."
+                  : view === "walk"
+                    ? "W A S D to walk, drag to look, Shift to run. Esc to stop."
+                    : "Esc steps back. Arrows for the next station."}
+              </span>
             </div>
             <div className="pointer-events-auto absolute bottom-4 left-1/2 -translate-x-1/2 sm:bottom-6">
               <div style={hud(0)}>
                 {view === "home" ? (
-                  <div className="zen-mono flex items-center gap-1 rounded-full border border-[color:var(--zen-line)] bg-[color:var(--zen-panel)] px-2 py-1 text-[13px]">
-                    {(["study", "blueprint"] as const).map((m) => (
-                      <button
-                        key={m}
-                        type="button"
-                        aria-pressed={mode === m}
-                        onClick={() => setModeAnimated(m)}
-                        className="rounded-full px-3 py-1.5 uppercase tracking-[0.04em] transition-colors duration-100"
-                        style={{ color: mode === m ? "var(--zen-cobalt)" : "var(--zen-ink)" }}
-                      >
-                        {m}
-                      </button>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    <div className="zen-toolbar" role="group" aria-label="Places">
+                      {AREAS.map(([id, label]) => (
+                        <button
+                          key={id}
+                          type="button"
+                          aria-pressed={area === id}
+                          disabled={mode !== "study"}
+                          onClick={() => goArea(id)}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                      {!touch && (
+                        <button type="button" disabled={mode !== "study"} onClick={startWalk} aria-keyshortcuts="F">
+                          <Footprints aria-hidden />
+                          Walk
+                        </button>
+                      )}
+                    </div>
+                    <div className="max-sm:hidden">
+                      <div className="zen-toolbar" role="group" aria-label="View">
+                        {(["study", "blueprint"] as const).map((m) => (
+                          <button key={m} type="button" aria-pressed={mode === m} onClick={() => setModeAnimated(m)}>
+                            {m === "study" ? "Lit" : "Blueprint"}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : view === "walk" ? (
+                  <div className="zen-toolbar">
+                    <button type="button" onClick={goHome}>
+                      Stop walking
+                    </button>
                   </div>
                 ) : (
-                  <div className="zen-mono flex items-center rounded-full border border-[color:var(--zen-line)] bg-[color:var(--zen-panel)] text-[13px]">
-                    <button type="button" className="px-3 py-2 transition-colors duration-100 hover:text-[color:var(--zen-cobalt)]" onClick={() => step(-1)} aria-label="Previous station">
-                      &lt;
+                  <div className="zen-toolbar">
+                    <button type="button" className="!px-2.5" onClick={() => step(-1)} aria-label="Previous station">
+                      <ChevronLeft aria-hidden />
                     </button>
-                    <button
-                      type="button"
-                      onClick={goHome}
-                      className="whitespace-nowrap border-x border-[color:var(--zen-line)] px-3 py-2 uppercase tracking-[0.04em] transition-colors duration-100 hover:text-[color:var(--zen-cobalt)] sm:px-4"
-                    >
+                    <button type="button" onClick={goHome}>
                       Back to the room
                     </button>
-                    <button type="button" className="px-3 py-2 transition-colors duration-100 hover:text-[color:var(--zen-cobalt)]" onClick={() => step(1)} aria-label="Next station">
-                      &gt;
+                    <button type="button" className="!px-2.5" onClick={() => step(1)} aria-label="Next station">
+                      <ChevronRight aria-hidden />
                     </button>
                   </div>
                 )}
               </div>
             </div>
-            <div
-              className="zen-mono hidden text-right text-[11px] text-[color:var(--zen-mute)] sm:block"
-              style={hud(210)}
-            >
-              M sound / Ctrl + . to leave
+            <div className="hidden lg:block" style={hud(210)}>
+              <span className="zen-chip !gap-3">
+                <span className="flex items-center gap-1.5"><kbd>F</kbd> walk</span>
+                <span className="flex items-center gap-1.5"><kbd>M</kbd> sound</span>
+                <span className="flex items-center gap-1.5"><kbd>T</kbd> {time === "day" ? "night" : "day"}</span>
+                <span className="flex items-center gap-1.5"><kbd>B</kbd> blueprint</span>
+              </span>
             </div>
           </footer>
         )}
 
         {/* No WebGL: the same stations, without the room. */}
         {!webgl && (
-          <div className="absolute inset-0 overflow-y-auto p-4 pt-20">
+          <div className="absolute inset-0 overflow-y-auto p-4 pt-24">
             <div className="mx-auto grid max-w-[980px] items-start justify-items-center gap-4 md:grid-cols-2">
               {STATIONS.filter((s) => s.id !== "window").map((s) => (
                 <StationPanel key={s.id} id={s.id} />
@@ -698,8 +901,29 @@ export default function ZenStudio({
           </div>
         )}
       </div>
+      </GoContext.Provider>
     </LeaveContext.Provider>
   );
 }
 
 function noop() {}
+
+/** Rides over the reader's head (placed by her frame loop) while she has the floor. */
+function OnAirTag() {
+  const { talking, index } = useDesk();
+  return (
+    <div
+      ref={(el) => {
+        deskMotion.tag = el;
+      }}
+      className="zen-onair pointer-events-none absolute left-0 top-0 opacity-0"
+      aria-hidden
+    >
+      <span className="zen-onair-inner">
+        <i data-live={talking || undefined} />
+        {talking ? "On air" : "The news desk"}
+        <b>{index + 1}</b>
+      </span>
+    </div>
+  );
+}

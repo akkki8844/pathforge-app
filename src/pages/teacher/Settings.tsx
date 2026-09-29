@@ -240,7 +240,7 @@ export default function CounsellorSettings() {
   return (
     <TeacherLayout>
       <Seo
-        title="Settings"
+        title="Counsellor Settings"
         description="Your profile and school link."
         path="/teacher/settings"
         noindex

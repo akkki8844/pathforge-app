@@ -187,7 +187,7 @@ export default function TeacherEssayReview() {
   return (
     <TeacherLayout>
       <Seo
-        title="Essays"
+        title="Counsellor Essays"
         description="Drafts waiting on your read."
         path="/teacher/essays"
         noindex

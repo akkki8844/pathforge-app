@@ -63,7 +63,7 @@ export default function TeacherAnalytics() {
   return (
     <TeacherLayout>
       <Seo
-        title="Analytics"
+        title="Counsellor Analytics"
         description="Score spread, risk and engagement across your cohort."
         path="/teacher/analytics"
         noindex

@@ -9,7 +9,9 @@ import type { TimerSnapshot } from "./focus";
  * page already has, and costs no font files inside the 3D pipeline.
  */
 
-export const SANS = '"Geist Variable", "Plus Jakarta Sans", system-ui, sans-serif';
+export const SANS = '"Sora", "Plus Jakarta Sans", system-ui, sans-serif';
+/** Body text on painted things: the app's own text face. */
+export const TEXT = '"Plus Jakarta Sans", system-ui, sans-serif';
 export const MONO = '"Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace';
 
 export function makeCanvasTexture(w: number, h: number) {
@@ -48,6 +50,29 @@ export function paintNeon(ctx: CanvasRenderingContext2D, w: number, h: number) {
   ctx.strokeStyle = "rgba(235,241,255,1)";
   ctx.lineWidth = h * 0.009;
   ctx.strokeText("pathforge.", x, y);
+}
+
+/**
+ * The wordmark painted on the back wall by day, the way a studio signs its
+ * own wall: the brand's blue mark and the name in ink.
+ */
+export function paintWordmark(ctx: CanvasRenderingContext2D, w: number, h: number, logo?: HTMLImageElement) {
+  ctx.clearRect(0, 0, w, h);
+  ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.round(h * 0.5)}px ${SANS}`;
+  const text = "pathforge";
+  const tw = ctx.measureText(text).width;
+  const mark = logo ? h * 0.78 : 0;
+  const gap = logo ? h * 0.08 : 0;
+  const x0 = (w - (mark + gap + tw)) / 2;
+  const y = h / 2;
+  // The app's own mark, as it sits in the navigation bar.
+  if (logo) ctx.drawImage(logo, x0, y - mark / 2, mark, mark);
+  ctx.fillStyle = "#1a2238";
+  ctx.textAlign = "left";
+  ctx.fillText(text, x0 + mark + gap, y + h * 0.02);
+  ctx.fillStyle = "#4465d8";
+  ctx.fillText(".", x0 + mark + gap + tw, y + h * 0.02);
 }
 
 /* ------------------------------------------------------------------- sky -- */
@@ -120,6 +145,91 @@ export function paintSky(ctx: CanvasRenderingContext2D, w: number, h: number) {
       x += bw + r() * 6;
     }
   }
+}
+
+/**
+ * A clear afternoon over a college town: pale sky, a few slow clouds, and
+ * the campus on the skyline (a clock tower, a dome, trees), so the window
+ * looks out on where all this is heading.
+ */
+export function paintDaySky(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const r = rand(19);
+  const sky = ctx.createLinearGradient(0, 0, 0, h * 0.8);
+  sky.addColorStop(0, "#8fb4ec");
+  sky.addColorStop(0.55, "#c4d8f4");
+  sky.addColorStop(1, "#eef3fa");
+  ctx.fillStyle = sky;
+  ctx.fillRect(0, 0, w, h);
+  // Clouds: clusters of soft white ellipses, flattened underneath.
+  for (let c = 0; c < 9; c++) {
+    const cx = r() * w;
+    const cy = h * (0.08 + r() * 0.36);
+    const s = w * (0.03 + r() * 0.05);
+    for (let k = 0; k < 9; k++) {
+      const ex = cx + (r() - 0.5) * s * 3.2;
+      const ey = cy + (r() - 0.6) * s * 0.7;
+      const rad = s * (0.45 + r() * 0.6);
+      const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, rad);
+      g.addColorStop(0, "rgba(255,255,255,0.75)");
+      g.addColorStop(1, "rgba(255,255,255,0)");
+      ctx.fillStyle = g;
+      ctx.fillRect(ex - rad, ey - rad, rad * 2, rad * 2);
+    }
+  }
+  // Far hills, hazy.
+  ctx.fillStyle = "#b9c9dc";
+  ctx.beginPath();
+  ctx.moveTo(0, h * 0.74);
+  for (let x = 0; x <= w; x += 32) ctx.lineTo(x, h * (0.7 - Math.sin(x / w * 5.1 + 1) * 0.025 - r() * 0.006));
+  ctx.lineTo(w, h);
+  ctx.lineTo(0, h);
+  ctx.fill();
+  // The campus: low halls, a clock tower and a dome, in soft blue-grey.
+  const base = h * 0.8;
+  ctx.fillStyle = "#9fb0c6";
+  let x = -20;
+  while (x < w) {
+    const bw = 70 + r() * 160;
+    const bh = h * (0.05 + r() * 0.07);
+    ctx.fillRect(x, base - bh, bw, h - base + bh);
+    // Pitched roofs on some.
+    if (r() < 0.45) {
+      ctx.beginPath();
+      ctx.moveTo(x, base - bh);
+      ctx.lineTo(x + bw / 2, base - bh - h * 0.03);
+      ctx.lineTo(x + bw, base - bh);
+      ctx.fill();
+    }
+    x += bw + 8 + r() * 40;
+  }
+  const tx = w * 0.62;
+  ctx.fillRect(tx, base - h * 0.27, w * 0.028, h * 0.27);
+  ctx.beginPath();
+  ctx.moveTo(tx - 6, base - h * 0.27);
+  ctx.lineTo(tx + w * 0.014, base - h * 0.34);
+  ctx.lineTo(tx + w * 0.028 + 6, base - h * 0.27);
+  ctx.fill();
+  ctx.fillStyle = "#eef3fa";
+  ctx.beginPath();
+  ctx.arc(tx + w * 0.014, base - h * 0.23, w * 0.008, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = "#9fb0c6";
+  const dx = w * 0.3;
+  ctx.fillRect(dx - w * 0.05, base - h * 0.1, w * 0.1, h * 0.1);
+  ctx.beginPath();
+  ctx.arc(dx, base - h * 0.1, w * 0.035, Math.PI, 0);
+  ctx.fill();
+  // Trees in front: rounded crowns in muted green.
+  for (let i = 0; i < 70; i++) {
+    const cx = r() * w;
+    const cr = h * (0.025 + r() * 0.035);
+    ctx.fillStyle = r() < 0.5 ? "#7f9c86" : "#8fab93";
+    ctx.beginPath();
+    ctx.arc(cx, base + h * 0.02 - r() * h * 0.02, cr, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "#86a28c";
+  ctx.fillRect(0, base + h * 0.03, w, h);
 }
 
 /* ---------------------------------------------------------------- laptop -- */

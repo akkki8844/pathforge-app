@@ -1,29 +1,39 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
+import { List } from "lucide-react";
 import { mmss, useFocusTimer } from "./focus";
 import { usePlan } from "./plan";
 import { useSound } from "./audio";
 import { daysUntil, useLive } from "./live";
-import { STATIONS, type HotspotId, type StationId } from "./stage";
+import { STATIONS, ZONES, type HotspotId, type StationId } from "./stage";
 
 /*
- * The index: the dashboard at a glance, down the left edge of the room.
+ * The index: the whole app at a glance, down the left edge of the room.
  *
- * One line per station, each with the one number that matters there, so the
- * room answers "how am I doing" without a click. Hovering a line traces its
- * object in the room; clicking it (or its number key) flies the camera there.
- * On a phone it becomes a strip along the bottom.
+ * Grouped by the part of the room each station is in, one line per station
+ * with the one number that matters there, so the room answers "how am I
+ * doing" without a click. Hovering a line traces its object in the room;
+ * clicking it (or its key) flies the camera there.
+ *
+ * In a close-up it folds to a rail of keys, so the object and its panel have
+ * the screen, and opens again while the pointer is on it. On a phone it
+ * becomes a strip along the bottom.
  */
 
 function useMeta(): Record<StationId, string> {
   const t = useFocusTimer();
   const items = usePlan();
   const s = useSound();
-  const { ready, d, deadlines, classesToday, hasTimetable, week } = useLive();
+  const { ready, d, deadlines, classesToday, hasTimetable, week, news, shelf, comms } = useLive();
   const filled = items.filter((i) => i.text.trim());
   const next = deadlines[0];
+  const fresh = news.filter((n) => n.published_at && Date.now() - new Date(n.published_at).getTime() < 86_400_000).length;
+  const waiting = comms.chats + comms.teams + comms.objectives;
   return {
     laptop: t.state === "running" || t.state === "paused" ? mmss(t.remaining) : t.state === "done" ? "Done" : `${t.minutes} min`,
     board: filled.length ? `${filled.filter((i) => i.done).length}/${filled.length}` : "Empty",
+    notebook: ready && d ? `${d.essays.started} started` : "",
+    phone: waiting ? `${waiting} new` : ready ? "Clear" : "",
+    compass: ready && d ? `Lv ${d.currentLevel}` : "",
     clock: !ready
       ? ""
       : classesToday.length
@@ -33,13 +43,15 @@ function useMeta(): Record<StationId, string> {
           : hasTimetable
             ? "Free day"
             : "",
+    calendar: week && !week.loading ? (week.current ? "Filed" : "Due") : "",
     pinboard: ready && d ? (d.colleges.length ? `${d.colleges.length} schools` : "None yet") : "",
-    compass: ready && d ? `${Math.round(d.overall)} / 100` : "",
-    shelves: "",
-    reader: "",
-    notebook: week && !week.loading ? (week.current ? "Filed" : "Due") : "",
+    shelves: shelf.length ? `${shelf.length}${shelf.length >= 8 ? "+" : ""}` : "",
+    books: "",
+    trophy: ready && d ? `${d.portfolio.total}` : "",
+    reader: fresh ? `${fresh} new` : news.length ? `${news.length}` : "",
     cassette: s.kind === "off" ? "Off" : s.kind === "rain" ? "Rain" : "Brown",
-    window: "4-4-4-4",
+    window: "",
+    door: "",
   };
 }
 
@@ -68,61 +80,116 @@ export const StationIndex = memo(function StationIndex({
   onHover: (id: HotspotId | null) => void;
 }) {
   const meta = useMeta();
-  // Folded, the index is just its header: the room with nothing over it.
-  const [folded, setFolded] = useState(readFolded);
-  const fold = () =>
-    setFolded((f) => {
+  // The full list is a sheet the rail opens: shown once as the HUD arrives so
+  // it is found, then out of the way. The rail itself is only dots.
+  const [open, setOpen] = useState(false);
+  const peeked = useRef(false);
+  useEffect(() => {
+    if (!visible || peeked.current || readFolded()) return;
+    peeked.current = true;
+    setOpen(true);
+    const id = window.setTimeout(() => setOpen(false), 3200);
+    return () => window.clearTimeout(id);
+  }, [visible]);
+  const toggle = () => {
+    setOpen((o) => {
       try {
-        localStorage.setItem(FOLD_KEY, f ? "0" : "1");
+        localStorage.setItem(FOLD_KEY, "1");
       } catch {
-        /* private mode: remembered for this visit only */
+        /* private mode */
       }
-      return !f;
+      return !o;
     });
+  };
+  const compact = active !== null;
+  const sheet = open && !compact;
+  let n = 0;
   return (
     <>
       <nav
         aria-label="Stations"
-        className="zen-index pointer-events-auto absolute left-4 top-1/2 hidden w-[224px] -translate-y-1/2 md:block lg:left-6"
+        className="zen-rail pointer-events-none absolute left-3 top-1/2 hidden -translate-y-1/2 md:block lg:left-5"
         data-in={visible || undefined}
         onPointerLeave={() => onHover(null)}
       >
-        <div
-          className="zen-mono flex items-center justify-between px-3 py-1.5 text-[11px] uppercase text-[color:var(--zen-mute)]"
-          style={{ borderBottom: folded ? "0" : "1px solid var(--zen-line)" }}
-        >
-          <span>Stations{folded ? "" : " / keys 1-0"}</span>
-          <button type="button" className="zen-btn -mr-1.5 text-[11px]" onClick={fold} aria-expanded={!folded}>
-            [{folded ? "Show" : "Hide"}]
+        <div className="zen-rail-track pointer-events-auto">
+          <button
+            type="button"
+            className="zen-rail-toggle"
+            aria-expanded={sheet}
+            aria-label={sheet ? "Hide the list of places" : "Show the list of places"}
+            onClick={toggle}
+          >
+            <List aria-hidden />
           </button>
+          {ZONES.map((z) => (
+            <div key={z.id} className="zen-rail-zone" role="group" aria-label={z.title}>
+              {STATIONS.filter((s) => s.zone === z.id).map((s) => {
+                const on = active === s.id;
+                const delay = n++ * 24;
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    aria-current={on || undefined}
+                    aria-label={`${s.title}${meta[s.id] ? `, ${meta[s.id]}` : ""}`}
+                    aria-keyshortcuts={s.key}
+                    className="zen-dot"
+                    style={{ transitionDelay: visible ? `${delay}ms` : "0ms" }}
+                    onClick={() => onGo(s.id)}
+                    onPointerEnter={() => !compact && onHover(s.id)}
+                    onFocus={() => !compact && onHover(s.id)}
+                    onBlur={() => onHover(null)}
+                  >
+                    <span className="zen-dot-mark" />
+                    <span className="zen-dot-label">
+                      {s.title}
+                      {meta[s.id] && <em>{meta[s.id]}</em>}
+                      <kbd>{s.key}</kbd>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </div>
-        <ol className="px-3 py-1.5" hidden={folded}>
-          {STATIONS.map((s, i) => {
-            const on = active === s.id;
-            return (
-              <li key={s.id} style={{ transitionDelay: visible ? `${i * 28}ms` : "0ms" }}>
-                <button
-                  type="button"
-                  aria-current={on || undefined}
-                  onClick={() => onGo(s.id)}
-                  onPointerEnter={() => onHover(s.id)}
-                  onFocus={() => onHover(s.id)}
-                  onBlur={() => onHover(null)}
-                  className="zen-index-row zen-mono flex w-full items-baseline gap-3 py-[5px] text-left text-[12px]"
-                >
-                  <span className="w-4 shrink-0 tabular-nums text-[color:var(--zen-mute)]">{s.key}</span>
-                  <span className="zen-index-name shrink-0">{s.title}</span>
-                  <span className="zen-index-rule min-w-2 flex-1" aria-hidden />
-                  <span className="shrink-0 tabular-nums text-[color:var(--zen-mute)]">{meta[s.id]}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ol>
+        <div className="zen-rail-sheet zen-panel pointer-events-none" data-open={sheet || undefined} aria-hidden={!sheet}>
+          <div className="zen-index-head">
+            <strong>Your study</strong>
+            <span className="zen-label">Pick a place</span>
+          </div>
+          <div className="pb-2 pointer-events-auto">
+            {ZONES.map((z) => (
+              <div key={z.id}>
+                <div className="zen-index-zone">{z.title}</div>
+                <ol>
+                  {STATIONS.filter((s) => s.zone === z.id).map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        tabIndex={sheet ? 0 : -1}
+                        aria-current={active === s.id || undefined}
+                        onClick={() => onGo(s.id)}
+                        onPointerEnter={() => onHover(s.id)}
+                        className="zen-index-row w-full text-left"
+                      >
+                        <span className="zen-index-inner">
+                          <span className="zen-key">{s.key}</span>
+                          <span className="zen-index-name shrink-0">{s.title}</span>
+                          <span className="zen-index-meta shrink-0">{meta[s.id]}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            ))}
+          </div>
+        </div>
       </nav>
       <nav
         aria-label="Stations"
-        className="zen-strip pointer-events-auto absolute inset-x-0 bottom-[72px] flex gap-1 overflow-x-auto px-4 md:hidden"
+        className="zen-strip pointer-events-auto absolute inset-x-0 bottom-[76px] flex gap-1.5 overflow-x-auto px-4 md:hidden"
         data-in={stripVisible || undefined}
       >
         {STATIONS.map((s) => (
@@ -131,10 +198,10 @@ export const StationIndex = memo(function StationIndex({
             type="button"
             aria-current={active === s.id || undefined}
             onClick={() => onGo(s.id)}
-            className="zen-mono shrink-0 whitespace-nowrap border border-[color:var(--zen-line)] bg-[color:var(--zen-panel)] px-3 py-2 text-[12px]"
+            className="zen-btn shrink-0"
           >
             {s.title}
-            {meta[s.id] && <span className="ml-2 text-[color:var(--zen-mute)]">{meta[s.id]}</span>}
+            {meta[s.id] && <span className="font-medium text-[color:var(--zen-mute)]">{meta[s.id]}</span>}
           </button>
         ))}
       </nav>

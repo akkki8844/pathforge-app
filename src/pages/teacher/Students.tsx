@@ -128,7 +128,7 @@ export default function TeacherStudents() {
   return (
     <TeacherLayout>
       <Seo
-        title="Students"
+        title="Counsellor Students"
         description="Every student linked to you."
         path="/teacher/students"
         noindex

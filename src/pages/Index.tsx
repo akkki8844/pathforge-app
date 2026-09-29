@@ -161,7 +161,7 @@ export default function Index() {
       <main id="atlas-main">
         <section className="atlas-hero" aria-labelledby="atlas-title" ref={heroRef}>
           <figure className="atlas-hero-photo" aria-hidden="true">
-            <img src={heroCampus} alt="" width={1600} height={1100} decoding="async" {...({ fetchpriority: "high" } as Record<string, string>)} />
+            <img src={heroCampus} alt="Sunlit university campus with historic academic buildings and a green quad" width={1600} height={1100} decoding="async" {...({ fetchpriority: "high" } as Record<string, string>)} />
           </figure>
 
           <FallingLeaves />

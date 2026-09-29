@@ -10,13 +10,16 @@ import { plan } from "./plan";
 import type { Anim } from "./anim";
 
 import { MODEL_DIR as M } from "./models";
+import { Library } from "./Library";
+import { patchWind } from "./wind";
+import { Phone } from "./Objects";
 
-function useModel(name: string) {
+export function useModel(name: string) {
   return useGLTF(`${M}${name}.glb`, false, true).scene;
 }
 
 /** Sits a model on its footprint: y is where its lowest point lands. */
-function Placed({
+export function Placed({
   object,
   pos,
   rot = 0,
@@ -35,7 +38,7 @@ function Placed({
   );
 }
 
-function findByMaterial(root: THREE.Object3D, name: string) {
+export function findByMaterial(root: THREE.Object3D, name: string) {
   let hit: THREE.Mesh | null = null;
   root.traverse((o) => {
     const m = o as THREE.Mesh;
@@ -68,7 +71,7 @@ function planarUVs(geometry: THREE.BufferGeometry) {
   geometry.setAttribute("uv", new THREE.BufferAttribute(uv, 2));
 }
 
-function noCast(root: THREE.Object3D) {
+export function noCast(root: THREE.Object3D) {
   root.traverse((o) => {
     o.userData.pfNoCast = true;
   });
@@ -358,35 +361,6 @@ function WallClock({ anim }: { anim: Anim }) {
   return <primitive object={scene} position={PLACE.clock.pos} userData={{ pfDynamic: true }} />;
 }
 
-/* --------------------------------------------------------------- shelves -- */
-
-const SHELF_BOOKS: Array<{ pos: Vec3; rot?: number }> = [
-  { pos: [-0.98, 0.735, -0.02] },
-  { pos: [0.08, 1.2, -0.02] },
-  { pos: [-0.98, 1.665, -0.02] },
-  { pos: [-0.42, 1.665, -0.02] },
-  { pos: [0.66, 0.735, -0.02] },
-];
-
-function Shelves() {
-  const shelves = useModel("steel_frame_shelves_03");
-  const books = useModel("book_encyclopedia_set_01");
-  const bust = useModel("marble_bust_01");
-  const plant = useModel("potted_plant_04");
-  const copies = useMemo(() => SHELF_BOOKS.map(() => books.clone(true)), [books]);
-  const plantCopy = useMemo(() => plant.clone(true), [plant]);
-  return (
-    <group position={PLACE.shelves.pos} rotation-y={PLACE.shelves.rot}>
-      <primitive object={shelves} />
-      {copies.map((b, i) => (
-        <primitive key={i} object={b} position={SHELF_BOOKS[i].pos} rotation-y={SHELF_BOOKS[i].rot ?? 0} />
-      ))}
-      <primitive object={bust} position={[-0.72, 2.312, 0]} rotation-y={0.35} />
-      <primitive object={plantCopy} position={[0.92, 1.2, 0]} />
-    </group>
-  );
-}
-
 /* ------------------------------------------------------------------- cat -- */
 
 function Cat({ anim }: { anim: Anim }) {
@@ -452,6 +426,15 @@ export const Props = memo(function Props({ anim }: { anim: Anim }) {
   const deskPlant = useModel("potted_plant_04");
   const floorPlant = useModel("potted_plant_02");
   const armchair = useModel("modern_arm_chair_01");
+  // The big plant's leaves sway. Its clones (upstairs, on the terrace) share
+  // the material, so they all do; this runs before the reveal patch is applied.
+  useMemo(() => {
+    floorPlant.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      for (const x of Array.isArray(m.material) ? m.material : [m.material]) if (/leaves/.test(x.name)) patchWind(x, 0.3, 0.7, 0.04);
+    });
+  }, [floorPlant]);
 
   return (
     <group>
@@ -466,12 +449,13 @@ export const Props = memo(function Props({ anim }: { anim: Anim }) {
       <Placed object={deskPlant} pos={PLACE.deskPlant.pos} rot={PLACE.deskPlant.rot} />
       <Placed object={floorPlant} pos={PLACE.floorPlant.pos} rot={PLACE.floorPlant.rot} scale={1.3} />
       <Placed object={armchair} pos={PLACE.armchair.pos} rot={PLACE.armchair.rot} />
-      <Shelves />
+      <Library anim={anim} />
       <HangingLamp anim={anim} />
       <Cat anim={anim} />
       <Chalkboard />
       <WallClock anim={anim} />
       <Mug />
+      <Phone anim={anim} />
     </group>
   );
 });

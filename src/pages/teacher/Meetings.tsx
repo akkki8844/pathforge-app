@@ -129,7 +129,7 @@ export default function TeacherMeetings() {
   return (
     <TeacherLayout>
       <Seo
-        title="Meetings"
+        title="Counsellor Meetings"
         description="Sessions booked and logged with your students."
         path="/teacher/meetings"
         noindex

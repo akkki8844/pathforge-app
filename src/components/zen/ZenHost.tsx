@@ -1,12 +1,10 @@
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useZenMode } from "@/lib/zen";
+import { useZenMode, ZEN_GROUND, zenTime } from "@/lib/zen";
 
 // The room (three.js, models, textures) is only fetched when Zen is used.
 const loadStudio = () => import("./ZenStudio");
 const ZenStudio = lazy(loadStudio);
-
-const CURTAIN = "#040509";
 
 /**
  * Shown while the study's code is still downloading, so entering Zen never
@@ -14,17 +12,23 @@ const CURTAIN = "#040509";
  * over as soon as the chunk arrives.
  */
 function StudioFallback() {
+  const day = zenTime() === "day";
   return (
     <div
-      className="absolute inset-0 flex items-end p-4 sm:p-8"
-      style={{ color: "#eef1f8", fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace" }}
+      className="absolute inset-0 flex items-end p-5 sm:p-10"
+      style={{ color: day ? "#1a2238" : "#eef1f8", fontFamily: '"Sora", "Plus Jakarta Sans", system-ui, sans-serif' }}
       role="status"
     >
       <div>
-        <div className="text-[11px] uppercase" style={{ color: "rgba(238, 241, 248, 0.56)" }}>
-          Zen mode / building your study
+        <div
+          className="text-[11px] font-semibold uppercase tracking-[0.14em]"
+          style={{ color: day ? "#4465d8" : "#8ea4ff" }}
+        >
+          Zen mode
         </div>
-        <div className="mt-2 text-[64px] leading-none tabular-nums sm:text-[96px]">000</div>
+        <div className="mt-3 text-[40px] font-semibold leading-none tracking-[-0.03em] sm:text-[56px]">
+          Building your study<span style={{ color: day ? "#4465d8" : "#8ea4ff" }}>.</span>
+        </div>
       </div>
     </div>
   );
@@ -135,7 +139,7 @@ export function ZenHost() {
     <div
       ref={curtain}
       className="pf-zen-curtain fixed inset-0 z-[2147482999] overflow-hidden"
-      style={{ background: CURTAIN, clipPath: "inset(100% 0 0 0)", display: parked ? "none" : undefined }}
+      style={{ background: ZEN_GROUND[zenTime()], clipPath: "inset(100% 0 0 0)", display: parked ? "none" : undefined }}
       aria-hidden={parked || undefined}
     >
       <Suspense fallback={<StudioFallback />}>

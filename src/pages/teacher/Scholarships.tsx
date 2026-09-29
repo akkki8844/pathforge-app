@@ -68,7 +68,7 @@ export default function TeacherScholarships() {
   return (
     <TeacherLayout>
       <Seo
-        title="Scholarships"
+        title="Counsellor Scholarships"
         description="Awards to point students at."
         path="/teacher/scholarships"
         noindex
