@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { Navbar } from "./Navbar";
 import { GuestNavbar } from "./GuestNavbar";
@@ -14,6 +14,7 @@ import { AuroraBackdrop } from "@/components/visual/AuroraBackdrop";
 import { UpgradeCelebration } from "@/components/UpgradeCelebration";
 import { useAuth } from "@/contexts/AuthContext";
 import { useZenMode } from "@/lib/zen";
+import { PageSkeleton } from "@/components/PageSkeletons";
 
 interface LayoutProps {
   children: ReactNode;
@@ -70,7 +71,12 @@ export function Layout({ children }: LayoutProps) {
         {!useGuestNav && !zen && <UsageLimitBanner />}
         {!useGuestNav && !zen && <GuestModeBanner />}
         <main className="flex-1 min-w-0">
-          <PageTransition>{children}</PageTransition>
+          {/* Catches the page's lazy chunk here, below the navbar, so moving
+              between pages keeps the bar in place and only the page area
+              shows its skeleton. */}
+          <Suspense fallback={<PageSkeleton pathname={location.pathname} />}>
+            <PageTransition>{children}</PageTransition>
+          </Suspense>
         </main>
         {showFooter && <Footer />}
         {user && !zen && <FeedbackWidget />}

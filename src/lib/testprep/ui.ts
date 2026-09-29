@@ -133,3 +133,24 @@ export function masteryColor(m: number | null): string {
   if (m >= 0.55) return "hsl(var(--bb-blue) / 0.6)";
   return "hsl(38 92% 50%)";
 }
+
+/**
+ * Which conductor's palette a test's pages paint with.
+ *
+ * Every component in the section reads the same `--bb-*`/`--primary`-family
+ * variable names (see `index.css`); this is the one place that decides which
+ * scope class supplies them for a given test, so a new test gets its own
+ * colours by adding one case here and one CSS block, not by touching every
+ * file that renders a toolbar or a rule.
+ */
+export function themeScope(testId: string | undefined): string {
+  switch (testId) {
+    case "act":
+    case "preact":
+      return "act-scheme";
+    case "clt":
+      return "clt-scheme";
+    default:
+      return "bluebook";
+  }
+}

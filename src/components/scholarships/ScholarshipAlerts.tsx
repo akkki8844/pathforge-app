@@ -93,7 +93,7 @@ export function ScholarshipAlerts({
       return;
     }
     setPrefs((p.data as unknown as Prefs) ?? null);
-    setAlerts(((a.data ?? []) as unknown as Alert[]) ?? []);
+    setAlerts((a.data ?? []) as unknown as Alert[]);
     setLoading(false);
   }, [user]);
 

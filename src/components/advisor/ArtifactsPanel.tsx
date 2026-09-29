@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, FileImage, Presentation, ListChecks, Download, Trash2, ArrowLeft, Copy, Check, ImageIcon, ExternalLink, Loader2, Table2, BarChart3 } from "lucide-react";
+import { FileText, FileImage, Presentation, ListChecks, Download, Trash2, ArrowLeft, Copy, Check, ImageIcon, ExternalLink, Table2, BarChart3 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { type AdvisorArtifact } from "@/hooks/useAdvisorArtifacts";
@@ -10,6 +10,7 @@ import { markdownCodeComponents } from "@/components/advisor/CodeBlock";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const KIND_META: Record<string, { icon: any; label: string; tone: string }> = {
   plan:     { icon: ListChecks,   label: "Plan",     tone: "text-emerald-500" },
@@ -148,9 +149,7 @@ export function ArtifactsPanel({
                     approximation. */}
                 {(active.kind === "image" || active.kind === "chart") && active.file_path ? (
                   previewLoading ? (
-                    <div className="flex items-center justify-center py-10 text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
+                    <Skeleton role="status" aria-hidden={false} aria-label="Loading preview" className="aspect-[4/3] w-full rounded-lg" />
                   ) : previewUrl ? (
                     <img
                       src={previewUrl}
@@ -163,9 +162,7 @@ export function ArtifactsPanel({
                   )
                 ) : active.file_path && (active.file_mime === "application/pdf" || active.kind === "pdf") ? (
                   previewLoading ? (
-                    <div className="flex items-center justify-center py-10 text-muted-foreground">
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    </div>
+                    <Skeleton role="status" aria-hidden={false} aria-label="Loading preview" className="aspect-[4/3] w-full rounded-lg" />
                   ) : previewUrl ? (
                     <iframe
                       src={previewUrl}

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Shield, AlertTriangle, Ban, CheckCircle, MessageSquareWarning, Flame } from "lucide-react";
+import { Shield, AlertTriangle, Ban, CheckCircle, MessageSquareWarning, Flame } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface UserFlag {
   id: string;
@@ -98,7 +99,7 @@ export function AdminModeration() {
   const unreviewedPrompts = prompts.filter((p) => !p.reviewed);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><Loader2 className="h-8 w-8 animate-spin text-accent" /></div>;
+    return <RowsSkeleton n={5} />;
   }
 
   return (

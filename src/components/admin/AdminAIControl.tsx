@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Loader2, Save, Sliders } from "lucide-react";
 import { toast } from "sonner";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface Weights {
   academics: number;
@@ -75,9 +76,7 @@ export function AdminAIControl() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

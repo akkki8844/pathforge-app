@@ -6,8 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Pencil, Trash2, FileText } from "lucide-react";
+import { Plus, Pencil, Trash2, FileText } from "lucide-react";
 import { format } from "date-fns";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface ManagedContent {
   id: string;
@@ -56,9 +57,7 @@ export function AdminContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Flag, Percent } from "lucide-react";
+import { Plus, Flag, Percent } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface FeatureFlag {
   id: string;
@@ -84,9 +85,7 @@ export function AdminFeatureFlags() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

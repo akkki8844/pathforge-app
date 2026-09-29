@@ -20,6 +20,7 @@ import { KeepAliveProvider } from "@/components/KeepAliveProvider";
 import { TourProvider } from "@/components/tour/TourProvider";
 import { MotionConfig } from "framer-motion";
 import { useZenMode } from "@/lib/zen";
+import { ZenHost } from "@/components/zen/ZenHost";
 import { useIsMobile } from "@/hooks/use-mobile";
 import Index from "./pages/Index";
 import Maintenance from "./pages/Maintenance";
@@ -82,13 +83,10 @@ const Scholarships = lazyWithRetry(() => import("./pages/Scholarships"));
 const CollegeReadiness = lazyWithRetry(() => import("./pages/CollegeReadiness"));
 const Outcomes = lazyWithRetry(() => import("./pages/Outcomes"));
 // Routine — one product area, six views over one shared data model.
-const RoutineToday = lazyWithRetry(() => import("./pages/routine/Today"));
 const RoutineTimetable = lazyWithRetry(() => import("./pages/routine/Timetable"));
 const RoutineStudyPlanner = lazyWithRetry(() => import("./pages/routine/StudyPlanner"));
 const RoutineCalendar = lazyWithRetry(() => import("./pages/routine/Calendar"));
 const RoutineReminders = lazyWithRetry(() => import("./pages/routine/Reminders"));
-const RoutineFocus = lazyWithRetry(() => import("./pages/routine/Focus"));
-const RoutineGoals = lazyWithRetry(() => import("./pages/routine/Goals"));
 const CommsChats = lazyWithRetry(() => import("./pages/communications/Chats"));
 const CommsTeams = lazyWithRetry(() => import("./pages/communications/Teams"));
 const CommsTeamWorkspace = lazyWithRetry(() => import("./pages/communications/TeamWorkspace"));
@@ -164,7 +162,25 @@ import {
 import { useUsage } from "@/contexts/UsageContext";
 import { LogoSpinner } from "@/components/LogoSpinner";
 
-const RouteFallback = () => <LogoSpinner />;
+import { PageSkeleton } from "@/components/PageSkeletons";
+const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
+
+// Desktop-only. This file is otherwise kept in sync with pathforge-tech; the
+// isDesktop/UpdateNotifier/DesktopWelcome references are the whole of the
+// desktop delta and are re-applied after every sync.
+import { isDesktop } from "@/lib/desktop";
+import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
+
+// Whole-screen fallback while a route's chunk loads: a skeleton shaped like
+// the page being opened, navbar included, so the load reads as the page
+// arriving rather than a detour through a splash screen.
+const RouteFallback = () => {
+  const { pathname } = useLocation();
+  return <PageSkeleton pathname={pathname} shell />;
+};
+// The onboarding survey is its own full-screen flow with no page to mirror,
+// so it keeps the branded spinner.
+const OnboardingFallback = () => <LogoSpinner />;
 
 // These are never needed for the very first paint (onboarding only appears
 // once auth resolves; the rest are non-landing chrome), so keeping them out
@@ -175,7 +191,6 @@ const OnboardingSurvey = lazyWithRetry(() =>
 );
 const SupportChatbot = lazyWithRetry(() => import("@/components/SupportChatbot"));
 const MessageDockBar = lazyWithRetry(() => import("@/components/comms/MessageDockBar"));
-const DesktopWelcome = lazyWithRetry(() => import("./pages/desktop/Welcome"));
 const GlobalSearch = lazyWithRetry(() =>
   import("@/components/search/GlobalSearch").then((m) => ({ default: m.GlobalSearch })),
 );
@@ -183,11 +198,6 @@ const GlobalSearch = lazyWithRetry(() =>
 // things, which is the worst possible moment to depend on fetching one more
 // chunk.
 import { BugAlertBanner } from "@/components/BugAlertBanner";
-// Desktop-only. This file is otherwise kept in sync with pathforge-tech; the
-// isDesktop/UpdateNotifier/DesktopWelcome references are the whole of the
-// desktop delta and are re-applied after every sync.
-import { isDesktop } from "@/lib/desktop";
-import { UpdateNotifier } from "@/components/desktop/UpdateNotifier";
 // (default export — no .then() mapping needed, unlike the named exports above/below)
 const NameBackfillGate = lazyWithRetry(() =>
   import("@/components/NameBackfillGate").then((m) => ({ default: m.NameBackfillGate }))
@@ -216,9 +226,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // Wait for both auth and role checks to resolve before rendering anything.
   // This prevents the onboarding survey from flashing for admins/teachers.
   if (loading || (user && roleLoading)) {
-    return (
-<LogoSpinner />
-    );
+    return <PageSkeleton pathname={location.pathname} shell />;
   }
 
   if (!user) {
@@ -238,7 +246,7 @@ function ProtectedRoute({ children }: { children: ReactNode }) {
   // Show onboarding survey if not completed (except on recommendations page)
   if (!onboardingCompleted && location.pathname !== '/recommendations') {
     return (
-      <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={<OnboardingFallback />}>
         <OnboardingSurvey />
       </Suspense>
     );
@@ -252,9 +260,7 @@ function TeacherRoute({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   if (loading || (user && roleLoading)) {
-    return (
-<LogoSpinner />
-    );
+    return <PageSkeleton pathname={location.pathname} shell />;
   }
   if (!user) return <Navigate to={`/teacher/auth?redirect=${encodeURIComponent(location.pathname)}`} replace />;
   if (isAdmin) return <Navigate to="/admin" replace />;
@@ -288,7 +294,7 @@ function LandingRoute({ children }: { children: ReactNode }) {
   // no prompt to finish onboarding.
   if (user && !onboardingCompleted) {
     return (
-      <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={<OnboardingFallback />}>
         <OnboardingSurvey />
       </Suspense>
     );
@@ -311,9 +317,7 @@ function AuthRoute({ children }: { children: ReactNode }) {
       : null;
 
   if (loading || (user && roleLoading)) {
-    return (
-<LogoSpinner />
-    );
+    return <PageSkeleton kind="auth" shell />;
   }
 
   // Admins go to admin panel; teachers to workspace
@@ -330,7 +334,7 @@ function AuthRoute({ children }: { children: ReactNode }) {
   // If user is logged in but onboarding is not complete, show onboarding
   if (user && !onboardingCompleted) {
     return (
-      <Suspense fallback={<RouteFallback />}>
+      <Suspense fallback={<OnboardingFallback />}>
         <OnboardingSurvey />
       </Suspense>
     );
@@ -485,7 +489,6 @@ function AppRoutes() {
    *
    *   /communications  - this section IS the chat UI
    *   /advisor         - the composer is pinned to the bottom of its shell
-   *   /routine/focus   - a full-screen timer
    *   /interview       - the whole section; see below
    *   /teacher         - the counsellor workspace, not the student's inbox
    *   /auth, landing   - signed out
@@ -495,7 +498,6 @@ function AppRoutes() {
     !location.pathname.startsWith("/communications") &&
     !location.pathname.startsWith("/advisor") &&
     !location.pathname.startsWith("/teacher") &&
-    !location.pathname.startsWith("/routine/focus") &&
     // The exam runner, and only it, inside Test Prep.
     //
     // Everything else in /test-prep is an ordinary page, which is why the
@@ -809,20 +811,12 @@ function AppRoutes() {
           }
         />
 
-        {/* Routine. Nine views over one data model; /routine itself is not a
-            page, so it lands on Today, and an unknown child does the same
-            rather than dropping the student out of the section entirely. */}
-        <Route path="/routine" element={<Navigate to="/routine/today" replace />} />
-        <Route
-          path="/routine/today"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <RoutineToday />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
+        {/* Routine. Four views over one data model; /routine itself is not a
+            page, so it lands on the Calendar, and an unknown child does the
+            same rather than dropping the student out of the section entirely.
+            Today, Focus and Goals were removed; their old URLs (and the
+            earlier Tasks and Habits ones) redirect to the Calendar. */}
+        <Route path="/routine" element={<Navigate to="/routine/calendar" replace />} />
         <Route
           path="/routine/timetable"
           element={
@@ -855,10 +849,6 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        {/* Tasks page removed — every task already surfaces on Today's agenda,
-            and Quick Add (press Q anywhere in Routine) creates one without a
-            dedicated page. Old links redirect there instead of 404ing. */}
-        <Route path="/routine/tasks" element={<Navigate to="/routine/today" replace />} />
         <Route
           path="/routine/reminders"
           element={
@@ -869,30 +859,7 @@ function AppRoutes() {
             </ProtectedRoute>
           }
         />
-        <Route
-          path="/routine/focus"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <RoutineFocus />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        {/* Habits page removed — habit completion still shows on Today's day
-            progress, and Quick Add still creates a habit inline. */}
-        <Route path="/routine/habits" element={<Navigate to="/routine/today" replace />} />
-        <Route
-          path="/routine/goals"
-          element={
-            <ProtectedRoute>
-              <Layout>
-                <RoutineGoals />
-              </Layout>
-            </ProtectedRoute>
-          }
-        />
-        <Route path="/routine/*" element={<Navigate to="/routine/today" replace />} />
+        <Route path="/routine/*" element={<Navigate to="/routine/calendar" replace />} />
 
         {/* Communications. Chats is the default landing route because it is the
             surface the section gets opened for; an unknown child still lands
@@ -1268,6 +1235,10 @@ function AppRoutes() {
           <MessageDockBar />
         </Suspense>
       )}
+      {/* Zen mode's study: while Zen is on it covers the whole app, navbar
+          and all. Only the small host ships in the main bundle; the room
+          itself loads the first time Zen is turned on. */}
+      {user && !isLandingPage && <ZenHost />}
       {/* Ctrl/Cmd + K search, and the Ctrl/Cmd + . Zen shortcut, everywhere a
           student is signed in. */}
       {user && !isLandingPage && (

@@ -11,10 +11,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { blueprintFor } from "@/lib/testprep/blueprints";
+import { blueprintFor, conductorFor, specNameFor } from "@/lib/testprep/blueprints";
 import { examHref, resultsHref, sectionHref, sessionHref } from "@/lib/testprep/nav";
 import { setDailyGoal, setTargetScore, setTestDate, useTestPrep } from "@/lib/testprep/store";
-import { daysUntil, nextBestAction, overallStats, pct, type DomainStats, type SubjectStats } from "@/lib/testprep/stats";
+import { daysUntil, nextBestAction, overallStats, pct, trendBounds, type DomainStats, type SubjectStats } from "@/lib/testprep/stats";
 import {
   activityByDay, answeredToday, currentStreak, dailyGoal, greeting, minutesPracticed, scoreHistory,
 } from "@/lib/testprep/insights";
@@ -23,9 +23,10 @@ import { CredlyCredentials } from "@/components/credentials/CredlyCredentials";
 import { Reveal } from "@/components/testprep/motion";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
 import { DayBars, Ring, ScoreGauge, TrendChart } from "@/components/testprep/viz";
-import { masteryColor } from "@/lib/testprep/ui";
+import { masteryColor, themeScope } from "@/lib/testprep/ui";
 import { cn } from "@/lib/utils";
 import { EASE_OUT_EXPO } from "@/lib/motion";
+import type { TestBlueprint } from "@/lib/testprep/types";
 
 const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
@@ -40,10 +41,16 @@ const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba
 export default function TestPrepOverview() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
   const navigate = useNavigate();
-  const stats = useMemo(() => overallStats(profile), [profile]);
-  const next = useMemo(() => nextBestAction(profile), [profile]);
+  const stats = useMemo(
+    () => (blueprint ? overallStats(profile, blueprint) : null),
+    [profile, blueprint],
+  );
+  const next = useMemo(
+    () => (blueprint ? nextBestAction(profile, blueprint) : null),
+    [profile, blueprint],
+  );
   const days14 = useMemo(() => activityByDay(profile, 14), [profile]);
   const streak = useMemo(() => currentStreak(profile), [profile]);
   const today = useMemo(() => answeredToday(profile), [profile]);
@@ -52,8 +59,9 @@ export default function TestPrepOverview() {
   const goal = dailyGoal(profile);
 
   if (!blueprint) return <TestNotAvailable name="Test Prep" subtitle="Unknown test" />;
-  if (!blueprint.available) return <TestNotAvailable name={blueprint.name} subtitle={blueprint.subtitle} />;
+  if (!blueprint.available || !stats) return <TestNotAvailable name={blueprint.name} subtitle={blueprint.subtitle} />;
 
+  const allSections = blueprint.subjects.map((s) => s.id);
   const days = daysUntil(profile.testDate);
   const remaining = stats.available - stats.completed;
   const perDay = days && days > 0 ? Math.ceil(remaining / days) : null;
@@ -72,7 +80,7 @@ export default function TestPrepOverview() {
         <PageHeader
           title={`${blueprint.name} Prep`}
           purpose={greeting(streak, today, goal)}
-          actions={<TargetsDialog />}
+          actions={<TargetsDialog blueprint={blueprint} />}
         />
 
         {/* ── Top row ─────────────────────────────────────────── */}
@@ -89,6 +97,8 @@ export default function TestPrepOverview() {
               <ScoreGauge
                 value={stats.estimatedScore}
                 target={profile.targetScore}
+                min={blueprint.scoreRange[0]}
+                max={blueprint.scoreRange[1]}
                 size={210}
                 caption={
                   <>
@@ -96,18 +106,22 @@ export default function TestPrepOverview() {
                       {stats.estimatedScore ?? "—"}
                     </span>
                     <span className="mt-1.5 text-[11px] text-muted-foreground">
-                      {stats.estimatedScore !== null ? "of 1600" : "needs 8+ answers per section"}
+                      {stats.estimatedScore !== null ? `of ${blueprint.scoreRange[1]}` : "needs 8+ answers per section"}
                     </span>
                   </>
                 }
               />
               <div className="w-full flex-1 space-y-3">
                 {stats.subjects.map((s) => (
-                  <SectionScore key={s.subjectId} subject={s} />
+                  <SectionScore
+                    key={s.subjectId}
+                    subject={s}
+                    range={blueprint.subjects.find((b) => b.id === s.subjectId)?.scoreRange ?? blueprint.scoreRange}
+                  />
                 ))}
                 <p className="rounded-lg bg-muted/60 px-3 py-2 text-[12px] leading-snug text-muted-foreground">
                   {gap === null
-                    ? "Answer a few questions in both sections and your estimate appears here."
+                    ? `Answer a few questions in ${blueprint.subjects.length === 2 ? "both sections" : `all ${blueprint.subjects.length} sections`} and your estimate appears here.`
                     : gap <= 0
                       ? "Your practice is at or above target. Sit a full test to confirm it."
                       : `${gap} points from target. The fastest points are in your weakest domains below.`}
@@ -178,7 +192,7 @@ export default function TestPrepOverview() {
                 </p>
               </div>
               <Button asChild size="sm" variant="outline" className="w-full">
-                <Link to={examHref(blueprint.id, ["rw", "math"])}>
+                <Link to={examHref(blueprint.id, allSections)}>
                   <Trophy className="mr-1.5 h-4 w-4 text-amber-500" />
                   Full practice test
                 </Link>
@@ -237,7 +251,7 @@ export default function TestPrepOverview() {
               delay={0.18}
               icon={CalendarDays}
               title="Section test"
-              sub="One section, two modules"
+              sub={blueprint.adaptive ? "One section, two modules" : "One section, timed"}
               href={sectionHref(blueprint.id, "exams")}
             />
           </div>
@@ -298,8 +312,8 @@ export default function TestPrepOverview() {
                     label: p.at.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
                     value: p.score,
                   }))}
-                  min={Math.max(400, Math.floor((Math.min(profile.targetScore, ...history.map((h) => h.score)) - 60) / 100) * 100)}
-                  max={Math.min(1600, Math.ceil((Math.max(profile.targetScore, ...history.map((h) => h.score)) + 60) / 100) * 100)}
+                  min={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score)])[0]}
+                  max={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score)])[1]}
                   target={profile.targetScore}
                   onPointClick={(p) => navigate(resultsHref(blueprint.id, p.id))}
                 />
@@ -313,7 +327,7 @@ export default function TestPrepOverview() {
                     : "Your score line starts after your first two full practice tests."}
                 </p>
                 <Button asChild size="sm">
-                  <Link to={examHref(blueprint.id, ["rw", "math"])}>Sit a practice test</Link>
+                  <Link to={examHref(blueprint.id, allSections)}>Sit a practice test</Link>
                 </Button>
               </div>
             )}
@@ -368,8 +382,8 @@ export default function TestPrepOverview() {
         </Reveal>
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Questions are written by Pathforge to the published digital SAT specification. They are not College Board
-          material.{" "}
+          Questions are written by Pathforge to the {specNameFor(blueprint.id)}. They are not{" "}
+          {conductorFor(blueprint.id)} material.{" "}
           <Link to={sectionHref(blueprint.id, "question-bank")} className="text-[hsl(var(--bb-blue))] hover:underline">
             Browse the bank
           </Link>
@@ -380,8 +394,8 @@ export default function TestPrepOverview() {
   );
 }
 
-function SectionScore({ subject }: { subject: SubjectStats }) {
-  const [lo, hi] = [200, 800];
+function SectionScore({ subject, range }: { subject: SubjectStats; range: [number, number] }) {
+  const [lo, hi] = range;
   const v = subject.score;
   return (
     <div>
@@ -563,20 +577,25 @@ function GoalEditor({ goal }: { goal: number }) {
 }
 
 /** Target score and test date. The only two things a student sets by hand. */
-function TargetsDialog() {
-  const profile = useTestPrep();
+function TargetsDialog({ blueprint }: { blueprint: TestBlueprint }) {
+  const profile = useTestPrep(blueprint.id);
   const [open, setOpen] = useState(false);
   const [target, setTarget] = useState(String(profile.targetScore));
   const [date, setDate] = useState(profile.testDate);
 
+  const [lo, hi] = blueprint.scoreRange;
+  const step = blueprint.scoreStep;
   const parsed = Number(target);
-  const valid = Number.isFinite(parsed) && parsed >= 400 && parsed <= 1600;
-  const presets = [1200, 1350, 1450, 1500, 1550];
+  const valid = Number.isFinite(parsed) && parsed >= lo && parsed <= hi;
+  // Five targets spread over the upper half of the scale, on the test's own step.
+  const presets = [0.6, 0.72, 0.82, 0.9, 0.95].map(
+    (f) => Math.round((lo + (hi - lo) * f) / step) * step,
+  );
 
   const save = () => {
     if (!valid) return;
-    setTargetScore(Math.min(1600, Math.max(400, Math.round(parsed / 10) * 10)));
-    setTestDate(date);
+    setTargetScore(Math.min(hi, Math.max(lo, Math.round(parsed / step) * step)), blueprint.id);
+    setTestDate(date, blueprint.id);
     setOpen(false);
   };
 
@@ -597,7 +616,7 @@ function TargetsDialog() {
           Target and date
         </Button>
       </DialogTrigger>
-      <DialogContent className="bluebook sm:max-w-md">
+      <DialogContent className={cn(themeScope(blueprint.id), "sm:max-w-md")}>
         <DialogHeader>
           <DialogTitle>Target and test date</DialogTitle>
           <DialogDescription>Both are used to pace practice. Neither is shared with anyone.</DialogDescription>
@@ -632,7 +651,9 @@ function TargetsDialog() {
               className={valid ? undefined : "border-destructive focus-visible:ring-destructive"}
             />
             <p id="tp-target-hint" className={`text-xs ${valid ? "text-muted-foreground" : "text-destructive"}`}>
-              {valid ? "Between 400 and 1600. Rounded to the nearest ten." : "Enter a number between 400 and 1600."}
+              {valid
+                ? `Between ${lo} and ${hi}.${step > 1 ? ` Rounded to the nearest ${step === 10 ? "ten" : step}.` : ""}`
+                : `Enter a number between ${lo} and ${hi}.`}
             </p>
           </div>
           <div className="space-y-1.5">

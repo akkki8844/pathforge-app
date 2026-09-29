@@ -1,4 +1,4 @@
-// Comprehensive ISO 3166-1 country list used across onboarding and profile flows.
+// Every ISO 3166-1 country and inhabited territory, plus Kosovo. Used across onboarding and profile flows.
 // Single source of truth — keeps student + counselor surveys in sync.
 
 export interface CountryOption {
@@ -8,13 +8,17 @@ export interface CountryOption {
 
 export const ALL_COUNTRIES: CountryOption[] = [
   { code: "AF", name: "Afghanistan" },
+  { code: "AX", name: "Åland Islands" },
   { code: "AL", name: "Albania" },
   { code: "DZ", name: "Algeria" },
+  { code: "AS", name: "American Samoa" },
   { code: "AD", name: "Andorra" },
   { code: "AO", name: "Angola" },
+  { code: "AI", name: "Anguilla" },
   { code: "AG", name: "Antigua and Barbuda" },
   { code: "AR", name: "Argentina" },
   { code: "AM", name: "Armenia" },
+  { code: "AW", name: "Aruba" },
   { code: "AU", name: "Australia" },
   { code: "AT", name: "Austria" },
   { code: "AZ", name: "Azerbaijan" },
@@ -26,11 +30,14 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "BE", name: "Belgium" },
   { code: "BZ", name: "Belize" },
   { code: "BJ", name: "Benin" },
+  { code: "BM", name: "Bermuda" },
   { code: "BT", name: "Bhutan" },
   { code: "BO", name: "Bolivia" },
   { code: "BA", name: "Bosnia and Herzegovina" },
   { code: "BW", name: "Botswana" },
   { code: "BR", name: "Brazil" },
+  { code: "IO", name: "British Indian Ocean Territory" },
+  { code: "VG", name: "British Virgin Islands" },
   { code: "BN", name: "Brunei" },
   { code: "BG", name: "Bulgaria" },
   { code: "BF", name: "Burkina Faso" },
@@ -39,18 +46,24 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "KH", name: "Cambodia" },
   { code: "CM", name: "Cameroon" },
   { code: "CA", name: "Canada" },
+  { code: "BQ", name: "Caribbean Netherlands" },
+  { code: "KY", name: "Cayman Islands" },
   { code: "CF", name: "Central African Republic" },
   { code: "TD", name: "Chad" },
   { code: "CL", name: "Chile" },
   { code: "CN", name: "China" },
+  { code: "CX", name: "Christmas Island" },
+  { code: "CC", name: "Cocos (Keeling) Islands" },
   { code: "CO", name: "Colombia" },
   { code: "KM", name: "Comoros" },
-  { code: "CG", name: "Congo (Republic)" },
   { code: "CD", name: "Congo (DRC)" },
+  { code: "CG", name: "Congo (Republic)" },
+  { code: "CK", name: "Cook Islands" },
   { code: "CR", name: "Costa Rica" },
   { code: "CI", name: "Côte d'Ivoire" },
   { code: "HR", name: "Croatia" },
   { code: "CU", name: "Cuba" },
+  { code: "CW", name: "Curaçao" },
   { code: "CY", name: "Cyprus" },
   { code: "CZ", name: "Czechia" },
   { code: "DK", name: "Denmark" },
@@ -65,17 +78,26 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "EE", name: "Estonia" },
   { code: "SZ", name: "Eswatini" },
   { code: "ET", name: "Ethiopia" },
+  { code: "FK", name: "Falkland Islands" },
+  { code: "FO", name: "Faroe Islands" },
   { code: "FJ", name: "Fiji" },
   { code: "FI", name: "Finland" },
   { code: "FR", name: "France" },
+  { code: "GF", name: "French Guiana" },
+  { code: "PF", name: "French Polynesia" },
   { code: "GA", name: "Gabon" },
   { code: "GM", name: "Gambia" },
   { code: "GE", name: "Georgia" },
   { code: "DE", name: "Germany" },
   { code: "GH", name: "Ghana" },
+  { code: "GI", name: "Gibraltar" },
   { code: "GR", name: "Greece" },
+  { code: "GL", name: "Greenland" },
   { code: "GD", name: "Grenada" },
+  { code: "GP", name: "Guadeloupe" },
+  { code: "GU", name: "Guam" },
   { code: "GT", name: "Guatemala" },
+  { code: "GG", name: "Guernsey" },
   { code: "GN", name: "Guinea" },
   { code: "GW", name: "Guinea-Bissau" },
   { code: "GY", name: "Guyana" },
@@ -89,14 +111,17 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "IR", name: "Iran" },
   { code: "IQ", name: "Iraq" },
   { code: "IE", name: "Ireland" },
+  { code: "IM", name: "Isle of Man" },
   { code: "IL", name: "Israel" },
   { code: "IT", name: "Italy" },
   { code: "JM", name: "Jamaica" },
   { code: "JP", name: "Japan" },
+  { code: "JE", name: "Jersey" },
   { code: "JO", name: "Jordan" },
   { code: "KZ", name: "Kazakhstan" },
   { code: "KE", name: "Kenya" },
   { code: "KI", name: "Kiribati" },
+  { code: "XK", name: "Kosovo" },
   { code: "KW", name: "Kuwait" },
   { code: "KG", name: "Kyrgyzstan" },
   { code: "LA", name: "Laos" },
@@ -116,14 +141,17 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "ML", name: "Mali" },
   { code: "MT", name: "Malta" },
   { code: "MH", name: "Marshall Islands" },
+  { code: "MQ", name: "Martinique" },
   { code: "MR", name: "Mauritania" },
   { code: "MU", name: "Mauritius" },
+  { code: "YT", name: "Mayotte" },
   { code: "MX", name: "Mexico" },
   { code: "FM", name: "Micronesia" },
   { code: "MD", name: "Moldova" },
   { code: "MC", name: "Monaco" },
   { code: "MN", name: "Mongolia" },
   { code: "ME", name: "Montenegro" },
+  { code: "MS", name: "Montserrat" },
   { code: "MA", name: "Morocco" },
   { code: "MZ", name: "Mozambique" },
   { code: "MM", name: "Myanmar" },
@@ -131,12 +159,16 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "NR", name: "Nauru" },
   { code: "NP", name: "Nepal" },
   { code: "NL", name: "Netherlands" },
+  { code: "NC", name: "New Caledonia" },
   { code: "NZ", name: "New Zealand" },
   { code: "NI", name: "Nicaragua" },
   { code: "NE", name: "Niger" },
   { code: "NG", name: "Nigeria" },
+  { code: "NU", name: "Niue" },
+  { code: "NF", name: "Norfolk Island" },
   { code: "KP", name: "North Korea" },
   { code: "MK", name: "North Macedonia" },
+  { code: "MP", name: "Northern Mariana Islands" },
   { code: "NO", name: "Norway" },
   { code: "OM", name: "Oman" },
   { code: "PK", name: "Pakistan" },
@@ -147,14 +179,21 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "PY", name: "Paraguay" },
   { code: "PE", name: "Peru" },
   { code: "PH", name: "Philippines" },
+  { code: "PN", name: "Pitcairn Islands" },
   { code: "PL", name: "Poland" },
   { code: "PT", name: "Portugal" },
+  { code: "PR", name: "Puerto Rico" },
   { code: "QA", name: "Qatar" },
+  { code: "RE", name: "Réunion" },
   { code: "RO", name: "Romania" },
   { code: "RU", name: "Russia" },
   { code: "RW", name: "Rwanda" },
+  { code: "BL", name: "Saint Barthélemy" },
+  { code: "SH", name: "Saint Helena" },
   { code: "KN", name: "Saint Kitts and Nevis" },
   { code: "LC", name: "Saint Lucia" },
+  { code: "MF", name: "Saint Martin" },
+  { code: "PM", name: "Saint Pierre and Miquelon" },
   { code: "VC", name: "Saint Vincent and the Grenadines" },
   { code: "WS", name: "Samoa" },
   { code: "SM", name: "San Marino" },
@@ -165,6 +204,7 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "SC", name: "Seychelles" },
   { code: "SL", name: "Sierra Leone" },
   { code: "SG", name: "Singapore" },
+  { code: "SX", name: "Sint Maarten" },
   { code: "SK", name: "Slovakia" },
   { code: "SI", name: "Slovenia" },
   { code: "SB", name: "Solomon Islands" },
@@ -176,6 +216,7 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "LK", name: "Sri Lanka" },
   { code: "SD", name: "Sudan" },
   { code: "SR", name: "Suriname" },
+  { code: "SJ", name: "Svalbard and Jan Mayen" },
   { code: "SE", name: "Sweden" },
   { code: "CH", name: "Switzerland" },
   { code: "SY", name: "Syria" },
@@ -185,12 +226,15 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "TH", name: "Thailand" },
   { code: "TL", name: "Timor-Leste" },
   { code: "TG", name: "Togo" },
+  { code: "TK", name: "Tokelau" },
   { code: "TO", name: "Tonga" },
   { code: "TT", name: "Trinidad and Tobago" },
   { code: "TN", name: "Tunisia" },
   { code: "TR", name: "Türkiye" },
   { code: "TM", name: "Turkmenistan" },
+  { code: "TC", name: "Turks and Caicos Islands" },
   { code: "TV", name: "Tuvalu" },
+  { code: "VI", name: "U.S. Virgin Islands" },
   { code: "UG", name: "Uganda" },
   { code: "UA", name: "Ukraine" },
   { code: "AE", name: "United Arab Emirates" },
@@ -202,12 +246,78 @@ export const ALL_COUNTRIES: CountryOption[] = [
   { code: "VA", name: "Vatican City" },
   { code: "VE", name: "Venezuela" },
   { code: "VN", name: "Vietnam" },
+  { code: "WF", name: "Wallis and Futuna" },
+  { code: "EH", name: "Western Sahara" },
   { code: "YE", name: "Yemen" },
   { code: "ZM", name: "Zambia" },
   { code: "ZW", name: "Zimbabwe" },
 ];
 
 export const ALL_COUNTRY_NAMES: string[] = ALL_COUNTRIES.map((c) => c.name);
+
+/**
+ * Other spellings of country names that appear in our own data and in saved
+ * profiles ("Turkey", "UAE", "Czech Republic", "Russian Federation"). Without
+ * this, a student who picks "Türkiye" from the list would see none of the
+ * universities filed under "Turkey".
+ */
+const COUNTRY_ALIASES: Record<string, string> = {
+  "usa": "United States",
+  "us": "United States",
+  "u.s.": "United States",
+  "united states of america": "United States",
+  "uk": "United Kingdom",
+  "great britain": "United Kingdom",
+  "england": "United Kingdom",
+  "scotland": "United Kingdom",
+  "wales": "United Kingdom",
+  "northern ireland": "United Kingdom",
+  "uae": "United Arab Emirates",
+  "turkey": "Türkiye",
+  "turkiye": "Türkiye",
+  "czech republic": "Czechia",
+  "russian federation": "Russia",
+  "korea": "South Korea",
+  "republic of korea": "South Korea",
+  "korea, republic of": "South Korea",
+  "ivory coast": "Côte d'Ivoire",
+  "cote d'ivoire": "Côte d'Ivoire",
+  "burma": "Myanmar",
+  "holland": "Netherlands",
+  "the netherlands": "Netherlands",
+  "macau": "Macao",
+  "viet nam": "Vietnam",
+  "swaziland": "Eswatini",
+  "cape verde": "Cabo Verde",
+  "east timor": "Timor-Leste",
+  "vatican": "Vatican City",
+  "holy see": "Vatican City",
+  "drc": "Congo (DRC)",
+  "democratic republic of the congo": "Congo (DRC)",
+  "republic of the congo": "Congo (Republic)",
+  "macedonia": "North Macedonia",
+  "iran, islamic republic of": "Iran",
+  "syrian arab republic": "Syria",
+  "lao people's democratic republic": "Laos",
+  "palestine, state of": "Palestine",
+  "tanzania, united republic of": "Tanzania",
+  "moldova, republic of": "Moldova",
+  "bolivia, plurinational state of": "Bolivia",
+  "venezuela, bolivarian republic of": "Venezuela",
+};
+
+const CANONICAL_BY_LOWER = new Map<string, string>(ALL_COUNTRY_NAMES.map((n) => [n.toLowerCase(), n]));
+
+/** The list's own spelling for any country name we have seen, or the input unchanged. */
+export function canonicalCountry(name: string): string {
+  const key = name.trim().toLowerCase();
+  return CANONICAL_BY_LOWER.get(key) ?? COUNTRY_ALIASES[key] ?? name.trim();
+}
+
+/** Same country, whatever spelling each side uses. */
+export function sameCountry(a: string, b: string): boolean {
+  return canonicalCountry(a) === canonicalCountry(b);
+}
 
 /**
  * Curated list of the top 30 countries that students actually live in or apply
@@ -226,6 +336,18 @@ export const TOP_COUNTRIES: CountryOption[] = TOP_DESTINATION_COUNTRY_CODES
   .filter(Boolean);
 
 export const TOP_COUNTRY_NAMES: string[] = TOP_COUNTRIES.map((c) => c.name);
+
+/**
+ * Every country, with the thirty common ones first. Onboarding used to offer
+ * only the thirty, which left out Russia and most of the world; this keeps the
+ * short scroll for the common case without hiding anyone's country.
+ */
+export const COUNTRIES_TOP_FIRST: CountryOption[] = [
+  ...TOP_COUNTRIES,
+  ...ALL_COUNTRIES.filter((c) => !(TOP_DESTINATION_COUNTRY_CODES as readonly string[]).includes(c.code)),
+];
+
+export const COUNTRY_NAMES_TOP_FIRST: string[] = COUNTRIES_TOP_FIRST.map((c) => c.name);
 
 export function searchCountries(query: string, limit = 50): CountryOption[] {
   const q = query.trim().toLowerCase();

@@ -11,7 +11,13 @@
 
 export type TestId = "sat" | "psat" | "act" | "preact" | "clt";
 
-export type SubjectId = "math" | "rw";
+/**
+ * `math` and `rw` are the digital SAT/PSAT's two sections. The ACT and PreACT
+ * are scored in four: English, Math, Reading and Science — a different shape,
+ * not a renaming of the same two, so they get their own ids rather than being
+ * folded into `rw`.
+ */
+export type SubjectId = "math" | "rw" | "english" | "reading" | "science" | "verbal" | "grammar" | "quant";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
@@ -72,6 +78,20 @@ export interface TestBlueprint {
   modules: ExamModuleDef[];
   /** False until the content for that test has been written. */
   available: boolean;
+  /**
+   * Whether a section's second module adapts to how the first went, the way
+   * the digital SAT and PSAT do. The ACT, PreACT and CLT sit a single fixed
+   * module per section, so this is false (or absent) for them, and the exam
+   * runner and the score estimate both branch on it.
+   */
+  adaptive?: boolean;
+  /**
+   * How the section scores combine into a composite. `"sum"` (the default,
+   * used when this is absent) is the SAT's own 400-1600: two section scores
+   * added together. The ACT and PreACT report a composite that is the
+   * (rounded) average of four section scores instead.
+   */
+  scoring?: "sum" | "average";
 }
 
 /**
@@ -291,4 +311,9 @@ export interface TestPrepProfile {
   answers: AnswerRecord[];
   attempts: AttemptSummary[];
   sessions: Record<string, SessionState>;
+  /**
+   * Target and date for every test other than the SAT, whose own live on the
+   * top-level fields above. See `scopeProfile` in `store.ts`.
+   */
+  perTest?: Partial<Record<TestId, { targetScore?: number; testDate?: string }>>;
 }

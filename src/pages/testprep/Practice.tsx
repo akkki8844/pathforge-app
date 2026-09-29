@@ -7,18 +7,18 @@ import {
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SAT, blueprintFor } from "@/lib/testprep/blueprints";
+import { blueprintFor } from "@/lib/testprep/blueprints";
 import { sessionHref } from "@/lib/testprep/nav";
 import { useTestPrep } from "@/lib/testprep/store";
 import { overallStats, skillStats, type DomainStats } from "@/lib/testprep/stats";
 import { historyIndex } from "@/lib/testprep/select";
-import { SAT_QUESTIONS } from "@/lib/testprep/questions";
+import { BANK_QUESTIONS } from "@/lib/testprep/questions";
 import { PageHeader, TestPrepShell } from "@/components/testprep/TestPrepShell";
 import { Reveal } from "@/components/testprep/motion";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
 import { Ring } from "@/components/testprep/viz";
-import { masteryColor } from "@/lib/testprep/ui";
-import type { Difficulty, SubjectId } from "@/lib/testprep/types";
+import { masteryColor, themeScope } from "@/lib/testprep/ui";
+import type { Difficulty, SubjectId, TestBlueprint } from "@/lib/testprep/types";
 
 const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
 
@@ -33,15 +33,16 @@ const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba
 export default function TestPrepPractice() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
 
   const weakest = useMemo(() => {
-    const measured = skillStats(profile)
+    if (!blueprint) return null;
+    const measured = skillStats(profile, blueprint)
       .filter((s) => s.mastery !== null && s.available > 0)
       .sort((a, b) => (a.mastery ?? 1) - (b.mastery ?? 1));
     return measured[0] ?? null;
-  }, [profile]);
-  const stats = useMemo(() => overallStats(profile), [profile]);
+  }, [profile, blueprint]);
+  const stats = useMemo(() => (blueprint ? overallStats(profile, blueprint) : null), [profile, blueprint]);
   const missed = useMemo(() => {
     const out: string[] = [];
     historyIndex(profile).forEach((h, id) => {
@@ -51,15 +52,16 @@ export default function TestPrepPractice() {
   }, [profile]);
 
   if (!blueprint) return <TestNotAvailable name="Test Prep" subtitle="Unknown test" />;
-  if (!blueprint.available) return <TestNotAvailable name={blueprint.name} subtitle={blueprint.subtitle} />;
+  if (!blueprint.available || !stats) return <TestNotAvailable name={blueprint.name} subtitle={blueprint.subtitle} />;
 
+  const sectionWord = blueprint.subjects.length === 2 ? "both sections" : `all ${blueprint.subjects.length} sections`;
   const modes: Mode[] = [
     {
       id: "quick",
       icon: Zap,
       accent: "bg-[hsl(var(--bb-blue))] text-[hsl(var(--bb-blue-foreground))]",
       title: "Quick ten",
-      body: "Ten mixed questions across both sections, untimed. The fastest way to keep a streak.",
+      body: `Ten mixed questions across ${sectionWord}, untimed. The fastest way to keep a streak.`,
       meta: ["10 questions", "~12 min"],
       href: sessionHref(blueprint.id, { kind: "quick", count: 10 }),
     },
@@ -152,7 +154,7 @@ export default function TestPrepPractice() {
           ))}
         </section>
 
-        <CustomBuilder testId={blueprint.id} />
+        <CustomBuilder blueprint={blueprint} />
       </div>
     </TestPrepShell>
   );
@@ -280,7 +282,8 @@ function Legend() {
  * The custom builder. Always open, every field defaulted, and it counts the
  * matching questions as you change them so the set is never a surprise.
  */
-function CustomBuilder({ testId }: { testId: string }) {
+function CustomBuilder({ blueprint }: { blueprint: TestBlueprint }) {
+  const testId = blueprint.id;
   const navigate = useNavigate();
   const [subject, setSubject] = useState<SubjectId | "all">("all");
   const [domain, setDomain] = useState("all");
@@ -290,8 +293,8 @@ function CustomBuilder({ testId }: { testId: string }) {
   const [minutes, setMinutes] = useState<number | null>(null);
 
   const domains = useMemo(
-    () => SAT.subjects.filter((s) => subject === "all" || s.id === subject).flatMap((s) => s.domains),
-    [subject],
+    () => blueprint.subjects.filter((s) => subject === "all" || s.id === subject).flatMap((s) => s.domains),
+    [blueprint, subject],
   );
   const skills = useMemo(
     () => domains.filter((d) => domain === "all" || d.id === domain).flatMap((d) => d.skills),
@@ -299,14 +302,15 @@ function CustomBuilder({ testId }: { testId: string }) {
   );
   const matching = useMemo(
     () =>
-      SAT_QUESTIONS.filter(
+      BANK_QUESTIONS.filter(
         (q) =>
+          q.testId === testId &&
           (subject === "all" || q.subjectId === subject) &&
           (domain === "all" || q.domainId === domain) &&
           (skill === "all" || q.skillId === skill) &&
           (difficulty === "mixed" || q.difficulty === difficulty),
       ).length,
-    [subject, domain, skill, difficulty],
+    [testId, subject, domain, skill, difficulty],
   );
   const setSize = Math.min(count, matching);
 
@@ -350,9 +354,9 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bluebook">
-                  <SelectItem value="all">Both sections</SelectItem>
-                  {SAT.subjects.map((s) => (
+                <SelectContent className={themeScope(testId)}>
+                  <SelectItem value="all">{blueprint.subjects.length === 2 ? "Both sections" : "All sections"}</SelectItem>
+                  {blueprint.subjects.map((s) => (
                     <SelectItem key={s.id} value={s.id}>
                       {s.name}
                     </SelectItem>
@@ -371,7 +375,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bluebook">
+                <SelectContent className={themeScope(testId)}>
                   <SelectItem value="all">Any domain</SelectItem>
                   {domains.map((d) => (
                     <SelectItem key={d.id} value={d.id}>
@@ -386,7 +390,7 @@ function CustomBuilder({ testId }: { testId: string }) {
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bluebook">
+                <SelectContent className={themeScope(testId)}>
                   <SelectItem value="all">Any skill</SelectItem>
                   {skills.map((s) => (
                     <SelectItem key={s.id} value={s.id}>

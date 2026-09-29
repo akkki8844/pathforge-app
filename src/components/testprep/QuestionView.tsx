@@ -300,7 +300,7 @@ export function QuestionView({
       )}
 
       <div className="mt-4">
-        <SourceNote source={question.source} />
+        <SourceNote source={question.source} testId={question.testId} />
       </div>
     </motion.div>
   );
@@ -528,7 +528,7 @@ export function ExamQuestionCard({
       )}
 
       <div className="mt-4">
-        <SourceNote source={question.source} />
+        <SourceNote source={question.source} testId={question.testId} />
       </div>
     </motion.div>
   );

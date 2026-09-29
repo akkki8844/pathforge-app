@@ -13,6 +13,7 @@ import { Loader2, Save, Settings as SettingsIcon, Gauge, ToggleLeft, ShieldAlert
 import { toast } from "sonner";
 import type { AdminSection } from "./AdminSidebar";
 import { SlidersHorizontal as SlidersAlias } from "lucide-react";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface PlatformSettings {
   email_sender_name: string;
@@ -65,9 +66,7 @@ export function AdminSettings({ onNavigate }: Props) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

@@ -8,7 +8,7 @@ import { blueprintFor, domainName, skillName } from "@/lib/testprep/blueprints";
 import { isCorrect, pickQuestions, resolve } from "@/lib/testprep/select";
 import { questionById } from "@/lib/testprep/questions";
 import {
-  readProfile,
+  readProfileFor,
   recordAnswer,
   saveAttempt,
   toggleBookmark,
@@ -29,6 +29,7 @@ import {
   FOCUS,
   ROW_HOVER,
   SURFACE,
+  themeScope,
 } from "@/lib/testprep/ui";
 import { Flag } from "lucide-react";
 import { QuestionView } from "@/components/testprep/QuestionView";
@@ -69,7 +70,7 @@ function SessionRunner() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
   const [params] = useSearchParams();
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
 
   const config = useMemo<PracticeConfig>(() => {
     const count = Number(params.get("count")) || 10;
@@ -97,7 +98,7 @@ function SessionRunner() {
   const [questionIds] = useState(() =>
     config.ids
       ? config.ids.filter((id) => Boolean(questionById(id)))
-      : pickQuestions(readProfile(), config),
+      : pickQuestions(readProfileFor(testId), config, testId),
   );
   const questions = useMemo(() => resolve(questionIds), [questionIds]);
 
@@ -127,7 +128,7 @@ function SessionRunner() {
     const answeredCount = questions.filter((q) => checked[q.id]).length;
     const summary: AttemptSummary = {
       id: `att-${Date.now().toString(36)}`,
-      testId: "sat",
+      testId: blueprint?.id ?? "sat",
       kind: config.kind,
       label,
       finishedAt: new Date().toISOString(),
@@ -149,7 +150,7 @@ function SessionRunner() {
     if (answeredCount > 0) saveAttempt(summary);
     setAttempt(summary);
     setFinished(true);
-  }, [checked, config.kind, finished, given, label, questions]);
+  }, [blueprint, checked, config.kind, finished, given, label, questions]);
 
   /*
    * Countdown, for timed sets only.
@@ -300,7 +301,7 @@ function SessionRunner() {
         path={`/test-prep/${blueprint.id}/session`}
         noindex
       />
-      <div className="bluebook min-h-svh bg-background">
+      <div className={cn(themeScope(testId), "min-h-svh bg-background")}>
         {/* Session bar: the section's own chrome, full width. */}
         <div className={cn(BB_TOOLBAR, "sticky top-16 z-20")}>
           <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-2.5 sm:px-6">
@@ -521,7 +522,7 @@ function SessionSummary({
 
   if (attempt.totalQuestions === 0) {
     return (
-      <div className="bluebook min-h-svh bg-background">
+      <div className={cn(themeScope(testId), "min-h-svh bg-background")}>
         <div className="section-container py-20 text-center">
           <p className="text-sm font-medium text-foreground">Nothing answered.</p>
           <p className="mx-auto mt-1.5 max-w-sm text-sm leading-snug text-muted-foreground">
@@ -544,7 +545,7 @@ function SessionSummary({
     accuracy >= 0.9 ? "Excellent set." : accuracy >= 0.7 ? "Solid work." : accuracy >= 0.5 ? "Good practice." : "Every miss is a lesson.";
 
   return (
-    <div className="bluebook min-h-svh bg-background">
+    <div className={cn(themeScope(testId), "min-h-svh bg-background")}>
       <div className="mx-auto max-w-3xl px-4 py-10 sm:py-14">
         <Reveal className="overflow-hidden rounded-2xl bg-[hsl(var(--bb-navy))] text-[hsl(var(--bb-navy-foreground))]">
           <div className="flex flex-col items-center gap-6 p-7 sm:flex-row sm:p-8">

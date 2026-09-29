@@ -196,11 +196,11 @@ const ALL_STEPS: PathforgeTourStep[] = [
       "Scholarships you may be eligible for, past admits with real profiles, and exemplar essays. Read a few exemplars before you draft anything.",
   },
   {
-    route: "/routine/today",
+    route: "/routine/calendar",
     placement: "center",
     title: "Routine runs your week",
     content:
-      "Today, a timetable, a study planner, focus sessions, reminders and goals. This is the day-to-day layer under the long-term plan that Journey holds.",
+      "A timetable, a study planner, a calendar over everything, and reminders. This is the day-to-day layer under the long-term plan that Journey holds.",
   },
   {
     route: "/test-prep/sat",

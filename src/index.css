@@ -343,6 +343,208 @@
     --destructive: 0 0% 100%;
     --destructive-foreground: 0 0% 0%;
   }
+
+  /* ACT's own palette.
+
+     Same discipline as `.bluebook` above — white paper, black ink, and one
+     structural accent, so an ACT page reads as its own conductor rather than
+     as an SAT page with a colour swapped in. The accent is ACT Red rather
+     than Cerulean Blue; the rule/flag colour is a warm gold rather than
+     School bus Yellow, since College Board's yellow is the one hue that
+     would make an ACT page look like a repainted Bluebook screen. Same rule
+     as the SAT palette: the section does not use ACT's logo or wordmark, and
+     colour alone never carries right/wrong. */
+  .act-scheme {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 7%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 7%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 7%;
+    --primary: 350 78% 42%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 7%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 38%;
+    --accent: 0 0% 94%;
+    --accent-foreground: 0 0% 7%;
+    --border: 0 0% 85%;
+    --input: 0 0% 85%;
+    --ring: 350 78% 42%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 0 0% 7%;
+    --sidebar-primary: 350 78% 42%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 94%;
+    --sidebar-accent-foreground: 0 0% 7%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 350 78% 42%;
+
+    /* Toolbar/banner tokens, reusing the same variable names `.bluebook`
+       defines — every component in the section reads `--bb-*`, and it is
+       the scope class wrapping it, not the variable name, that decides
+       which conductor's colours those resolve to. */
+    --bb-navy: 350 30% 22%;
+    --bb-navy-foreground: 0 0% 100%;
+    --bb-rule: 42 92% 52%;
+    --bb-blue: 350 78% 42%;
+    --bb-blue-foreground: 0 0% 100%;
+    --bb-blue-soft: 350 78% 95%;
+    --bb-flag: 42 92% 52%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    --success: 350 78% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 42 92% 52%;
+    --warning-foreground: 0 0% 0%;
+    --info: 350 78% 42%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  .dark .act-scheme {
+    --background: 0 0% 7%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 350 85% 66%;
+    --primary-foreground: 0 0% 7%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 68%;
+    --accent: 0 0% 18%;
+    --accent-foreground: 0 0% 98%;
+    --border: 0 0% 24%;
+    --input: 0 0% 24%;
+    --ring: 350 85% 66%;
+    --sidebar-background: 0 0% 9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 350 85% 66%;
+    --sidebar-primary-foreground: 0 0% 7%;
+    --sidebar-accent: 0 0% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 0 0% 24%;
+    --sidebar-ring: 350 85% 66%;
+
+    --bb-navy: 350 25% 18%;
+    --bb-navy-foreground: 0 0% 100%;
+    --bb-rule: 42 92% 52%;
+    --bb-blue: 350 85% 66%;
+    --bb-blue-foreground: 0 0% 0%;
+    --bb-blue-soft: 350 45% 20%;
+    --bb-flag: 42 92% 52%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    --success: 350 85% 66%;
+    --success-foreground: 0 0% 0%;
+    --warning: 42 92% 52%;
+    --warning-foreground: 0 0% 0%;
+    --info: 350 85% 66%;
+    --info-foreground: 0 0% 0%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
+  }
+
+  /* Classic Learning Test. The royal blue and the teal are the two colours
+     in CLT's own site artwork (the logo's teal mark, the blue of its
+     background element); the navy bar is that blue deepened. As with the
+     other schemes, colour only -- no logo or wordmark. */
+  .clt-scheme {
+    --background: 0 0% 100%;
+    --foreground: 228 30% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 228 30% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 228 30% 10%;
+    --primary: 227 46% 44%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 225 20% 96%;
+    --secondary-foreground: 228 30% 10%;
+    --muted: 225 20% 96%;
+    --muted-foreground: 228 10% 40%;
+    --accent: 225 20% 94%;
+    --accent-foreground: 228 30% 10%;
+    --border: 225 15% 86%;
+    --input: 225 15% 86%;
+    --ring: 227 46% 44%;
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 228 30% 10%;
+    --sidebar-primary: 227 46% 44%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 225 20% 94%;
+    --sidebar-accent-foreground: 228 30% 10%;
+    --sidebar-border: 225 15% 86%;
+    --sidebar-ring: 227 46% 44%;
+
+    --bb-navy: 228 45% 20%;
+    --bb-navy-foreground: 0 0% 100%;
+    --bb-rule: 189 62% 52%;
+    --bb-blue: 227 46% 44%;
+    --bb-blue-foreground: 0 0% 100%;
+    --bb-blue-soft: 227 46% 95%;
+    --bb-flag: 189 62% 52%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    --success: 227 46% 44%;
+    --success-foreground: 0 0% 100%;
+    --warning: 189 62% 52%;
+    --warning-foreground: 0 0% 0%;
+    --info: 227 46% 44%;
+    --info-foreground: 0 0% 100%;
+    --destructive: 0 0% 0%;
+    --destructive-foreground: 0 0% 100%;
+  }
+
+  .dark .clt-scheme {
+    --background: 228 25% 7%;
+    --foreground: 0 0% 98%;
+    --card: 228 22% 11%;
+    --card-foreground: 0 0% 98%;
+    --popover: 228 22% 11%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 227 70% 72%;
+    --primary-foreground: 228 30% 8%;
+    --secondary: 228 18% 16%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 228 18% 16%;
+    --muted-foreground: 228 10% 68%;
+    --accent: 228 18% 18%;
+    --accent-foreground: 0 0% 98%;
+    --border: 228 15% 24%;
+    --input: 228 15% 24%;
+    --ring: 227 70% 72%;
+    --sidebar-background: 228 25% 9%;
+    --sidebar-foreground: 0 0% 98%;
+    --sidebar-primary: 227 70% 72%;
+    --sidebar-primary-foreground: 228 30% 8%;
+    --sidebar-accent: 228 18% 18%;
+    --sidebar-accent-foreground: 0 0% 98%;
+    --sidebar-border: 228 15% 24%;
+    --sidebar-ring: 227 70% 72%;
+
+    --bb-navy: 228 40% 16%;
+    --bb-navy-foreground: 0 0% 100%;
+    --bb-rule: 189 62% 52%;
+    --bb-blue: 227 70% 72%;
+    --bb-blue-foreground: 0 0% 0%;
+    --bb-blue-soft: 227 35% 20%;
+    --bb-flag: 189 62% 52%;
+    --bb-flag-foreground: 0 0% 0%;
+
+    --success: 227 70% 72%;
+    --success-foreground: 0 0% 0%;
+    --warning: 189 62% 52%;
+    --warning-foreground: 0 0% 0%;
+    --info: 227 70% 72%;
+    --info-foreground: 0 0% 0%;
+    --destructive: 0 0% 100%;
+    --destructive-foreground: 0 0% 0%;
+  }
 }
 
 @layer base {
@@ -768,6 +970,33 @@
 
   .btn-accent:hover { background-color: hsl(var(--primary) / 0.9); }
   .btn-accent:active { transform: translateY(1px); }
+
+  /*
+   * Loading placeholder. A soft highlight sweeps across a muted block, which
+   * reads as "content is on its way" without the whole page throbbing the
+   * way animate-pulse does. The sweep is staggered by --sk-delay so a page
+   * of blocks ripples top to bottom instead of flashing in unison.
+   */
+  .skeleton {
+    position: relative;
+    overflow: hidden;
+    background-color: hsl(var(--muted-foreground) / 0.12);
+    isolation: isolate;
+  }
+  .skeleton::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(90deg, transparent, hsl(var(--background) / 0.55), transparent);
+    animation: skeleton-sweep 1.6s var(--sk-delay, 0s) ease-in-out infinite;
+  }
+  @keyframes skeleton-sweep {
+    60%, 100% { transform: translateX(100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton::after { animation: none; display: none; }
+  }
 
   .section-container {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
@@ -1231,6 +1460,17 @@
 .atlas-section-heading h2 { max-width: 13ch; margin: 0; font-family: var(--display); font-size: clamp(3.35rem, 6vw, 6rem); font-weight: 600; letter-spacing: -0.025em; line-height: 0.98; text-wrap: balance; }
 .atlas-section-heading h2 em { color: var(--accent); font-weight: inherit; }
 .atlas-intro { max-width: 38rem; margin: 1.7rem 0 0; color: var(--ink-soft); font-size: var(--text-lg); line-height: var(--lh-body); }
+/* Graduation photo band: the hero's treatment (photo, dark wash, white copy), edge to edge. */
+.atlas-departments--photo { padding-block: 0; }
+.atlas-grad { position: relative; display: grid; align-items: center; justify-items: end; min-height: clamp(34rem, 48vw, 46rem); overflow: hidden; overflow: clip; isolation: isolate; background: #101a34; }
+.atlas-grad-photo { position: absolute; z-index: 0; inset: 0; margin: 0; }
+.atlas-grad-photo img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 30% 22%; filter: saturate(0.96) contrast(1.03); }
+.atlas-grad-photo::after { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(3, 9, 23, 0.06) 0%, rgba(3, 9, 23, 0.26) 34%, rgba(3, 9, 23, 0.8) 55%, rgba(3, 9, 23, 0.9) 100%); content: ""; pointer-events: none; }
+.atlas-grad-copy { position: relative; z-index: 1; box-sizing: content-box; max-width: 34rem; padding: clamp(3rem, 6vw, 5rem) max(1.5rem, calc((100% - 75rem) / 2)) clamp(3rem, 6vw, 5rem) 2rem; }
+.atlas-grad-copy.atlas-section-heading > p:first-child { color: #b9caff; }
+.atlas-grad-copy h2 { color: #fff; font-size: clamp(2.7rem, 4.6vw, 4.5rem); text-shadow: 0 4px 28px rgba(3, 9, 23, 0.35); }
+.atlas-grad-copy h2 em { color: #b9caff; }
+.atlas-grad-copy .atlas-intro { margin-top: 1.4rem; color: rgba(255, 255, 255, 0.92); font-size: var(--text-md); text-shadow: 0 1px 3px rgba(3, 9, 23, 0.5); }
 .atlas-department-list { display: grid; gap: 0.65rem; margin-top: clamp(3.4rem, 7vw, 6rem); }
 .atlas-department { display: grid; grid-template-columns: 3.4rem minmax(6.5rem, 0.65fr) minmax(15rem, 1.7fr) auto; gap: 1rem; align-items: center; padding: clamp(1.35rem, 2vw, 1.75rem); border: 1px solid var(--line); border-radius: 1rem; background: rgba(255, 254, 250, 0.68); transition: transform var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out), background var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out); }
 .atlas-department:hover { border-color: rgba(68, 101, 216, 0.36); background: #fffefa; box-shadow: 0 13px 25px rgba(33, 48, 88, 0.08); transform: translateY(-3px); }
@@ -1311,6 +1551,12 @@
 @keyframes atlas-marquee { to { transform: translateX(-50%); } }
 
 @media (max-width: 900px) {
+  /* Photo band stacks: photo on top, copy below it on the wash, heading still over the photo. */
+  .atlas-grad { align-items: end; justify-items: stretch; min-height: 44rem; }
+  .atlas-grad-photo img { height: 64%; object-position: 22% 40%; }
+  .atlas-grad-photo::after { background: linear-gradient(180deg, rgba(3, 9, 23, 0) 0%, rgba(3, 9, 23, 0.3) 24%, rgba(3, 9, 23, 0.86) 50%, #070f22 64%); }
+  .atlas-grad-copy { max-width: none; padding: 2rem 1.5rem 2.5rem; }
+  .atlas-grad-copy h2 { max-width: 18ch; }
   /* The six-link bar does not fit a portrait tablet: every two-word link
      wrapped onto two lines. The same two secondary links phones drop go a tier
      earlier here; both are still in the footer. */
@@ -1357,6 +1603,9 @@
   .atlas-departments, .atlas-house { padding-block: 4.8rem; }
   .atlas-section-heading h2 { font-size: clamp(3rem, 14vw, 4.6rem); }
   .atlas-intro { font-size: var(--text-md); }
+  .atlas-grad { min-height: 40rem; }
+  .atlas-grad-copy { padding: 1.5rem 1rem 2rem; }
+  .atlas-grad-copy h2 { font-size: clamp(2.4rem, 11vw, 3.3rem); }
   .atlas-department-list { gap: 0.55rem; margin-top: 3.2rem; }
   .atlas-department { grid-template-columns: 2.6rem minmax(0, 1fr); gap: 0.5rem 0.8rem; padding: 1.2rem; }
   .atlas-index { font-size: 1.35rem; }

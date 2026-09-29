@@ -42,14 +42,12 @@ function stripHtmlComments(): Plugin {
   };
 }
 
-// https://vitejs.dev/config/
 /**
  * simli-client@3.0.2 ships `dist/index.js` with `require("./Client")`, but the
  * file on disk is `dist/client.js`. That resolves fine on case-insensitive
- * macOS/Windows and fails a case-sensitive filesystem with:
+ * macOS/Windows and fails the Linux build with:
  *   Could not resolve "./Client" from "./Client?commonjs-external"
  * Map the bad specifier back onto the real file until upstream fixes the case.
- * Kept identical to pathforge-tech so the two builds cannot diverge on it.
  */
 function fixSimliClientCase(): Plugin {
   return {
@@ -63,10 +61,19 @@ function fixSimliClientCase(): Plugin {
   };
 }
 
+// https://vitejs.dev/config/
 export default defineConfig(({ mode }) => ({
   server: {
     host: "::",
     port: 8080,
+  },
+  // simli-client's `require("./Client")` (see fixSimliClientCase below) also
+  // breaks esbuild's dependency pre-bundling, which crashes the dev server on
+  // start with "Could not read from file: .../dist/Client.js". The Rollup-side
+  // plugin cannot see that scan, so the package is kept out of it entirely;
+  // the interview avatar imports it lazily and works unbundled.
+  optimizeDeps: {
+    exclude: ["simli-client"],
   },
   define: {
     // Consumed by src/lib/bugs/reporter.ts, which is synced from
@@ -165,7 +172,41 @@ export default defineConfig(({ mode }) => ({
           // framer-motion v12 is split across these three packages.
           if (pkg === "framer-motion" || pkg === "motion-dom" || pkg === "motion-utils")
             return "framer";
-          if (pkg === "three" || pkg.startsWith("@react-three")) return "three";
+          // three, R3F, drei and the libraries only they pull in. Left out, drei's
+          // helpers (three-stdlib, troika, zustand...) fell to `vendor`, which
+          // then imported `three` while `three` imported `vendor` back: a cycle
+          // that threw "Cannot access X before initialization" on load and
+          // blanked every signed-in page once Zen mode shipped.
+          if (
+            pkg === "three" ||
+            pkg.startsWith("@react-three") ||
+            pkg.startsWith("three-") ||
+            pkg.startsWith("troika-") ||
+            pkg.startsWith("@react-spring") ||
+            pkg.startsWith("@use-gesture") ||
+            pkg.startsWith("@monogrid") ||
+            pkg.startsWith("@mediapipe") ||
+            [
+              "bidi-js",
+              "webgl-sdf-generator",
+              "camera-controls",
+              "maath",
+              "meshline",
+              "stats-gl",
+              "stats.js",
+              "detect-gpu",
+              "glsl-noise",
+              "hls.js",
+              "react-composer",
+              "suspend-react",
+              "tunnel-rat",
+              "its-fine",
+              "react-reconciler",
+              "react-use-measure",
+              "zustand",
+            ].includes(pkg)
+          )
+            return "three";
           if (pkg === "recharts" || pkg.startsWith("d3-") || pkg === "victory-vendor")
             return "charts";
           // General-purpose compression, wanted on both sides of the split:
@@ -197,8 +238,8 @@ export default defineConfig(({ mode }) => ({
           )
             return "pdf";
 
-          // maplibre-gl is a ~500kB WebGL map renderer used by exactly one
-          // component, `LiveRouteMap` on the lazy `/routine/focus` route. Left
+          // maplibre-gl is a ~500kB WebGL map renderer that nothing in the app
+          // imports any more (it drove the removed Focus page's route map). Left
           // unassigned it fell to the `vendor` fallback alongside gsap and ogl
           // below — both of which the landing page imports eagerly (LayeredText,
           // SpecularLink) — so every visitor to `/` downloaded a map renderer

@@ -2,7 +2,7 @@
 // pays for this font in its own. See the [data-cluely] typography note below.
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Loader2, Save } from "lucide-react";
+import { ChevronDown, Save } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
@@ -57,6 +57,7 @@ import {
 } from "@/components/outcomes/Standings";
 import { RecordEditor } from "@/components/outcomes/RecordEditor";
 import { ImportLinkedInModal } from "@/components/ImportLinkedInModal";
+import { PageSkeleton } from "@/components/PageSkeletons";
 
 /**
  * Outcomes.
@@ -236,11 +237,7 @@ export default function Outcomes() {
   );
 
   if (loading) {
-    return (
-      <div className="flex min-h-[70svh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
+    return <PageSkeleton kind="outcomes" label="Loading your outcomes" />;
   }
 
   return (

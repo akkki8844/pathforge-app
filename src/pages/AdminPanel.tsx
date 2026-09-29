@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useAdminCheck } from '@/hooks/useAdminCheck';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2, Menu, LogOut, Home, User as UserIcon } from 'lucide-react';
+import { Menu, LogOut, Home, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import {
@@ -31,6 +31,7 @@ import { AdminPlatformAnalytics } from '@/components/admin/AdminPlatformAnalytic
 import { AdminSettings } from '@/components/admin/AdminSettings';
 import { AdminEmails } from '@/components/admin/AdminEmails';
 import { AuroraBackdrop } from '@/components/visual/AuroraBackdrop';
+import { PageSkeleton } from "@/components/PageSkeletons";
 
 export default function AdminPanel() {
   const { user, loading: authLoading } = useAuth();
@@ -40,11 +41,7 @@ export default function AdminPanel() {
 
   // Show loading while checking auth/admin status
   if (authLoading || adminLoading) {
-    return (
-      <div className="min-h-[100svh] flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
-    );
+    return <PageSkeleton kind="list" shell label="Loading admin panel" />;
   }
 
   // Redirect if not logged in

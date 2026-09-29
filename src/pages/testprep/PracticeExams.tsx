@@ -18,12 +18,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
-import { SAT, blueprintFor, skillName } from "@/lib/testprep/blueprints";
+import { SAT, blueprintFor, conductorFor, skillName, specNameFor } from "@/lib/testprep/blueprints";
 import { examCapacity } from "@/lib/testprep/select";
 import { examHref, formExamHref, resultsHref, sessionHref } from "@/lib/testprep/nav";
 import { PRACTICE_FORMS } from "@/lib/testprep/content/forms";
 import { useTestPrep } from "@/lib/testprep/store";
-import { formatDuration } from "@/lib/testprep/stats";
+import { easierRouteCap, formatDuration } from "@/lib/testprep/stats";
 import {
   BB_SCORE_CARD_CTA,
   BB_SCORE_CARD_HEADER,
@@ -33,12 +33,13 @@ import {
   FOCUS,
   ROW_HOVER,
   SURFACE,
+  themeScope,
 } from "@/lib/testprep/ui";
 import { PageHeader, Panel, TestPrepShell } from "@/components/testprep/TestPrepShell";
 import { ActionRow } from "@/components/testprep/primitives";
 import { Reveal, Stagger, StaggerItem } from "@/components/testprep/motion";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
-import type { AttemptSummary, SubjectId } from "@/lib/testprep/types";
+import type { AttemptSummary, SubjectId, TestBlueprint } from "@/lib/testprep/types";
 
 /**
  * Where a sitting starts, and where past ones are listed.
@@ -52,20 +53,21 @@ import type { AttemptSummary, SubjectId } from "@/lib/testprep/types";
 export default function TestPrepExams() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
   const [customOpen, setCustomOpen] = useState(false);
+  const bp = blueprint ?? SAT;
 
-  const full = useMemo(() => examCapacity(["rw", "math"]), []);
+  const full = useMemo(() => examCapacity(bp.subjects.map((s) => s.id), bp), [bp]);
   const perSubject = useMemo(
     () =>
-      SAT.subjects.map((s) => ({
+      bp.subjects.map((s) => ({
         subject: s,
-        ...examCapacity([s.id]),
-        minutes: SAT.modules
+        ...examCapacity([s.id], bp),
+        minutes: bp.modules
           .filter((m) => m.subjectId === s.id)
           .reduce((n, m) => n + m.minutes, 0),
       })),
-    [],
+    [bp],
   );
 
   const examAttempts = profile.attempts.filter((a) => a.kind === "exam");
@@ -74,7 +76,15 @@ export default function TestPrepExams() {
   if (!blueprint.available)
     return <TestNotAvailable name={blueprint.name} subtitle={blueprint.subtitle} />;
 
-  const fullMinutes = SAT.modules.reduce(
+  // The fixed practice tests are SAT content; other tests sit a sitting drawn
+  // fresh from their own bank instead.
+  const forms = blueprint.id === "sat" ? PRACTICE_FORMS : [];
+  const sections = blueprint.subjects.map((s) => ({ id: s.id, name: s.name, range: s.scoreRange }));
+  const allSections = blueprint.subjects.map((s) => s.id);
+  const sectionRange = blueprint.subjects[0]?.scoreRange ?? blueprint.scoreRange;
+  const realQuestions = blueprint.modules.reduce((n, m) => n + m.questionCount, 0);
+  const realMinutes = blueprint.modules.reduce((n, m) => n + m.minutes, 0);
+  const fullMinutes = blueprint.modules.reduce(
     (n, m) => n + Math.round(m.minutes * Math.min(1, full.available / full.target)),
     0,
   );
@@ -105,15 +115,16 @@ export default function TestPrepExams() {
               Full-length practice tests
             </h2>
             <p className="hidden text-xs text-muted-foreground sm:block">
-              98 questions {"·"} 2 hours 14 minutes {"·"} adaptive, like the real test
+              {realQuestions} questions {"·"} {Math.floor(realMinutes / 60)} hours {realMinutes % 60} minutes
+              {blueprint.adaptive ? <> {"·"} adaptive, like the real test</> : null}
             </p>
           </div>
           <Stagger
             className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3"
-            count={PRACTICE_FORMS.length + 1}
+            count={forms.length + 1}
             step={0.03}
           >
-            {PRACTICE_FORMS.map((form) => {
+            {forms.map((form) => {
               const sittings = examAttempts.filter(
                 (a) => a.formId === form.id && a.score !== undefined,
               );
@@ -130,14 +141,14 @@ export default function TestPrepExams() {
                     meta={latest ? examDate(latest.finishedAt) : "Not taken yet"}
                     onDownload={
                       latest
-                        ? () => downloadScoreReport(blueprint.name, latest, form.number)
+                        ? () => downloadScoreReport(blueprint, latest, form.number)
                         : undefined
                     }
                     downloadLabel={`Download the score report for ${form.name}`}
                     total={latest?.score ?? null}
                     totalRange={blueprint.scoreRange}
                     delta={delta}
-                    sections={SECTIONS.map((s) => ({
+                    sections={sections.map((s) => ({
                       ...s,
                       value: latest?.sectionScores?.[s.id] ?? null,
                     }))}
@@ -194,15 +205,15 @@ export default function TestPrepExams() {
                 meta="New every time"
                 total={null}
                 totalRange={blueprint.scoreRange}
-                sections={SECTIONS.map((s) => ({ ...s, value: null }))}
+                sections={sections.map((s) => ({ ...s, value: null }))}
                 footnote={
                   isFullLength
-                    ? `${full.target} questions from the bank · ${SAT.modules.reduce((n, m) => n + m.minutes, 0)} minutes`
+                    ? `${full.target} questions from the bank · ${realMinutes} minutes`
                     : `${full.available} questions from the bank · about ${fullMinutes} minutes`
                 }
                 actions={
                   <>
-                    <Link to={examHref(blueprint.id, ["rw", "math"])} className={BB_SCORE_CARD_CTA}>
+                    <Link to={examHref(blueprint.id, allSections)} className={BB_SCORE_CARD_CTA}>
                       Start a randomized test
                     </Link>
                     <button
@@ -244,12 +255,12 @@ export default function TestPrepExams() {
                       testName={blueprint.name}
                       label={a.label}
                       meta={examDate(a.finishedAt)}
-                      onDownload={() => downloadScoreReport(blueprint.name, a, number)}
+                      onDownload={() => downloadScoreReport(blueprint, a, number)}
                       downloadLabel={`Download the score report for ${a.label}`}
                       total={a.score ?? null}
                       totalRange={blueprint.scoreRange}
                       delta={delta}
-                      sections={SECTIONS.map((s) => ({
+                      sections={sections.map((s) => ({
                         ...s,
                         value: a.sectionScores?.[s.id] ?? null,
                       }))}
@@ -278,7 +289,7 @@ export default function TestPrepExams() {
         <Reveal delay={0.08}>
           <Panel
             title="Section tests"
-            description="One section, in its own two modules."
+            description={blueprint.adaptive ? "One section, in its own two modules." : "One section, timed as it is on the real test."}
             bodyClassName="p-0"
           >
             <Stagger count={perSubject.length} step={0.04}>
@@ -314,6 +325,8 @@ export default function TestPrepExams() {
             top of the page; it is reference now, under the cards you act on. */}
         <Reveal delay={0.12} as="section" className={cn("p-5 sm:p-6", SURFACE)}>
           <p className={EYEBROW}>How a sitting works</p>
+          {blueprint.adaptive ? (
+          <>
           <p className="mt-2 text-lg font-semibold tracking-[-0.01em] text-foreground">
             Four modules, both sections, adaptive like the real test
           </p>
@@ -321,20 +334,46 @@ export default function TestPrepExams() {
             Reading &amp; Writing then Math, in two modules each, in the exam interface. Move
             freely within a module, but once a module is submitted it closes for good. Each
             section&apos;s second module adapts to your first: do well on Module 1 and Module 2 is
-            harder, with the full 800 in reach; otherwise it is easier and the section tops out in
-            the low 600s. No explanations until the end, a running timer per module, and an
-            on-screen calculator in Math.
+            harder, with the full {sectionRange[1]} in reach; otherwise it is easier and the section
+            tops out near {easierRouteCap(sectionRange, blueprint.scoreStep)}. No explanations until
+            the end, a running timer per module, and an on-screen calculator in Math.
           </p>
           <p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted-foreground">
-            The four practice tests have fixed questions you will not meet in the Question Bank
-            or in practice sets, so each one is a fresh sitting. Every question is written by
-            Pathforge to the digital SAT specification; none is College Board material, and scores
-            are estimates.
+            {forms.length
+              ? "The four practice tests have fixed questions you will not meet in the Question Bank or in practice sets, so each one is a fresh sitting. "
+              : null}
+            Every question is written by Pathforge to the {specNameFor(blueprint.id)}; none is{" "}
+            {conductorFor(blueprint.id)} material, and scores are estimates.
           </p>
+          </>
+          ) : (
+          <>
+          <p className="mt-2 text-lg font-semibold tracking-[-0.01em] text-foreground">
+            {blueprint.subjects.length} timed sections, in the order of the real test
+          </p>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+            {blueprint.modules.map((m) => `${m.label} (${m.questionCount} questions, ${m.minutes} minutes)`).join(", then ")}.
+            Each section is sat once, with no adaptive routing, and closes for good when it is
+            submitted. No explanations until the end, a running timer per section, and{" "}
+            {blueprint.modules.some((m) => m.calculator)
+              ? `an on-screen calculator in ${blueprint.modules.find((m) => m.calculator)?.label}`
+              : "no calculator, as on the real test"}
+            .{" "}
+            {blueprint.scoring === "average"
+              ? "Your composite is the average of the section scores, rounded, as the real test reports it."
+              : "Your total is the sum of the section scores, as the real test reports it."}
+          </p>
+          <p className="mt-3 max-w-2xl text-xs leading-relaxed text-muted-foreground">
+            A sitting is drawn fresh from the {blueprint.name} bank each time. Every question is
+            written by Pathforge to the {specNameFor(blueprint.id)}; none is {conductorFor(blueprint.id)}{" "}
+            material, and scores are estimates.
+          </p>
+          </>
+          )}
         </Reveal>
       </div>
 
-      <CustomExamDialog testId={blueprint.id} open={customOpen} onOpenChange={setCustomOpen} />
+      <CustomExamDialog blueprint={blueprint} open={customOpen} onOpenChange={setCustomOpen} />
     </TestPrepShell>
   );
 }
@@ -347,11 +386,11 @@ export default function TestPrepExams() {
  * number of questions would be a worse simulation than an honest timed set.
  */
 function CustomExamDialog({
-  testId,
+  blueprint,
   open,
   onOpenChange,
 }: {
-  testId: string;
+  blueprint: TestBlueprint;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
@@ -360,11 +399,12 @@ function CustomExamDialog({
   const [count, setCount] = useState("20");
   const [minutes, setMinutes] = useState("25");
 
+  const testId = blueprint.id;
   const seconds = Math.round((Number(minutes) * 60) / Number(count));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bluebook sm:max-w-sm">
+      <DialogContent className={cn(themeScope(testId), "sm:max-w-sm")}>
         <DialogHeader>
           <DialogTitle>Custom exam</DialogTitle>
           <DialogDescription>
@@ -378,9 +418,9 @@ function CustomExamDialog({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bluebook">
-                <SelectItem value="all">Both sections</SelectItem>
-                {SAT.subjects.map((s) => (
+              <SelectContent className={themeScope(testId)}>
+                <SelectItem value="all">{blueprint.subjects.length === 2 ? "Both sections" : "All sections"}</SelectItem>
+                {blueprint.subjects.map((s) => (
                   <SelectItem key={s.id} value={s.id}>
                     {s.name}
                   </SelectItem>
@@ -396,7 +436,7 @@ function CustomExamDialog({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bluebook">
+              <SelectContent className={themeScope(testId)}>
                 {["10", "20", "27", "30", "40"].map((n) => (
                   <SelectItem key={n} value={n}>
                     {n}
@@ -413,7 +453,7 @@ function CustomExamDialog({
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bluebook">
+              <SelectContent className={themeScope(testId)}>
                 {["15", "20", "25", "32", "35", "45"].map((n) => (
                   <SelectItem key={n} value={n}>
                     {n} minutes
@@ -423,8 +463,12 @@ function CustomExamDialog({
             </Select>
           </label>
           <p className="text-xs tabular-nums text-muted-foreground">
-            That is about {seconds} seconds per question. The digital SAT allows roughly 71 in
-            Reading &amp; Writing and 95 in Math.
+            That is about {seconds} seconds per question. The real {blueprint.name} allows roughly{" "}
+            {blueprint.modules
+              .filter((m, i, all) => all.findIndex((x) => x.subjectId === m.subjectId) === i)
+              .map((m) => `${Math.round((m.minutes * 60) / m.questionCount)} in ${blueprint.subjects.find((s) => s.id === m.subjectId)?.name ?? m.label}`)
+              .join(", ")}
+            .
           </p>
         </div>
         <DialogFooter>
@@ -450,12 +494,6 @@ function CustomExamDialog({
     </Dialog>
   );
 }
-
-/** The two sections every card reports, in the order the score report has them. */
-const SECTIONS: { id: SubjectId; name: string }[] = [
-  { id: "rw", name: "Reading and Writing" },
-  { id: "math", name: "Math" },
-];
 
 /**
  * The score card.
@@ -496,7 +534,7 @@ function ScoreCard({
   totalRange: [number, number];
   /** Change against the previous sitting, when there is one to compare with. */
   delta?: number | null;
-  sections: { id: SubjectId; name: string; value: number | null }[];
+  sections: { id: SubjectId; name: string; range: [number, number]; value: number | null }[];
   footnote: ReactNode;
   actions: ReactNode;
 }) {
@@ -554,7 +592,7 @@ function ScoreCard({
 
         <div className="mt-6 divide-y divide-border/60 border-y border-border/60">
           {sections.map((section) => {
-            const range = sectionRange(section.id);
+            const range = section.range;
             return (
               <div key={section.id} className="flex items-baseline justify-between py-3">
                 <div>
@@ -584,8 +622,8 @@ function ScoreCard({
   );
 }
 
-function sectionRange(subjectId: SubjectId): [number, number] {
-  return SAT.subjects.find((s) => s.id === subjectId)?.scoreRange ?? [200, 800];
+function sectionRange(blueprint: TestBlueprint, subjectId: SubjectId): [number, number] {
+  return blueprint.subjects.find((s) => s.id === subjectId)?.scoreRange ?? blueprint.scoreRange;
 }
 
 /** The date the sitting was taken, written out: "July 19, 2024". */
@@ -607,21 +645,22 @@ function examDate(iso: string): string {
  * the file says what the card says, plus the per-skill tally the card has no
  * room for, and it is the student's to keep.
  */
-function downloadScoreReport(testName: string, attempt: AttemptSummary, number: number): void {
+function downloadScoreReport(blueprint: TestBlueprint, attempt: AttemptSummary, number: number): void {
+  const testName = blueprint.name;
   const lines: string[] = [
     `${testName} — ${attempt.label}`,
     `Practice ${number} · ${examDate(attempt.finishedAt)}`,
     "",
     attempt.score !== undefined
-      ? `Total score: ${attempt.score} (${SAT.scoreRange[0]}-${SAT.scoreRange[1]})`
+      ? `Total score: ${attempt.score} (${blueprint.scoreRange[0]}-${blueprint.scoreRange[1]})`
       : "Total score: not reported — a composite needs both sections",
   ];
 
-  for (const subjectId of ["rw", "math"] as const) {
-    const value = attempt.sectionScores?.[subjectId];
+  for (const subject of blueprint.subjects) {
+    const value = attempt.sectionScores?.[subject.id];
     if (value === undefined) continue;
-    const range = sectionRange(subjectId);
-    const name = subjectId === "rw" ? "Reading and Writing" : "Math";
+    const range = sectionRange(blueprint, subject.id);
+    const name = subject.name;
     lines.push(`${name}: ${value} (${range[0]}-${range[1]})`);
   }
 
@@ -640,7 +679,7 @@ function downloadScoreReport(testName: string, attempt: AttemptSummary, number: 
   lines.push(
     "",
     "Scores are estimated from practice questions written for this product.",
-    "They are not an official College Board score.",
+    `They are not an official ${conductorFor(blueprint.id)} score.`,
     "",
   );
 

@@ -12,12 +12,14 @@
  * the day this moves server-side the keys stop mattering.
  */
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { questionById } from "./questions";
 import type {
   AnswerRecord,
   AttemptSummary,
   PracticeConfig,
   SessionState,
+  TestId,
   TestPrepProfile,
 } from "./types";
 
@@ -97,12 +99,27 @@ function serverSnapshot(): TestPrepProfile {
 /* Mutations                                                           */
 /* ------------------------------------------------------------------ */
 
-export function setTargetScore(score: number) {
-  persist({ ...load(), targetScore: score });
+/**
+ * The SAT keeps its target and date on the profile's top-level fields, where
+ * they have always been; every other test keeps its own under `perTest`, so an
+ * ACT target of 30 never overwrites an SAT target of 1450.
+ */
+export function setTargetScore(score: number, testId: TestId = "sat") {
+  const current = load();
+  if (testId === "sat") return persist({ ...current, targetScore: score });
+  persist({
+    ...current,
+    perTest: { ...current.perTest, [testId]: { ...current.perTest?.[testId], targetScore: score } },
+  });
 }
 
-export function setTestDate(date: string) {
-  persist({ ...load(), testDate: date });
+export function setTestDate(date: string, testId: TestId = "sat") {
+  const current = load();
+  if (testId === "sat") return persist({ ...current, testDate: date });
+  persist({
+    ...current,
+    perTest: { ...current.perTest, [testId]: { ...current.perTest?.[testId], testDate: date } },
+  });
 }
 
 export function setDailyGoal(goal: number) {
@@ -163,9 +180,28 @@ export function saveAttempt(attempt: AttemptSummary) {
   persist({ ...current, attempts: [attempt, ...current.attempts] });
 }
 
-/** Wipe everything. Offered on Progress, behind a confirmation. */
-export function resetTestPrep() {
-  persist({ ...EMPTY });
+/**
+ * Wipe one test's history. Offered on Progress, behind a confirmation.
+ *
+ * Scoped to the test being viewed: resetting ACT progress must not throw away
+ * a year of SAT practice kept in the same profile.
+ */
+export function resetTestPrep(testId: TestId = "sat") {
+  const current = load();
+  const mine = (questionId: string) => (questionById(questionId)?.testId ?? "sat") === testId;
+  const { [testId]: _dropped, ...otherTests } = current.perTest ?? {};
+  void _dropped;
+  persist({
+    ...current,
+    ...(testId === "sat" ? { targetScore: EMPTY.targetScore, testDate: "" } : {}),
+    perTest: otherTests,
+    bookmarks: current.bookmarks.filter((id) => !mine(id)),
+    answers: current.answers.filter((a) => !mine(a.questionId)),
+    attempts: current.attempts.filter((a) => (a.testId ?? "sat") !== testId),
+    sessions: Object.fromEntries(
+      Object.entries(current.sessions).filter(([, s]) => (s.testId ?? "sat") !== testId),
+    ),
+  });
 }
 
 /* ------------------------------------------------------------------ */
@@ -176,8 +212,38 @@ export function readProfile(): TestPrepProfile {
   return load();
 }
 
-export function useTestPrep(): TestPrepProfile {
-  return useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+export function useTestPrep(testId?: string): TestPrepProfile {
+  const profile = useSyncExternalStore(subscribe, snapshot, serverSnapshot);
+  return useMemo(() => (testId ? scopeProfile(profile, testId) : profile), [profile, testId]);
+}
+
+/** Default targets for tests that have never had one set. */
+const DEFAULT_TARGET: Partial<Record<TestId, number>> = { act: 30, preact: 28, psat: 1300, clt: 90 };
+
+/**
+ * One test's view of the shared profile.
+ *
+ * Every test's answers, attempts and bookmarks live in one profile, keyed by
+ * the question's own `testId`. Everything the section computes — streaks,
+ * accuracy, score history, the "mistakes" list — reads through this, so an
+ * ACT page never counts SAT answers and vice versa.
+ */
+export function scopeProfile(profile: TestPrepProfile, testId: string): TestPrepProfile {
+  const mine = (questionId: string) => (questionById(questionId)?.testId ?? "sat") === testId;
+  const own = testId === "sat" ? undefined : profile.perTest?.[testId as TestId];
+  return {
+    ...profile,
+    targetScore:
+      testId === "sat" ? profile.targetScore : own?.targetScore ?? DEFAULT_TARGET[testId as TestId] ?? 0,
+    testDate: testId === "sat" ? profile.testDate : own?.testDate ?? "",
+    bookmarks: profile.bookmarks.filter(mine),
+    answers: profile.answers.filter((a) => mine(a.questionId)),
+    attempts: profile.attempts.filter((a) => (a.testId ?? "sat") === testId),
+  };
+}
+
+export function readProfileFor(testId: string): TestPrepProfile {
+  return scopeProfile(load(), testId);
 }
 
 /** Bookmark state for one question, plus the toggle. */

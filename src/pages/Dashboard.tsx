@@ -2,7 +2,6 @@
 // Fraunces everywhere else; this is the one surface that is not, and scoping
 // the import to this chunk means no other page pays for the file.
 import { useCallback, useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useDashboardData } from "@/hooks/useDashboardData";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWeeklyCheckins } from "@/hooks/useWeeklyCheckins";
@@ -12,6 +11,7 @@ import { WeeklyCheckIn } from "@/components/dashboard/WeeklyCheckIn";
 import { DraggableWidgetGrid, type WidgetItem } from "@/components/ui/draggable-widget-grid";
 import { DASHBOARD_WIDGETS, renderDashboardWidget } from "@/components/dashboard/widgets";
 import { useZenMode } from "@/lib/zen";
+import { PageSkeleton } from "@/components/PageSkeletons";
 
 /**
  * The signed-in home.
@@ -88,11 +88,7 @@ export default function Dashboard() {
   );
 
   if (d.loading) {
-    return (
-      <div className="flex min-h-[70svh] items-center justify-center">
-        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-      </div>
-    );
+    return <PageSkeleton kind="dashboard" label="Loading your dashboard" />;
   }
 
   return (

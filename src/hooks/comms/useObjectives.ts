@@ -9,7 +9,7 @@
  * writing one task is the entire integration.
  *
  * Completion then syncs both ways through database triggers rather than through
- * this hook, because a user can tick the task off on `/routine/today` where this
+ * this hook, because a user can tick the task off on the Calendar where this
  * code is not mounted at all.
  *
  * `status = 'suggested'` rows are AI proposals nobody has accepted. They live in

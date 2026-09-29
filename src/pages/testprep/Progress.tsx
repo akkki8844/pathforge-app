@@ -8,11 +8,11 @@ import {
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
-import { blueprintFor } from "@/lib/testprep/blueprints";
+import { SAT, blueprintFor, conductorFor } from "@/lib/testprep/blueprints";
 import { examHref, resultsHref, sectionHref, sessionHref } from "@/lib/testprep/nav";
 import { resetTestPrep, useTestPrep } from "@/lib/testprep/store";
 import {
-  accuracyByDifficulty, formatDuration, overallStats, pct, timingByDomain,
+  accuracyByDifficulty, formatDuration, overallStats, pct, timingByDomain, trendBounds,
 } from "@/lib/testprep/stats";
 import {
   activityByDay, currentStreak, dailyGoal, longestStreak, minutesPracticed, scoreHistory, weeklyAccuracy,
@@ -21,7 +21,7 @@ import { Reveal } from "@/components/testprep/motion";
 import { PageHeader, TestPrepShell } from "@/components/testprep/TestPrepShell";
 import { TestNotAvailable } from "@/components/testprep/TestNotAvailable";
 import { ActivityHeatmap, Ring, TrendChart } from "@/components/testprep/viz";
-import { masteryColor } from "@/lib/testprep/ui";
+import { masteryColor, themeScope } from "@/lib/testprep/ui";
 import { EASE_OUT_EXPO } from "@/lib/motion";
 
 const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba(15,23,42,0.04)]";
@@ -36,10 +36,10 @@ const CARD = "rounded-2xl border border-border/70 bg-card shadow-[0_1px_2px_rgba
 export default function TestPrepProgress() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
   const navigate = useNavigate();
 
-  const stats = useMemo(() => overallStats(profile), [profile]);
+  const stats = useMemo(() => overallStats(profile, blueprint ?? SAT), [profile, blueprint]);
   const difficulty = useMemo(() => accuracyByDifficulty(profile), [profile]);
   const timing = useMemo(() => timingByDomain(profile), [profile]);
   const history = useMemo(() => scoreHistory(profile), [profile]);
@@ -58,6 +58,17 @@ export default function TestPrepProgress() {
   const last = history[history.length - 1]?.score;
   const delta = first !== undefined && last !== undefined && history.length > 1 ? last - first : null;
   const maxMs = Math.max(1, ...timing.map((t) => t.avgMs));
+  // The real test's seconds per question, per section, from its own timings.
+  const paceMs = (subjectId: string) => {
+    const mods = blueprint.modules.filter((m) => m.subjectId === subjectId);
+    const q = mods.reduce((n, m) => n + m.questionCount, 0);
+    return q ? (mods.reduce((n, m) => n + m.minutes, 0) * 60000) / q : 95000;
+  };
+  const domainSubject = (domainId: string) =>
+    blueprint.subjects.find((s) => s.domains.some((d) => d.id === domainId))?.id ?? "";
+  const paceLine = blueprint.subjects
+    .map((s) => `${Math.round(paceMs(s.id) / 1000)} per ${s.name} question`)
+    .join(", ");
 
   return (
     <TestPrepShell
@@ -87,7 +98,7 @@ export default function TestPrepProgress() {
                     <Link to={sessionHref(blueprint.id, { kind: "quick", count: 10 })}>Start a quick set</Link>
                   </Button>
                   <Button asChild variant="outline">
-                    <Link to={examHref(blueprint.id, ["rw", "math"])}>Sit a practice test</Link>
+                    <Link to={examHref(blueprint.id, blueprint.subjects.map((s) => s.id))}>Sit a practice test</Link>
                   </Button>
                 </div>
               </div>
@@ -159,8 +170,8 @@ export default function TestPrepProgress() {
                         label: p.at.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
                         value: p.score,
                       }))}
-                      min={Math.max(400, Math.floor((Math.min(profile.targetScore, ...history.map((h) => h.score)) - 60) / 100) * 100)}
-                      max={Math.min(1600, Math.ceil((Math.max(profile.targetScore, ...history.map((h) => h.score)) + 60) / 100) * 100)}
+                      min={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score)])[0]}
+                      max={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score)])[1]}
                       target={profile.targetScore}
                       onPointClick={(p) => navigate(resultsHref(blueprint.id, p.id))}
                     />
@@ -168,7 +179,7 @@ export default function TestPrepProgress() {
                 ) : (
                   <EmptyChart
                     text={history.length === 1 ? `One sitting so far: ${history[0].score}. A second one starts the line.` : "Sit two full practice tests to see your score line."}
-                    cta={<Link to={examHref(blueprint.id, ["rw", "math"])}>Sit a practice test</Link>}
+                    cta={<Link to={examHref(blueprint.id, blueprint.subjects.map((s) => s.id))}>Sit a practice test</Link>}
                   />
                 )}
               </Reveal>
@@ -299,7 +310,7 @@ export default function TestPrepProgress() {
                         </div>
                         <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-muted">
                           <motion.div
-                            className={cn("h-full rounded-full", row.avgMs > 95000 ? "bg-amber-500" : "bg-[hsl(var(--bb-blue))]")}
+                            className={cn("h-full rounded-full", row.avgMs > paceMs(domainSubject(row.id)) ? "bg-amber-500" : "bg-[hsl(var(--bb-blue))]")}
                             initial={{ width: 0 }}
                             animate={{ width: `${(row.avgMs / maxMs) * 100}%` }}
                             transition={{ duration: 0.8, delay: i * 0.03, ease: EASE_OUT_EXPO }}
@@ -312,8 +323,8 @@ export default function TestPrepProgress() {
                   <EmptyChart text="Answer three questions in a topic to time it." />
                 )}
                 <p className="mt-4 text-[11.5px] text-muted-foreground">
-                  The real test gives about 71 seconds per Reading and Writing question and 95 per Math question. Amber bars are
-                  slower than that.
+                  The real {blueprint.name} gives about {paceLine} (in seconds). Amber bars are slower than
+                  that.
                 </p>
               </Reveal>
               <Reveal delay={0.14} className={cn(CARD, "overflow-hidden lg:col-span-6")}>
@@ -385,19 +396,20 @@ export default function TestPrepProgress() {
                 Reset progress
               </Button>
             </AlertDialogTrigger>
-            <AlertDialogContent className="bluebook">
+            <AlertDialogContent className={themeScope(blueprint.id)}>
               <AlertDialogHeader>
-                <AlertDialogTitle>Reset all SAT progress?</AlertDialogTitle>
+                <AlertDialogTitle>Reset all {blueprint.name} progress?</AlertDialogTitle>
                 <AlertDialogDescription>
-                  Every answer, bookmark, practice set and exam result is deleted, and the mastery figures go back to
-                  nothing. Your target score and test date are cleared too. This cannot be undone.
+                  Every {blueprint.name} answer, bookmark, practice set and exam result is deleted, and the mastery
+                  figures go back to nothing. Your {blueprint.name} target and test date are cleared too. Other tests
+                  are not touched. This cannot be undone.
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                  onClick={resetTestPrep}
+                  onClick={() => resetTestPrep(blueprint.id)}
                 >
                   Delete everything
                 </AlertDialogAction>
@@ -407,8 +419,8 @@ export default function TestPrepProgress() {
         </div>
 
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Score figures are estimates from Pathforge-written practice questions, not predictions of a College Board
-          result.{" "}
+          Score figures are estimates from Pathforge-written practice questions, not predictions of an official{" "}
+          {conductorFor(blueprint.id)} result.{" "}
           <Link to={sectionHref(blueprint.id, "exams")} className="text-[hsl(var(--bb-blue))] hover:underline">
             Sit a practice exam
           </Link>{" "}

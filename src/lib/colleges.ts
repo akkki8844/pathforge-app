@@ -1,4 +1,5 @@
 // Comprehensive Global Colleges Database
+import { sameCountry } from "./countries";
 
 export interface College {
   id: string;
@@ -25,7 +26,7 @@ export interface College {
 // prestigious schools in that country surface first.
 export const getCollegesByCountry = (country: string): College[] => {
   if (!country) return [];
-  const countryColleges = colleges.filter(c => c.country === country);
+  const countryColleges = colleges.filter(c => sameCountry(c.country, country));
   const levelOrder = { global: 0, national: 1, regional: 2 } as const;
   return [...countryColleges].sort(
     (a, b) => levelOrder[a.level] - levelOrder[b.level]
@@ -707,6 +708,54 @@ const collegesRaw: College[] = [
   { id: "mcgill-2", name: "Université de Montréal", country: "Canada", region: "Quebec", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Business/Finance", "Computer Science"], website: "https://www.umontreal.ca/en/" },
   { id: "waterloo", name: "University of Waterloo", country: "Canada", region: "Ontario", level: "global", strongMajors: ["Computer Science", "Engineering", "Mathematics", "Actuarial Science"], website: "https://uwaterloo.ca" },
   { id: "queens-ca", name: "Queen's University", country: "Canada", region: "Ontario", level: "national", strongMajors: ["Business/Finance", "Engineering", "Medicine", "Law/Pre-Law"], website: "https://www.queensu.ca" },
+  // Flagship universities in countries that had none in this list. Each
+  // country's full list comes from worldUniversities.ts; these rows put the
+  // best-known schools first and give them majors and a tier.
+  { id: "msu-lomonosov", name: "Lomonosov Moscow State University", country: "Russia", region: "Moscow", level: "national", strongMajors: ["Mathematics", "Physics", "Computer Science", "Economics"], website: "https://www.msu.ru" },
+  { id: "spbu", name: "Saint Petersburg State University", country: "Russia", region: "Saint Petersburg", level: "national", strongMajors: ["Mathematics", "Law/Pre-Law", "Economics", "International Relations"], website: "https://spbu.ru" },
+  { id: "mipt", name: "Moscow Institute of Physics and Technology", country: "Russia", region: "Dolgoprudny", level: "national", strongMajors: ["Physics", "Computer Science", "Mathematics", "Engineering"], website: "https://mipt.ru" },
+  { id: "hse-moscow", name: "HSE University (Higher School of Economics)", country: "Russia", region: "Moscow", level: "national", strongMajors: ["Economics", "Computer Science", "Business/Finance", "Political Science"], website: "https://www.hse.ru" },
+  { id: "bmstu", name: "Bauman Moscow State Technical University", country: "Russia", region: "Moscow", level: "national", strongMajors: ["Engineering", "Aerospace Engineering", "Mechanical Engineering", "Computer Science"], website: "https://bmstu.ru" },
+  { id: "itmo", name: "ITMO University", country: "Russia", region: "Saint Petersburg", level: "national", strongMajors: ["Computer Science", "Engineering", "Physics"], website: "https://itmo.ru" },
+  { id: "mgimo", name: "MGIMO University", country: "Russia", region: "Moscow", level: "national", strongMajors: ["International Relations", "Law/Pre-Law", "Economics", "Political Science"], website: "https://mgimo.ru" },
+  { id: "nsu-russia", name: "Novosibirsk State University", country: "Russia", region: "Novosibirsk", level: "national", strongMajors: ["Mathematics", "Physics", "Sciences", "Computer Science"], website: "https://www.nsu.ru" },
+  { id: "u-tehran", name: "University of Tehran", country: "Iran", region: "Tehran", level: "national", strongMajors: ["Engineering", "Medicine", "Law/Pre-Law", "Sciences"], website: "https://ut.ac.ir" },
+  { id: "sharif", name: "Sharif University of Technology", country: "Iran", region: "Tehran", level: "national", strongMajors: ["Engineering", "Computer Science", "Electrical Engineering", "Physics"], website: "https://www.sharif.edu" },
+  { id: "amirkabir", name: "Amirkabir University of Technology", country: "Iran", region: "Tehran", level: "national", strongMajors: ["Engineering", "Electrical Engineering", "Mechanical Engineering"], website: "https://aut.ac.ir" },
+  { id: "lums", name: "Lahore University of Management Sciences (LUMS)", country: "Pakistan", region: "Lahore", level: "national", strongMajors: ["Business/Finance", "Economics", "Computer Science", "Law/Pre-Law"], website: "https://lums.edu.pk" },
+  { id: "nust", name: "National University of Sciences and Technology (NUST)", country: "Pakistan", region: "Islamabad", level: "national", strongMajors: ["Engineering", "Computer Science", "Business/Finance"], website: "https://nust.edu.pk" },
+  { id: "aku", name: "Aga Khan University", country: "Pakistan", region: "Karachi", level: "national", strongMajors: ["Medicine", "Public Health", "Biology/Pre-Med"], website: "https://www.aku.edu" },
+  { id: "qau", name: "Quaid-i-Azam University", country: "Pakistan", region: "Islamabad", level: "national", strongMajors: ["Sciences", "Physics", "Economics"], website: "https://qau.edu.pk" },
+  { id: "buet", name: "Bangladesh University of Engineering and Technology (BUET)", country: "Bangladesh", region: "Dhaka", level: "national", strongMajors: ["Engineering", "Computer Science", "Architecture"], website: "https://www.buet.ac.bd" },
+  { id: "u-dhaka", name: "University of Dhaka", country: "Bangladesh", region: "Dhaka", level: "national", strongMajors: ["Economics", "Law/Pre-Law", "Sciences", "Business/Finance"], website: "https://du.ac.bd" },
+  { id: "nsu-bd", name: "North South University", country: "Bangladesh", region: "Dhaka", level: "national", strongMajors: ["Business/Finance", "Computer Science", "Economics"], website: "https://www.northsouth.edu" },
+  { id: "knu-kyiv", name: "Taras Shevchenko National University of Kyiv", country: "Ukraine", region: "Kyiv", level: "national", strongMajors: ["Law/Pre-Law", "International Relations", "Sciences", "Economics"], website: "https://knu.ua" },
+  { id: "kpi", name: "Igor Sikorsky Kyiv Polytechnic Institute", country: "Ukraine", region: "Kyiv", level: "national", strongMajors: ["Engineering", "Computer Science", "Electrical Engineering"], website: "https://kpi.ua" },
+  { id: "ukma", name: "National University of Kyiv-Mohyla Academy", country: "Ukraine", region: "Kyiv", level: "national", strongMajors: ["Economics", "Political Science", "Humanities", "Computer Science"], website: "https://www.ukma.edu.ua" },
+  { id: "pucp", name: "Pontifical Catholic University of Peru", country: "Peru", region: "Lima", level: "national", strongMajors: ["Engineering", "Law/Pre-Law", "Business/Finance", "Communications"], website: "https://www.pucp.edu.pe" },
+  { id: "unmsm", name: "National University of San Marcos", country: "Peru", region: "Lima", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Sciences"], website: "https://www.unmsm.edu.pe" },
+  { id: "u-lisboa", name: "University of Lisbon", country: "Portugal", region: "Lisbon", level: "national", strongMajors: ["Engineering", "Medicine", "Law/Pre-Law", "Architecture"], website: "https://www.ulisboa.pt" },
+  { id: "u-porto", name: "University of Porto", country: "Portugal", region: "Porto", level: "national", strongMajors: ["Engineering", "Medicine", "Architecture", "Economics"], website: "https://www.up.pt" },
+  { id: "nova-lisbon", name: "NOVA University Lisbon", country: "Portugal", region: "Lisbon", level: "national", strongMajors: ["Business/Finance", "Economics", "Medicine"], website: "https://www.unl.pt" },
+  { id: "u-bucharest", name: "University of Bucharest", country: "Romania", region: "Bucharest", level: "national", strongMajors: ["Law/Pre-Law", "Sciences", "Humanities"], website: "https://unibuc.ro" },
+  { id: "upb-bucharest", name: "National University of Science and Technology Politehnica Bucharest", country: "Romania", region: "Bucharest", level: "national", strongMajors: ["Engineering", "Computer Science", "Electrical Engineering"], website: "https://upb.ro" },
+  { id: "elte", name: "Eötvös Loránd University", country: "Hungary", region: "Budapest", level: "national", strongMajors: ["Sciences", "Humanities", "Law/Pre-Law", "Computer Science"], website: "https://www.elte.hu" },
+  { id: "bme-budapest", name: "Budapest University of Technology and Economics", country: "Hungary", region: "Budapest", level: "national", strongMajors: ["Engineering", "Architecture", "Computer Science"], website: "https://www.bme.hu" },
+  { id: "uoa-athens", name: "National and Kapodistrian University of Athens", country: "Greece", region: "Athens", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Humanities", "Sciences"], website: "https://www.uoa.gr" },
+  { id: "ntua", name: "National Technical University of Athens", country: "Greece", region: "Athens", level: "national", strongMajors: ["Engineering", "Architecture", "Electrical Engineering"], website: "https://www.ntua.gr" },
+  { id: "nazarbayev", name: "Nazarbayev University", country: "Kazakhstan", region: "Astana", level: "national", strongMajors: ["Engineering", "Computer Science", "Business/Finance", "Medicine"], website: "https://nu.edu.kz" },
+  { id: "kaznu", name: "Al-Farabi Kazakh National University", country: "Kazakhstan", region: "Almaty", level: "national", strongMajors: ["Sciences", "Law/Pre-Law", "International Relations"], website: "https://www.kaznu.kz" },
+  { id: "bsu-minsk", name: "Belarusian State University", country: "Belarus", region: "Minsk", level: "national", strongMajors: ["Sciences", "Law/Pre-Law", "International Relations"], website: "https://bsu.by" },
+  { id: "sofia-u", name: "Sofia University", country: "Bulgaria", region: "Sofia", level: "national", strongMajors: ["Humanities", "Law/Pre-Law", "Sciences"], website: "https://www.uni-sofia.bg" },
+  { id: "comenius", name: "Comenius University Bratislava", country: "Slovakia", region: "Bratislava", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Sciences"], website: "https://uniba.sk" },
+  { id: "aui-morocco", name: "Al Akhawayn University", country: "Morocco", region: "Ifrane", level: "national", strongMajors: ["Business/Finance", "Computer Science", "International Relations"], website: "https://www.aui.ma" },
+  { id: "u-jordan", name: "University of Jordan", country: "Jordan", region: "Amman", level: "national", strongMajors: ["Medicine", "Engineering", "Business/Finance"], website: "https://www.ju.edu.jo" },
+  { id: "u-colombo", name: "University of Colombo", country: "Sri Lanka", region: "Colombo", level: "national", strongMajors: ["Medicine", "Law/Pre-Law", "Sciences"], website: "https://cmb.ac.lk" },
+  { id: "aau-ethiopia", name: "Addis Ababa University", country: "Ethiopia", region: "Addis Ababa", level: "national", strongMajors: ["Medicine", "Engineering", "Sciences"], website: "https://www.aau.edu.et" },
+  { id: "nuu-tashkent", name: "National University of Uzbekistan", country: "Uzbekistan", region: "Tashkent", level: "national", strongMajors: ["Sciences", "Mathematics", "Humanities"], website: "https://nuu.uz" },
+  { id: "ada-baku", name: "ADA University", country: "Azerbaijan", region: "Baku", level: "national", strongMajors: ["International Relations", "Business/Finance", "Computer Science"], website: "https://www.ada.edu.az" },
+  { id: "usfq", name: "Universidad San Francisco de Quito", country: "Ecuador", region: "Quito", level: "national", strongMajors: ["Business/Finance", "Medicine", "Engineering"], website: "https://www.usfq.edu.ec" },
+  { id: "ucv-caracas", name: "Central University of Venezuela", country: "Venezuela", region: "Caracas", level: "national", strongMajors: ["Medicine", "Engineering", "Architecture", "Law/Pre-Law"], website: "https://www.ucv.ve" },
 ];
 
 const LEVEL_RANK: Record<College["level"], number> = { global: 0, national: 1, regional: 2 };

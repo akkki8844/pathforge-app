@@ -9,11 +9,12 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Plus, Bell, Trash2, Pencil } from "lucide-react";
+import { Plus, Bell, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { BroadcastComposer } from "@/components/BroadcastComposer";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface Announcement {
   id: string;
@@ -171,9 +172,7 @@ export function AdminAnnouncements() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

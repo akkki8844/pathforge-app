@@ -1,4 +1,5 @@
 // Comprehensive Activities Database with external links and country availability
+import { sameCountry } from "./countries";
 
 
 export interface Activity {
@@ -27,7 +28,7 @@ export interface Activity {
 // Helper to determine if activity is available in country
 export const isActivityAvailableInCountry = (activity: Activity, country: string): boolean => {
   if (activity.countries.length === 0) return true; // Global/online
-  return activity.countries.includes(country);
+  return activity.countries.some((c) => sameCountry(c, country));
 };
 
 // Get college level from name

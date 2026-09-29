@@ -48,6 +48,7 @@ import {
   type BugSource,
   type BugStatus,
 } from "@/lib/bugs/types";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 /**
  * Admin -> Bugs.
@@ -229,9 +230,7 @@ export function AdminBugs() {
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

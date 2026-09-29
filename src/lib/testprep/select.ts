@@ -7,8 +7,8 @@
  * anything.
  */
 
-import { SAT } from "./blueprints";
-import { SAT_QUESTIONS, questionById } from "./questions";
+import { SAT, blueprintFor } from "./blueprints";
+import { BANK_QUESTIONS, questionById } from "./questions";
 import type { PracticeForm } from "./content/forms";
 import { plainText } from "./text";
 import { skillStats } from "./stats";
@@ -20,6 +20,7 @@ import type {
   PracticeConfig,
   Question,
   SubjectId,
+  TestBlueprint,
   TestPrepProfile,
 } from "./types";
 
@@ -134,11 +135,13 @@ export function historyIndex(profile: TestPrepProfile): Map<string, QuestionHist
 export function filterQuestions(
   profile: TestPrepProfile,
   filters: BankFilters,
+  testId: string = "sat",
 ): Question[] {
   const history = historyIndex(profile);
   const needle = filters.search.trim().toLowerCase();
 
-  return SAT_QUESTIONS.filter((q) => {
+  return BANK_QUESTIONS.filter((q) => {
+    if (q.testId !== testId) return false;
     if (filters.subjectId !== "all" && q.subjectId !== filters.subjectId) return false;
     if (filters.domainIds.length > 0 && !filters.domainIds.includes(q.domainId)) return false;
     if (filters.skillId !== "all" && q.skillId !== filters.skillId) return false;
@@ -215,9 +218,14 @@ function shuffle<T>(items: T[], seed: number): T[] {
  * - The set is never padded to `count` with repeats. If the bank holds six
  *   matching questions, the session is six questions long and the UI says so.
  */
-export function pickQuestions(profile: TestPrepProfile, config: PracticeConfig): string[] {
+export function pickQuestions(
+  profile: TestPrepProfile,
+  config: PracticeConfig,
+  testId: string = "sat",
+): string[] {
   const history = historyIndex(profile);
-  let pool = SAT_QUESTIONS.filter((q) => {
+  let pool = BANK_QUESTIONS.filter((q) => {
+    if (q.testId !== testId) return false;
     if (config.subjectId && q.subjectId !== config.subjectId) return false;
     if (config.domainId && q.domainId !== config.domainId) return false;
     if (config.skillId && q.skillId !== config.skillId) return false;
@@ -240,7 +248,7 @@ export function pickQuestions(profile: TestPrepProfile, config: PracticeConfig):
     // practice was fully deterministic and the "Another set" link handed back
     // the same questions it had just given you.
     const rank = new Map(
-      skillStats(profile).map((s) => [s.skillId, s.mastery ?? 0.75] as const),
+      skillStats(profile, blueprintFor(testId) ?? SAT).map((s) => [s.skillId, s.mastery ?? 0.75] as const),
     );
     pool = shuffle(pool, seed).sort(
       (a, b) => (rank.get(a.skillId) ?? 1) - (rank.get(b.skillId) ?? 1),
@@ -384,14 +392,16 @@ function orderModule(questions: Question[], subjectId: SubjectId): Question[] {
  * backfilled from the rest of the subject rather than left as a hole.
  */
 function fillModule(
+  blueprint: TestBlueprint,
+  testQuestions: Question[],
   m: ExamModuleDef,
   used: Set<string>,
   answered: Set<string>,
   seed: number,
   prefer?: Difficulty[],
 ): Question[] {
-  const domains = SAT.subjects.find((s) => s.id === m.subjectId)?.domains ?? [];
-  const pool = SAT_QUESTIONS.filter((q) => q.subjectId === m.subjectId && !used.has(q.id));
+  const domains = blueprint.subjects.find((s) => s.id === m.subjectId)?.domains ?? [];
+  const pool = testQuestions.filter((q) => q.subjectId === m.subjectId && !used.has(q.id));
 
   const chosen: Question[] = [];
   const taken = new Set<string>();
@@ -465,12 +475,14 @@ export function buildExam(
   profile: TestPrepProfile,
   subjects: SubjectId[] = ["rw", "math"],
   label = "Full-length practice",
+  blueprint: TestBlueprint = SAT,
 ): BuiltExam {
+  const testQuestions = BANK_QUESTIONS.filter((q) => q.testId === blueprint.id);
   const used = new Set<string>();
   const seed = Date.now() % 100000;
   const answered = new Set(profile.answers.map((a) => a.questionId));
 
-  const modules: ExamModule[] = SAT.modules
+  const modules: ExamModule[] = blueprint.modules
     .filter((m) => subjects.includes(m.subjectId))
     .map((m, i) => {
       // Each module gets its own seed. It used to be `seed + m.id.length`,
@@ -480,7 +492,7 @@ export function buildExam(
       const s = seed + i * 7919;
       const stage: 1 | 2 = m.id.endsWith("-1") ? 1 : 2;
       if (stage === 1) {
-        const take = fillModule(m, used, answered, s);
+        const take = fillModule(blueprint, testQuestions, m, used, answered, s);
         take.forEach((q) => used.add(q.id));
         return {
           ...m,
@@ -491,8 +503,8 @@ export function buildExam(
       }
       // The two routes may share questions with each other -- a student only
       // ever sees one -- but neither repeats anything from Module 1.
-      const harder = fillModule(m, used, answered, s, HARDER);
-      const easier = fillModule(m, used, answered, s + 1, EASIER);
+      const harder = fillModule(blueprint, testQuestions, m, used, answered, s, HARDER);
+      const easier = fillModule(blueprint, testQuestions, m, used, answered, s + 1, EASIER);
       [...harder, ...easier].forEach((q) => used.add(q.id));
       const count = Math.min(harder.length, easier.length);
       return {
@@ -501,6 +513,42 @@ export function buildExam(
         questionIds: harder.map((q) => q.id),
         routes: { harder: harder.map((q) => q.id), easier: easier.map((q) => q.id) },
         actualMinutes: scaledMinutes(m, count),
+      };
+    });
+
+  return finish(label, modules);
+}
+
+/**
+ * Assemble a sitting for a fixed-form test — the ACT, PreACT and CLT, which
+ * each sit a single module per section rather than an adaptive pair.
+ *
+ * Simpler than `buildExam` on purpose: one module per section, no routing, no
+ * "stage" to branch on downstream. `stage` is still set to `1` so the exam
+ * runner's shared code (which reads it to know whether a module's outcome
+ * decides a route) can treat every module the same way and decide nothing.
+ */
+export function buildFixedExam(
+  profile: TestPrepProfile,
+  blueprint: TestBlueprint,
+  subjects: SubjectId[] = blueprint.subjects.map((s) => s.id),
+  label = `${blueprint.name} practice`,
+): BuiltExam {
+  const testQuestions = BANK_QUESTIONS.filter((q) => q.testId === blueprint.id);
+  const used = new Set<string>();
+  const seed = Date.now() % 100000;
+  const answered = new Set(profile.answers.map((a) => a.questionId));
+
+  const modules: ExamModule[] = blueprint.modules
+    .filter((m) => subjects.includes(m.subjectId))
+    .map((m, i) => {
+      const take = fillModule(blueprint, testQuestions, m, used, answered, seed + i * 7919);
+      take.forEach((q) => used.add(q.id));
+      return {
+        ...m,
+        stage: 1 as const,
+        questionIds: take.map((q) => q.id),
+        actualMinutes: scaledMinutes(m, take.length),
       };
     });
 
@@ -541,7 +589,15 @@ export function buildFormExam(
       if (stage === 1) {
         return { ...m, stage, questionIds: ids, actualMinutes: scaledMinutes(m, ids.length) };
       }
-      const easier = fillModule(m, used, none, hash(`${form.id}:${m.id}`), EASIER);
+      const easier = fillModule(
+        SAT,
+        BANK_QUESTIONS.filter((q) => q.testId === "sat"),
+        m,
+        used,
+        none,
+        hash(`${form.id}:${m.id}`),
+        EASIER,
+      );
       easier.forEach((q) => used.add(q.id));
       return {
         ...m,
@@ -579,16 +635,20 @@ export function buildFormExam(
  * can supply, with each module taking from what the previous ones left \u2014
  * mirroring `buildExam`'s `used` set rather than approximating it.
  */
-export function examCapacity(subjects: SubjectId[]): { available: number; target: number } {
-  const wanted = SAT.modules.filter((m) => subjects.includes(m.subjectId));
+export function examCapacity(
+  subjects: SubjectId[],
+  blueprint: TestBlueprint = SAT,
+): { available: number; target: number } {
+  const wanted = blueprint.modules.filter((m) => subjects.includes(m.subjectId));
   const target = wanted.reduce((n, m) => n + m.questionCount, 0);
+  const testQuestions = BANK_QUESTIONS.filter((q) => q.testId === blueprint.id);
 
   const remaining = new Map<SubjectId, number>();
   for (const m of wanted) {
     if (remaining.has(m.subjectId)) continue;
     remaining.set(
       m.subjectId,
-      SAT_QUESTIONS.filter((q) => q.subjectId === m.subjectId).length,
+      testQuestions.filter((q) => q.subjectId === m.subjectId).length,
     );
   }
 

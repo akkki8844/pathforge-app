@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { colleges } from "@/lib/colleges";
+import { worldUniversityDomain } from "@/lib/worldUniversities";
 import { cn } from "@/lib/utils";
 
 /**
@@ -155,6 +156,9 @@ export function resolveCollegeDomain(name: string): string | null {
   const raw = name.trim().toLowerCase();
   if (ALIASES[raw]) return ALIASES[raw];
   if (DOMAIN_INDEX.exact.has(raw)) return DOMAIN_INDEX.exact.get(raw)!;
+  // Any of the ~10,000 world universities, once a picker has loaded them.
+  const world = worldUniversityDomain(raw);
+  if (world) return world;
 
   const norm = normalize(name);
   if (ALIASES[norm]) return ALIASES[norm];

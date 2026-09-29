@@ -31,7 +31,7 @@ import {
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { SAT, blueprintFor, domainName, skillName, subjectName } from "@/lib/testprep/blueprints";
-import { SAT_QUESTIONS, questionById } from "@/lib/testprep/questions";
+import { BANK_QUESTIONS, questionById } from "@/lib/testprep/questions";
 import {
   BANK_SORTS,
   EMPTY_FILTERS,
@@ -42,7 +42,7 @@ import {
 import type { BankFilters, BankSort } from "@/lib/testprep/select";
 import { toggleBookmark, useTestPrep } from "@/lib/testprep/store";
 import { sessionHref } from "@/lib/testprep/nav";
-import { EYEBROW, FOCUS, ROW_HOVER, SURFACE } from "@/lib/testprep/ui";
+import { EYEBROW, FOCUS, ROW_HOVER, SURFACE, themeScope } from "@/lib/testprep/ui";
 import { PageHeader, TestPrepShell } from "@/components/testprep/TestPrepShell";
 import { DifficultyBar } from "@/components/testprep/primitives";
 import { Collapse, Reveal } from "@/components/testprep/motion";
@@ -72,7 +72,9 @@ const PAGE = 50;
 export default function TestPrepQuestionBank() {
   const { testId = "sat" } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const bp = blueprint ?? SAT;
+  const profile = useTestPrep(testId);
+  const bankSize = useMemo(() => BANK_QUESTIONS.filter((q) => q.testId === testId).length, [testId]);
   const [filters, setFilters] = useState<BankFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<BankSort>("bank");
   /**
@@ -102,16 +104,16 @@ export default function TestPrepQuestionBank() {
   );
 
   const history = useMemo(() => historyIndex(profile), [profile]);
-  const filtered = useMemo(() => filterQuestions(profile, filters), [profile, filters]);
+  const filtered = useMemo(() => filterQuestions(profile, filters, testId), [profile, filters, testId]);
   const sorted = useMemo(() => sortQuestions(filtered, sort, history), [filtered, sort, history]);
   const results = view === "selected" ? sorted.filter((q) => selected.has(q.id)) : sorted;
 
   const domains = useMemo(
     () =>
-      SAT.subjects
+      bp.subjects
         .filter((s) => filters.subjectId === "all" || s.id === filters.subjectId)
         .flatMap((s) => s.domains),
-    [filters.subjectId],
+    [bp, filters.subjectId],
   );
   const activeDomains = filters.domainIds.length > 0 ? filters.domainIds : domains.map((d) => d.id);
   const skills = useMemo(
@@ -227,8 +229,8 @@ export default function TestPrepQuestionBank() {
           <Reveal delay={0.04}>
             <dl className="mt-2 grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                ["Questions", SAT_QUESTIONS.length.toLocaleString(), "in the bank"],
-                ["Completed", history.size.toLocaleString(), `${Math.round((history.size / SAT_QUESTIONS.length) * 100)}% of the bank`],
+                ["Questions", bankSize.toLocaleString(), "in the bank"],
+                ["Completed", history.size.toLocaleString(), `${Math.round((history.size / Math.max(1, bankSize)) * 100)}% of the bank`],
                 ["Accuracy", accuracyLabel, "last answers"],
                 ["Bookmarked", profile.bookmarks.length.toLocaleString(), "saved for later"],
               ].map(([label, value, sub]) => (
@@ -304,9 +306,9 @@ export default function TestPrepQuestionBank() {
                   <SelectTrigger className="h-9 w-full max-w-xs rounded-lg text-sm sm:w-64" aria-label="Section">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bluebook">
-                    <SelectItem value="all">Both sections</SelectItem>
-                    {SAT.subjects.map((s) => (
+                  <SelectContent className={themeScope(testId)}>
+                    <SelectItem value="all">{bp.subjects.length === 2 ? "Both sections" : "All sections"}</SelectItem>
+                    {bp.subjects.map((s) => (
                       <SelectItem key={s.id} value={s.id}>
                         {s.name}
                       </SelectItem>
@@ -353,7 +355,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bluebook">
+                    <SelectContent className={themeScope(testId)}>
                       <SelectItem value="all">All skills</SelectItem>
                       {skills.map((s) => (
                         <SelectItem key={s.id} value={s.id}>
@@ -373,7 +375,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bluebook">
+                    <SelectContent className={themeScope(testId)}>
                       <SelectItem value="all">Any difficulty</SelectItem>
                       <SelectItem value="easy">Easy</SelectItem>
                       <SelectItem value="medium">Medium</SelectItem>
@@ -391,7 +393,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bluebook">
+                    <SelectContent className={themeScope(testId)}>
                       <SelectItem value="all">Any status</SelectItem>
                       <SelectItem value="unseen">Not attempted</SelectItem>
                       <SelectItem value="seen">Attempted</SelectItem>
@@ -408,7 +410,7 @@ export default function TestPrepQuestionBank() {
                     >
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bluebook">
+                    <SelectContent className={themeScope(testId)}>
                       <SelectItem value="all">Any result</SelectItem>
                       <SelectItem value="correct">Last answered correctly</SelectItem>
                       <SelectItem value="incorrect">Last answered incorrectly</SelectItem>
@@ -436,7 +438,7 @@ export default function TestPrepQuestionBank() {
                     <SelectTrigger className={cn(FILTER_TRIGGER, "ml-auto")} aria-label="Sort">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bluebook">
+                    <SelectContent className={themeScope(testId)}>
                       {BANK_SORTS.map((s) => (
                         <SelectItem key={s.value} value={s.value}>
                           {s.label}
@@ -497,7 +499,7 @@ export default function TestPrepQuestionBank() {
                   <ChevronDown className="ml-1.5 h-3.5 w-3.5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bluebook">
+              <DropdownMenuContent align="end" className={themeScope(testId)}>
                 <DropdownMenuItem
                   onClick={() => setSelected((s) => new Set([...s, ...visibleIds]))}
                   disabled={visibleIds.length === 0}
@@ -855,6 +857,7 @@ function QuestionPreview({
 }) {
   const profile = useTestPrep();
   const question = questionId ? questionById(questionId) ?? null : null;
+  const questionTest = blueprintFor(question?.testId);
   const [showAnswer, setShowAnswer] = useState(false);
 
   useEffect(() => {
@@ -869,7 +872,7 @@ function QuestionPreview({
   return (
     <Dialog open={!!question} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className="bluebook flex h-[92vh] w-[95vw] max-w-[110rem] flex-col gap-0 overflow-hidden p-0 sm:p-0"
+        className={cn(themeScope(question?.testId), "flex h-[92vh] w-[95vw] max-w-[110rem] flex-col gap-0 overflow-hidden p-0 sm:p-0")}
         aria-describedby={undefined}
       >
         {question && (
@@ -902,8 +905,8 @@ function QuestionPreview({
                 <span>Difficulty</span>
               </div>
               <div className="grid grid-cols-2 items-center gap-x-4 gap-y-2 px-8 py-4 text-base text-foreground sm:grid-cols-5">
-                <span>SAT</span>
-                <span>{subjectName(question.subjectId)}</span>
+                <span>{questionTest?.name ?? "SAT"}</span>
+                <span>{subjectName(question.subjectId, question.testId)}</span>
                 <span className="truncate pr-2">{domainName(question.domainId)}</span>
                 <span className="truncate pr-2">{skillName(question.skillId)}</span>
                 <DifficultyBar value={question.difficulty} />
@@ -912,7 +915,7 @@ function QuestionPreview({
 
             <div className="grid flex-1 grid-cols-1 divide-y divide-border overflow-y-auto md:grid-cols-2 md:divide-x md:divide-y-0">
               <div className="p-10">
-                <p className="text-lg font-semibold text-foreground">{subjectName(question.subjectId)}</p>
+                <p className="text-lg font-semibold text-foreground">{subjectName(question.subjectId, question.testId)}</p>
                 <p className="mt-1.5 text-lg font-semibold capitalize text-foreground">
                   Difficulty: {question.difficulty}
                 </p>

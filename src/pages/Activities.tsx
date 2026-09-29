@@ -42,6 +42,7 @@ import { useDiscoveredActivities } from "@/hooks/useDiscoveredActivities";
 import { listItem, staggerParent, staggerStep, transition, viewportOnce } from "@/lib/motion";
 import { toast } from "sonner";
 import { safeExternalUrl } from "@/lib/safeUrl";
+import { PageSkeleton } from "@/components/PageSkeletons";
 
 /**
  * Activity links can come from the live-web discovery pass, i.e. from a model
@@ -836,14 +837,7 @@ export default function Activities() {
   }, [refreshState.lastRefreshAt]);
 
   if (loading) {
-    return (
-      <div data-cluely className="flex min-h-svh items-center justify-center bg-background font-cluely">
-        <div className="text-center">
-          <div className="mx-auto h-7 w-7 animate-spin rounded-full border-2 border-foreground/25 border-t-foreground" />
-          <p className="mt-4 text-[13px] text-muted-foreground">Loading competitions…</p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton kind="list" label="Loading competitions" />;
   }
 
   if (!onboardingData || !userMajor) {

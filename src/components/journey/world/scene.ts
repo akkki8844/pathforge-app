@@ -2,6 +2,8 @@ import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { LEVELS, STAGES, type LevelId } from "@/lib/journeyLevels";
 import { LEVEL_CLAY } from "@/components/journey/LevelPath";
+import { buildCampus } from "./campus";
+import { sfx } from "./sfx";
 
 /**
  * The journey as a place.
@@ -27,6 +29,8 @@ export interface WorldCallbacks {
   onFocusChange: (index: number) => void;
   /** First user-driven movement, so the UI can retire its hint. */
   onInteract: () => void;
+  /** The camera entered or left the close-up of the campus. */
+  onCampus?: (active: boolean) => void;
 }
 
 export interface WorldAnchors {
@@ -34,11 +38,22 @@ export interface WorldAnchors {
   here: HTMLElement | null;
   /** Follows the hovered coin. */
   tip: HTMLElement | null;
+  /** Full-bleed cover the stage dive irises open into. */
+  veil?: HTMLElement | null;
 }
 
 export interface WorldHandle {
   setStates: (states: NodeState[]) => void;
   flyTo: (index: number) => void;
+  /**
+   * Open a stage: travel to it, rise overhead, then plunge onto the coin and
+   * iris into the page. `onSelect` fires once the camera lands.
+   */
+  enter: (index: number) => void;
+  /** Climb back out of a stage dive, once its modal has closed. */
+  surface: () => void;
+  /** Fly to the campus and hold a slow cinematic shot of it. */
+  showCampus: () => void;
   nudge: (delta: number) => void;
   setDark: (dark: boolean) => void;
   getFocus: () => number;
@@ -453,6 +468,8 @@ export function createJourneyWorld(
 
   const landmarkSpots: THREE.Vector3[] = [];
   const gateSpots: THREE.Vector3[] = [];
+  /** Each level's gate by the index of the stage it stands over. */
+  const gateAt = new Map<number, THREE.Group>();
 
   for (const L of LEVELS) {
     const [a] = LEVEL_RANGE.get(L.id)!;
@@ -493,6 +510,7 @@ export function createJourneyWorld(
     banner.position.set(0, 2.28, 0.02);
     gate.add(banner);
     group.add(gate);
+    gateAt.set(a, gate);
     gateSpots.push(gp);
 
     // Landmark: on its own outcrop beside the road, on the side nearer the
@@ -512,11 +530,18 @@ export function createJourneyWorld(
     landmarkSpots.push(spot);
   }
 
-  // Campus at the end of the road.
-  pieces.push({ x: END_POS.x, y: END_POS.y - 0.12, z: END_POS.z - 2.5, r: 8.2, depth: 7, level: 0 });
-  const campus = buildCampus();
-  campus.position.set(END_POS.x, END_POS.y - 0.12, END_POS.z - 1.2);
-  group.add(campus);
+  // Campus at the end of the road, on a wide plateau of two overlapping slabs.
+  pieces.push({ x: END_POS.x, y: END_POS.y - 0.12, z: END_POS.z - 2.5, r: 9.4, depth: 7.5, level: 0 });
+  pieces.push({ x: END_POS.x, y: END_POS.y - 0.12, z: END_POS.z - 2.6, r: 9.2, depth: 6, level: 0 });
+  const campusBanner = bannerTex("The destination", "Your dream college", "#29439c");
+  bannerTexes.push(campusBanner);
+  keep(campusBanner.tex);
+  const campus = buildCampus({ keep, renderer, banner: campusBanner.tex });
+  campus.group.position.set(END_POS.x, END_POS.y - 0.12, END_POS.z - 1.2);
+  scene.add(campus.group);
+  campus.group.updateMatrixWorld(true);
+  const campusBox = campus.bounds.clone().applyMatrix4(campus.group.matrixWorld);
+  const campusFocus = campus.focus.clone().applyMatrix4(campus.group.matrixWorld);
 
   // Props that move: stars on podiums spin, flags wave.
   const spinners: THREE.Object3D[] = [];
@@ -962,6 +987,7 @@ export function createJourneyWorld(
       stars.visible = false;
       glow.color.set("#ffe2a8");
     }
+    campus.setNight(dark);
     paint();
   };
 
@@ -991,10 +1017,103 @@ export function createJourneyWorld(
   let parX = 0;
   let parY = 0;
 
+  // Travel: flyTo and campus visits run an eased tween instead of the
+  // exponential follow, and long jumps lift the camera into a gentle arc.
+  let tween: { from: number; to: number; t: number; dur: number; arc: number } | null = null;
+  // Campus close-up: `show` is the request, `showK` eases toward it.
+  let show = false;
+  let showK = 0;
+  let showT = 0;
+  let arrivePending = false;
+  // Stage dive: `u` runs 0..1 along rise-then-plunge; `dir` picks the way.
+  let dive: { i: number; u: number; dir: 1 | -1; fired: boolean; sounded: boolean } | null = null;
+  const DIVE_IN = 1.55;
+  const DIVE_OUT = 1.05;
+  const diveC = new THREE.Vector3();
+  const diveTop = new THREE.Vector3();
+  const diveEnd = new THREE.Vector3();
+  const diveCam = new THREE.Vector3();
+  const diveLook = new THREE.Vector3();
+  let baseFov = 40;
+  let lastVeil = -1;
+  let chimeLevel = STAGES[THREE.MathUtils.clamp(Math.round(opts.initialFocus), 0, N - 1)].level;
+
   const interact = () => cb.onInteract();
+
+  const travel = (to: number) => {
+    const dest = THREE.MathUtils.clamp(to, minF, maxF);
+    const d = Math.abs(dest - focus);
+    targetF = dest;
+    yawTarget = 0;
+    if (d < 0.05) {
+      tween = null;
+      return;
+    }
+    const rm = opts.reducedMotion;
+    tween = {
+      from: focus,
+      to: dest,
+      t: 0,
+      dur: rm ? 0.35 : THREE.MathUtils.clamp(0.75 + Math.sqrt(d) * 0.33, 0.75, 3),
+      arc: rm ? 0 : THREE.MathUtils.clamp((d - 3) / 24, 0, 1),
+    };
+    if (d >= 1.5) sfx.whoosh(d / 30);
+    else sfx.step();
+  };
+  /** The user took the wheel: drop any tween where it stands. */
+  const cancelTravel = () => {
+    if (dive && !dive.fired) surface();
+    if (tween) {
+      targetF = focus;
+      tween = null;
+    }
+    leaveCampus();
+  };
+  const enterCampus = () => {
+    if (!show) {
+      show = true;
+      showT = 0;
+      cb.onCampus?.(true);
+    }
+    arrivePending = true;
+    travel(maxF);
+    interact();
+  };
+  function surface() {
+    if (!dive || dive.dir < 0) return;
+    dive.dir = -1;
+    if (dive.u > 0.3) sfx.surface();
+  }
+  const enter = (i: number) => {
+    if (states[i] === "locked") {
+      sfx.locked();
+      cb.onSelect(i);
+      return;
+    }
+    if (dive && dive.dir > 0) return;
+    sfx.select();
+    leaveCampus();
+    setHover(null);
+    travel(i);
+    interact();
+    if (opts.reducedMotion) {
+      cb.onSelect(i);
+      return;
+    }
+    // Surfacing from another dive turns around mid-air rather than restarting.
+    dive = { i, u: dive ? dive.u : 0, dir: 1, fired: false, sounded: false };
+  };
+  function leaveCampus() {
+    if (!show) return;
+    show = false;
+    arrivePending = false;
+    cb.onCampus?.(false);
+  }
 
   const onWheel = (e: WheelEvent) => {
     e.preventDefault();
+    if (dive?.fired) return;
+    cancelTravel();
     const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 400 : 1;
     if (e.ctrlKey) {
       zoomTarget = THREE.MathUtils.clamp(zoomTarget * (1 + e.deltaY * unit * 0.004), 0.6, 1.7);
@@ -1025,13 +1144,18 @@ export function createJourneyWorld(
     const hit = raycaster.intersectObject(coins, false)[0];
     return hit && hit.instanceId !== undefined ? hit.instanceId : null;
   };
+  /** Whether the ray from the last `pick` passes through the campus. */
+  const overCampus = () => raycaster.ray.intersectsBox(campusBox);
 
   const setHover = (i: number | null) => {
     if (i === hovered) return;
     const prev = hovered;
     hovered = i;
     if (prev !== null) placeCoin(prev);
-    if (i !== null) placeCoin(i);
+    if (i !== null) {
+      placeCoin(i);
+      sfx.hover();
+    }
     coins.instanceMatrix.needsUpdate = true;
     icons.forEach((im) => (im.instanceMatrix.needsUpdate = true));
     canvas.style.cursor = i !== null ? (states[i] === "locked" ? "not-allowed" : "pointer") : dragging ? "grabbing" : "grab";
@@ -1058,7 +1182,10 @@ export function createJourneyWorld(
     parX = ((e.clientX - r.left) / r.width - 0.5) * 2;
     parY = ((e.clientY - r.top) / r.height - 0.5) * 2;
     if (!dragging) {
-      if (e.pointerType === "mouse") setHover(pick(e.clientX, e.clientY));
+      if (e.pointerType === "mouse") {
+        setHover(pick(e.clientX, e.clientY));
+        if (hovered === null) canvas.style.cursor = overCampus() ? "pointer" : "grab";
+      }
       return;
     }
     pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
@@ -1085,6 +1212,7 @@ export function createJourneyWorld(
     vel = THREE.MathUtils.lerp(vel, (df / dt) * 16, 0.5);
     lastMoveT = now;
     if (moved > 6) {
+      cancelTravel();
       setHover(null);
       interact();
     }
@@ -1095,9 +1223,11 @@ export function createJourneyWorld(
     pinchDist = 0;
     dragging = false;
     canvas.style.cursor = hovered !== null ? "pointer" : "grab";
+    if (dive) return;
     if (moved <= 6 && Math.hypot(e.clientX - downX, e.clientY - downY) <= 6) {
       const i = pick(e.clientX, e.clientY);
-      if (i !== null) cb.onSelect(i);
+      if (i !== null) enter(i);
+      else if (overCampus()) enterCampus();
     } else if (performance.now() - lastMoveT < 80) {
       targetF = THREE.MathUtils.clamp(targetF + vel * 6, minF, maxF);
     }
@@ -1123,7 +1253,8 @@ export function createJourneyWorld(
     camera.aspect = w / h;
     // Portrait screens need a wider lens or the road leaves the frame on
     // every bend.
-    camera.fov = w / h < 0.8 ? 54 : w / h < 1.2 ? 46 : 40;
+    baseFov = w / h < 0.8 ? 54 : w / h < 1.2 ? 46 : 40;
+    camera.fov = baseFov;
     camera.updateProjectionMatrix();
   };
   resize();
@@ -1164,8 +1295,18 @@ export function createJourneyWorld(
 
     // Rig.
     const k = 1 - Math.exp(-dt * (rm ? 12 : 4.2));
-    if (!dragging && !rm) yawTarget *= 1 - Math.min(dt * 0.35, 1);
-    focus += (targetF - focus) * k;
+    if (!dragging && !rm && !show) yawTarget *= 1 - Math.min(dt * 0.35, 1);
+    let arc = 0;
+    if (tween) {
+      tween.t += dt;
+      const u = Math.min(tween.t / tween.dur, 1);
+      const e = u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2;
+      focus = tween.from + (tween.to - tween.from) * e;
+      arc = Math.sin(Math.PI * u) * tween.arc;
+      if (u >= 1) tween = null;
+    } else {
+      focus += (targetF - focus) * k;
+    }
     yaw += (yawTarget - yaw) * k;
     zoom += (zoomTarget - zoom) * k;
     if (intro < 1) intro = Math.min(1, intro + dt / 2.4);
@@ -1181,12 +1322,32 @@ export function createJourneyWorld(
     dirSm.lerp(d, 1 - Math.exp(-dt * 2.2)).normalize();
 
     const back = dirSm.clone().multiplyScalar(-1).applyAxisAngle(new THREE.Vector3(0, 1, 0), yaw + parX * 0.04);
-    const dist = (10.5 + (1 - ease) * 14) * zoom;
-    const lift = (5.4 + (1 - ease) * 20) * zoom + parY * 0.25;
+    const dist = (10.5 + (1 - ease) * 14 + arc * 10) * zoom;
+    const lift = (5.4 + (1 - ease) * 20 + arc * 8) * zoom + parY * 0.25;
     const camPos = tgt.clone().addScaledVector(back, dist);
     camPos.y += lift;
     const look = tgt.clone().addScaledVector(dirSm, 6.5 * zoom);
     look.y += 0.9;
+
+    // Near the end of the road the rig hands over to a framing of the whole
+    // campus, and a campus visit eases into a slow, swaying close-up.
+    showK += ((show ? 1 : 0) - showK) * (1 - Math.exp(-dt * (rm ? 8 : 1.3)));
+    if (show) showT += dt;
+    const near = THREE.MathUtils.smoothstep(focus, maxF - 3, maxF);
+    if (near > 0) {
+      const sway = rm ? 0 : Math.sin(showT * 0.25) * 0.5 * showK;
+      const ang = yaw + parX * 0.04 + sway;
+      const R = (25 - showK * 3) * zoom;
+      const H = (7.6 - showK * 2) * zoom + parY * 0.25;
+      tmpV.set(campusFocus.x + Math.sin(ang) * R, campusFocus.y + H, campusFocus.z + Math.cos(ang) * R);
+      camPos.lerp(tmpV, near);
+      tmpV.set(campusFocus.x, campusFocus.y + 1.9, campusFocus.z);
+      look.lerp(tmpV, near);
+    }
+    if (arrivePending && !tween && focus > maxF - 0.1) {
+      arrivePending = false;
+      sfx.arrive();
+    }
     if (first) {
       camSm.copy(camPos);
       lookSm.copy(look);
@@ -1196,8 +1357,67 @@ export function createJourneyWorld(
       camSm.lerp(camPos, kc);
       lookSm.lerp(look, kc);
     }
-    camera.position.copy(camSm);
-    camera.lookAt(lookSm);
+    // Stage dive: from the rig, rise to a top-down view of the coin, hang a
+    // beat, then drop onto its face with the lens widening as it falls.
+    let fovKick = 0;
+    let veil = 0;
+    if (dive) {
+      if (dive.dir < 0 || !tween) {
+        if (!dive.sounded && dive.dir > 0) {
+          dive.sounded = true;
+          sfx.dive();
+        }
+        dive.u = THREE.MathUtils.clamp(dive.u + (dt * dive.dir) / (dive.dir > 0 ? DIVE_IN : DIVE_OUT), 0, 1);
+      }
+      const u = dive.u;
+      const p = STAGE_POS[dive.i];
+      diveC.set(p.x, p.y + ROAD_TOP + 0.4 * coinScale(dive.i), p.z);
+      diveTop.copy(diveC).addScaledVector(dirSm, -3.2 * zoom);
+      diveTop.y += 11.5 * zoom;
+      diveEnd.copy(diveC).addScaledVector(dirSm, -0.05);
+      diveEnd.y += 1.1;
+      const SPLIT = 0.52;
+      if (u < SPLIT) {
+        const a = u / SPLIT;
+        const e = a < 0.5 ? 4 * a * a * a : 1 - Math.pow(-2 * a + 2, 3) / 2;
+        diveCam.lerpVectors(camSm, diveTop, e);
+        diveLook.lerpVectors(lookSm, diveC, e);
+      } else {
+        const b = (u - SPLIT) / (1 - SPLIT);
+        const e = b * b;
+        diveCam.lerpVectors(diveTop, diveEnd, e);
+        diveLook.copy(diveC);
+        fovKick = e * 16;
+      }
+      veil = THREE.MathUtils.smoothstep(u, 0.88, 1);
+      if (dive.dir > 0 && u >= 1 && !dive.fired) {
+        dive.fired = true;
+        cb.onSelect(dive.i);
+      }
+      camera.position.copy(diveCam);
+      camera.lookAt(diveLook);
+      // A level's first stage sits under its gate; lower the gate out of the
+      // way so the lintel never blocks the drop.
+      const gate = gateAt.get(dive.i);
+      if (gate) {
+        gate.scale.y = Math.max(1 - THREE.MathUtils.smoothstep(u, 0.04, 0.4), 0.001);
+        gate.visible = gate.scale.y > 0.03;
+      }
+      if (dive.dir < 0 && u <= 0) {
+        if (gate) {
+          gate.scale.y = 1;
+          gate.visible = true;
+        }
+        dive = null;
+      }
+    } else {
+      camera.position.copy(camSm);
+      camera.lookAt(lookSm);
+    }
+    if (camera.fov !== baseFov + fovKick) {
+      camera.fov = baseFov + fovKick;
+      camera.updateProjectionMatrix();
+    }
 
     // Light follows the camera target so the shadow map covers what's seen.
     sun.position.set(tgt.x - 9, tgt.y + 22, tgt.z + 10);
@@ -1209,6 +1429,14 @@ export function createJourneyWorld(
       lastFocusEmit = rounded;
       cb.onFocusChange(rounded);
     }
+    // A soft bell when travel settles on a different level's island.
+    if (!tween && Math.abs(targetF - focus) < 0.35 && focus < maxF - 0.6) {
+      const lv = STAGES[rounded].level;
+      if (lv !== chimeLevel) {
+        chimeLevel = lv;
+        sfx.chime(lv);
+      }
+    }
 
     // Current stage: bob the coin, float the pin, pulse the ring.
     const cp = STAGE_POS[currentIdx];
@@ -1218,6 +1446,8 @@ export function createJourneyWorld(
     icons.forEach((im) => (im.instanceMatrix.needsUpdate = true));
     pin.position.set(cp.x, cp.y + 1.05 + (rm ? 0.1 : Math.sin(elapsed * 2) * 0.14 + 0.14), cp.z);
     pin.rotation.y = rm ? 0 : elapsed * 1.1;
+    // The camera drops straight through where the pin floats.
+    pin.visible = !dive || dive.u < 0.3;
     const ph1 = (elapsed * 0.6) % 1;
     const ph2 = (elapsed * 0.6 + 0.5) % 1;
     pulse.position.set(cp.x, cp.y + ROAD_TOP + 0.02, cp.z);
@@ -1253,6 +1483,7 @@ export function createJourneyWorld(
       clouds.setMatrixAt(i, tmpM);
     }
     clouds.instanceMatrix.needsUpdate = true;
+    campus.update(elapsed, rm);
 
     renderer.render(scene, camera);
 
@@ -1260,6 +1491,18 @@ export function createJourneyWorld(
     const h = mount.clientHeight;
     const anchors = getAnchors();
     place(anchors.here, tmpV.set(cp.x, pin.position.y + 1.45, cp.z), w, h);
+    if (dive && anchors.here) anchors.here.style.opacity = "0";
+    if (anchors.veil && veil !== lastVeil) {
+      if (lastVeil <= 0 && veil > 0 && dive) {
+        // The iris carries the stage's level colour out into the page.
+        const c = `#${col(levelTop(STAGES[dive.i].level)).getHexString()}`;
+        anchors.veil.style.background = `radial-gradient(circle at 50% 50%, ${c} 0%, ${c} 22%, hsl(var(--background)) 70%)`;
+      }
+      lastVeil = veil;
+      // An iris opening from the coin at the centre of the frame.
+      anchors.veil.style.opacity = veil > 0 ? "1" : "0";
+      anchors.veil.style.clipPath = `circle(${(veil * 75).toFixed(2)}% at 50% 50%)`;
+    }
     if (hovered !== null) {
       const hp = STAGE_POS[hovered];
       place(anchors.tip, tmpV.set(hp.x, hp.y + 0.9, hp.z), w, h);
@@ -1278,11 +1521,17 @@ export function createJourneyWorld(
       paint();
     },
     flyTo(i) {
-      targetF = THREE.MathUtils.clamp(i, minF, maxF);
-      yawTarget = 0;
+      surface();
+      leaveCampus();
+      travel(i);
     },
+    enter,
+    surface,
+    showCampus: enterCampus,
     nudge(delta) {
+      cancelTravel();
       targetF = THREE.MathUtils.clamp(Math.round(targetF) + delta, minF, maxF);
+      sfx.step();
       interact();
     },
     setDark(v) {
@@ -1507,66 +1756,6 @@ export function createJourneyWorld(
     s.closePath();
     const g = new THREE.ExtrudeGeometry(s, { depth, bevelEnabled: true, bevelSize: 0.03, bevelThickness: 0.03, bevelSegments: 1 });
     g.center();
-    return g;
-  }
-
-  function buildCampus(): THREE.Group {
-    const g = new THREE.Group();
-    const stone = "#f1ebdf";
-    const roof = "#4465d8";
-    const add = (geo: THREE.BufferGeometry, hex: string | THREE.Color, x: number, y: number, z: number, extra?: Partial<THREE.MeshStandardMaterialParameters>) => {
-      const m = mesh(geo, hex, extra);
-      m.position.set(x, y, z);
-      g.add(m);
-      return m;
-    };
-    // Steps.
-    for (let i = 0; i < 3; i++) add(new THREE.BoxGeometry(6 - i * 0.4, 0.2, 1.1 - i * 0.2), "#e2dac9", 0, 0.1 + i * 0.2, -0.3 - i * 0.35);
-    // Main hall.
-    add(new THREE.BoxGeometry(6.2, 2.9, 3.4), stone, 0, 2.05, -3.2);
-    // Wings.
-    add(new THREE.BoxGeometry(2.6, 2.2, 2.8), "#ebe4d6", -4.1, 1.7, -3.5);
-    add(new THREE.BoxGeometry(2.6, 2.2, 2.8), "#ebe4d6", 4.1, 1.7, -3.5);
-    add(new THREE.BoxGeometry(2.8, 0.25, 3.0), roof, -4.1, 2.9, -3.5);
-    add(new THREE.BoxGeometry(2.8, 0.25, 3.0), roof, 4.1, 2.9, -3.5);
-    // Windows on the wings.
-    for (const sx of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        add(new THREE.BoxGeometry(0.42, 0.7, 0.05), "#9db4e8", sx * (3.3 + i * 0.8), 1.8, -2.08, { emissive: "#ffd98a", emissiveIntensity: 0.08 });
-      }
-    }
-    // Portico: columns, entablature, pediment.
-    for (let i = 0; i < 6; i++) {
-      add(new THREE.CylinderGeometry(0.17, 0.2, 2.5, 12), "#fbf8f1", -2.5 + i, 1.85, -1.25, { flatShading: false });
-    }
-    add(new THREE.BoxGeometry(6.2, 0.35, 0.9), "#e9e2d3", 0, 3.25, -1.35);
-    const ped = add(new THREE.CylinderGeometry(1, 1, 1, 3), "#f6f1e6", 0, 3.95, -1.5);
-    ped.rotation.set(Math.PI / 2, 0, Math.PI / 2);
-    ped.scale.set(1.1, 0.8, 3.6);
-    // Drum and dome.
-    add(new THREE.CylinderGeometry(1.25, 1.35, 0.9, 20), stone, 0, 3.95, -3.4, { flatShading: false });
-    add(new THREE.SphereGeometry(1.3, 24, 14, 0, Math.PI * 2, 0, Math.PI / 2), roof, 0, 4.4, -3.4, { flatShading: false, roughness: 0.45, metalness: 0.1 });
-    add(new THREE.CylinderGeometry(0.03, 0.03, 1.4, 6), "#5b5b66", 0, 6.3, -3.4);
-    const flag = add(new THREE.BoxGeometry(0.8, 0.46, 0.03), "#e0b64a", 0.4, 6.75, -3.4);
-    flag.userData.wave = true;
-    // Banner over the door.
-    const t = bannerTex("The destination", "Your dream college", "#29439c");
-    bannerTexes.push(t);
-    keep(t.tex);
-    const b = new THREE.Mesh(
-      keep(new THREE.PlaneGeometry(3.4, 0.85)),
-      keep(new THREE.MeshBasicMaterial({ map: t.tex, transparent: true })),
-    );
-    b.position.set(0, 2.55, -0.72);
-    g.add(b);
-    // Trees along the lawn.
-    for (const sx of [-1, 1]) {
-      for (let i = 0; i < 3; i++) {
-        const trunk = add(new THREE.CylinderGeometry(0.1, 0.13, 0.7, 6), "#8a6a4a", sx * (3.6 + i * 1.1), 0.35, 1.2 + (i % 2) * 0.9);
-        void trunk;
-        add(new THREE.IcosahedronGeometry(0.6, 0), "#6fae7e", sx * (3.6 + i * 1.1), 1.15, 1.2 + (i % 2) * 0.9);
-      }
-    }
     return g;
   }
 }

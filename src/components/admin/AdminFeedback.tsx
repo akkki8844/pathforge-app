@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Loader2, MessageSquare, Bug, Lightbulb, CheckCircle, Eye } from "lucide-react";
+import { MessageSquare, Bug, Lightbulb, CheckCircle, Eye } from "lucide-react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface Feedback {
   id: string;
@@ -136,9 +137,7 @@ export function AdminFeedback() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

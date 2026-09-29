@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Check, ChevronDown, ChevronUp, Crosshair, Lock, Loader2, MousePointer2, Sparkles, Star, Hand,
+  Landmark, Volume2, VolumeX,
 } from "lucide-react";
 import { toast } from "sonner";
 import { LEVELS, STAGES, type LevelId, type StageDef } from "@/lib/journeyLevels";
@@ -9,6 +10,7 @@ import { LEVEL_CLAY, LevelPlaque, type LevelReportState } from "@/components/jou
 import { cn } from "@/lib/utils";
 import { transition } from "@/lib/motion";
 import { createJourneyWorld, type NodeState, type WorldHandle } from "@/components/journey/world/scene";
+import { sfx } from "@/components/journey/world/sfx";
 
 interface Props {
   currentStageIndex: number;
@@ -17,6 +19,8 @@ interface Props {
   isLevelComplete?: (level: LevelId) => boolean;
   reportStateFor?: (level: LevelId) => LevelReportState;
   onOpenLevelReport?: (level: LevelId) => void;
+  /** Whether the page's stage modal is open; closing it lifts the camera back out. */
+  stageOpen?: boolean;
   /** Rendered instead of the world when WebGL is unavailable. */
   fallback: ReactNode;
 }
@@ -54,18 +58,24 @@ export default function JourneyWorld({
   isLevelComplete,
   reportStateFor,
   onOpenLevelReport,
+  stageOpen = false,
   fallback,
 }: Props) {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const hereRef = useRef<HTMLDivElement | null>(null);
   const tipRef = useRef<HTMLDivElement | null>(null);
+  const veilRef = useRef<HTMLDivElement | null>(null);
   const worldRef = useRef<WorldHandle | null>(null);
   const [failed, setFailed] = useState(false);
   const [ready, setReady] = useState(false);
   const [focusIdx, setFocusIdx] = useState(currentStageIndex);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [touched, setTouched] = useState(false);
+  const [atCampus, setAtCampus] = useState(false);
+  const [muted, setMuted] = useState(() => sfx.isMuted());
   const dark = useDarkClass();
+
+  useEffect(() => sfx.subscribe(setMuted), []);
 
   const states = useMemo<NodeState[]>(() => {
     const done = new Set(completedStageIds);
@@ -100,14 +110,16 @@ export default function JourneyWorld({
             toast(`Stage ${stage.id} is locked`, {
               description: prev ? `Finish stage ${prev.id} ${DASH} ${prev.name} ${DASH} to open it.` : undefined,
             });
+            worldRef.current?.surface();
             return;
           }
           live.current.onStageClick(stage);
         },
         onFocusChange: (i) => setFocusIdx(i),
         onInteract: () => setTouched(true),
+        onCampus: (on) => setAtCampus(on),
       },
-      () => ({ here: hereRef.current, tip: tipRef.current }),
+      () => ({ here: hereRef.current, tip: tipRef.current, veil: veilRef.current }),
       {
         dark: document.documentElement.classList.contains("dark"),
         reducedMotion: reduced,
@@ -137,6 +149,13 @@ export default function JourneyWorld({
     worldRef.current?.setDark(dark);
   }, [dark]);
 
+  // The stage modal closed: climb back out of the dive.
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !stageOpen) worldRef.current?.surface();
+    wasOpen.current = stageOpen;
+  }, [stageOpen]);
+
   // Keyboard travel when the world has focus.
   const onKeyDown = (e: React.KeyboardEvent) => {
     const w = worldRef.current;
@@ -148,10 +167,8 @@ export default function JourneyWorld({
     else if (k === "PageDown") w.nudge(-20);
     else if (k === "Home") w.flyTo(0);
     else if (k === "End") w.flyTo(currentStageIndex);
-    else if (k === "Enter" || k === " ") {
-      const st = states[focusIdx];
-      if (st !== "locked") onStageClick(STAGES[focusIdx]);
-    } else return;
+    else if (k === "Enter" || k === " ") w.enter(focusIdx);
+    else return;
     e.preventDefault();
     setTouched(true);
   };
@@ -268,7 +285,10 @@ export default function JourneyWorld({
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={transition.slow}
-        className="absolute left-3 top-3 sm:left-4 sm:top-4 z-30 max-w-[calc(100%-5rem)] sm:max-w-sm"
+        className={cn(
+          "absolute left-3 top-3 sm:left-4 sm:top-4 z-30 max-w-[calc(100%-5rem)] sm:max-w-sm transition-opacity duration-300",
+          atCampus && "pointer-events-none opacity-0",
+        )}
       >
         <div className="flex items-center gap-3 rounded-2xl border border-white/60 dark:border-white/10 bg-card/85 backdrop-blur-md px-3 py-2.5 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.45)]">
           <LevelPlaque level={focusLevel.id} size={40} />
@@ -324,6 +344,21 @@ export default function JourneyWorld({
         aria-label="Levels"
         className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-1 rounded-2xl border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur-md p-1.5 shadow-[0_10px_30px_-14px_rgba(15,23,42,0.45)]"
       >
+        <button
+          type="button"
+          aria-label="Visit your dream college"
+          title="Your dream college"
+          onClick={() => {
+            worldRef.current?.showCampus();
+            setTouched(true);
+          }}
+          className={cn(
+            "flex h-7 w-7 items-center justify-center rounded-lg transition-colors",
+            atCampus ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground",
+          )}
+        >
+          <Landmark className="h-4 w-4" />
+        </button>
         <button
           type="button"
           aria-label="Next stage"
@@ -441,8 +476,9 @@ export default function JourneyWorld({
             <button
               type="button"
               onClick={() => {
-                worldRef.current?.flyTo(currentStageIndex);
-                onStageClick(current);
+                const w = worldRef.current;
+                if (w) w.enter(currentStageIndex);
+                else onStageClick(current);
               }}
               className="shrink-0 inline-flex h-10 items-center gap-1.5 rounded-xl bg-primary px-4 text-[12px] font-display font-bold uppercase tracking-wider text-primary-foreground shadow-[0_3px_0_hsl(var(--highlight))] transition-transform hover:-translate-y-px active:translate-y-[2px] active:shadow-none"
             >
@@ -451,6 +487,57 @@ export default function JourneyWorld({
           )}
         </div>
       </motion.div>
+
+      {/* Sound toggle. */}
+      <button
+        type="button"
+        onClick={() => sfx.setMuted(!muted)}
+        aria-label={muted ? "Turn sound on" : "Turn sound off"}
+        aria-pressed={!muted}
+        title={muted ? "Sound off" : "Sound on"}
+        className="absolute right-2 top-3 sm:right-3 sm:top-4 z-30 flex h-9 w-9 items-center justify-center rounded-xl border border-white/60 dark:border-white/10 bg-card/80 backdrop-blur-md text-muted-foreground shadow-[0_10px_30px_-14px_rgba(15,23,42,0.45)] hover:text-foreground"
+      >
+        {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+      </button>
+
+      {/* Campus close-up. */}
+      <AnimatePresence>
+        {atCampus && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            transition={{ ...transition.slow, delay: 0.3 }}
+            className="absolute left-3 top-3 sm:left-4 sm:top-4 z-30 w-[min(300px,calc(100%-5rem))]"
+          >
+            <div className="rounded-2xl border border-white/60 dark:border-white/10 bg-card/90 backdrop-blur-md px-4 py-3 shadow-[0_18px_40px_-18px_rgba(15,23,42,0.55)]">
+              <div className="text-[10px] font-display font-bold uppercase tracking-[0.18em] text-muted-foreground">The destination</div>
+              <div className="font-display text-[17px] font-semibold leading-tight">Your dream college</div>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                {allDone
+                  ? "Every stage is banked. The doors are open."
+                  : `${states.filter((st) => st === "done").length} of ${STAGES.length} stages banked on the road here.`}
+              </p>
+              <button
+                type="button"
+                onClick={() => worldRef.current?.flyTo(currentStageIndex)}
+                className="mt-2 inline-flex h-8 items-center gap-1.5 rounded-lg border bg-background px-3 text-[11px] font-display font-bold uppercase tracking-wider hover:bg-muted"
+              >
+                <Crosshair className="h-3.5 w-3.5" />
+                Back to my stage
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Stage dive: an iris the scene opens from the coin as the camera lands. */}
+      <div
+        ref={veilRef}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-40 rounded-2xl bg-background"
+        style={{ opacity: 0, clipPath: "circle(0% at 50% 50%)" }}
+      />
 
       {/* Controls hint, retired after the first move. */}
       <AnimatePresence>

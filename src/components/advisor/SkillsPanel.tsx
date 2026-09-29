@@ -15,6 +15,7 @@ import {
   type InstalledSkill,
 } from "@/hooks/useAdvisorSkills";
 import { cn } from "@/lib/utils";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 /**
  * Skills manager.
@@ -141,9 +142,7 @@ export function SkillsPanel({
         <ScrollArea className="flex-1">
           <div className="space-y-7 px-5 py-5">
             {loading ? (
-              <div className="flex justify-center py-10">
-                <Loader2 className="h-5 w-5 animate-spin text-accent" />
-              </div>
+              <RowsSkeleton n={4} label="Loading skills" />
             ) : (
               <>
                 {/* ─────────────────────────────────────────────── installed ── */}

@@ -1,0 +1,315 @@
+/* Zen mode's study. Loaded with the Zen chunk only. */
+
+@font-face {
+  font-family: "Geist Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/geist-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+.pf-zen {
+  --zen-bg: #040509;
+  --zen-ink: #eef1f8;
+  --zen-mute: rgba(238, 241, 248, 0.56);
+  --zen-line: rgba(238, 241, 248, 0.16);
+  --zen-cobalt: #5f82ff;
+  --zen-panel: rgba(8, 9, 14, 0.94);
+  --zen-ease: cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: "Geist Variable", "Plus Jakarta Sans", system-ui, sans-serif;
+  color: var(--zen-ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+.pf-zen .zen-mono {
+  font-family: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  letter-spacing: 0.01em;
+}
+
+/* The hover frame: basement's diagonal hatch, traced around the object. */
+.pf-zen .zen-hatch {
+  background-image: repeating-linear-gradient(-45deg, rgba(238, 241, 248, 0.22) 0 1px, transparent 1px 7px);
+  border: 1px solid rgba(238, 241, 248, 0.42);
+}
+
+/* Bracket buttons, the HUD's only control style. */
+.pf-zen .zen-btn {
+  font-family: "Geist Mono Variable", ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+  line-height: 1;
+  padding: 8px 6px;
+  color: var(--zen-ink);
+  white-space: nowrap;
+  transition: color 90ms ease-out;
+}
+.pf-zen .zen-btn:hover,
+.pf-zen .zen-btn:focus-visible {
+  color: var(--zen-cobalt);
+  outline: none;
+}
+.pf-zen .zen-btn:active {
+  transform: translateY(1px);
+}
+
+.pf-zen .zen-btn:disabled {
+  color: var(--zen-mute);
+  pointer-events: none;
+}
+
+/* No backdrop blur: blurring a canvas that redraws every frame costs a full
+   extra pass on the compositor for as long as a panel is open. */
+.pf-zen .zen-panel {
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  scrollbar-width: thin;
+  scrollbar-color: var(--zen-line) transparent;
+}
+
+.pf-zen .zen-input {
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid var(--zen-line);
+  color: var(--zen-ink);
+  outline: none;
+  border-radius: 0;
+  transition: border-color 120ms ease-out;
+}
+.pf-zen textarea.zen-input {
+  border: 1px solid var(--zen-line);
+}
+.pf-zen .zen-input:focus {
+  border-color: var(--zen-cobalt);
+}
+.pf-zen .zen-input::placeholder {
+  color: rgba(238, 241, 248, 0.3);
+}
+
+/* ---- panel motion ------------------------------------------------------ */
+
+/* A panel's blocks rise in one after another as it lands (30 ms apart, well
+   inside a 300 ms budget), so the eye reads it top down. */
+@keyframes zen-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.pf-zen .zen-rise > * {
+  animation: zen-rise 380ms var(--zen-ease) backwards;
+}
+.pf-zen .zen-rise > :nth-child(1) { animation-delay: 60ms; }
+.pf-zen .zen-rise > :nth-child(2) { animation-delay: 90ms; }
+.pf-zen .zen-rise > :nth-child(3) { animation-delay: 120ms; }
+.pf-zen .zen-rise > :nth-child(4) { animation-delay: 150ms; }
+.pf-zen .zen-rise > :nth-child(5) { animation-delay: 180ms; }
+.pf-zen .zen-rise > :nth-child(n + 6) { animation-delay: 210ms; }
+
+/* Bars fill from nothing to their value (the value is the inline transform). */
+@keyframes zen-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+.pf-zen .zen-grow {
+  animation: zen-grow 700ms 160ms var(--zen-ease) backwards;
+  transition: transform 400ms var(--zen-ease);
+}
+@keyframes zen-bar {
+  from {
+    transform: scaleY(0);
+  }
+}
+.pf-zen .zen-bar {
+  transform-origin: bottom;
+  animation: zen-bar 520ms var(--zen-ease) backwards;
+}
+
+@keyframes zen-pulse {
+  from {
+    opacity: 0.5;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.pf-zen .zen-shimmer {
+  background: rgba(238, 241, 248, 0.1);
+  animation: zen-pulse 900ms ease-in-out infinite alternate;
+}
+
+@keyframes zen-fade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+}
+.pf-zen .zen-fade {
+  animation: zen-fade 600ms cubic-bezier(0.4, 0, 0.2, 1) backwards;
+}
+
+/* ---- controls ---------------------------------------------------------- */
+
+.pf-zen .zen-check,
+.pf-zen .zen-seg,
+.pf-zen .zen-row {
+  transition: border-color 120ms ease-out, background-color 160ms ease-out, transform 120ms ease-out;
+}
+.pf-zen .zen-check span {
+  transition: transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+.pf-zen .zen-check:hover:not(:disabled),
+.pf-zen .zen-seg:hover,
+.pf-zen .zen-row:hover {
+  border-color: rgba(238, 241, 248, 0.42);
+}
+.pf-zen .zen-seg:active,
+.pf-zen .zen-row:active {
+  transform: scale(0.98);
+}
+
+.pf-zen .zen-eq {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 12px;
+}
+.pf-zen .zen-eq i {
+  width: 2px;
+  height: 100%;
+  background: var(--zen-cobalt);
+  transform-origin: bottom;
+  animation: zen-eq 900ms ease-in-out infinite alternate;
+}
+.pf-zen .zen-eq i:nth-child(2) { animation-delay: -300ms; animation-duration: 700ms; }
+.pf-zen .zen-eq i:nth-child(3) { animation-delay: -600ms; animation-duration: 1100ms; }
+@keyframes zen-eq {
+  from { transform: scaleY(0.25); }
+  to { transform: scaleY(1); }
+}
+
+.pf-zen .zen-range {
+  appearance: none;
+  height: 16px;
+  background: transparent;
+}
+.pf-zen .zen-range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: var(--zen-line);
+}
+.pf-zen .zen-range::-moz-range-track {
+  height: 2px;
+  background: var(--zen-line);
+}
+.pf-zen .zen-range::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -5px;
+  background: var(--zen-cobalt);
+  border: 0;
+}
+.pf-zen .zen-range::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--zen-cobalt);
+  border: 0;
+  border-radius: 0;
+}
+.pf-zen .zen-range:focus-visible {
+  outline: 1px solid var(--zen-cobalt);
+  outline-offset: 4px;
+}
+
+/* ---- the index ----------------------------------------------------------- */
+
+.pf-zen .zen-index {
+  background: var(--zen-panel);
+  border: 1px solid var(--zen-line);
+  opacity: 0;
+  transition: opacity 240ms var(--zen-ease);
+}
+.pf-zen .zen-index[data-in] {
+  opacity: 1;
+}
+.pf-zen .zen-index li {
+  opacity: 0;
+  transform: translateX(-10px);
+  transition: opacity 280ms var(--zen-ease), transform 360ms var(--zen-ease);
+}
+.pf-zen .zen-index[data-in] li {
+  opacity: 1;
+  transform: none;
+}
+.pf-zen .zen-index:not([data-in]) {
+  pointer-events: none;
+}
+.pf-zen .zen-index-name {
+  transition: transform 160ms var(--zen-ease), color 90ms ease-out;
+}
+.pf-zen .zen-index-rule {
+  align-self: center;
+  height: 0;
+  border-bottom: 1px dotted var(--zen-line);
+}
+.pf-zen .zen-index-row:hover .zen-index-name,
+.pf-zen .zen-index-row:focus-visible .zen-index-name {
+  transform: translateX(4px);
+  color: var(--zen-cobalt);
+}
+.pf-zen .zen-index-row:focus-visible {
+  outline: none;
+}
+.pf-zen .zen-index-row[aria-current] .zen-index-name {
+  color: var(--zen-cobalt);
+}
+
+.pf-zen .zen-strip {
+  scrollbar-width: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 260ms var(--zen-ease), transform 320ms var(--zen-ease);
+}
+.pf-zen .zen-strip[data-in] {
+  opacity: 1;
+  transform: none;
+}
+.pf-zen .zen-strip:not([data-in]) {
+  pointer-events: none;
+}
+.pf-zen .zen-strip [aria-current] {
+  border-color: var(--zen-cobalt);
+  color: var(--zen-cobalt);
+}
+
+@keyframes zen-curtain-in {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+@keyframes zen-curtain-out {
+  from {
+    clip-path: inset(0 0 0 0);
+  }
+  to {
+    clip-path: inset(0 0 100% 0);
+  }
+}
+@keyframes zen-seam {
+  from {
+    transform: translateY(100vh);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pf-zen *,
+  .pf-zen-curtain {
+    animation-duration: 1ms !important;
+    transition-duration: 1ms !important;
+  }
+}

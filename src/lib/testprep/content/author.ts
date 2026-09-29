@@ -98,8 +98,11 @@ export interface QSpec {
   calc?: boolean;
 }
 
-/** Build one bank question from a spec. `form` marks it as belonging to a practice test. */
-export function q(spec: QSpec, form?: string): Question {
+/**
+ * Build one bank question from a spec. `form` marks it as belonging to a
+ * practice test; `testId` is for the PSAT, which shares the SAT's skills.
+ */
+export function q(spec: QSpec, form?: string, testId: "sat" | "psat" = "sat"): Question {
   const skill = SKILL.get(spec.skill);
   if (!skill) throw new Error(`Unknown skill "${spec.skill}" on ${spec.id}`);
   const math = skill.subjectId === "math";
@@ -119,7 +122,7 @@ export function q(spec: QSpec, form?: string): Question {
 
   return {
     id: spec.id,
-    testId: "sat",
+    testId,
     subjectId: skill.subjectId,
     domainId: skill.domainId,
     skillId: skill.id,

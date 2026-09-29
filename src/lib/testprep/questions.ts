@@ -20,6 +20,10 @@
 import type { Question } from "./types";
 import { BANK_PLUS } from "./content/bank";
 import { FORM_QUESTIONS } from "./content/forms";
+import { ACT_QUESTIONS } from "./content/act";
+import { PSAT_QUESTIONS } from "./content/psat";
+import { PREACT_QUESTIONS } from "./content/preact";
+import { CLT_QUESTIONS } from "./content/clt";
 
 const P = "pathforge" as const;
 
@@ -4547,8 +4551,14 @@ const CORE: Question[] = [
  */
 export const SAT_QUESTIONS: Question[] = [...CORE, ...BANK_PLUS];
 
+/**
+ * Every test's practice bank together. Each question carries its own
+ * `testId`, so anything that lists or draws from the bank filters on it.
+ */
+export const BANK_QUESTIONS: Question[] = [...SAT_QUESTIONS, ...PSAT_QUESTIONS, ...ACT_QUESTIONS, ...PREACT_QUESTIONS, ...CLT_QUESTIONS];
+
 /** Every question that exists, bank and practice tests alike. */
-export const ALL_QUESTIONS: Question[] = [...SAT_QUESTIONS, ...FORM_QUESTIONS];
+export const ALL_QUESTIONS: Question[] = [...BANK_QUESTIONS, ...FORM_QUESTIONS];
 
 /** Every question, keyed by id, so a practice test's answers can be reviewed too. */
 export const QUESTION_BY_ID = new Map(ALL_QUESTIONS.map((q) => [q.id, q]));
@@ -4563,18 +4573,21 @@ export function questionById(id: string): Question | undefined {
  * The Overview's "18 / 25 completed" figures are computed against this rather
  * than against a target invented for the design, so a student is never told
  * they have 7 questions left that do not exist.
+ *
+ * Keyed `testId:skillId`, because the SAT and PSAT share skill ids and each
+ * test's page should count only its own bank.
  */
-export const QUESTION_COUNT_BY_SKILL = SAT_QUESTIONS.reduce<Record<string, number>>(
+export const QUESTION_COUNT_BY_SKILL = BANK_QUESTIONS.reduce<Record<string, number>>(
   (acc, q) => {
-    acc[q.skillId] = (acc[q.skillId] ?? 0) + 1;
+    acc[`${q.testId}:${q.skillId}`] = (acc[`${q.testId}:${q.skillId}`] ?? 0) + 1;
     return acc;
   },
   {},
 );
 
-export const QUESTION_COUNT_BY_DOMAIN = SAT_QUESTIONS.reduce<Record<string, number>>(
+export const QUESTION_COUNT_BY_DOMAIN = BANK_QUESTIONS.reduce<Record<string, number>>(
   (acc, q) => {
-    acc[q.domainId] = (acc[q.domainId] ?? 0) + 1;
+    acc[`${q.testId}:${q.domainId}`] = (acc[`${q.testId}:${q.domainId}`] ?? 0) + 1;
     return acc;
   },
   {},

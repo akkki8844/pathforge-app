@@ -16,13 +16,18 @@
 // shadow it there — legal, but the kind of legal that costs someone an hour.
 import {
   SAT,
-  SAT_DOMAINS,
-  SAT_SKILLS,
   domainName as domainLabel,
   subjectName as subjectLabel,
 } from "./blueprints";
 import { QUESTION_COUNT_BY_DOMAIN, QUESTION_COUNT_BY_SKILL, questionById } from "./questions";
-import type { AnswerRecord, Difficulty, ModuleRoute, SubjectId, TestPrepProfile } from "./types";
+import type {
+  AnswerRecord,
+  Difficulty,
+  ModuleRoute,
+  SubjectId,
+  TestBlueprint,
+  TestPrepProfile,
+} from "./types";
 
 /** Below this many attempts, a mastery percentage is noise, not a measurement. */
 export const MASTERY_MIN_ATTEMPTS = 3;
@@ -110,9 +115,10 @@ function answersBySkill(profile: TestPrepProfile): Map<string, AnswerRecord[]> {
   return map;
 }
 
-export function skillStats(profile: TestPrepProfile): SkillStats[] {
+export function skillStats(profile: TestPrepProfile, blueprint: TestBlueprint = SAT): SkillStats[] {
   const grouped = answersBySkill(profile);
-  return SAT_SKILLS.map((skill) => {
+  const skills = blueprint.subjects.flatMap((s) => s.domains.flatMap((d) => d.skills));
+  return skills.map((skill) => {
     const records = grouped.get(skill.id) ?? [];
     // Coverage counts only bank questions, since `available` does: a practice
     // test's questions still count toward mastery, but a student who has sat
@@ -137,15 +143,16 @@ export function skillStats(profile: TestPrepProfile): SkillStats[] {
       correct: records.filter((r) => r.correct).length,
       mastery: masteryOf(records),
       completed: distinct.size,
-      available: QUESTION_COUNT_BY_SKILL[skill.id] ?? 0,
+      available: QUESTION_COUNT_BY_SKILL[`${blueprint.id}:${skill.id}`] ?? 0,
       avgMs: timedRecords.length ? Math.round(totalMs / timedRecords.length) : null,
     };
   });
 }
 
-export function domainStats(profile: TestPrepProfile): DomainStats[] {
-  const skills = skillStats(profile);
-  return SAT_DOMAINS.map((domain) => {
+export function domainStats(profile: TestPrepProfile, blueprint: TestBlueprint = SAT): DomainStats[] {
+  const skills = skillStats(profile, blueprint);
+  const domains = blueprint.subjects.flatMap((s) => s.domains);
+  return domains.map((domain) => {
     const mine = skills.filter((s) => s.domainId === domain.id);
     const attempts = mine.reduce((n, s) => n + s.attempts, 0);
     const correct = mine.reduce((n, s) => n + s.correct, 0);
@@ -162,7 +169,7 @@ export function domainStats(profile: TestPrepProfile): DomainStats[] {
       correct,
       mastery: masteryOf(pool),
       completed: mine.reduce((n, s) => n + s.completed, 0),
-      available: QUESTION_COUNT_BY_DOMAIN[domain.id] ?? 0,
+      available: QUESTION_COUNT_BY_DOMAIN[`${blueprint.id}:${domain.id}`] ?? 0,
       skills: mine,
     };
   });
@@ -181,6 +188,8 @@ export function domainStats(profile: TestPrepProfile): DomainStats[] {
 export function estimateSectionScore(
   domains: DomainStats[],
   answerCount: number,
+  range: [number, number] = [200, 800],
+  scoreStep = 10,
 ): number | null {
   if (answerCount < SCORE_MIN_ANSWERS) return null;
   const scored = domains.filter((d) => d.attempts > 0);
@@ -193,10 +202,15 @@ export function estimateSectionScore(
   );
   const accuracy = totalWeight ? weighted / totalWeight : 0;
 
-  // 0% accuracy maps to 250, 100% to 800, roughly matching how raw scores
-  // convert on a published scoring table.
-  const raw = 250 + accuracy * 550;
-  return Math.round(raw / 10) * 10;
+  // 0% accuracy maps to a floor about 8% above the bottom of the range, 100%
+  // to the top — roughly matching how raw scores convert on a published
+  // scoring table, and generalised from the SAT's own 250-800 (200 is never
+  // actually reached from accuracy alone: the easier items nearly everyone
+  // gets right hold the floor up).
+  const [lo, hi] = range;
+  const span = hi - lo;
+  const raw = lo + span * 0.083 + accuracy * span * 0.917;
+  return Math.round(raw / scoreStep) * scoreStep;
 }
 
 /**
@@ -227,15 +241,53 @@ export function routeFor(correct: number, total: number): ModuleRoute {
  *
  * Still an estimate from practice questions, and presented as one.
  */
-export function adaptiveSectionScore(route: ModuleRoute, correct: number, total: number): number {
+export function adaptiveSectionScore(
+  route: ModuleRoute,
+  correct: number,
+  total: number,
+  range: [number, number] = [200, 800],
+  scoreStep = 10,
+): number {
   const frac = total > 0 ? Math.min(1, Math.max(0, correct / total)) : 0;
-  const raw = route === "harder" ? 200 + 600 * frac ** 0.85 : 200 + 420 * frac ** 0.9;
-  return Math.round(raw / 10) * 10;
+  const [lo, hi] = range;
+  const span = hi - lo;
+  const raw = route === "harder" ? lo + span * frac ** 0.85 : lo + span * EASIER_SHARE * frac ** 0.9;
+  return Math.round(raw / scoreStep) * scoreStep;
 }
 
-export function subjectStats(profile: TestPrepProfile): SubjectStats[] {
-  const domains = domainStats(profile);
-  return SAT.subjects.map((subject) => {
+/** How much of a section's range the easier Module 2 can reach (the SAT's 200-620 of 200-800). */
+const EASIER_SHARE = 0.7;
+
+/** The highest section score the easier route can produce, for copy that names it. */
+export function easierRouteCap(range: [number, number], scoreStep = 10): number {
+  const [lo, hi] = range;
+  return Math.round((lo + (hi - lo) * EASIER_SHARE) / scoreStep) * scoreStep;
+}
+
+/**
+ * A section score for a fixed-form sitting (ACT, PreACT, CLT): one module,
+ * raw correct over total mapped onto the section's scale.
+ *
+ * Same shape as the practice estimate — a floor held up by the easy items,
+ * the top of the scale for a perfect section — and slightly concave, as real
+ * conversion tables are near the top. An estimate, presented as one.
+ */
+export function scaledSectionScore(
+  range: [number, number],
+  scoreStep: number,
+  correct: number,
+  total: number,
+): number {
+  const frac = total > 0 ? Math.min(1, Math.max(0, correct / total)) : 0;
+  const [lo, hi] = range;
+  const span = hi - lo;
+  const raw = lo + span * 0.083 + span * 0.917 * frac ** 0.9;
+  return Math.min(hi, Math.max(lo, Math.round(raw / scoreStep) * scoreStep));
+}
+
+export function subjectStats(profile: TestPrepProfile, blueprint: TestBlueprint = SAT): SubjectStats[] {
+  const domains = domainStats(profile, blueprint);
+  return blueprint.subjects.map((subject) => {
     const mine = domains.filter((d) => d.subjectId === subject.id);
     const attempts = mine.reduce((n, d) => n + d.attempts, 0);
     return {
@@ -245,7 +297,7 @@ export function subjectStats(profile: TestPrepProfile): SubjectStats[] {
       correct: mine.reduce((n, d) => n + d.correct, 0),
       completed: mine.reduce((n, d) => n + d.completed, 0),
       available: mine.reduce((n, d) => n + d.available, 0),
-      score: estimateSectionScore(mine, attempts),
+      score: estimateSectionScore(mine, attempts, subject.scoreRange, blueprint.scoreStep),
       domains: mine,
     };
   });
@@ -268,13 +320,13 @@ export interface OverallStats {
   avgSeconds: number | null;
 }
 
-export function overallStats(profile: TestPrepProfile): OverallStats {
-  const subjects = subjectStats(profile);
+export function overallStats(profile: TestPrepProfile, blueprint: TestBlueprint = SAT): OverallStats {
+  const subjects = subjectStats(profile, blueprint);
   const completed = subjects.reduce((n, s) => n + s.completed, 0);
   const available = subjects.reduce((n, s) => n + s.available, 0);
   const totalAttempts = subjects.reduce((n, s) => n + s.attempts, 0);
   const totalCorrect = subjects.reduce((n, s) => n + s.correct, 0);
-  const bothScored = subjects.every((s) => s.score !== null);
+  const allScored = subjects.length > 0 && subjects.every((s) => s.score !== null);
   /*
    * Pace, over the answers that were actually timed.
    *
@@ -299,11 +351,25 @@ export function overallStats(profile: TestPrepProfile): OverallStats {
     totalAttempts,
     totalCorrect,
     accuracy: totalAttempts ? totalCorrect / totalAttempts : null,
-    estimatedScore: bothScored
-      ? subjects.reduce((n, s) => n + (s.score ?? 0), 0)
-      : null,
+    estimatedScore: allScored ? compositeScore(blueprint, subjects) : null,
     avgSeconds: timed.length ? Math.round(totalMs / timed.length / 1000) : null,
   };
+}
+
+/**
+ * Combine section scores into the composite the test actually reports.
+ *
+ * The SAT and PSAT add two section scores together (200-800 each, to
+ * 400-1600). The ACT and PreACT report the rounded average of four section
+ * scores (1-36 each, to 1-36) instead — see `TestBlueprint.scoring`.
+ */
+function compositeScore(blueprint: TestBlueprint, subjects: SubjectStats[]): number {
+  const scores = subjects.map((s) => s.score ?? 0);
+  if (blueprint.scoring === "average") {
+    const mean = scores.reduce((a, b) => a + b, 0) / Math.max(1, scores.length);
+    return Math.round(mean / blueprint.scoreStep) * blueprint.scoreStep;
+  }
+  return scores.reduce((a, b) => a + b, 0);
 }
 
 /* ------------------------------------------------------------------ */
@@ -339,10 +405,11 @@ export interface NextAction {
  * It never recommends a skill with no questions left in the bank, because the
  * button would open an empty session.
  */
-export function nextBestAction(profile: TestPrepProfile): NextAction | null {
-  const skills = skillStats(profile);
-  const domainName = (id: string) => SAT_DOMAINS.find((d) => d.id === id)?.name ?? id;
-  const paceSeconds = overallStats(profile).avgSeconds ?? 75;
+export function nextBestAction(profile: TestPrepProfile, blueprint: TestBlueprint = SAT): NextAction | null {
+  const skills = skillStats(profile, blueprint);
+  const blueprintDomains = blueprint.subjects.flatMap((s) => s.domains);
+  const domainName = (id: string) => blueprintDomains.find((d) => d.id === id)?.name ?? id;
+  const paceSeconds = overallStats(profile, blueprint).avgSeconds ?? 75;
 
   const build = (s: SkillStats, reason: string, count: number): NextAction => ({
     skillId: s.skillId,
@@ -375,8 +442,8 @@ export function nextBestAction(profile: TestPrepProfile): NextAction | null {
   const untouched = skills
     .filter((s) => s.attempts === 0 && s.available > 0)
     .sort((a, b) => {
-      const wa = SAT_DOMAINS.find((d) => d.id === a.domainId)?.weight ?? 0;
-      const wb = SAT_DOMAINS.find((d) => d.id === b.domainId)?.weight ?? 0;
+      const wa = blueprintDomains.find((d) => d.id === a.domainId)?.weight ?? 0;
+      const wb = blueprintDomains.find((d) => d.id === b.domainId)?.weight ?? 0;
       return wb - wa || b.available - a.available;
     });
 
@@ -400,8 +467,12 @@ export function nextBestAction(profile: TestPrepProfile): NextAction | null {
 /* ------------------------------------------------------------------ */
 
 /** The skills a results page should name, worst first. */
-export function weakestSkills(profile: TestPrepProfile, limit = 3): SkillStats[] {
-  return skillStats(profile)
+export function weakestSkills(
+  profile: TestPrepProfile,
+  limit = 3,
+  blueprint: TestBlueprint = SAT,
+): SkillStats[] {
+  return skillStats(profile, blueprint)
     .filter((s) => s.mastery !== null && s.attempts > 0)
     .sort((a, b) => (a.mastery ?? 1) - (b.mastery ?? 1))
     .slice(0, limit);
@@ -510,6 +581,21 @@ export function timingByDomain(profile: TestPrepProfile): TimingRow[] {
 /* ------------------------------------------------------------------ */
 /* Misc formatting shared across the section                           */
 /* ------------------------------------------------------------------ */
+
+/**
+ * Y-axis bounds for a score trend chart, padded around the plotted values and
+ * snapped to round numbers for the test's own scale — hundreds on the SAT's
+ * 400-1600, twos on the ACT's 1-36.
+ */
+export function trendBounds(blueprint: TestBlueprint, values: number[]): [number, number] {
+  const [lo, hi] = blueprint.scoreRange;
+  const span = hi - lo;
+  const pad = span * 0.05;
+  const unit = span >= 600 ? 100 : span >= 100 ? 10 : 2;
+  const min = Math.max(lo, Math.floor((Math.min(...values) - pad) / unit) * unit);
+  const max = Math.min(hi, Math.ceil((Math.max(...values) + pad) / unit) * unit);
+  return [min, max];
+}
 
 export function pct(value: number | null): string {
   return value === null ? "—" : `${Math.round(value * 100)}%`;

@@ -14,11 +14,10 @@ import {
   Search,
   SkipForward,
   Sparkles,
-  Timer,
   Wand2,
   X,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -1620,12 +1619,6 @@ function BlockCard({
           <Button variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px]" onClick={onComplete}>
             <Check className="h-3 w-3" />
             Done
-          </Button>
-          <Button asChild variant="ghost" size="sm" className="h-7 gap-1 px-2 text-[11px]">
-            <Link to="/routine/focus">
-              <Timer className="h-3 w-3" />
-              Focus
-            </Link>
           </Button>
           <Button
             variant="ghost"

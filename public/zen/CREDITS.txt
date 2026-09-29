@@ -1,0 +1,21 @@
+Zen mode study - asset credits
+
+Furniture, props and surface textures: Poly Haven (https://polyhaven.com),
+CC0 1.0 Universal. Models: metal_office_desk, mid_century_lounge_chair,
+classic_laptop, desk_lamp_arm_01, binder_notebook, stationery_supplies,
+seadogs_compass, portable_cassette_player, potted_plant_04, potted_plant_02,
+steel_frame_shelves_03, book_encyclopedia_set_01, marble_bust_01,
+modern_arm_chair_01, hanging_industrial_lamp, concrete_cat_statue,
+standing_chalkboard_01, wall_clock. Textures: herringbone_parquet,
+grey_plaster_02, american_walnut_veneer.
+
+Student figure: "Michelle" from the three.js examples
+(examples/models/gltf/Michelle.glb), a Mixamo character by Adobe, used
+under the Mixamo terms. Animation removed; posed in code.
+
+All models were converted with glTF-Transform (meshopt geometry, WebP
+textures, node structure preserved) and had their 30 degree feature edges
+baked in as a LINES primitive named pf_edges for the blueprint view.
+
+Mono type: Geist Mono (SIL Open Font License 1.1), self-hosted at
+/fonts/geist-mono-latin-wght-normal.woff2.

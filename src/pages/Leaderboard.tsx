@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   ChevronLeft, ChevronRight, Flame, Gem, Globe, GraduationCap, Heart,
-  Loader2, School as SchoolIcon, Sparkles, Trophy,
+  School as SchoolIcon, Sparkles, Trophy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Seo } from "@/components/Seo";
@@ -16,6 +16,7 @@ import {
   AUTO_HANDLE_RE, STANDINGS_GRID, StandingRow, rankStyle, useLeaderboard,
   type LeaderboardRow, type LeaderboardScope,
 } from "@/components/journey/JourneyLeaderboard";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 /**
  * The standings, as their own page.
@@ -282,9 +283,7 @@ export default function Leaderboard() {
         )}
 
         {loading ? (
-          <div className="flex min-h-[40svh] items-center justify-center">
-            <Loader2 className="h-6 w-6 animate-spin text-primary" />
-          </div>
+          <RowsSkeleton n={8} avatar label="Loading leaderboard" />
         ) : error ? (
           <Panel className="px-6 py-16 text-center">
             <p className="text-sm text-muted-foreground">{error}</p>

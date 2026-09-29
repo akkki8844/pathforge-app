@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { Seo } from "@/components/Seo";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
 import { SAT_SECTIONS, activeSection, sectionHref } from "@/lib/testprep/nav";
-import { BB_TITLE_RULE, EYEBROW, FOCUS, SURFACE } from "@/lib/testprep/ui";
+import { BB_TITLE_RULE, EYEBROW, FOCUS, SURFACE, themeScope } from "@/lib/testprep/ui";
 
 /**
  * The frame every SAT page renders inside.
@@ -71,7 +71,7 @@ export function TestPrepShell({
         viewport with the section's own background, which is what makes the
         four-colour rule true of the whole screen rather than of the cards on it.
       */}
-      <div className="bluebook min-h-svh bg-background">
+      <div className={cn(themeScope(testId), "min-h-svh bg-background")}>
         <div className="mx-auto w-full max-w-[100rem] px-4 pb-28 pt-6 sm:px-6 sm:pb-32 sm:pt-8 lg:px-8">
           <div className="lg:grid lg:grid-cols-[4.5rem_minmax(0,1fr)] lg:gap-10">
             <TestPrepSidebar testId={testId} testName={testName} />

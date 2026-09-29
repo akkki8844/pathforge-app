@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, ArrowRight, Check, Loader2, GraduationCap, School, Clock, Compass,
-  Heart, X, Search, LogOut, BookOpen,
+  Heart, X, Search, LogOut, BookOpen, Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useDraftPersistence } from '@/hooks/useDraftPersistence';
@@ -16,13 +16,15 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { majors } from '@/lib/data';
-import { getCollegeNamesByCountry, collegeMatchesQuery } from '@/lib/colleges';
+import { collegeMatchesQuery } from '@/lib/colleges';
+import { universityNamesFor, useWorldUniversities } from '@/lib/worldUniversities';
 import { searchSchools, type School as SchoolType } from '@/lib/schools';
 import {
   GPA_SYSTEMS, defaultGpaSystem, type GpaSystem,
   CURRICULA, CURRICULUM_ORDER, curriculaForGrade,
 } from '@/lib/curriculumSubjects';
-import { TOP_COUNTRIES, TOP_COUNTRY_NAMES } from '@/lib/countries';
+import { COUNTRIES_TOP_FIRST, COUNTRY_NAMES_TOP_FIRST, canonicalCountry } from '@/lib/countries';
+import { searchWorldSchools, useWorldSchools } from '@/lib/worldSchools';
 import { CountryCombobox } from '@/components/CountryCombobox';
 import { useStepBackNavigation } from '@/hooks/useStepBackNavigation';
 import {
@@ -39,7 +41,8 @@ import { fadeUp, staggerParent, staggerStep, transition } from '@/lib/motion';
 import { CollegeLogo } from "@/components/CollegeLogo";
 const grades = ['9th Grade', '10th Grade', '11th Grade', '12th Grade'];
 // Curated top 30 destinations — full ISO list lives in profile settings.
-const countries = TOP_COUNTRY_NAMES;
+// Every country, the thirty most common first.
+const countries = COUNTRY_NAMES_TOP_FIRST;
 const weeklyHoursOptions = ['Less than 5 hours', '5-10 hours', '10-15 hours', '15-20 hours', '20+ hours'];
 const workTypes = [
   { id: 'long-term', label: 'Long-term projects', description: 'Research, startups, multi-month initiatives' },
@@ -205,13 +208,14 @@ export function OnboardingSurvey() {
   );
 
   const gpaConfig = GPA_SYSTEMS.find((s) => s.value === formData.gpaSystem)!;
+  const collegeSources = formData.studyDestinations.length > 0 ? formData.studyDestinations : (formData.country ? [formData.country] : []);
+  // Curated schools first, then every other university in those countries.
+  const worldUniversities = useWorldUniversities(collegeSources.length > 0);
   const collegeOptions = useMemo(() => {
-    const sources = formData.studyDestinations.length > 0 ? formData.studyDestinations : (formData.country ? [formData.country] : []);
-    if (sources.length === 0) return [];
-    const merged = new Set<string>();
-    sources.forEach((c) => getCollegeNamesByCountry(c).forEach((n) => merged.add(n)));
-    return Array.from(merged).sort();
-  }, [formData.country, formData.studyDestinations]);
+    if (collegeSources.length === 0) return [];
+    return universityNamesFor(collegeSources, worldUniversities);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collegeSources.join('|'), worldUniversities]);
 
   const toggleStudyDestination = (c: string) => {
     setFormData((prev) => {
@@ -230,10 +234,20 @@ export function OnboardingSurvey() {
   const [schoolQuery, setSchoolQuery] = useState('');
   const [schoolPickerOpen, setSchoolPickerOpen] = useState(false);
   const [schoolIsOther, setSchoolIsOther] = useState(false);
+  // Curated schools first, then the worldwide list once it has loaded (it
+  // starts loading the first time the box is focused).
+  const worldSchools = useWorldSchools(schoolPickerOpen);
   const schoolMatches = useMemo<SchoolType[]>(() => {
-    if (!schoolQuery.trim() || schoolQuery.trim().length < 2) return [];
-    return searchSchools(schoolQuery.trim(), 8);
-  }, [schoolQuery]);
+    const q = schoolQuery.trim();
+    if (q.length < 2) return [];
+    const curated = searchSchools(q, 8);
+    if (!worldSchools || curated.length >= 8) return curated;
+    const seen = new Set(curated.map((s) => `${s.name}|${canonicalCountry(s.country)}`.toLowerCase()));
+    const more = searchWorldSchools(worldSchools, q, 16).filter(
+      (s) => !seen.has(`${s.name}|${canonicalCountry(s.country)}`.toLowerCase()),
+    );
+    return [...curated, ...more].slice(0, 8);
+  }, [schoolQuery, worldSchools]);
 
   // College selection grid: search filter
   const [collegeQuery, setCollegeQuery] = useState('');
@@ -664,7 +678,7 @@ export function OnboardingSurvey() {
                               {schoolMatches.length > 0 ? (
                                 schoolMatches.map((s) => (
                                   <button
-                                    key={`${s.name}-${s.city}`}
+                                    key={`${s.name}-${s.city}-${s.country}`}
                                     type="button"
                                     onMouseDown={(e) => {
                                       e.preventDefault();
@@ -675,7 +689,7 @@ export function OnboardingSurvey() {
                                     className="w-full border-b border-border/50 px-3 py-2 text-left text-sm last:border-b-0 hover:bg-muted"
                                   >
                                     <div className="font-medium text-foreground">{s.name}</div>
-                                    <div className="text-xs text-muted-foreground">{s.city}, {s.country}</div>
+                                    <div className="text-xs text-muted-foreground">{[s.city, s.country].filter(Boolean).join(', ')}</div>
                                   </button>
                                 ))
                               ) : (
@@ -715,7 +729,7 @@ export function OnboardingSurvey() {
                             value={formData.country}
                             onChange={(v) => updateField('country', v)}
                             placeholder="Where do you live?"
-                            options={TOP_COUNTRIES}
+                            options={COUNTRIES_TOP_FIRST}
                           />
                         </div>
                       </div>
@@ -811,9 +825,21 @@ export function OnboardingSurvey() {
                             <div className="max-h-72 overflow-y-auto rounded-lg border border-border bg-background/50 p-2">
                               <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                                 {filteredColleges.length === 0 && (
-                                  <p className="col-span-full p-2 text-xs text-muted-foreground">No universities match your search.</p>
+                                  collegeQuery.trim().length >= 2 ? (
+                                    <button
+                                      type="button"
+                                      onClick={() => { toggleUniversity(collegeQuery.trim()); setCollegeQuery(''); }}
+                                      className="col-span-full flex items-center gap-2 rounded-md p-2 text-left text-xs text-accent hover:bg-muted sm:text-sm"
+                                    >
+                                      <Plus className="h-3.5 w-3.5" /> Add "{collegeQuery.trim()}"
+                                    </button>
+                                  ) : (
+                                    <p className="col-span-full p-2 text-xs text-muted-foreground">No universities match your search.</p>
+                                  )
                                 )}
-                                {filteredColleges.map((c) => {
+                                {/* Thousands of options in some countries; render the first
+                                    hundred and let search reach the rest. */}
+                                {filteredColleges.slice(0, 120).map((c) => {
                                   const selected = formData.targetUniversities.includes(c);
                                   const disabled = !selected && formData.targetUniversities.length >= 5;
                                   return (
@@ -839,6 +865,11 @@ export function OnboardingSurvey() {
                                     </button>
                                   );
                                 })}
+                                {filteredColleges.length > 120 && (
+                                  <p className="col-span-full px-2 pt-1 text-[11px] text-muted-foreground">
+                                    Showing 120 of {filteredColleges.length.toLocaleString()}. Search to find the rest.
+                                  </p>
+                                )}
                               </div>
                             </div>
                           </>

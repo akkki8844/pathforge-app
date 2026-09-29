@@ -2,8 +2,9 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Activity, Zap, AlertCircle, CheckCircle2, TrendingUp, MousePointerClick } from "lucide-react";
+import { Activity, Zap, AlertCircle, CheckCircle2, TrendingUp, MousePointerClick } from "lucide-react";
 import { format, subDays } from "date-fns";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface FeatureRow { feature: string; count: number; }
 interface PageRow { page: string; visits: number; }
@@ -84,9 +85,7 @@ export function AdminPlatformAnalytics() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

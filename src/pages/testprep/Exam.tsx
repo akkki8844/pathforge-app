@@ -25,10 +25,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { DURATION, EASE_OUT_EXPO } from "@/lib/motion";
 import { blueprintFor } from "@/lib/testprep/blueprints";
-import { buildExam, buildFormExam, isCorrect, moduleQuestionIds, resolve } from "@/lib/testprep/select";
+import { buildExam, buildFixedExam, buildFormExam, isCorrect, moduleQuestionIds, resolve } from "@/lib/testprep/select";
 import { formById } from "@/lib/testprep/content/forms";
-import { readProfile, recordAnswers, saveAttempt } from "@/lib/testprep/store";
-import { adaptiveSectionScore, formatClock, routeFor } from "@/lib/testprep/stats";
+import { readProfileFor, recordAnswers, saveAttempt } from "@/lib/testprep/store";
+import { adaptiveSectionScore, formatClock, routeFor, scaledSectionScore } from "@/lib/testprep/stats";
 import { resultsHref, sectionHref } from "@/lib/testprep/nav";
 import {
   BB_BANNER,
@@ -41,6 +41,7 @@ import {
   BB_TOPBAR_BUTTON_ACTIVE,
   FOCUS,
   SURFACE,
+  themeScope,
 } from "@/lib/testprep/ui";
 import { ExamQuestionCard } from "@/components/testprep/QuestionView";
 import { QuestionFigure, RichText } from "@/components/testprep/Figure";
@@ -69,21 +70,29 @@ export default function TestPrepExam() {
   const navigate = useNavigate();
   const reduced = useReducedMotion();
 
+  const adaptive = !!blueprint?.adaptive;
+  const theme = themeScope(testId);
+  const sectionName = useCallback(
+    (id: SubjectId) => blueprint?.subjects.find((s) => s.id === id)?.name ?? id,
+    [blueprint],
+  );
+
   const sections = useMemo<SubjectId[]>(() => {
-    const raw = (params.get("sections") ?? "rw,math").split(",");
-    const valid = raw.filter((s): s is SubjectId => s === "rw" || s === "math");
-    return valid.length ? valid : ["rw", "math"];
-  }, [params]);
+    const all = blueprint?.subjects.map((s) => s.id) ?? [];
+    const raw = (params.get("sections") ?? all.join(",")).split(",");
+    const valid = raw.filter((s): s is SubjectId => (all as string[]).includes(s));
+    return valid.length ? valid : all;
+  }, [params, blueprint]);
 
   // Built once. Rebuilding on any re-render would reshuffle the paper.
   const [exam] = useState(() => {
-    const form = formById(params.get("form"));
+    const name = blueprint?.name ?? "Practice";
+    const whole = sections.length === (blueprint?.subjects.length ?? 0);
+    const label = whole ? `${name} practice exam` : `${sectionName(sections[0])} section test`;
+    const form = testId === "sat" ? formById(params.get("form")) : undefined;
     if (form) return buildFormExam(form, sections);
-    return buildExam(
-      readProfile(),
-      sections,
-      sections.length === 2 ? "SAT practice exam" : `${sections[0] === "math" ? "Math" : "Reading & Writing"} section test`,
-    );
+    if (!blueprint || adaptive) return buildExam(readProfileFor(testId), sections, label, blueprint);
+    return buildFixedExam(readProfileFor(testId), blueprint, sections, label);
   });
 
   /**
@@ -218,27 +227,49 @@ export default function TestPrepExam() {
 
     recordAnswers(records);
 
-    // Scored on the route each section took: a harder Module 2 can reach
-    // 800, an easier one cannot -- see `adaptiveSectionScore`.
+    // Adaptive tests are scored on the route each section took: a harder
+    // Module 2 can reach the top of the section, an easier one cannot -- see
+    // `adaptiveSectionScore`. Fixed-form tests convert raw to scaled directly.
     const sectionScores: Partial<Record<SubjectId, number>> = {};
     for (const [subjectId, s] of Object.entries(perSubject)) {
-      const route = routes[subjectId as SubjectId] ?? "harder";
-      sectionScores[subjectId as SubjectId] = adaptiveSectionScore(route, s.correct, s.total);
+      if (adaptive || !blueprint) {
+        const route = routes[subjectId as SubjectId] ?? "harder";
+        const range =
+          blueprint?.subjects.find((x) => x.id === subjectId)?.scoreRange ?? [200, 800];
+        sectionScores[subjectId as SubjectId] = adaptiveSectionScore(
+          route,
+          s.correct,
+          s.total,
+          range,
+          blueprint?.scoreStep ?? 10,
+        );
+      } else {
+        const range =
+          blueprint.subjects.find((x) => x.id === subjectId)?.scoreRange ?? blueprint.scoreRange;
+        sectionScores[subjectId as SubjectId] = scaledSectionScore(range, blueprint.scoreStep, s.correct, s.total);
+      }
     }
 
+    // A composite is only meaningful when every section was sat. A section
+    // test reports its section score and no total.
     const scored = Object.values(sectionScores);
+    const everySection = scored.length === (blueprint?.subjects.length ?? 2);
+    const step = blueprint?.scoreStep ?? 10;
+    const composite = !everySection
+      ? undefined
+      : blueprint?.scoring === "average"
+        ? Math.round(scored.reduce((a, b) => a + b, 0) / scored.length / step) * step
+        : scored.reduce((a, b) => a + b, 0);
     const attempt: AttemptSummary = {
       id: `exam-${Date.now().toString(36)}`,
-      testId: "sat",
+      testId: blueprint?.id ?? "sat",
       kind: "exam",
       label: exam.label,
       finishedAt: now,
       totalQuestions: all.length,
       correct,
       elapsedMs: Date.now() - startedAt.current,
-      // A composite is only meaningful when both sections were sat. A section
-      // test reports its section score and no total.
-      score: scored.length === 2 ? scored.reduce((a, b) => a + b, 0) : undefined,
+      score: composite,
       sectionScores,
       bySkill,
       items: records.map((r) => ({
@@ -248,16 +279,16 @@ export default function TestPrepExam() {
         elapsedMs: r.elapsedMs,
       })),
       formId: exam.formId,
-      routes,
+      routes: adaptive ? routes : undefined,
     };
 
     saveAttempt(attempt);
     navigate(resultsHref(testId, attempt.id), { replace: true });
-  }, [commitTime, exam, flags, given, navigate, routes, testId]);
+  }, [adaptive, blueprint, commitTime, exam, flags, given, navigate, routes, testId]);
 
   const nextModule = useCallback(() => {
     // Leaving a section's first module decides where its second one goes.
-    if (module?.stage === 1) {
+    if (adaptive && module?.stage === 1) {
       const right = questions.filter((q) => {
         const answer = given[q.id] ?? "";
         return answer !== "" && isCorrect(q, answer);
@@ -272,7 +303,7 @@ export default function TestPrepExam() {
     setIndex(0);
     setShowNavigator(false);
     setPhase("break");
-  }, [exam.modules.length, given, module, moduleIndex, questions, submit]);
+  }, [adaptive, exam.modules.length, given, module, moduleIndex, questions, submit]);
 
   /*
    * Move the stopwatch when the student moves.
@@ -410,22 +441,22 @@ export default function TestPrepExam() {
               {upcoming.calculator && " · calculator available"}
             </p>
             <p className="mt-4 text-xs tabular-nums text-muted-foreground">
-              Module {moduleIndex + 1} of {exam.modules.length}
+              {adaptive ? "Module" : "Section"} {moduleIndex + 1} of {exam.modules.length}
             </p>
             {phase === "intro" ? (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                The clock starts when you begin and does not pause. As on the real test, each
-                section's second module adapts to how you did on its first. Answers are marked
-                only after the final module.
+                {adaptive
+                  ? "The clock starts when you begin and does not pause. As on the real test, each section's second module adapts to how you did on its first. Answers are marked only after the final module."
+                  : "The clock starts when you begin and does not pause. Each section is timed on its own and closes when you submit it, as on the real test. Answers are marked only after the final section."}
               </p>
             ) : (
               <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
-                Module {moduleIndex} submitted. {answeredSoFar} question
+                {adaptive ? "Module" : "Section"} {moduleIndex} submitted. {answeredSoFar} question
                 {answeredSoFar === 1 ? "" : "s"} answered so far. You cannot go back to it.
               </p>
             )}
             <Button className="mt-6 w-full" onClick={beginModule}>
-              {phase === "intro" ? "Begin" : "Start next module"}
+              {phase === "intro" ? "Begin" : adaptive ? "Start next module" : "Start next section"}
             </Button>
             <ExitExam testId={testId} className="mt-3" />
           </motion.div>
@@ -445,15 +476,17 @@ export default function TestPrepExam() {
   // where there is no sitting to be a section of.
   const sectionOrder: SubjectId[] = [];
   for (const m of exam.modules) if (!sectionOrder.includes(m.subjectId)) sectionOrder.push(m.subjectId);
-  const moduleTitle = `Section ${sectionOrder.indexOf(module.subjectId) + 1}, Module ${
-    exam.modules.filter((m) => m.subjectId === module.subjectId).findIndex((m) => m.id === module.id) + 1
-  }: ${module.subjectId === "rw" ? "Reading and Writing" : "Math"}`;
+  const moduleTitle = adaptive
+    ? `Section ${sectionOrder.indexOf(module.subjectId) + 1}, Module ${
+        exam.modules.filter((m) => m.subjectId === module.subjectId).findIndex((m) => m.id === module.id) + 1
+      }: ${sectionName(module.subjectId)}`
+    : `Section ${sectionOrder.indexOf(module.subjectId) + 1}: ${sectionName(module.subjectId)}`;
   const eliminatedForQuestion = question ? eliminated[question.id] ?? EMPTY_SET : EMPTY_SET;
 
   return (
     <>
       <Seo title={`${exam.label}`} description="Practice exam." path={`/test-prep/${testId}/exam`} noindex />
-      <div className="bluebook flex min-h-[100svh] flex-col bg-background">
+      <div className={cn(theme, "flex min-h-[100svh] flex-col bg-background")}>
         {/* Exam chrome: a blue rule, a light top bar carrying the title, clock
             and tools, then the yellow banner naming the sitting. Blue, white,
             yellow down the screen — the digital-testing look, built from
@@ -475,7 +508,7 @@ export default function TestPrepExam() {
                     <ChevronDown className="h-3 w-3" aria-hidden="true" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent align="start" className="bluebook max-w-xs text-sm leading-relaxed text-foreground">
+                <PopoverContent align="start" className={cn(theme, "max-w-xs text-sm leading-relaxed text-foreground")}>
                   <p className="font-semibold">Directions</p>
                   <p className="mt-1.5 text-muted-foreground">
                     Read each question carefully and choose the best answer. Mark a question for
@@ -538,7 +571,7 @@ export default function TestPrepExam() {
                     More
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bluebook">
+                <DropdownMenuContent align="end" className={theme}>
                   {module.calculator && (
                     <DropdownMenuItem
                       onSelect={(e) => {
@@ -699,6 +732,8 @@ export default function TestPrepExam() {
                     Back
                   </Button>
                   <SubmitModule
+                    theme={theme}
+                    noun={adaptive ? "module" : "section"}
                     last={moduleIndex + 1 >= exam.modules.length}
                     unanswered={questions.length - answeredInModule}
                     onConfirm={nextModule}
@@ -794,7 +829,7 @@ export default function TestPrepExam() {
         </footer>
 
         <AlertDialog open={fiveMinutes} onOpenChange={setFiveMinutes}>
-          <AlertDialogContent className="bluebook">
+          <AlertDialogContent className={theme}>
             <AlertDialogHeader>
               <AlertDialogTitle>5 minutes remaining</AlertDialogTitle>
               <AlertDialogDescription>
@@ -814,7 +849,7 @@ export default function TestPrepExam() {
         </AlertDialog>
 
         <AlertDialog open={exitOpen} onOpenChange={setExitOpen}>
-          <AlertDialogContent className="bluebook">
+          <AlertDialogContent className={theme}>
             <AlertDialogHeader>
               <AlertDialogTitle>Leave the exam?</AlertDialogTitle>
               <AlertDialogDescription>
@@ -883,10 +918,14 @@ function NavigatorLegend({ className }: { className?: string }) {
  * questions still blank, which is the only fact that would change the decision.
  */
 function SubmitModule({
+  theme,
+  noun,
   last,
   unanswered,
   onConfirm,
 }: {
+  theme: string;
+  noun: string;
   last: boolean;
   unanswered: number;
   onConfirm: () => void;
@@ -894,24 +933,24 @@ function SubmitModule({
   return (
     <AlertDialog>
       <AlertDialogTrigger asChild>
-        <Button size="sm">{last ? "Submit exam" : "Submit module"}</Button>
+        <Button size="sm">{last ? "Submit exam" : `Submit ${noun}`}</Button>
       </AlertDialogTrigger>
-      <AlertDialogContent className="bluebook">
+      <AlertDialogContent className={theme}>
         <AlertDialogHeader>
-          <AlertDialogTitle>{last ? "Submit the exam?" : "Submit this module?"}</AlertDialogTitle>
+          <AlertDialogTitle>{last ? "Submit the exam?" : `Submit this ${noun}?`}</AlertDialogTitle>
           <AlertDialogDescription>
             {unanswered > 0
               ? `${unanswered} question${unanswered === 1 ? " is" : "s are"} still blank, and blank counts as incorrect. `
-              : "Every question in this module is answered. "}
+              : `Every question in this ${noun} is answered. `}
             {last
               ? "Once submitted the sitting is marked and you will see your results."
-              : "You cannot return to this module afterwards."}
+              : `You cannot return to this ${noun} afterwards.`}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Keep working</AlertDialogCancel>
           <AlertDialogAction onClick={onConfirm}>
-            {last ? "Submit exam" : "Submit module"}
+            {last ? "Submit exam" : `Submit ${noun}`}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>
@@ -956,7 +995,7 @@ function ExitExam({
           </button>
         )}
       </AlertDialogTrigger>
-      <AlertDialogContent className="bluebook">
+      <AlertDialogContent className={themeScope(testId)}>
         <AlertDialogHeader>
           <AlertDialogTitle>Leave the exam?</AlertDialogTitle>
           <AlertDialogDescription>

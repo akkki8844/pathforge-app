@@ -51,14 +51,14 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
 
   if (isApproved) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <StatusBox tone="success" icon={CheckCircle2}>
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <span className="font-semibold text-success">
               Evidence verified — you can claim this stage.
             </span>
             {submission?.ai_confidence !== null && submission?.ai_confidence !== undefined && (
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-sm text-muted-foreground">
                 AI confidence {(submission.ai_confidence * 100).toFixed(0)}%
               </span>
             )}
@@ -74,11 +74,11 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
 
   if (isVerifying) {
     return (
-      <div className="space-y-2">
+      <div className="space-y-3">
         <StatusBox tone="info" icon={Loader2} spin>
           <div>
             <div className="font-semibold text-primary">Verifying your submission…</div>
-            <div className="text-[11px] text-muted-foreground mt-0.5">
+            <div className="text-sm text-muted-foreground mt-1 leading-relaxed">
               AI is checking your proof. Usually takes under a minute. This panel will update automatically.
             </div>
           </div>
@@ -137,18 +137,18 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
   };
 
   return (
-    <div className="space-y-2.5">
+    <div className="space-y-4">
       {isRejected && submission && (
         <>
           <StatusBox tone="error" icon={XCircle}>
             <div>
               <div className="font-semibold text-destructive flex items-center gap-2">
                 Rejected
-                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-[9px]">
+                <Badge variant="outline" className="bg-destructive/10 text-destructive border-destructive/30 text-xs">
                   Re-upload required
                 </Badge>
               </div>
-              <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 {submission.ai_reasoning || submission.admin_notes || "Proof did not match the task. Please upload a clearer certificate or screenshot."}
               </p>
             </div>
@@ -162,7 +162,7 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
           <StatusBox tone="warn" icon={AlertCircle}>
             <div>
               <div className="font-semibold text-warning">Sent to admin review</div>
-              <p className="text-[11px] text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                 We couldn't auto-verify this with high confidence. An admin will review shortly. You can also upload a clearer file below.
               </p>
             </div>
@@ -173,15 +173,24 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
 
       {/* Upload zone */}
       <div
+        role="button"
+        tabIndex={0}
+        aria-label={file ? `Selected ${file.name}. Choose a different file` : "Choose a file to upload"}
         onClick={() => inputRef.current?.click()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            inputRef.current?.click();
+          }
+        }}
         onDragOver={(e) => e.preventDefault()}
         onDrop={(e) => {
           e.preventDefault();
           onPick(e.dataTransfer.files?.[0] ?? null);
         }}
         className={cn(
-          "rounded-lg border-2 border-dashed p-4 text-center cursor-pointer transition",
-          "hover:border-primary hover:bg-primary/5",
+          "rounded-2xl border-2 border-dashed px-5 py-6 text-center cursor-pointer transition",
+          "hover:border-primary hover:bg-primary/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
           file ? "border-primary bg-primary/5" : "border-border bg-muted/20"
         )}
       >
@@ -193,63 +202,66 @@ export function InlineProofUpload({ task, stage, submission }: Props) {
           onChange={(e) => onPick(e.target.files?.[0] ?? null)}
         />
         {file ? (
-          <div className="flex items-center justify-center gap-2 text-xs">
-            <FileImage className="h-4 w-4 text-primary" />
-            <span className="font-medium truncate max-w-[180px]">{file.name}</span>
+          <div className="flex items-center justify-center gap-2.5 text-base">
+            <FileImage className="h-5 w-5 shrink-0 text-primary" />
+            <span className="font-semibold truncate max-w-[min(20rem,60vw)]">{file.name}</span>
             <span className="text-muted-foreground">
               ({(file.size / 1024 / 1024).toFixed(2)} MB)
             </span>
           </div>
         ) : (
-          <div className="space-y-0.5">
-            <Upload className="h-4 w-4 text-muted-foreground mx-auto" />
-            <div className="text-xs font-medium">
-              {isRejected ? "Re-upload proof (certificate / screenshot)" : "Upload proof (certificate / screenshot)"}
+          <div className="space-y-1.5">
+            <span className="mx-auto mb-1 flex h-11 w-11 items-center justify-center rounded-full bg-primary/10">
+              <Upload className="h-5 w-5 text-primary" />
+            </span>
+            <div className="text-base font-semibold">
+              {isRejected ? "Choose a clearer file" : "Choose a file or drag it here"}
             </div>
-            <div className="text-[10px] text-muted-foreground">PNG, JPG, WEBP or PDF · max 10MB</div>
+            <div className="text-sm text-muted-foreground">Certificate or screenshot. PNG, JPG, WEBP or PDF · max 10MB</div>
           </div>
         )}
       </div>
 
       {/* Note field — required by verification flow */}
-      <div className="space-y-1">
-        <label className="text-[11px] font-semibold text-foreground flex items-center gap-1">
+      <div className="space-y-2">
+        <div className="flex items-baseline justify-between gap-3">
+        <label htmlFor={`proof-note-${stage.id}`} className="block text-base font-semibold text-foreground">
           Short note <span className="text-destructive">*</span>
-          <span className="font-normal text-muted-foreground">(1–2 sentences explaining what this proof shows)</span>
+          <span className="block text-sm font-normal text-muted-foreground mt-0.5">(1–2 sentences explaining what this proof shows)</span>
         </label>
+          <span className="shrink-0 text-sm text-muted-foreground tabular-nums">{note.length}/500</span>
+        </div>
         <Textarea
+          id={`proof-note-${stage.id}`}
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="e.g. Screenshot of my AMC 10 score report from MAA — distinction certificate, top 5%."
-          className="min-h-[60px] text-xs"
+          className="min-h-[88px] text-base leading-relaxed"
           maxLength={500}
         />
-        <div className="text-[10px] text-muted-foreground text-right">{note.length}/500</div>
       </div>
 
-      <div className="flex items-center justify-end gap-2">
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
         {(file || note) && (
           <Button
-            size="sm"
             variant="ghost"
             onClick={() => { setFile(null); setNote(""); try { localStorage.removeItem(NOTE_KEY(stage.id)); } catch {} }}
-            className="h-7 text-[11px]"
+            className="h-12 text-base"
           >
             Clear
           </Button>
         )}
         <Button
-          size="sm"
           onClick={handleSubmit}
           disabled={!file || !note.trim() || submitting}
-          className="h-7 gap-1.5 text-[11px]"
+          className="h-12 gap-2 px-6 text-base"
         >
-          {submitting ? <Loader2 className="h-3 w-3 animate-spin" /> : isRejected ? <RotateCw className="h-3 w-3" /> : <Upload className="h-3 w-3" />}
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : isRejected ? <RotateCw className="h-4 w-4" /> : <Upload className="h-4 w-4" />}
           {isRejected ? "Re-submit" : "Submit for verification"}
         </Button>
       </div>
 
-      <p className="text-[10px] text-muted-foreground leading-relaxed">
+      <p className="text-sm text-muted-foreground leading-relaxed">
         Verified evidence earns 5 gems. AI auto-approves high-confidence matches in under a minute;
         edge cases route to manual admin review and are paid the same when approved.
       </p>
@@ -278,14 +290,14 @@ function SubmittedFileLink({ submission }: { submission: ProofSubmission }) {
   const href = url || submission.proof_url || "#";
 
   return (
-    <div className="rounded-md border bg-muted/30 px-2.5 py-1.5 flex items-center justify-between gap-2 text-[11px]">
+    <div className="rounded-xl border bg-muted/30 px-4 py-3 flex items-center justify-between gap-3 text-sm">
       <div className="flex items-center gap-1.5 min-w-0">
-        <FileImage className="h-3.5 w-3.5 text-primary shrink-0" />
+        <FileImage className="h-4 w-4 text-primary shrink-0" />
         <span className="truncate font-medium">{fileName}</span>
       </div>
       {href !== "#" && (
-        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 shrink-0">
-          View <ExternalLink className="h-3 w-3" />
+        <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline inline-flex items-center gap-1 shrink-0">
+          View <ExternalLink className="h-3.5 w-3.5" />
         </a>
       )}
     </div>
@@ -305,8 +317,8 @@ function StatusBox({
 }: { tone: Tone; icon: any; spin?: boolean; children: React.ReactNode }) {
   const t = TONE_CLASSES[tone];
   return (
-    <div className={cn("rounded-lg border p-2.5 flex items-start gap-2 text-xs", t.box)}>
-      <Icon className={cn("h-4 w-4 shrink-0 mt-0.5", t.icon, spin && "animate-spin")} />
+    <div className={cn("rounded-xl border p-4 flex items-start gap-3 text-base", t.box)}>
+      <Icon className={cn("h-5 w-5 shrink-0 mt-0.5", t.icon, spin && "animate-spin")} />
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   );

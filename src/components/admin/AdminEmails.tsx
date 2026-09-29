@@ -173,7 +173,11 @@ export function AdminEmails() {
     }
     setSearching(true);
     const t = setTimeout(async () => {
-      const term = `%${userSearch.trim()}%`;
+      // Strip characters that carry meaning in the filter syntax so the search
+      // text can only ever be a value, never extra conditions.
+      const safe = userSearch.trim().replace(/[,()*\\:%"']/g, " ").trim();
+      if (!safe) { setSearching(false); return; }
+      const term = `%${safe}%`;
       const { data } = await supabase
         .from("profiles")
         .select("user_id, email, full_name")

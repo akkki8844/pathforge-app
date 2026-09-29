@@ -10,7 +10,7 @@ import { EASE_OUT_EXPO } from "@/lib/motion";
 import { blueprintFor, domainName, domainOf, skillName, subjectName } from "@/lib/testprep/blueprints";
 import { examHref, resultsHref, sectionHref, sessionHref } from "@/lib/testprep/nav";
 import { useTestPrep } from "@/lib/testprep/store";
-import { formatDuration } from "@/lib/testprep/stats";
+import { easierRouteCap, formatDuration, trendBounds } from "@/lib/testprep/stats";
 import { questionById } from "@/lib/testprep/questions";
 import { plainText } from "@/lib/testprep/text";
 import { AnimatedNumber, Reveal } from "@/components/testprep/motion";
@@ -36,7 +36,7 @@ const MIN_FOR_VERDICT = 2;
 export default function TestPrepResults() {
   const { testId = "sat", attemptId } = useParams();
   const blueprint = blueprintFor(testId);
-  const profile = useTestPrep();
+  const profile = useTestPrep(testId);
   const navigate = useNavigate();
 
   const attempt = profile.attempts.find((a) => a.id === attemptId);
@@ -138,7 +138,7 @@ export default function TestPrepResults() {
               <div className="mt-5 flex flex-wrap items-end gap-x-5 gap-y-2">
                 <span className="font-display text-[72px] font-bold leading-[0.85] tracking-tight tabular-nums">
                   {attempt.score !== undefined ? (
-                    <AnimatedNumber value={attempt.score} from={400} />
+                    <AnimatedNumber value={attempt.score} from={blueprint.scoreRange[0]} />
                   ) : (
                     <>
                       <AnimatedNumber value={Math.round(accuracy * 100)} from={0} />%
@@ -190,33 +190,37 @@ export default function TestPrepResults() {
         {/* ── Sections + pace ────────────────────────────────── */}
         <div className="grid gap-4 lg:grid-cols-3">
           {attempt.sectionScores && Object.keys(attempt.sectionScores).length > 0 ? (
-            Object.entries(attempt.sectionScores).map(([subjectId, score], i) => (
+            Object.entries(attempt.sectionScores).map(([subjectId, score], i) => {
+              const [lo, hi] =
+                blueprint.subjects.find((s) => s.id === subjectId)?.scoreRange ?? blueprint.scoreRange;
+              return (
               <Reveal key={subjectId} delay={0.05 + i * 0.04} className={cn(CARD, "p-5")}>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                  {subjectName(subjectId as SubjectId)}
+                  {subjectName(subjectId as SubjectId, blueprint.id)}
                 </p>
                 <p className="mt-2 font-display text-4xl font-bold tabular-nums">{score}</p>
                 <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
                   <motion.div
                     className="h-full rounded-full bg-[hsl(var(--bb-blue))]"
                     initial={{ width: 0 }}
-                    animate={{ width: `${(((score ?? 200) - 200) / 600) * 100}%` }}
+                    animate={{ width: `${(((score ?? lo) - lo) / (hi - lo)) * 100}%` }}
                     transition={{ duration: 0.9, ease: EASE_OUT_EXPO }}
                   />
                 </div>
                 <div className="mt-1.5 flex justify-between text-[10px] tabular-nums text-muted-foreground">
-                  <span>200</span>
-                  <span>800</span>
+                  <span>{lo}</span>
+                  <span>{hi}</span>
                 </div>
                 {attempt.routes?.[subjectId as SubjectId] && (
                   <p className="mt-3 border-t border-border/60 pt-2.5 text-[12px] leading-snug text-muted-foreground">
                     {attempt.routes[subjectId as SubjectId] === "harder"
-                      ? "Routed to the harder Module 2, so the full 800 was in reach."
-                      : "Routed to the easier Module 2, which caps the section in the low 600s. More right answers in Module 1 unlock the harder one."}
+                      ? `Routed to the harder Module 2, so the full ${hi} was in reach.`
+                      : `Routed to the easier Module 2, which caps the section near ${easierRouteCap([lo, hi], blueprint.scoreStep)}. More right answers in Module 1 unlock the harder one.`}
                   </p>
                 )}
               </Reveal>
-            ))
+              );
+            })
           ) : (
             <Reveal delay={0.05} className={cn(CARD, "p-5 lg:col-span-2")}>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">By domain</p>
@@ -346,10 +350,10 @@ export default function TestPrepResults() {
                 points={history.map((a) => ({
                   id: a.id,
                   label: new Date(a.finishedAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
-                  value: a.score ?? 400,
+                  value: a.score ?? blueprint.scoreRange[0],
                 }))}
-                min={Math.max(400, Math.floor((Math.min(profile.targetScore, ...history.map((h) => h.score ?? 400)) - 60) / 100) * 100)}
-                max={Math.min(1600, Math.ceil((Math.max(profile.targetScore, ...history.map((h) => h.score ?? 400)) + 60) / 100) * 100)}
+                min={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score ?? blueprint.scoreRange[0])])[0]}
+                max={trendBounds(blueprint, [profile.targetScore, ...history.map((h) => h.score ?? blueprint.scoreRange[0])])[1]}
                 target={profile.targetScore}
                 onPointClick={(p) => p.id !== attempt.id && navigate(resultsHref(blueprint.id, p.id))}
               />
@@ -366,7 +370,7 @@ export default function TestPrepResults() {
           </p>
           {isExam ? (
             <Button asChild size="sm" variant="outline" className="gap-1.5">
-              <Link to={examHref(blueprint.id, ["rw", "math"])}>
+              <Link to={examHref(blueprint.id, blueprint.subjects.map((s) => s.id))}>
                 <RotateCcw className="h-4 w-4" />
                 Sit another test
               </Link>

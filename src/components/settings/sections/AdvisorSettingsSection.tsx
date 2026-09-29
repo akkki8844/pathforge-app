@@ -10,8 +10,9 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSettingsForm } from "../SettingsFormContext";
-import { Trash2, Loader2, Plus } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import { ADVISOR_MODELS, modelFromGateway } from "@/lib/advisorModels";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 // Same ladder the Advisor composer shows, so the two pickers can never
 // disagree. The stored value is the gateway id; the label is the product name.
@@ -124,9 +125,7 @@ export function AdvisorSettingsSection() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

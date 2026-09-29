@@ -11,6 +11,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { AdminRecentActivity } from "./AdminRecentActivity";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface ComprehensiveStats {
   overview: {
@@ -144,9 +145,7 @@ export function AdminDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
   if (!stats) {

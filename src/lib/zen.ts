@@ -1,12 +1,15 @@
 import { useCallback, useSyncExternalStore } from "react";
 
 /**
- * Zen mode: one switch that takes the app down to the task in front of you.
+ * Zen mode: one switch that takes the app away and leaves a place to work.
  *
- * On, it folds the nav bar to the logo, search and an exit button, hides the
- * floating chrome (message dock, support and feedback buttons, banners), and
- * trims the dashboard to today's focus. Pages themselves are untouched, so an
- * essay or a practice set reads exactly as it did, with nothing around it.
+ * On, the whole interface, nav bar included, is covered by the study in
+ * components/zen: an interactive 3D room that is the dashboard, simplified,
+ * with each block (today, the college list, progress, documents, news, the
+ * weekly check-in) and a few extras (focus timer, plan, sound, a breathing
+ * break) placed in it as objects (see ZenHost and ZenStudio). The
+ * trimmed-down chrome below it (folded nav, hidden dock and banners) stays as
+ * a fallback for the moments the room is not up yet.
  *
  * The state lives on <html data-zen> as well as in React, so CSS can hide
  * anything without every component subscribing, and it is remembered per

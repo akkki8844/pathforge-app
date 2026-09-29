@@ -12,23 +12,9 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { colleges, collegeMatchesQuery } from "@/lib/colleges";
+import { collegeMatchesQuery } from "@/lib/colleges";
+import { universityNamesFor, useWorldUniversities } from "@/lib/worldUniversities";
 import { CollegeLogo } from "@/components/CollegeLogo";
-
-/** All university names from our curated colleges dataset, deduped + sorted. */
-const ALL_UNIVERSITY_NAMES: string[] = Array.from(
-  new Set(colleges.map((c) => c.name)),
-).sort((a, b) => a.localeCompare(b));
-
-/** Universities filtered by a list of countries; falls back to global list. */
-function getUniversitiesForCountries(countries: string[] | undefined): string[] {
-  if (!countries || countries.length === 0) return ALL_UNIVERSITY_NAMES;
-  const set = new Set<string>();
-  for (const c of countries) {
-    colleges.filter((u) => u.country === c).forEach((u) => set.add(u.name));
-  }
-  return Array.from(set).sort((a, b) => a.localeCompare(b));
-}
 
 interface MultiUniversityComboboxProps {
   values: string[];
@@ -59,7 +45,10 @@ export function MultiUniversityCombobox({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const pool = useMemo(() => getUniversitiesForCountries(countries), [countries]);
+  // The world list (~10,000 institutions) loads the first time the popover
+  // opens; until then the curated schools are already searchable.
+  const world = useWorldUniversities(open);
+  const pool = useMemo(() => universityNamesFor(countries ?? [], world), [countries, world]);
   const filtered = useMemo(() => {
     const q = query.trim();
     const base = q ? pool.filter((u) => collegeMatchesQuery(u, q)) : pool;

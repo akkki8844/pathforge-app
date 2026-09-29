@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { CountryCombobox } from "@/components/CountryCombobox";
 
 import { BrandLogo } from "@/components/BrandLogo";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 interface UserSearchResult {
   user_id: string;
   email: string | null;
@@ -611,9 +612,7 @@ export function AdminUserManagement() {
           </DialogHeader>
 
           {loadingDetails || !userDetails ? (
-            <div className="flex justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-accent" />
-            </div>
+            <RowsSkeleton n={5} />
           ) : (
             <Tabs defaultValue="overview">
               <TabsList className="grid grid-cols-4 w-full">

@@ -1,4 +1,5 @@
 // Global high schools database with searchable autocomplete
+import { canonicalCountry } from "./countries";
 // This is a comprehensive list of notable high schools worldwide
 
 export interface School {
@@ -1192,7 +1193,9 @@ export function searchSchools(query: string, limit: number = 10): School[] {
 export const globalSchools: School[] = (() => {
   const seen = new Set<string>();
   const out: School[] = [];
-  for (const s of [...baseSchools, ...expandedSchools]) {
+  for (const raw of [...baseSchools, ...expandedSchools]) {
+    // One spelling per country ("UAE" and "United Arab Emirates" were both used).
+    const s = { ...raw, country: canonicalCountry(raw.country) };
     const key = `${s.name}|${s.country}`.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

@@ -404,10 +404,7 @@ export default function RoutineCalendar() {
     const destination: Partial<Record<AgendaKind, { label: string; href: string }>> = {
       class: { label: "Open your timetable", href: "/routine/timetable" },
       study: { label: "Open Study Planner", href: "/routine/study-planner" },
-      task: { label: "Open Today", href: "/routine/today" },
       reminder: { label: "Open Reminders", href: "/routine/reminders" },
-      habit: { label: "Open Today", href: "/routine/today" },
-      goal: { label: "Open Goals", href: "/routine/goals" },
       ...(testPrepEnabled() ? { testdate: { label: "Open Test Prep", href: "/test-prep/sat" } } : {}),
     };
     const target = destination[item.kind];
@@ -449,11 +446,11 @@ export default function RoutineCalendar() {
               <RoutineEmptyState
                 icon={CalendarDays}
                 title="Your calendar fills itself"
-                description="Add a class to your timetable or a deadline to Today and it shows up here — this grid is a view over everything you've already told Routine, not a second place to type it in."
+                description="Add a class to your timetable or a reminder and it shows up here — this grid is a view over everything you've already told Routine, not a second place to type it in."
                 actionLabel="Set up your timetable"
                 onAction={() => navigate("/routine/timetable")}
-                secondaryLabel="Go to Today"
-                onSecondary={() => navigate("/routine/today")}
+                secondaryLabel="Add a reminder"
+                onSecondary={() => navigate("/routine/reminders")}
               />
             )
           }

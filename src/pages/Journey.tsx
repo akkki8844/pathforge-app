@@ -37,6 +37,8 @@ import { CounsellorOverrideBanner } from "@/components/journey/CounsellorOverrid
 import { CounsellorRoadmapBanner } from "@/components/journey/CounsellorRoadmapBanner";
 import { Seo } from "@/components/Seo";
 import { fadeUp, staggerParent, staggerStep, viewportOnce, transition, EASE_OUT_EXPO } from "@/lib/motion";
+import { PageSkeleton } from "@/components/PageSkeletons";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // three.js is ~600KB; keep it out of the route chunk until the world mounts.
 const JourneyWorld = lazy(() => import("@/components/journey/JourneyWorld"));
@@ -366,14 +368,7 @@ export default function Journey() {
   };
 
   if (loading) {
-    return (
-      <div className="min-h-[60svh] flex items-center justify-center">
-        <div className="text-center space-y-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading your journey...</p>
-        </div>
-      </div>
-    );
+    return <PageSkeleton kind="journey" label="Loading your journey" />;
   }
 
   if (!onboardingData) {
@@ -473,8 +468,9 @@ export default function Journey() {
           >
             <Suspense
               fallback={
-                <div className="flex h-full items-center justify-center rounded-2xl border bg-card/60">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <div role="status" className="relative h-full overflow-hidden rounded-2xl border bg-card/60">
+                  <span className="sr-only">Loading the journey map</span>
+                  <Skeleton className="h-full w-full rounded-none opacity-60" />
                 </div>
               }
             >
@@ -485,6 +481,7 @@ export default function Journey() {
                 isLevelComplete={(id) => completedLevels.includes(id)}
                 reportStateFor={(id) => getForLevel(id)?.status ?? "none"}
                 onOpenLevelReport={openLevelReport}
+                stageOpen={!!openStage}
                 fallback={
                   <div
                     data-tour="journey-path"

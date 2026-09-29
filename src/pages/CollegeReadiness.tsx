@@ -39,6 +39,7 @@ import { Seo } from "@/components/Seo";
 import { ReadinessReport } from "@/components/readiness/ReadinessReport";
 import { CollegeLogo } from "@/components/CollegeLogo";
 import { Eyebrow, Panel, Title } from "@/components/cluely/primitives";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 export default function CollegeReadiness() {
   const { user } = useAuth();
@@ -284,9 +285,7 @@ export default function CollegeReadiness() {
                   </SheetHeader>
                   <div className="mt-6 space-y-3 max-h-[calc(100dvh-200px)] overflow-y-auto">
                     {historyLoading ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      </div>
+                      <RowsSkeleton n={4} label="Loading past analyses" />
                     ) : analyses.length === 0 ? (
                       <div className="text-center py-8 text-muted-foreground">
                         <History className="h-10 w-10 mx-auto mb-3 opacity-50" />

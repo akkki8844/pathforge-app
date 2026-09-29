@@ -32,6 +32,7 @@ import { ComposeProfessorEmailDialog } from "./ComposeProfessorEmailDialog";
 import { SectionRule } from "@/components/lor/lorSurface";
 import { ProfessorCard } from "./ProfessorCard";
 import type { Professor } from "./professorTypes";
+import { COUNTRY_NAMES_TOP_FIRST } from "@/lib/countries";
 
 type Level = "any" | "professor" | "associate" | "assistant" | "postdoc";
 
@@ -142,25 +143,8 @@ const UNIVERSITIES = [
   "ANU",
 ];
 
-const COUNTRIES = [
-  "Any country",
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Australia",
-  "Germany",
-  "Switzerland",
-  "France",
-  "Netherlands",
-  "Sweden",
-  "Singapore",
-  "Japan",
-  "South Korea",
-  "China",
-  "Hong Kong",
-  "India",
-  "United Arab Emirates",
-];
+// Every country, the common ones first; professors work everywhere.
+const COUNTRIES = ["Any country", ...COUNTRY_NAMES_TOP_FIRST];
 
 const KEYWORDS_BY_FIELD: Record<string, string[]> = {
   "Computer Science": ["Machine Learning", "AI / NLP", "Computer Vision", "Systems", "Theory", "Security", "HCI", "Robotics", "Graphics"],

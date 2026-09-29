@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Brain, DollarSign, Zap, TrendingUp } from "lucide-react";
+import { Brain, DollarSign, Zap, TrendingUp } from "lucide-react";
 import { format } from "date-fns";
 import {
   AreaChart,
@@ -17,6 +17,7 @@ import {
   Pie,
   Cell,
 } from "recharts";
+import { RowsSkeleton } from "@/components/PageSkeletons";
 
 interface AIUsageLog {
   id: string;
@@ -83,9 +84,7 @@ export function AdminAIUsage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-accent" />
-      </div>
+      <RowsSkeleton n={5} />
     );
   }
 

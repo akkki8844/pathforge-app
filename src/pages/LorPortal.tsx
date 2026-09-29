@@ -17,6 +17,7 @@ import { Seo } from "@/components/Seo";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+import { CardsSkeleton } from "@/components/PageSkeletons";
 
 interface PortalData {
   ok?: true;
@@ -121,9 +122,7 @@ export default function LorPortal() {
 
         <main className="max-w-2xl mx-auto px-6 py-10">
           {loading ? (
-            <div className="flex items-center justify-center py-24 text-muted-foreground">
-              <Loader2 className="h-5 w-5 animate-spin mr-2" /> Loading…
-            </div>
+            <CardsSkeleton n={4} className="sm:grid-cols-1" label="Loading recommendation request" />
           ) : data?.error ? (
             <ErrorState code={data.error} />
           ) : done || data?.recommender?.submitted_at ? (

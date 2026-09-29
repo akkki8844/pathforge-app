@@ -8,6 +8,7 @@ import { masteryTone, pct } from "@/lib/testprep/stats";
 import type { DomainStats, SkillStats } from "@/lib/testprep/stats";
 import { AnimatedNumber, Collapse, Stagger, StaggerItem } from "@/components/testprep/motion";
 import { EYEBROW, FOCUS, ROW_HOVER } from "@/lib/testprep/ui";
+import { conductorFor, specNameFor } from "@/lib/testprep/blueprints";
 
 /**
  * The parts the SAT pages are built from.
@@ -381,12 +382,13 @@ export function DifficultyBar({ value }: { value: "easy" | "medium" | "hard" }) 
  * stop being shown: the bank is Pathforge-written, and a student practising for
  * a paid exam is entitled to know whose questions they are answering.
  */
-export function SourceNote({ source }: { source: string }) {
+export function SourceNote({ source, testId }: { source: string; testId?: string }) {
+  const conductor = conductorFor(testId);
   const label =
     source === "pathforge"
-      ? "Written by Pathforge to the published SAT specification. Not a College Board question."
+      ? `Written by Pathforge to the ${specNameFor(testId)}. Not an official ${conductor} question.`
       : source === "official"
-        ? "Official College Board question."
+        ? `Official ${conductor} question.`
         : "Licensed practice question.";
   return <p className="text-[11px] leading-snug text-muted-foreground">{label}</p>;
 }

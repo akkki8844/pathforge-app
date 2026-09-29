@@ -354,6 +354,9 @@ export function GlobalSearch() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && !e.altKey && e.key.toLowerCase() === "k") {
+        // Zen covers the app; a palette opening behind the study would trap
+        // focus somewhere nobody can see.
+        if (document.documentElement.hasAttribute("data-zen")) return;
         e.preventDefault();
         setOpen((o) => !o);
         return;
